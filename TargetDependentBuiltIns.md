@@ -8,6 +8,8 @@ corresponding Kotlin built-in classes. For example `Collection.stream`,
 This makes impossible to use such members in Kotlin, both as callees and as
 overridden *(may be not impossible but rather hard)*.
 
+**TODO: Keep in mind static members and constructors**
+
 ##### Known workarounds
 * It's always possible to cast an instance to relevant JDK class when calling
 specific method
