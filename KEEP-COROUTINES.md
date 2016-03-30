@@ -170,7 +170,7 @@ Other use cases:
  * Website registration steps implemented without an explicit state machine, but through a (serializable) coroutine
  * TODO
  
- ## Coroutines overview
+## Coroutines overview
  
 We think of coroutines as computations having designated _suspension points_, a coroutine can be suspended only at one 
 of its suspension points. All suspension points are known at compile time. While the syntax is not fixed yet, the options 
@@ -259,7 +259,7 @@ while (x < 10) {
 is generated as
 
 ```
-class <anonymous_for_state_machine> : Coroutine {
+class <anonymous_for_state_machine> : Coroutine<...> {
     // The current state of the state machine
     int label = 0
     
@@ -290,17 +290,17 @@ class <anonymous_for_state_machine> : Coroutine {
 }    
 ```  
 
-## Coroutine builders and Controllers
+## The building blocks
 
 One of the driving requirements for this proposal is flexibility: we want to be able to support many existing asynchronous
 APIs and other use cases (unlike, for example, C#, where async/await and generators are tied up to Task and IEnumerable).
 
-To achieve this, we provide more direct access to the state machine, and introduce the notions of _coroutine builders_ and
-_controllers_.
+To achieve this, we provide more direct access to the state machine, and introduce building blocks that frameworks and
+libraries can use: _coroutine builders_, _suspension point functions_ and _controllers_.
 
 NOTE: all names, APIs and syntactic constructs described below are subject to discussion and possible change.
 
-## Coroutine builders
+### Coroutine builders
 
 _Coroutine builders_ are functions that take state machines and turn them into some useful objects like Futures, 
 Observables, lazy Sequences etc:
@@ -313,8 +313,8 @@ val f: Future<T> = asyncExample {
 
 Here, `asyncExample` is a function that receives a block which is a bofy of a coroutine ("colambda") as an argument. 
 Under the hoods this block is translated into a state machine, and the parameter type for `asyncExample` is not 
-a function type (e.g. `() -> Unit`), but an interface `Coroutine` that exposes functions to set a controller, 
-run the first step of a coroutine, etc:
+a function type (e.g. `() -> Unit`), but an interface `Coroutine` that exposes functions to initialize the coroutine, 
+start its execution, etc:
  
 ```
 fun <T> asyncExample(coroutine: Coroutine<...>): Future<T> { ... }
@@ -328,15 +328,16 @@ This essentially proposes a change to the language syntax: previously, when we s
 expected the type of it (e.g. a type of a parameter it is passed for or a property/variable it is assigned to) to be a
 function type, e.g. `(Int) -> String`, but now it can also be a `Coroutine<...>`. So this interface is a special
 type in the sense that the compiler knows about it and transforms the lambdas passed to such parameters to state machines.
+
+* It is open to discussion whether we should have a special syntax for `Coroutine` (like we have for function types), or
+  leave them is the generic form.
  
 NOTE: Technically, one could implement the `Coroutine` interface and pass a custom implementation to `asyncExample`, in the 
 same manner as it can be done with functions. And, of course, a function that takes a `Coroutine` doesn't have to really
 build anything, so _coroutine builder_ is not a syntactical property, or kind of functions the language knows about, but
 simply a coding pattern.
  
-But most of the interesting stuff is going on inside a _controller_ 
-
-## Suspension points
+### Suspension points
 
 To recap: a _suspension point_ is an expression in the body of a coroutine which cause teh coroutine's execution to
 suspend until it's explicitly resumed by someone.
@@ -403,12 +404,66 @@ NOTE: even if the result of `await()` is not assigned to a variable in the code 
  
 To achieve this, the compiler needs to either generate a new class that implements `Continuation` and has the appropriate
  `run` function implementation, or make the state machine itself implement `Continuation`, which would mean fewer classes
- and allocations, and thus is the option we'd prefer.
-   
-## Controllers
+ and allocations, and thus is the option we'd prefer.   
+
+### Controllers
+
+The model presented above is rather flexible: anyone can declare a coroutine builder or a suspension point independently.
+This flexibility may need some governance to avoid chaos, plus for many use cases there's a need for some kind of
+"execution context": a party that knows, for example, what thread pool to schedule computaions on, what time-outs to set,
+how to handle errors and so on. Plus, there are some type-checking issues, we'll cover below. To address all these concerns
+we introduce _controller objects_.
 
 One can think of a _controller object_ as an [implicit receiver](https://kotlinlang.org/docs/reference/extensions.html#declaring-extensions-as-members) 
-available inside a coroutine, because it's members are available in the body of coroutine without explicit qualification, 
-in fact, most suspension points are either members of or extensions to the controller. In the examples above, `await`, 
-`yield` and other such functions were members of controllers, but the controllers were not mentioned explicitly in the 
-example code. This is because it's typically a job of a coroutine builder to assign a controller.
+available inside a coroutine, because it's members are available in the body of coroutine without explicit qualification. 
+In fact, most suspension points are either members of or extensions to a controller, so they have access to the execution 
+context and preferences. 
+
+In fact, every coroutine must have a controller set (normally by its builder) before it is executed, this is done through
+calling some function on the `Coroutine` object that the builder receives. 
+
+* It's open to discussion whether we should allow calling suspension points which are not members/extensions to the 
+current controller, or there may be "free-floating" suspension points.  
+
+Note that normally controllers are singletons or at least very long-lived objects, so the need to allocate them does not
+impose significant performance penalties.
+ 
+## Type-checking coroutines 
+ 
+The type of the controller is captured in the type-arguments of the `Coroutine` object, and thus is known to the type 
+checker, as well as two other important things: the parameters of the coroutine and the type of its customizable internal 
+state object (not to be confused with the current state of the state machine, which is always an `Int`, and named `label`
+in the code examples above):
+  
+```
+interface Coroutine<C, P, S> { ... }
+```  
+
+These types are fixed (maybe except the state type S) at the point of passing the body of a coroutine to the builder, 
+because the builder specifies the full type of a coroutine. For example, here's a builder that creates Futures that are
+computed on the `ForkJoinPool.commonPool()` from coroutines that take one parameter of type `Int`:
+ 
+```
+fun <T> asyncExample(p: Int, body: Coroutine<CommonPoolFutures, (Int) -> Unit, CompletableFuture<T>>): Future<T> {
+    // some way of setting the controller
+    body.setController(CommonPoolFutures) 
+
+    // remember the future we need to complete later, when the coroutine is finished
+    val f = CompletableFuture<T>()    
+    body.setState(CompletableFuture<T>())
+
+    // run the first step of the state machine in the ForkJoinPool
+    CommonPoolFutures.exec { body.getFirstStep(p).run(null) }
+
+    // return the created future
+    return f
+}
+```
+
+This function may be called like this:
+
+```
+val future = asyncExample(10) {
+    p -> await(f(p))
+}
+```
