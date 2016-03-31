@@ -427,6 +427,12 @@ current controller, or there may be "free-floating" suspension points.
 
 Note that normally controllers are singletons or at least very long-lived objects, so the need to allocate them does not
 impose significant performance penalties.
+
+What can controllers do?
+ * define behavior at suspension points,
+ * define exception handlers,
+ * define handlers for return from the coroutine (e.g. the last expression in the code block, or explicit `return`'s),
+ * (maybe something else?)
  
 ## Type-checking coroutines 
  
@@ -441,19 +447,19 @@ interface Coroutine<C, P, S> { ... }
 
 These types are fixed (maybe except the state type S) at the point of passing the body of a coroutine to the builder, 
 because the builder specifies the full type of a coroutine. For example, here's a builder that creates Futures that are
-computed on the `ForkJoinPool.commonPool()` from coroutines that take one parameter of type `Int`:
+computed on the `ForkJoinPool.commonPool()` from coroutines that take no parameters:
  
 ```
-fun <T> asyncExample(p: Int, body: Coroutine<CommonPoolFutures, (Int) -> Unit, CompletableFuture<T>>): Future<T> {
+fun <T> asyncExample(body: Coroutine<CommonPoolFuturesController, () -> Unit, CompletableFuture<T>>): Future<T> {
     // some way of setting the controller
-    body.setController(CommonPoolFutures) 
+    body.controller = CommonPoolFuturesController 
 
     // remember the future we need to complete later, when the coroutine is finished
     val f = CompletableFuture<T>()    
-    body.setState(CompletableFuture<T>())
+    body.state = CompletableFuture<T>()
 
     // run the first step of the state machine in the ForkJoinPool
-    CommonPoolFutures.exec { body.getFirstStep(p).run(null) }
+    CommonPoolFuturesController.exec { body.firstStep().run(null) }
 
     // return the created future
     return f
@@ -463,7 +469,132 @@ fun <T> asyncExample(p: Int, body: Coroutine<CommonPoolFutures, (Int) -> Unit, C
 This function may be called like this:
 
 ```
-val future = asyncExample(10) {
-    p -> await(f(p))
+val future = asyncExample {
+    await(future)
 }
 ```
+
+Here, `await` is a member of the controller, which may be defined like this:
+
+```
+object CommonPoolFuturesController {
+    fun <T> await(f: CompletableFuture<T>, continuation c: Continuation<T, *>) {
+        f.whenComplete { t, throwable ->
+            if (throwable != null) 
+                c.runWithException(throwable)
+            else          
+                c.run(t)
+        }
+    }
+
+    operator fun <T> handleResult(result: T, coroutine: CompletedCoroutine<CompletableFuture<T>>) {
+        coroutine.state.complete(result)
+    } 
+    
+    operator fun handleException(exception: Throwable, coroutine: : CompletedCoroutine<CompletableFuture<T>>) {
+        coroutine.state.completeExceptionally(exception)
+    }
+}
+```
+ 
+Note that interfaes `Continuation` and `CompletedCoroutine` (the last one is passed to completion handlers: one for 
+result, i.e. normal termination, the other for exception, i.e. abnormal termination) both have a type-parameter: this is 
+`S`, the custom state, and it must be compatible with the one of the builder that this coroutine is passed to:
+  
+```
+interface Coroutine<C, P, S> { ... }
+interface Continuation<P, S> { ... }
+interface CompletedCoroutine<S> { ... }
+```
+
+NOTE: it looks like `CompletedCoroutine<S>` may be expressed as `Continuation<Nothing, S>`, but it's up to discussion.
+
+So, a **typing rule**: _all the `S` type-arguments must agree inside a coroutine_.
+
+Now, if we want a generator, all its `yield`'s must agree on the type of the value yielded: 
+
+```
+val seq = generate {
+    while (true) {
+        yield(Random.nextInt())
+        yield(0)
+    }
+}
+```
+
+Here, the compiler must be able to look at the arguments to `yield` and deduce that the result of `generate` is 
+`Sequence<T>`. This is the kind of analysis that's done for `return` expressions: the type checker collects all 
+`return`'s in a lambda and finds a common return type for their expressions. The difference here is that `yield` is
+_just a function_, albeit a suspension point. So, we need to mark it somehow to tell the compiler to treat it specially.
+Note that there may be more than one such function in the same controller, for example:
+    
+```    
+val seq1 = generate {
+    while (true) {
+        yieldAll(seq.take(5))
+        yield(0)
+    }
+}
+```
+
+This sequence has five items of teh previous one (random numbers and zeros), then a zero, then another five, and so on.
+And the type of seqeuence in `yieldAll` must agree with the type passed to `yield`: one is `Sequence<Int>`, the other is
+`Int`.
+ 
+We propose to mark a type parameter of such a function as `inferFrom`, so that when `S` parameters are put into agreement,
+the one in the builder application could be inferred from those marked `inferFrom`. Yes, teh inferred type is the `S`:
+
+NOTE: the name of the modifier (as well as its applicability rules) is up to discussion.
+  
+```
+fun <T> generate(coroutine: Coroutine<GeneratorsController, () -> Unit, LazySequenceImpl<T>): Sequence<T> {
+    coroutine.controller = GeneratorsController
+    val seq = LazySequenceImpl<T>
+    coroutine.state = seq
+    seq.step = coroutine.firstStep()
+    return seq 
+}
+
+object GeneratorsController {
+    fun <inferFrom T> yield(value: T, continuation c: Continuation<Unit, LazySequenceImpl<T>>) {
+        c.state.addValue(value)
+        c.state.step = c
+    }
+
+    fun <inferFrom T> yieldAll(values: Sequence<T>, continuation c: Continuation<Unit, LazySequenceImpl<T>>) {
+        c.state.addValues(values)
+        c.state.step = c
+    }
+    
+    operator fun resultHandler(r: Unit, c: CompletedCoroutine<LazySequenceImpl<T>>) {
+        c.state.completed = true        
+    }
+}
+
+class LazySequenceImpl<T> : Sequence<T> {
+    ...
+    
+    fun advanceIfNeeded() {
+        if (!advancedSinceLastYield) step.run(Unit)
+    }
+    
+    override fun iterator() = object : Iterator<T> {
+        override fun hasNext(): Boolean {
+            advanceIfNeeded()
+            return !completed
+        }
+        
+        override fun next(): T {
+            advanceIfNeeded()
+            if (completed) throw NoSuchElementException()
+            return getNextValue()
+        }
+    }
+    
+    ...
+}
+```
+
+The type checker looks at calls to `yield` and `yieldAll` in the body of the coroutine and creates typing constraints 
+for the `Coroutine` parameter of the builder function `generate`, thus deducing that its `T` is `Int` in the example 
+above.
