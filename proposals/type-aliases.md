@@ -2,39 +2,71 @@
 
 * **Type**: Design proposal
 * **Author**: Dmitry Petrov
-* **Contributors**: Andrey Breslav, Stanislav Erokhin
+* **Contributors**: Andrey Breslav, Stanislav Erokhin, Vladimir Reshetnikov
 * **Status**: Under consideration
 * **Prototype**: In progress
-
-## Feedback 
 
 Discussion of this proposal is held in [this issue](https://github.com/Kotlin/KEEP/issues/4).
 
 ## Use cases
 
-* Avoid repetition of types in source code without a cost of introducing extra classes.
-    * Function types
-    * Collections (and other complex generics)
-    * Nested classes
-    * ...
+Type aliases provide alternative names for existing types, for example:
+* Function types
+```
+typealias MyHandler = (Int, String, Any) -> Unit
 
-## Restrictions
+typealias HtmlBuilderAction = HtmlBuilder.() -> Unit
 
-Java has no notion of "type aliases" and can't see them in class member signatures.
+typealias Predicate<T> = (T) -> Boolean
+```
+* Collections (and other generics)
+```
+typealias NodeSet = Set<Network.Node>
 
-For the same reason we can't enforce "newtype"
-(type alias with limited assignment-compatibility with its underlying type)
-in Java.
-However, this would be possible with value types.
+typealias FilesTable<K> = MutableMap<K, MutableList<File>>
+```
+* Nested classes
+```
+class Outer {
+  class Nested {
+    inner class Inner
+  }
+}
+
+typealias Something = Outer.Nested.Inner
+```
+and so on.
+
+Type aliases do not introduce new types.
+Instead, they are fully expanded, and are equivalent to the corresponding underlying types.
+
+Use **value classes** to define new types (which are not assignment-compatible with the corresponding underlying types,
+but do not introduce overhead related to additional heap allocations),
+Value classes will be supported closer to [Project Valhalla](http://openjdk.java.net/projects/valhalla/) release.
+
+**NB** Java has no concept of "type aliases" and can't see them in class member signatures.
+
+## Type aliases and tooling
+
+IDE and compiler should be fully aware of type aliases:
+* Diagnostic messages
+* Descriptor rendering in IDE (completion, structure view, etc)
+* ...
 
 ## Type alias declarations
 
 Type aliases are declared using `typealias` keyword:
 ```
 typeAlias
-    : modifiers 'typealias' SimpleName (typeParameters typeConstraints)? '='
-        type
+    : modifiers 'typealias' SimpleName (typeParameters)? '=' type
+    ;
 ```
+Variants and constraints for type parameters of the generic type aliases are not allowed.
+> Type alias can't introduce additional constraints for generic type parameters.
+> Repeating constraints of the underlying types would be a boilerplate.
+> If there is a constraint violation error during type alias expansion,
+> it will be reported with additional details about type alias expansion context.
+
 Type aliases can be top-level declarations, member declarations, or local declarations.
 ```
 toplevelObject
@@ -61,8 +93,8 @@ typealias FilesTable = Map<String, MutableList<File>>
 ```
 * Generic type aliases
 ```
-typealias Predicate<in T> = (T) -> Boolean
-typealias NodeBuilder<T : Any> = T.() -> DocumentationNode
+typealias Predicate<T> = (T) -> Boolean
+typealias NodeBuilder<T> = T.() -> DocumentationNode
 typealias Array2D<T> = Array<Array<T>>
 ```
 * Nested type aliases
@@ -109,17 +141,21 @@ typealias IntIntList = List<Int, Int>       // Error: wrong number of type argum
 
 interface I<T : Any>
 typealias NI = I<String?>                   // Error: upper bound violated
-typealias IT<T> = I<T>                      // Error: upper bound violated
+typealias IT<T> = I<T>                      // Ok, but see below
+typealias NIT = IT<String?>                 // Error: upper bound violated
+                                            // (with detailed information on type alias expansion context)
 
 typealias Array2D<T> = Array<Array<T>>
 typealias Illegal = Array2D<Nothing>        // Error: type 'Array<Nothing>' is illegal
+                                            // (with detailed information on type alias expansion context)
 ```
 
 If an underlying type of generic type alias does not use an type parameter, it is a warning.
 ```
 typealias Encoded<E> = ByteArray         // Warning: generic type parameter E is not used in underlying type
 ```
-> We can't support phantom types, since type aliases are equivalent to underlying types.
+> Type aliases are equivalent to underlying types.
+> So, in the example above, instances of `Encoded<E>` with different type arguments will be equivalent types:
 >
 >```
 > interface Encoding
@@ -127,17 +163,72 @@ typealias Encoded<E> = ByteArray         // Warning: generic type parameter E is
 > object Utf8 : Encoding
 > object Iso : Encoding
 >
-> fun processUtf8Encoded(data: Encoded<Utf8>) { ... }
+> fun processUtf8Encoded(data: Encoded<Utf8>) {}    // fun (data: ByteArray)
 >
-> fun processIsoEncoded(data: Encoded<Iso>) {
->   // Both 'Encoded<Iso>' and 'Encoded<Utf8>' are expanded to 'ByteArray'.
->   // So, regardless of the design intent, the following call is ok:
->   processUtf8Encoded(data)
+> fun processIsoEncoded(data: Encoded<Iso>) {       // fun (data: ByteArray)
+>   processUtf8Encoded(data)                        // Ok
 > }
 >```
 >
 > However, if we prohibit such type aliases, it creates unnecessary long-term commitment for generic type aliases.
-> Since it is not an error for generic classes,
+> NB this is not an error for generic classes.
+
+Type arguments of a generic type alias should be well-formed types (type projections).
+```
+interface NN<T : Any>
+typealias Predicate<T> = (T) -> Boolean
+
+typealias E1 = Predicate<NN<Int, Int>>          // Error: wrong number of type arguments
+typealias E2 = Predicate<NN<Int?>>              // Error: upper bound violated
+```
+
+Type arguments of generic type aliases are substituted syntactically.
+```
+typealias Dictionary<V> = Map<String, V>
+typealias Predicate<T> = (T) -> Boolean     // = Function1<T, Boolean>
+typealias TMap<T> = Map<T, T>
+typealias Array2D<T> = Array<Array<T>>
+
+typealias T1 = Dictionary<*>                // Map<String, *>
+
+typealias T2 = Predicate<*>                 // Ok (but not very useful):
+                                            // Function1<*, Boolean> = Function1<Nothing, Boolean>
+
+typealias T3 = TMap<*>                      // Map<*, *>
+
+typealias T4 = Array2D<out Number>          // Array<Array<out Number>>
+```
+> Type aliases are not types, but rather "macros" on types.
+> Type alias behavior for projection arguments can be counter-intuitive.
+> E.g.:
+>```
+> typealias Array2D<T> = Array<Array<T>>
+>
+> fun foo(a: Array2D<out Number>) {}    // fun (a: Array<Array<out Number>>)
+>
+> fun bar(a: Array2D<Int>) {            // fun (a: Array<Array<Int>>)
+>   foo(a)                              // Error: type mismatch
+> }
+>```
+>
+> **NB** `Array2D<T>` above is an example of bad usage of type aliases:
+> it exposes representation of some high-level concept ("two-dimensional array").
+> which causes leaking abstractions.
+> Make `Array2D<T>` a class (or, better, an interface) to capture abstractions properly.
+>
+>```
+> typealias TMap<T> = Map<T, T>
+>
+> fun <T> foo(m: TMap<T>) {}         // fun <T> (m: Map<T, T>)
+>
+> fun bar(m: TMap<*>) {              // fun     (m: Map<*, *>)
+>     foo(m)                         // Error: cannot infer type parameter T
+> }
+>```
+>
+> In this example, information that both parameters of `Map<T, T>` are the same type is lost.
+> It could be preserved by introducing existential types (`TMap<*> = exists T : Any?. Map<T, T>`),
+> but this would open even bigger can of worms in the type system.
 
 ## Type aliases and visibility
 
@@ -180,7 +271,8 @@ val x: A = ...              // Error: val x exposes typealias A which is private
 fun foo(): A = ...          // Error: fun foo exposes typealias A which is private in file
 ```
 
-## Type aliases and resolution
+## Resolution
+
 Type aliases are treated as classifiers by resolution.
 * When used as type, type alias represents corresponding unabbreviated type.
 * When used as value, as function, or as qualifier in a qualified expression,
@@ -197,8 +289,14 @@ typealias A = Any   // Error: type alias A is conflicting with class A
 ### Type aliases as types
 
 Type aliases in type positions (function and property signatures, inheritance lists, etc)
-are equivalent to the corresponding underlying types.
-Thus, the following are errors:
+are expanded to the corresponding unabbreviated types.
+```
+typealias Str = String
+
+val hello: Str = "Hello, world!"    // 'hello' has type 'kotlin.String' denoted as 'Str'
+```
+
+All relevant restrictions are checked for unabbreviated types. Thus, the following are errors:
 ```
 typealias Str = String
 typealias NStr = Str?
@@ -220,7 +318,8 @@ typealias Empty = Nothing
 fun throws(): Empty = ...       // Error: return type Nothing should be specified explicitly
 ```
 
-### Type aliases as values
+### Type alias companion object
+
 Type alias as value represents the companion object of an underlying class or interface,
 or an underlying object.
 ```
@@ -248,7 +347,8 @@ val EmptyList = emptyList()             // Error: val EmptyList is conflicting w
 >```
 > Same should be true for type aliases.
 
-### Type aliases as constructors
+### Type alias constructors
+
 If a type alias `TA` expands to a top-level or nested (but not inner) class `C`,
 for each (primary or secondary) constructor of `C` with substituted signature `<T1, ..., Tn> (P1, ..., Pm)`
 a corresponding type alias constructor function `<T1, ..., Tn> TA(P1, ..., Pm)`
@@ -258,9 +358,7 @@ which can conflict with other functions with name `TA` declared in that scope.
 class A                 // constructor A()
 typealias B = A         // Error: type alias constructor B() is conflicting with fun B()
 fun B() {}              // Error: fun B() is conflicting with type alias constructor B()
-```
 
-```
 class V<T>(val x: T)                // constructor V<T>()
 typealias ListV<T> = V<List<T>>     // Error: type alias constructor <T> ListV(List<T>) is conflicting with fun <T> ListV(List<T>)
 fun <T> ListV(x: List<T>) {}        // Error: fun <T> ListV(List<T>) is conflicting with type alias constructor <T> ListV(List<T>)
@@ -332,12 +430,34 @@ interface Derived : Base {
 fun test(): Derived.Nested = ...        // Error
 ```
 
-## Type aliases and tooling
+## Type aliases in binary metadata
 
-IDE and compiler should be fully aware of type aliases:
-* Diagnostic messages
-* Descriptor rendering in IDE (completion, structure view, etc)
-* ...
+TODO
+
+> Abbreviated types should be present in the serialized signatures.
+>
+> Note that additional check is required: if a type alias expansion gives a different type,
+> we can't use corresponding abbreviated form (due to incompatible changes).
+> We would still be able to compile against such binaries, just without abbreviated types in diagnostics.
+> Probably this should be a warning.
+>
+> Example:
+> ```
+> // file: a.kt
+> typealias A = Int
+> ```
+> ```
+> // file: b.kt
+> val x: A = 0
+> ```
+> Now suppose `a.kt` is changed, and type alias `A` is now defined like:
+> ```
+> typealias A = Number
+> ```
+> and, for some reason, `b.kt` is not recompiled.
+> Then `x` in `b.kt` has type `kotlin.Int`, but its abbreviated form `A` expands to `kotlin.Number`.
+> We still can use `x` as `kotlin.Int`, but a warning should be reported
+> to indicate that there's something wrong with the dependencies.
 
 ## Type aliases and reflection
 
