@@ -53,7 +53,8 @@ class
   * use-site / declaration-site variance?
 
 ###### Cons
-* It's still necessary to maintain different runtime jars
+* It's still necessary to maintain different runtime jars (**TODO: this is
+not obvious statement**)
 * There should also several sources versions of built-in declarations with
 some parts shared (*it can be achieved with same mechanism as one used in
 stdlib to specify that given declaration is for X target*)
@@ -62,6 +63,8 @@ additional manual work to be done (*I believe these rare events require some
 attention anyway*)
 * If parameter `Collection.forEach` will have functional type, some additional
 work is required to emit right type in corresponding JVM method (`Consumer`)
+(*seems to be not very hard to implement, also one can explicitly declare
+SAM-adapter extension*)
 
 #### Add members through synthetic supertypes
 It's possible to achieve similar effect with adding to built-in classes some
@@ -81,12 +84,33 @@ new non-existing classes.
 * Also it's pretty simple solution for problems with overriding `Object.wait`
 and `Object.notify`
 * Currently it seems to be the easiest solution to implement
+* New JDK members appear without compiler/runtime update
 
 ###### Cons
-* Uncontrollable set of members in built-ins. Do we really need `Any.wait`?
+* Uncontrollable set of members in built-ins
 * A lot of flexible types
+* **Important:** When something appears in built-ins classes, and then it's
+being removed or had signature change, it could be declared as breaking change
 
 #### Solution sketch
 * Take common members from built-in declaration
 * Take common members from JDK prototype like it's subtype of built-in
 * Add all members that are not overrides of built-in ones
+
+## Chosen solution
+
+Third solution (loading additional methods from JDK classes in class-path)
+was chosen both because of it's flexibility and implementation simplicity.
+
+### What members should we add
+
+### Known problems
+#### Different JDK versions in dependent modules
+Let module `m1` uses JDK 6, while `m2` depends on `m1` and JDK8.
+
+* If there is some class declared in `m1` implementing `Collection`, `m2`
+should see `stream` in it's member scope
+* If there is some method in `m1` with return type of `Collection`, `m2` can
+use it's result as a receiver of `stream` again
+
+i.e. each module X should "see" other modules as they have same JDK as X does.
