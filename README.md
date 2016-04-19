@@ -6,7 +6,7 @@ The proposals themselves are colloquially referred to as KEEPs.
 
 ## How to give feedback
 
-KEEPs under discussion exist as [Pull Requests](https://github.com/JetBrains/KEEP/pulls) to this repo. To discuss one of them, please comment on the corrsponding Pull Request.
+KEEPs under discussion exist as [Pull Requests](https://github.com/JetBrains/KEEP/pulls) to this repo. To discuss one of them, please comment on the corresponding Pull Request.
 
 ## How to propose
 
