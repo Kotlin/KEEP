@@ -6,7 +6,9 @@
 * **Status**: Under consideration
 * **Prototype**: In progress
 
-_Discussion of this proposal is held in [this issue](https://github.com/JetBrains/KEEP/issues/4)._
+## Feedback 
+
+Discussion of this proposal is held in [this issue](https://github.com/JetBrains/KEEP/issues/4).
 
 ## Use cases
 
