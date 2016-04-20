@@ -6,7 +6,9 @@ The proposals themselves are colloquially referred to as KEEPs.
 
 ## Current KEEPs
 
-* [Type aliases](proposals/type-aliases.md)
+| KEEP | Proposal | Discussion |
+| ---- | -------- | ---------- |
+| **Type aliases** | [type-aliases.md](proposals/type-aliases.md) | [issue #4](https://github.com/JetBrains/KEEP/issues/4)
 
 ## How to give feedback
 
