@@ -4,6 +4,10 @@ This repository holds proposals for the [Kotlin Programming Language](https://ko
 
 The proposals themselves are colloquially referred to as KEEPs. 
 
+## Current KEEPs
+
+* [Type aliases](proposals/type-aliases.md)
+
 ## How to give feedback
 
 KEEPs under discussion exist as [Pull Requests](https://github.com/JetBrains/KEEP/pulls) to this repo. To discuss one of them, please comment on the corresponding Pull Request.
