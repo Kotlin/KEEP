@@ -6,7 +6,7 @@ The proposals themselves are colloquially referred to as KEEPs.
 
 ## Current KEEPs
 
-| KEEP | Proposal | Discussion |
+| KEEP Title | Proposal | Discussion |
 | ---- | -------- | ---------- |
 | Coroutines | repo: [kotlin-coroutines](https://github.com/Kotlin/kotlin-coroutines) | [Issues](https://github.com/Kotlin/kotlin-coroutines/issues)
 | Type aliases | [type-aliases.md](proposals/type-aliases.md) | [Issue #4](https://github.com/JetBrains/KEEP/issues/4)
