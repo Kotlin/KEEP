@@ -1,15 +1,27 @@
-# Summary
+# Bound Callable References
+
+* **Type**: Design proposal
+* **Author**: Alexander Udalov
+* **Contributors**: Andrey Breslav, Stanislav Erokhin, Denis Zharkov
+* **Status**: Under consideration
+* **Prototype**: In progress
+
+## Feedback 
+
+Discussion of this proposal is held in [this issue](https://github.com/JetBrains/KEEP/issues/5).
+
+## Summary
 
 Support "bound callable references" and "bound class literals".
 
-# Motivation / use cases
+## Motivation / use cases
 
 - It's painful to write lambdas every time
 - There's currently no way to reference an object member, which is sort of inconsistent with the fact that it's possible to reference static Java members
 - It's present in Java and its absence in Kotlin is rather inconvenient
 - >42 votes on KT-6947: Callable reference with expression on the left hand side
 
-# Description
+## Description
 
 - Support the following syntax: `<expression>::<member name>` (see semantics below).
 - Drop the "callable reference to object/companion member" error. Leave other diagnostics for now.
@@ -88,14 +100,14 @@ An intrinsic for `<expr>::class.java`, meaning `<expr>.javaClass`, would be nice
 A `KFunction` instance for a bound callable reference has no receiver parameter.
 Its `parameters` property doesn't have this parameter and the argument should not be passed to `call`.
 
-# Open questions
+## Open questions
 
 - How to parse such expressions?
 - API for "unbinding" a reference
     - if unbound already, throw or return null, or provide both?
 - Should there be a way to obtain an unbound reference to an object member?
 
-# Alternatives
+## Alternatives
 
 We could try resolve type in LHS first, and only then try expression. This has the following disadvantages:
 - Reference to object member would be unbound and so have the additional parameter of object type
@@ -104,7 +116,7 @@ We could try resolve type in LHS first, and only then try expression. This has t
 - It would contradict with Kotlin's philosophy of "locals win" (taken in a broader sense)
   in case when a top-level class and a local variable have the same name, which is referenced in LHS
 
-# Possible future advancements
+## Possible future advancements
 
 - `::<member>`, `::class`.
   For a class member, empty LHS of a callable reference may mean `this`.
