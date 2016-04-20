@@ -19,7 +19,7 @@ Support "bound callable references" and "bound class literals".
 - It's painful to write lambdas every time
 - There's currently no way to reference an object member, which is sort of inconsistent with the fact that it's possible to reference static Java members
 - It's present in Java and its absence in Kotlin is rather inconvenient
-- >42 votes on KT-6947: Callable reference with expression on the left hand side
+- >42 votes on [KT-6947](https://youtrack.jetbrains.com/issue/KT-6947): Callable reference with expression on the left hand side
 
 ## Description
 
@@ -102,10 +102,20 @@ Its `parameters` property doesn't have this parameter and the argument should no
 
 ## Open questions
 
-- How to parse such expressions?
 - API for "unbinding" a reference
-    - if unbound already, throw or return null, or provide both?
+    - Information about the original receiver type is absent in the type of a bound reference, so it's unclear what signature will the hypothetical "unbind" function have.
+        - One option would be an _unsafe_ "unbind" with a generic parameter which prepends that parameter to function type's parameter types:
+
+          ```
+          class O {
+              fun foo() {}
+              val bound: () -> Unit = this::foo
+              val unbound: (O) -> Unit = this::foo.unbind<O>()
+          }
+          ```
+    - If unbound already, throw or return null, or provide both?
 - Should there be a way to obtain an unbound reference to an object member?
+    - May be covered with the general API for unbinding a reference, or may be approached in a completely different way (with a language feature, or a library function).
 
 ## Alternatives
 
@@ -121,7 +131,7 @@ We could try resolve type in LHS first, and only then try expression. This has t
 - `::<member>`, `::class`.
   For a class member, empty LHS of a callable reference may mean `this`.
   Rationale: inside the class you can call `member()`, why not `::member` then?
-- `super::<member>` (KT-11520)
-- Support references to member extensions (KT-8835)
+- `super::<member>` ([KT-11520](https://youtrack.jetbrains.com/issue/KT-11520))
+- Support references to member extensions ([KT-8835](https://youtrack.jetbrains.com/issue/KT-8835))
 
 All these features can be safely introduced later.
