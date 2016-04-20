@@ -6,6 +6,8 @@
 * **Status**: Under consideration
 * **Prototype**: In progress
 
+_Discussion of this proposal is held in [this issue](https://github.com/JetBrains/KEEP/issues/4)._
+
 ## Use cases
 
 * Avoid repetition of types in source code without a cost of introducing extra classes.
