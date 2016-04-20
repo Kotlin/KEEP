@@ -8,7 +8,7 @@
 
 ## Feedback 
 
-Discussion of this proposal is held in [this issue](https://github.com/JetBrains/KEEP/issues/5).
+Discussion of this proposal is held in [this issue](https://github.com/Kotlin/KEEP/issues/5).
 
 ## Summary
 
