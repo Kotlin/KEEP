@@ -8,7 +8,8 @@ The proposals themselves are colloquially referred to as KEEPs.
 
 | KEEP | Proposal | Discussion |
 | ---- | -------- | ---------- |
-| **Type aliases** | [type-aliases.md](proposals/type-aliases.md) | [issue #4](https://github.com/JetBrains/KEEP/issues/4)
+| Type aliases | [type-aliases.md](proposals/type-aliases.md) | [Issue #4](https://github.com/JetBrains/KEEP/issues/4)
+| Coroutines | repo: [kotlin-coroutines](https://github.com/Kotlin/kotlin-coroutines) | [Issues](https://github.com/Kotlin/kotlin-coroutines/issues)
 
 ## How to give feedback
 
