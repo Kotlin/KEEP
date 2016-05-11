@@ -204,9 +204,33 @@ We could try resolve type in LHS first, and only then try expression. This has t
 
 ## Possible future advancements
 
-- `::<member>`, `::class`.
-  For a class member, empty LHS of a callable reference may mean `this`.
-  Rationale: inside the class you can call `member()`, why not `::member` then?
+### Empty left-hand side
+
+- For a class member (or an extension), empty LHS of a callable reference (or a class literal) may mean `this`. The rationale is: inside the class `bar()` is equivalent to `this.bar()`, so `::bar` may be equivalent to `this::bar`.
+
+  ```
+  class Foo {
+      fun bar() {}
+
+      fun test() = ::bar  // equivalent to "this::bar"
+  }
+  ```
+
+  This can be safely introduced later without breaking source compatibility.
+
+- Another possible use of the empty LHS would be to avoid typing the type of the receiver of the expected function type, when passing an unbound reference as an argument:
+
+  ```
+  val maps: List<Map<String, Int>> = ...
+  val nonEmpty = maps.filter(::isNotEmpty)   // equivalent to "Map<String, Int>::isNotEmpty"
+  ```
+
+  This causes a compatibility issue in the case when there's a declared top level function `isNotEmpty`. To prevent this code from changing its semantics we must consider all members of this "implicit expected receiver" *after* all top level members accessible from the context.
+
+Note that it's possible to implement both ideas, so `::foo` will be resolved first as a bound member of some implicit receiver, then as a top level member, and finally as an unbound member of an "implicit expected receiver" (if the callable reference is an argument to another call).
+
+### Other
+
 - `super::<member>` ([KT-11520](https://youtrack.jetbrains.com/issue/KT-11520))
 - Support references to member extensions ([KT-8835](https://youtrack.jetbrains.com/issue/KT-8835))
 
