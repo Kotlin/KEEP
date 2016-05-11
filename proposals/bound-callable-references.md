@@ -27,10 +27,50 @@ Support "bound callable references" and "bound class literals".
 - Drop the "callable reference to object/companion member" error. Leave other diagnostics for now.
 - Support the following syntax: `<expression>::class` (see semantics below).
 
+### Parsing
+
+Now the LHS of a callable reference expression or a class literal expression (or *double colon expressions*) can mean either an expression or a type, and it's impossible to figure out what it is by looking only at the AST. So we always parse an expression, with optional question marks after it to support the case of nullable types.
+
+```
+callableReferenceExpression
+    : (expression "?"*)? "::" SimpleName typeArguments?
+    ;
+
+classLiteralExpression
+    : (expression "?"*)? "::" "class"
+    ;
+```
+
+Double colon expressions are postfix expressions, so `::`'s priority is maximal and is equal to that of the dot (`.`).
+```
+    a+b::foo     // parsed as "a+(b::foo)"
+    a.b::class   // parsed as "(a.b)::class"
+```
+
+Note that now any expression can be followed by question marks (`?`) and then `::`. So, if we see `?` after an expression, we must perform a lookahead until the first non-`?`, and if it's `::`, parse this as a double colon expression.
+
 ### Resolution
 
+The LHS may now be interpreted as an expression, or a type, or both.
+```
+    SimpleName::foo           // expression (variable SimpleName) or type (class SimpleName)
+    Qualified.Name::foo       // expression or type
+
+    Nullable?::foo            // type (see section Nullable references below)
+    Generic<Arg>::foo         // type
+
+    Generic<Arg>()::foo       // expression
+    this::foo                 // expression
+    (ParenthesizedName)::foo  // expression
+
+    (ParenNullable)?::foo     // type
+```
+
+The semantics are different when the LHS is interpreted as an expression or a type, so we establish a priority of one over another when both interpretations are applicable.
+The algorithm is the following:
+
 1. Try interpreting the LHS as an **expression** with the usual resolution algorithm for qualified expressions.
-   If the result represents a companion object of some class, continue to p.2
+   If the result represents a companion object of some class, continue to p.2.
    Otherwise continue resolution of the member in the scope of the expression's type.
 2. Resolve the unbound reference with the existing algorithm.
 
@@ -81,6 +121,42 @@ fun test(c: C?) {
     c::foo             // error
     c::class           // error
     null::class        // error
+}
+```
+
+#### Nullable references
+
+According to this proposal, in the following syntax
+```
+Foo?::bar
+```
+the left-hand side can only be interpreted as a type because `Foo?` is not a valid expression. Therefore this would necessarily be a reference to an extension function named `bar` to the type `Foo?`.
+
+However, at some point we may want to give it the semantics of a reference to an expression `Foo` which is null when the result of that expression is null. In other words, it would be equivalent to
+```
+Foo?.let { it::bar }
+```
+
+To be able to introduce this later without breaking source compatibility, we should **prohibit** double colon expressions of the form `Foo?::bar` where `Foo` may be resolved as an *expression* (which usually means, there's a variable or a property named `Foo` in the scope). Otherwise the behavior would change:
+```
+class Foo
+fun Foo?.bar() {}
+
+fun String.bar() {}
+
+fun test() {
+    val Foo: String? = ""
+    Foo?::bar   // now resolved to Foo.bar, but will be String.bar
+}
+```
+
+One particular case is object declarations. An object name is both a variable and a type, so, according to the rule above, references to extensions to nullable object types will be forbidden, to prevent such references from changing the semantics in the future:
+```
+object Obj
+fun Obj?.ext() {}
+
+fun test() {
+    Obj?::ext   // forbidden
 }
 ```
 
