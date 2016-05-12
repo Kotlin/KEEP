@@ -212,6 +212,7 @@ Its `parameters` property doesn't have this parameter and the argument should no
               val unbound: (O) -> Unit = this::foo.unbind<O>()
           }
           ```
+        - Another option is for bound references to have an imaginary type `KBoundFunctionN<T, P1, ..., PN, R>` and synthesize a member function `fun unbind(): KFunctionN<P1, ..., PN, R>` in each `KBoundFunctionN` class in the compiler
     - If unbound already, throw or return null, or provide both?
 - Should there be a way to obtain an unbound reference to an object member?
     - May be covered with the general API for unbinding a reference, or may be approached in a completely different way (with a language feature, or a library function).
