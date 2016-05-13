@@ -12,7 +12,7 @@ Discussion of this proposal is held in [this issue](https://github.com/Kotlin/KE
 
 ## Summary
 
-Support "bound callable references" and "bound class literals".
+Support *bound callable references* (`<expression>::<member name>`) and *bound class literals* (`<expression>::class`).
 
 ## Motivation / use cases
 
@@ -23,9 +23,21 @@ Support "bound callable references" and "bound class literals".
 
 ## Description
 
-- Support the following syntax: `<expression>::<member name>` (see semantics below).
-- Drop the "callable reference to object/companion member" error. Leave other diagnostics for now.
-- Support the following syntax: `<expression>::class` (see semantics below).
+*Bound* callable reference is the one which has its receiver "attached" to it. That receiver may be any expression, it is provided to the reference syntactically before `::`, is memoized in the reference after its construction, and is used as the receiver on each call to the underlying referenced function/property/constructor. Example:
+```
+interface Comparator<T> {
+    fun compare(first: T, second: T): Int
+}
+
+fun sortedByComparator(strings: List<String>, comparator: Comparator<String>) =
+    strings.sortedBy(comparator::compare)
+```
+
+Bound class literal is an expression which is evaluated to the runtime representation of the class of an object, similarly provided as an expression before `::`. Its semantics are similar to Java's `java.lang.Object#getClass`, except that its type is `kotlin.reflect.KClass<...>`, not `java.lang.Class<...>`. Example:
+```
+    val x: Widget = ...
+    assert(x is GoodWidget) { "Bad widget: ${x::class.qualifiedName}" }
+```
 
 ### Parsing
 
