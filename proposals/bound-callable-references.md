@@ -140,6 +140,10 @@ fun test(c: C?) {
 }
 ```
 
+### Restrictions
+
+To give room for some future language features, we might restrict some rare usages of callable references so that it will be possible to implement those features maintaining backwards source compatibility.
+
 #### Nullable references
 
 According to this proposal, in the following syntax
@@ -151,9 +155,10 @@ the left-hand side can only be interpreted as a type because `Foo?` is not a val
 However, at some point we may want to give it the semantics of a reference to an expression `Foo` which is null when the result of that expression is null. In other words, it would be equivalent to
 ```
 Foo?.let { it::bar }
+
 ```
 
-To be able to introduce this later without breaking source compatibility, we should **prohibit** double colon expressions of the form `Foo?::bar` where `Foo` may be resolved as an *expression*. This usually happens when there's a variable or a property named `Foo` in the scope. `Foo` in this case must be either a simple name or a dot qualified name expression. This restriction is needed to prevent the change of behavior:
+To be able to introduce this later, we should **prohibit** double colon expressions of the form `Foo?::bar` where `Foo` may be resolved as an *expression*. This usually happens when there's a variable or a property named `Foo` in the scope. `Foo` in this case must be either a simple name or a dot qualified name expression. This restriction is needed to prevent the change of behavior:
 ```
 class Foo
 fun Foo?.bar() {}
@@ -175,6 +180,18 @@ fun test() {
     Obj?::ext   // forbidden
 }
 ```
+
+#### Calls to generic properties
+
+It's possible that one day we will support calling generic properties with explicit type arguments:
+```
+val <T> id: (T) -> (T)
+    get() = { x -> x }
+
+fun test() = buildGraph(widgets, id<Widget>)
+```
+
+To be able to implement it later, similarly to nullable references above, we should **prohibit** double colon expressions which might otherwise change behavior in the future. Expressions of the form `Foo<Bar>::baz` (or `pkg.Foo<Bar>::baz`) shall not be allowed if `Foo` is resolvable as an expression.
 
 ### Code generation (JVM)
 
