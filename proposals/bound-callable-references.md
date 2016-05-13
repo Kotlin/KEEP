@@ -31,6 +31,8 @@ Support "bound callable references" and "bound class literals".
 
 Now the LHS of a callable reference expression or a class literal expression (or *double colon expressions*) can mean either an expression or a type, and it's impossible to figure out what it is by looking only at the AST. So we always parse an expression, with optional question marks after it to support the case of nullable types.
 
+The rules below are simplified for clarity:
+
 ```
 callableReferenceExpression
     : (expression "?"*)? "::" SimpleName typeArguments?
@@ -40,6 +42,8 @@ classLiteralExpression
     : (expression "?"*)? "::" "class"
     ;
 ```
+
+Note: type arguments after callable reference expressions are reported as unsupported at the moment, this syntax is reserved for the future.
 
 Double colon expressions are postfix expressions, so `::`'s priority is maximal and is equal to that of the dot (`.`).
 ```
@@ -137,7 +141,7 @@ However, at some point we may want to give it the semantics of a reference to an
 Foo?.let { it::bar }
 ```
 
-To be able to introduce this later without breaking source compatibility, we should **prohibit** double colon expressions of the form `Foo?::bar` where `Foo` may be resolved as an *expression* (which usually means, there's a variable or a property named `Foo` in the scope). Otherwise the behavior would change:
+To be able to introduce this later without breaking source compatibility, we should **prohibit** double colon expressions of the form `Foo?::bar` where `Foo` may be resolved as an *expression*. This usually happens when there's a variable or a property named `Foo` in the scope. `Foo` in this case must be either a simple name or a dot qualified name expression. This restriction is needed to prevent the change of behavior:
 ```
 class Foo
 fun Foo?.bar() {}
@@ -228,6 +232,8 @@ We could try resolve type in LHS first, and only then try expression. This has t
 
 ## Possible future advancements
 
+There are a few possible improvements which are related to this proposal, but do not seem necessary at the moment and thus can be implemented later.
+
 ### Empty left-hand side
 
 - For a class member (or an extension), empty LHS of a callable reference (or a class literal) may mean `this`. The rationale is: inside the class `bar()` is equivalent to `this.bar()`, so `::bar` may be equivalent to `this::bar`.
@@ -240,9 +246,9 @@ We could try resolve type in LHS first, and only then try expression. This has t
   }
   ```
 
-  This can be safely introduced later without breaking source compatibility.
+  This can be safely introduced later without breaking source compatibility. Resolution of such members is performed almost exactly the same as resolution of normal calls, it is already supported in Kotlin 1.0 and the algorithm will likely not require any changes. For example, if there's a top level function `bar` declared in the above example, `::bar` inside the class still references `Foo`'s member.
 
-- Another possible use of the empty LHS would be to avoid typing the type of the receiver of the expected function type, when passing an unbound reference as an argument:
+- Another possible use of the empty LHS would be to avoid specifying the type of the receiver of the expected function type, when passing an unbound reference as an argument:
 
   ```
   val maps: List<Map<String, Int>> = ...
