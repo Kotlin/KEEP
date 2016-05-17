@@ -1,52 +1,65 @@
 # Proposal template for new API in the Standard Library
 
-### Summary
+This document provides a template that can be used to compose a proposal about new API in the Standard Library.
 
-Provide brief description of the API proposed.
+# Title
 
-### Similar API review
+* **Type**: Standard Library API proposal
+* **Author**: author name
+* **Contributors**: (optional) contributor names, if any
+* **Status**: Submitted
+* **Prototype**: Not started / In progress / Implemented
+
+
+## Summary
+
+Provide a brief description of the API proposed.
+
+## Similar API review
 
 * Is there a similar functionality in the standard library?
 * Is the same concept implemented in other languages/frameworks?
 
-### Use cases
+## Use cases
 
 * Provide several *real-life* use cases (either links to public repositories or ad-hoc examples)
 
-### Alternatives
+## Alternatives
 
 * How verbose would be these use cases without the API proposed?
 
-### Dependencies
+## Dependencies
 
 Does the API depends on something missing from the core of Kotlin standard library?
 For example types in JDK (6,7,8,...) or something JS-specific.
 
-### Placement
+## Placement
 
 * Standard Library or one of kotlinx extension libraries
 * package(s): should it be placed in one of packages imported by default?
 
-### Reference implementation
+## Reference implementation
 
 Provide the reference implementation and test cases.
 In case if the API should be specialized for each primitive, only one reference implementation is enough
 
-### Unresolved questions
+## Unresolved questions
 
 * List unresolved questions if any.
 * Provide options to solve them.
 
-### Future advancements
+## Future advancements
 
 * What are the possible and most likely extension points?
 
 
 -------
 
-## Questions to consider
+# Appendix: Questions to consider
+These questions are not a part of the proposal,
+but be prepared to provide the answers if they aren't trivial.
 
-### Naming
+## Naming
 
 * Is it clear from name what API is for?
 * Is it named consistently with other API with the similar purpose?
@@ -55,12 +68,12 @@ In case if the API should be specialized for each primitive, only one reference 
 
 Inspiring article on naming: http://blog.stephenwolfram.com/2010/10/the-poetry-of-function-naming/
 
-### Contracts
+## Contracts
 
 * What are the unexpected conditions and how are they handled?
 * Whether the contracts (preconditions, invariants, exception handling) are consistent and are what they may be expected from the similar features.
 
-### Shape
+## Shape
 
 For new functions consider alternatives:
 
