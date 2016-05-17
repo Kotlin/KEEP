@@ -18,11 +18,11 @@ Provide a brief description of the API proposed.
 ## Similar API review
 
 * Is there a similar functionality in the standard library?
-* Is the same concept implemented in other languages/frameworks?
+* How the same/similar concept is implemented in other languages/frameworks?
 
 ## Use cases
 
-* Provide several *real-life* use cases (either links to public repositories or ad-hoc examples)
+* Provide several *real-life* use cases (either links to public repositories or ad-hoc examples).
 
 ## Alternatives
 
@@ -30,8 +30,11 @@ Provide a brief description of the API proposed.
 
 ## Dependencies
 
-Does the API depends on something missing from the core of Kotlin standard library?
-For example types in JDK (6,7,8,...) or something JS-specific.
+What are the dependencies of the proposed API:
+
+* a subset of Kotlin Standard Library available on all supported platforms.
+* JDK-specific dependencies, specify minimum JDK version.
+* JS-specific dependencies.
 
 ## Placement
 
@@ -40,8 +43,9 @@ For example types in JDK (6,7,8,...) or something JS-specific.
 
 ## Reference implementation
 
-Provide the reference implementation and test cases.
-In case if the API should be specialized for each primitive, only one reference implementation is enough
+* Provide the reference implementation and test cases.
+In case if the API should be specialized for each primitive, only one reference implementation is enough.
+* Provide the answers for the questions from the [Appendix](#appendix-questions-to-consider) in case they are not trivial.
 
 ## Unresolved questions
 
@@ -70,8 +74,16 @@ Inspiring article on naming: http://blog.stephenwolfram.com/2010/10/the-poetry-o
 
 ## Contracts
 
-* What are the unexpected conditions and how are they handled?
+* What are the failure conditions and how are they handled?
 * Whether the contracts (preconditions, invariants, exception handling) are consistent and are what they may be expected from the similar features.
+
+## Compatibility impact
+
+* How the proposal affects:
+    - source compatibility,
+    - binary compatibility (JVM),
+    - serialization compatibility (JVM)?
+* Does it obsolete some other API? What deprecations and migrations are required?
 
 ## Shape
 
@@ -100,15 +112,12 @@ It is helpful to determine what are the collection requirements:
 * has fast indexed access
 * has fast `contains` operation
 * allows to mutate its elements
-* allows to add/remove its elements
-
-What other collection-like targets this operation has sense to be provided for
-
+* allows to add/remove elements
 
 ### Return type
 
 * Is the operation lazy or eager? Choose between `Sequence` and `List`
 * What is the return type for each receiver type?
-* Does the operation preserve shape of the receiver?
+* Does the operation preserve the shape of the receiver?
 I.e. returning `Sequence` for sequences and `List` for iterables.
 
