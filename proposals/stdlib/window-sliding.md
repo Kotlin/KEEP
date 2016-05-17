@@ -17,6 +17,7 @@ Support for `slidingWindow` and `slidingWindowBackward` extension functions for 
  - Scala: [sliding](http://www.scala-lang.org/api/2.11.8/index.html#scala.collection.IterableLike@sliding%28size:Int,step:Int%29:Iterator[Repr])
  - RxJava: [buffer](http://reactivex.io/documentation/operators/buffer.html)
  - F#: [windowed](https://msdn.microsoft.com/visualfsharpdocs/conceptual/seq.windowed['t]-function-[fsharp])
+ - Klutter: [batch and lazyBatch](https://github.com/kohesive/klutter/blob/master/core-jdk6/src/main/kotlin/uy/klutter/core/common/CollectionsBatching.kt)
 
 ## Use cases
 
