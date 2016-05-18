@@ -108,12 +108,12 @@ Support for `slidingWindow` and `slidingWindowBackward` extension functions for 
  - small footprint, less OOM risk, better for big receivers and/or small steps
  - same type for all receivers
  
-###  Sequence type rationale
+###  Sequence type argument rationale
 
  - for `Sequence<T>` receiver there is no reason to keep `Sequence<Sequence<T>>` as we actually can provide `List` that have more capabilities 
  - for `Iterable<T>` the reason is the same
  - for `PrimitiveArray` it is better to keep return `Sequence<PrimitiveArray>` because of less boxing overhead
- - - for `Array<T>` we can provide `Array` or `List` but I propose it to return `Array` for beter consistency with `PrimitiveArray`
+ - for `Array<T>` we can provide `Array` or `List` but I propose it to return `Array` for better consistency with `PrimitiveArray`
  - for `CharSequence` we return sequence of `CharSequence` to eliminate possible copying for `CharBuffer` and other possible implementations (that could be good or bad)
 
 ### Implementation
