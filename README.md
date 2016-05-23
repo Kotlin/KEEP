@@ -6,15 +6,19 @@ The proposals themselves are colloquially referred to as KEEPs.
 
 ## Current KEEPs
 
+Current KEEPs are listed in [issues](https://github.com/Kotlin/KEEP/issues).
+
+New KEEPs and additions to current KEEPs are submitted as [pull requests](https://github.com/Kotlin/KEEP/pulls).
+
+There are also some KEEPs having their own repository for specification and discussions:
+
 | KEEP Title | Proposal | Discussion |
 | ---- | -------- | ---------- |
 | Coroutines | repo: [kotlin-coroutines](https://github.com/Kotlin/kotlin-coroutines) | [Issues](https://github.com/Kotlin/kotlin-coroutines/issues)
-| Type aliases | [type-aliases.md](proposals/type-aliases.md) | [Issue #4](https://github.com/Kotlin/KEEP/issues/4)
-| Bound callable references | [bound-callable-references.md](proposals/bound-callable-references.md) | [Issue #5](https://github.com/Kotlin/KEEP/issues/5)
 
 ## How to give feedback
 
-Discussion of ongoing KEEPs is held under issues in this repo. Please find the correspondence in the table above.
+Discussion of ongoing KEEPs is held under their related issues.
 
 Please don't create new issues unless really necessary, let's try to keep discussions in one place.
 
