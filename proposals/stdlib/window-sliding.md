@@ -122,12 +122,15 @@ See reference implementation in branch [rr/cy/window-sliding](https://github.com
 
 ## Unresolved questions
 
+ - should we provide `slidingWindowBackward` for indexed collections? What are the use cases?
  - should we provide `slidingWindowIndices` and `slidingWindowBackwardIndices` as well?
  - Whether or not to allow window size of 0
     * neither of analogs allows
-    * (con) strange corner case
+    * (con) strange corner case — makes not much of sense to obtain a series of zero-sized windows.
     * (pro) valid operation and it's possible to implement.
     * (pro) reduce possible crash cases as crash generally is more dangerous
+ - do we need `dropTrailing` parameter? 
+    * Trailing batches could be filtered out with `filterNot { it.size < windowSize }` operation.
  - do we need `slidingWindow2` and `slidingWindow3` as described in [KT-10021](https://youtrack.jetbrains.com/issue/KT-10021) with the following signatures:
      * `slidingWindow2([step], operation: (T, T) -> Unit)`
      * `slidingWindow3([step], operation: (T, T, T) -> Unit)`
