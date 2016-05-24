@@ -16,11 +16,15 @@ If `matchOverlapping` is set to `false`, only non-overlapping occurrences are ma
 ## Similar API review
 
 * Repeated calls to `indexOf` with incremented startIndex with superlinear runtime, especially if overlapping occurrences are searched for.
-* Similarly, a regex pattern can be achieved to do this with the same properties as repeated calls to `indexOf`.
+* Similarly, a regex pattern can be used to achieve this with the same properties as repeated calls to `indexOf`.
 
 ## Use cases
 
-**TODO**
+This is a very fundamental method that can be used in a wide-range of specific use cases. Many of them can be grouped into the following categories:
+
+* Search for words/phrases in big documents, web pages, etc., be it in a web search engine, a text editor or even a word processor. A search function is built into many programs, which could benefit from this method.
+* Examples in bioinformatics: Find subsequences of DNA,  proteins that are known to be important.
+* Natural language processing: Find out in which context a word is used.
 
 ## Alternatives
 
@@ -49,3 +53,5 @@ None.
 ## Future advancements
 
 In the very initial proposal, the method did not have support for finding only non-overlapping occurrences and was case-sensitive. Both of these issues have been eliminated and as such, the method is already very versatile and should not be subject to further extensions.
+
+Depending on how efficient `CharSequence.indexOf` currently is, the Knuth-Morris-Pratt part could be useful for that method as well. In the future, this could be evaluated with benchmarks. At a glance, it looks like its [implementation](https://github.com/JetBrains/kotlin/blob/master/libraries/stdlib/src/kotlin/text/Strings.kt#L832) is naive.
