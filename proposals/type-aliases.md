@@ -239,8 +239,6 @@ Type aliases can have the same visibility modifiers as other members of the corr
 * type aliases declared in objects can be `public`, `internal`, or `private` (public by default);
 * block-level type aliases are local to the block.
 
-> NB private type aliases declared in interfaces are visible inside private methods of the corresponding interface only.
-
 Type aliases can't be declared in annotation classes, since annotation classes can't have bodies.
 
 Type aliases can't expose package or class members (including other type aliases) with more restricted visibility.
@@ -325,13 +323,25 @@ or an underlying object.
 ```
 object MySingleton
 typealias MS = MySingleton
-val ms = MS         // OK, == MySingleton
+val ms = MS                 // OK, == MySingleton
 ```
 
 ```
 class A
 typealias TA = A
-val ta = TA         // Error: type alias TA has no companion object
+val ta = TA                 // Error: type alias TA has no companion object
+```
+
+If a generic type alias expands to a class with companion object, type arguments can be omitted.
+```
+class GenericWithCompanion<T> {
+  companion object {
+    val magic = 42
+  }
+}
+
+typealias G<T> = GenericWithCompanion<T>
+val magic = G.magic        // OK, = 42
 ```
 
 Type alias declaration conflicts with a property declaration with the same name.
