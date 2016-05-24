@@ -65,12 +65,24 @@ Can be useful to provide better interop with some frameworks, e.g. angularjs 1.x
 + `PROPERTY_GETTER` and `PROPERTY_SETTER`
 <br/>
 Can be useful for native declarations to provide better api in Kotlin.
-Additionally it can be used to force using functions for accessors to avoid problems with some minifiers (e.g. closure-compiler) which treat access to properties as side effect free.
+Additionally it can be used to force using functions for accessors to avoid problems with some minifiers
+(e.g. closure-compiler) which treat access to properties as side effect free.
 <br/>
     *__Frontend:__ the annotation can not be applied to only one of accessors.*
 <br/>
     *__Frontend:__ the annotation can not be simultaneously applied to the property and its accessors.*
 <br/>
     *__Question:__ should it be prohibited for non-native declarations?*
+<br/>
+    *__Backend:__ properties whose accessors has this annotation no longer are treated as JS properties,
+    instead they are interpreted as bunch of accessors (like in JVM), so backend:*
+    - *doesn't generate JS property for them;*
+    - *translates accessors as functions using name from the annotation;*
+    - *translates an accessing to such property as call to accessor function using name from the annotation.*
 
-    *__NOTE:__ it can make harder to detect name clashes.*
+
+## Common
+
+*__Frontend:__ the annotation can not be combined with overload.*
+
+*__Frontend:__ consider new names when process clashes.*
