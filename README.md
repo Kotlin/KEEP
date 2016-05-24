@@ -11,6 +11,7 @@ The proposals themselves are colloquially referred to as KEEPs.
 | Coroutines | repo: [kotlin-coroutines](https://github.com/Kotlin/kotlin-coroutines) | [Issues](https://github.com/Kotlin/kotlin-coroutines/issues)
 | Type aliases | [type-aliases.md](proposals/type-aliases.md) | [Issue #4](https://github.com/Kotlin/KEEP/issues/4)
 | Bound callable references | [bound-callable-references.md](proposals/bound-callable-references.md) | [Issue #5](https://github.com/Kotlin/KEEP/issues/5)
+| Attach to property | [attach-to-property.md](proposals/attach-to-property.md) |
 
 ## How to give feedback
 
