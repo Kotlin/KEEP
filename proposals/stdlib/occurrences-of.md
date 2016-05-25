@@ -16,7 +16,7 @@ If `matchOverlapping` is set to `false`, only non-overlapping occurrences are ma
 ## Similar API review
 
 * Repeated calls to `indexOf` with incremented startIndex with superlinear runtime, especially if overlapping occurrences are searched for.
-* Similarly, a regex pattern can be achieved to do this with the same properties as repeated calls to `indexOf`.
+* Similarly, a regex pattern can be used to achieve this with the same properties as repeated calls to `indexOf`.
 
 ## Use cases
 
