@@ -184,7 +184,7 @@ class C : A, B
 Proposed solution: prohibit to have more than one name candidate for all declarations including native,
                    because it can confuse and I don't know any real usecases.
 
-Another possible solutions:
+Another possible solution:
 * allow to have more than one name candidate for all or only native declarations.
 <br/>
 In this case generated code should contain all name candidates which referenced to the same function to be compatible with all implemented interfaces.
