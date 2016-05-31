@@ -5,6 +5,7 @@
 * **Status**: Submitted
 * **Prototype**: Implemented
 * **Related issues**: [KT-7930](https://youtrack.jetbrains.com/issue/KT-7930)
+* **Indirectly related issues**: [KT-8286](https://youtrack.jetbrains.com/issue/KT-8286), [KT-9374](https://youtrack.jetbrains.com/issue/KT-9374)
 
 
 ## Summary
@@ -21,6 +22,21 @@ without throwing an exception when the string doesn't represent a correct number
 ## Use cases
 
 * _TODO_: Provide several *real-life* use cases (either links to public repositories or ad-hoc examples).
+
+- default value
+```kotlin
+val x = str.toIntOrNull() ?: 10
+```
+
+- custom exception
+```kotlin
+val x = str.toIntOrNull() ?: throw MyException()
+```
+
+- parsing a stream of formated data
+```kotlin
+lines.map {it.toIntOrNull()}
+```
 
 ## Description
 
@@ -70,6 +86,8 @@ The reference implementation is provided in the pull request [PR #839](https://g
     * `String.tryToInt()`
     * `String.tryParseInt()`
 * Difference between JDK6 and JDK8 in allowing the leading `+` sign.
+* Future Binary compatibility
+    * Other proposed enchansments to the `toInt()` functions ([KT-8286](https://youtrack.jetbrains.com/issue/KT-8286), [KT-9374](https://youtrack.jetbrains.com/issue/KT-9374)) will be harder to implement without braking binary compatibility after this propolsal is in the release 
 
 ## Future advancements
 
