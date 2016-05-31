@@ -28,6 +28,8 @@ Use **binary retention** since it should be available from deserialized descript
 + `FUNCTION` (constructors are not included)
 
 + `PROPERTY`
+<br/>
+New name provided by the annotation should be used for generating name of extension properties too which generated as functions.
 
 + `CLASS` (class, interface or object, annotation class is also included)
 <br/>
@@ -62,6 +64,11 @@ Can be useful to provide better interop with some frameworks, e.g. angularjs 1.x
     - angular 2 uses another way for DI;
     - but it's simple to implement.
 
+*__Question:__ how it should work for overrides?*
+* allow only on final
+* prohibit on overrides and reuse names from overridden declaration
+    * how, then, resolve conflicts?
+
 + `PROPERTY_GETTER` and `PROPERTY_SETTER`
 <br/>
 Can be useful for native declarations to provide better api in Kotlin.
@@ -79,6 +86,108 @@ Additionally it can be used to force using functions for accessors to avoid prob
     - *doesn't generate JS property for them;*
     - *translates accessors as functions using name from the annotation;*
     - *translates an accessing to such property as call to accessor function using name from the annotation.*
+
+
+## How it should work for overrides?
+
+Actually, the problems actual even we prohibit using `JsName` on overrides,
+because the compiler doesn't mangle the name of native declarations,
+so we can simply get name clash when to inherit from two natives.
+
+And doesn't make sense to prohibit to use this annotation on non-final declarations.
+
+So propose to **prohibit using JsName on overrides**, but **report about name clashes** on non-native declarations.
+
+
+**Case 1: declarations with different names from different parents with the same requested name (by JsName)**
+    _(map many names to the one)_
+
+
+_Note: A, B, C can be native._
+
+Example 1:
+```kotlin
+interface A {
+    @JsName("boo")
+    fun bar()
+}
+
+
+interface B {
+    @JsName("boo")
+    fun baz()
+}
+
+class C : A, B {
+    override fun bar() {}
+    override fun baz() {}
+}
+```
+
+Example 2:
+```kotlin
+interface A {
+    @JsName("boo2")
+    fun bar2() {}
+}
+
+
+interface B {
+    @JsName("boo2")
+    fun baz2() {}
+}
+
+class C : A, B
+```
+
+Proposed solution: allow name clashes on native declarations and prohibit on non-native declarations.
+
+**Case 2: declarations with the same name from different parents with different requested name (by JsName):**
+    _(map the one name to many)_
+
+_Note: A, B, C can be native._
+
+Example 1:
+```kotlin
+interface A {
+    @JsName("fooA")
+    fun foo()
+}
+
+
+interface B {
+    @JsName("fooB")
+    fun foo()
+}
+
+class C : A, B {
+    override fun foo() {}
+}
+```
+
+Example 2:
+```kotlin
+interface A {
+    @JsName("fooA")
+    fun foo2() {}
+}
+
+
+interface B {
+    @JsName("fooB")
+    fun foo2()
+}
+
+class C : A, B
+```
+
+Proposed solution: prohibit to have more than one name candidate for all declarations including native,
+                   otherwise, we can't choose the right name on call site.
+
+Another possible solutions:
+* allow to have more than one name candidate for all or only native declarations and report an error on call site when having many name candidates to call.
+<br/>
+In this case generated code should contain all name candidates which referenced to the same function to be compatible with all implemented interfaces.
 
 
 ## Common
