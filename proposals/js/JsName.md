@@ -192,6 +192,6 @@ In this case generated code should contain all name candidates which referenced 
 
 ## Common
 
-*__Frontend:__ the annotation can not be combined with overload.*
+*__Frontend:__ the annotation can not be combined with override.*
 
 *__Frontend:__ consider new names when process clashes.*
