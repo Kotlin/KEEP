@@ -1,22 +1,23 @@
-# Attach to delegate property object
+# Interception of delegated property binding
 
 * **Type**: Design proposal
 * **Author**: Ilya Ryzhenkov
-* **Contributors**:
+* **Contributors**: Zalim Bashorov
 * **Status**:
 * **Prototype**: Was implemented and then disabled
 
 ## Summary
 
-Recognize special operator function available for delegate object and call it right after it has been stored
-into a field for delegation.
+Recognize special operator function available for delegate object and call it right after it has been bound to a
+property.
 
 ## Glossary
 
 - "delegate instance": instance on which property's get/set accessors execute respective getValue/setValue calls.
 - "host instance": instance containing delegated properties as members, or being extended with extension property.
+- "binding": creating an association between property and delegate instance
 - "attachTo": placeholder for the name of the operator function
-- "constructor" means either primary constructor, or each of secondary constructor if there is no primary constructor
+- "delegation constructor" means any constructor that does not delegate to another constructor
 
 ## Motivation / use cases
 
@@ -51,6 +52,7 @@ operator fun DelegateType.attachTo(instance: HostType, property: KProperty<*>) :
 
 - bindToInstance
 - delegatedFrom
+- interceptDelegation
 
 ## Implementation
 
@@ -62,24 +64,28 @@ No new syntax is required.
 
 - resolving the `attachTo` function happens similar to resolving `getValue`/`setValue` functions.
 - if there are more than one `attachTo` functions available, overload resolution selects best candidate.
-- `attachTo` that is not accessible is ignored.
+- `attachTo` that is not accessible is ignored, no accessibility error or warning is reported.
 - `attachTo` can be inline.
-- `attachTo` can be generic, inference happens normally based on the type of host instance.
-- Member extension `attachTo` on matching delegate type is preferred.
-- No implicit `attachTo` operator from Java
+- `attachTo` can be generic, inference happens normally based on the HostType and DelegateType.
+- host instance can be null, if delegated property is top-level
+- if `attachTo` function is defined in Java in DelegateType or its base type, it is not considered to be a
+  suitable operator.
 
 ### Diagnostics
 
 Declaration site:
 - `attachTo` should have Unit return type
 - `attachTo` should have two parameters, second one should have `KProperty<*>` type
+- `attachTo` cannot be external
+- `attachTo` cannot have vararg parameters
+- `attachTo` cannot have parameters with default values
 
 Use site (`by` keyword):
--
+- `attachTo` must be operator
 
 ### Code generation (JVM)
 
-At the end of the primary constructor, or each of secondary constructors:
+At the end of the delegation constructor:
 For each property with discovered `attachTo` operator:
 Call to `attachTo` is generated passing `this` and property metadata.
 
@@ -123,11 +129,46 @@ Similar to JVM.
 - Stacktrace navigation is ambiguous at the point of `attachTo` call, it can be calling constructor
   or respective property. Consider creating private function `attachTo$properties` that is called at the end of
   constructor, which in turn calls all required `attachTo` functions.
-- Accessible operator function `attachTo` available on delegate instance cannot be called with host instance,
-  but since entire call is optional, should it be warning, error or just silently ignoring it?
+- When it happens that accessible operator function `attachTo` available on delegate instance cannot be called with
+  host instance for some reason, compiler will keep silent about it, since entire call is optional.
+  Should it be warning, error or just silently ignoring it?
   Inaccessible `attachTo` functions are silently ignored without any diagnostics, which is not good as well.
   Also it cannot be invokable property, object or functional value, because those cannot be operators.
 
+## Alternatives
+
+### createDelegate
+Instead of calling `attachTo` on an expression, consider ability to hook into delegate creation process:
+```
+private val name$delegate = expression.createDelegate(this, ::foo)
+val name: String
+    get() = name$delegate.getValue(this, ::foo)
+```
+
+A function can be added to standard library that will make current code work:
+```
+operator inline fun <D> D.createDelegate(instance: Any?, property: KProperty<*>): D = this
+```
+
+Pros:
+- better debugging experience, since there is now single point in bytecode associated with `by` keyword
+- ability to provide custom delegation instance, get it from cache, etc
+- potential to annotate `createDelegate` operator function with information to not store the returned value and use it
+  on every call, like this:
+```
+val name: String
+    get() = expression.createDelegate(this, ::foo).getValue(this, ::foo)
+```
+Of course, `createDelegate` can be inline and simply return its receiver, so no actual call is emitted:
+```
+val name: String
+    get() = expression.getValue(this, ::foo)
+```
+
+Cons:
+- coordination between getValue and createDelegate can be more complex, and not apparent from source code.
+  In this variant `getValue` should be defined on an instance `createDelegate` returns, which is not there in source code.
+- harder to optimize for cases when multiple properties delegate to a single instance
 
 ## Future evolution
 
