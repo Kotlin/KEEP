@@ -1,12 +1,13 @@
-# String to nullable number conversions
+# Exceptionless string to number conversions
 
 * **Type**: Standard Library API proposal
 * **Author**: Daniil Vodopian
+* **Contributors**: Ilya Gorbunov
 * **Status**: Submitted
 * **Prototype**: Implemented
 * **Related issues**: [KT-7930](https://youtrack.jetbrains.com/issue/KT-7930)
 * **Indirectly related issues**: [KT-8286](https://youtrack.jetbrains.com/issue/KT-8286), [KT-9374](https://youtrack.jetbrains.com/issue/KT-9374)
-
+* **Discussion**: [KEEP-19](https://github.com/Kotlin/KEEP/issues/19)
 
 ## Summary
 
@@ -19,23 +20,26 @@ without throwing an exception when the string doesn't represent a correct number
 * C#: [`int.TryParse`](https://msdn.microsoft.com/en-us/library/f02979c7(v=vs.110).aspx),
 [`Double.TryParse`](https://msdn.microsoft.com/en-us/library/994c0zb1(v=vs.110).aspx), etc
 
-## Use cases
+## Use cases and motivation
 
-* _TODO_: Provide several *real-life* use cases (either links to public repositories or ad-hoc examples).
+The goal is to have a way to convert a string to a number without throwing exceptions in situations
+where incorrectly formatted number is an expected, rather than an exceptional thing.
+Throwing and catching exceptions just to implement control flow could affect performance badly.
 
 - default value
 ```kotlin
-val x = str.toIntOrNull() ?: 10
+val x = str.toIntOrNull() ?: 42
 ```
 
 - custom exception
 ```kotlin
-val x = str.toIntOrNull() ?: throw MyException()
+val x = str.toIntOrNull() ?:
+    throw IllegalArgumentException("str is expected to be a valid number, but was '$str'")
 ```
 
-- parsing a stream of formated data
+- parsing a stream of formatted data
 ```kotlin
-lines.map {it.toIntOrNull()}
+val numbers = lines.map { it.toIntOrNull() }
 ```
 
 ## Description
@@ -49,15 +53,15 @@ It is proposed to provide following functions, one for each primitive numeric ty
 * `String.toFloatOrNull(): Float?`
 * `String.toDoubleOrNull(): Double?`
 
-Integer parsing is reimplemented in order not to throw exception on incorrect number, but to return `null` instead.
+Integer parsing is reimplemented in order not to throw an exception on incorrect number, but to return `null` instead.
 
-Floating number are parsed with JDK functions `java.lang.Float.parseFloat` and `java.lang.Double.parseDouble`,
+Floating point numbers are parsed with JDK functions `java.lang.Float.parseFloat` and `java.lang.Double.parseDouble`,
 but an additional regex validation is done beforehand, which hopefully does not pass incorrect floating point numbers,
 and does not reject correct ones.
 
 ## Alternatives
 
-* It is possible to use existing `String.to_Number_` functions inside a try-catch block,
+* It is possible to use the existing `String.to_Number_` functions inside a try-catch block,
 but it could hurt performance on a hot path:
 
 ```
@@ -86,10 +90,12 @@ The reference implementation is provided in the pull request [PR #839](https://g
     * `String.tryToInt()`
     * `String.tryParseInt()`
 * Difference between JDK6 and JDK8 in allowing the leading `+` sign.
+* Returning nullable number introduces boxing which may be wasteful.
 * Future Binary compatibility
-    * Other proposed enchansments to the `toInt()` functions ([KT-8286](https://youtrack.jetbrains.com/issue/KT-8286), [KT-9374](https://youtrack.jetbrains.com/issue/KT-9374)) will be harder to implement without braking binary compatibility after this propolsal is in the release 
+    * Other proposed enhancements to the `toInt()` functions ([KT-8286](https://youtrack.jetbrains.com/issue/KT-8286), [KT-9374](https://youtrack.jetbrains.com/issue/KT-9374)) will be harder to implement without breaking binary compatibility after this proposal is in the release.
 
 ## Future advancements
 
-* Provide the same API in Kotlin JS Standard Library
+* Provide string-to-number conversions in the specified base.
+* Provide the same API in Kotlin JS Standard Library.
 
