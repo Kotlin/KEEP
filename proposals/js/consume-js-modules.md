@@ -26,27 +26,14 @@ Additionally, we should keep in mind that module import string should not be a v
 Propose to add:
 
 ```kotlin
-@Repeatable
 @Retention(AnnotationRetention.BINARY)
 @Target(
     AnnotationTarget.CLASS,
     AnnotationTarget.PROPERTY,
     AnnotationTarget.FUNCTION,
     AnnotationTarget.FILE)
-annotation class JsModule(
-    val import: String,
-    vararg val kind: JsModuleKind = ... // arrayOf(JsModuleKind.AMD, JsModuleKind.COMMON_JS, JsModuleKind.UMD)
-)
-
-enum class JsModuleKind {
-    SIMPLE,
-    AMD,
-    COMMON_JS, // CJS?
-    UMD
-}
+annotation class JsModule(val import: String)
 ```
-
-It should be **repeatable** to allow to specialize settings for concrete JsModuleKind.
 
 It should have **binary retention** to be available from binary data.
 
@@ -77,16 +64,51 @@ annotation class JsPackage(val path: String)
 ```
 [TODO] think up a better name.
 
-The new annotation can be reused in case when we want to have package with long path in Kotlin,
-but don't want to have a long path in generated JS, e.g. for public API.
+The new annotation prefered because it can be reused in two cases:
+1. _Major:_ for native declarations inside nested namespaces / packages.
+2. _Minor:_ when we want to have package with long path in Kotlin,
+but don't want to have a long path in generated JS, e.g. for JS public API.
 Of course, this problem can be fixed by adding another file "facade" with a short qualifier.
 
-// it can't part of JsModule becouse will be reused for native declarations inside nested namespaces/packages
 
-Parameters:
+**Parameter of `JsModule` annotation:**
 - `import` -- string which will be used to import related module.
-- `kind` -- shows for which kind of modules this role should be applied.
 
+## How mark declarations which available with module systems and without module systems?
+
+Possible solutions:
+1. Add additional parameter to `JsModule` annotation
+Pros:
+- minor: simpler to discover
+Cons:
+- it makes harder to reuse `JsModule` annotation for non-external declaration in the future
+- maybe it'll strange to see a parameter about declaration in the annotation about module
+
+2. Add separate annotation
+Pros:
+- minor: simpler to evolve
+Cons:
+- more verbose
+- yet another annotation
+Note:
+- the annotation allowed only on native declarations
+- the annotation w/o `JsModule` doesn't change anything
+
+Another problem is to think up a good name for that.
+
+Some name candidates:
+- JsSimpleModule
+- JsNonModule
+- JsPlainModule
+- JsPlainModule
+- JsPlain
+- existsInNonModuleMode
+- availableInNonModuleMode
+- existsOutsideOfModule
+- availableOutsideOfModule
+
+
+**NOTE: In following code fragments temporary used `JsNonModule` annotation.**
 
 ## Use cases (based on TypeScript declarations)
 
@@ -170,24 +192,9 @@ In Kotlin:
 package SomeModule
 
 @JsModule("MyExternalModule")
-@JsModule("MyExternalModule", kind = JsModuleKind.SIMPLE)
+@JsNonModule
 @native var prop: MyClass = noImpl
 ```
-Second role means that when translate with SIMPLE module kind for this module
-compiler should generate import through variable `MyExternalModule`
-
-
-Another way:
-```kotlin
-package SomeModule
-
-@JsModule("MyExternalModule")
-@JsModule("this", kind = JsModuleKind.SIMPLE)
-@native var prop: MyClass = noImpl
-```
-And now when translate with SIMPLE module kind for this module
-compiler should generate import through variable `this` (usually it's Global Object)
-
 
 ## Implementation details
 
@@ -231,7 +238,7 @@ fun test() {
 }
 ```
 
-Use import value as is to declare dependencies when translate them with **any module kind except SIMPLE**.
+Use import value as is to declare dependencies when translate them with **module kind COMMON_JS or AMD**.
 <br/>E.g. for CommonJS generate following:
 ```javascript
 var first_module = require("first-module");
@@ -242,24 +249,26 @@ var d = require("fourthModule");
 ```
 
 When **module kind is SIMPLE**
-- If import value is valid JS identifier or `this` then use it as is as name of identifier;
+- If import value is valid JS identifier use it as is as name of identifier;
 - Otherwise, try to get from `this` using import value as is (as string).
 
 ```javascript
 (function(first_module, b, thirdModule, d) {
 // ...
+   println(first_module.a, b, thirdModule.c, d);
+// ...
 }(this["first-module"], this["second-module"], thirdModule, fourthModule));
 ```
 
+And for **module kind is UMD** compiler should use relevant rule for each block.
+
 ### Frontend
-- Report error when try to use native declaration which has `JsModule` annotations, but no one specifies a rule for current module kind.
-- Prohibit to have many annotations which explicitly provide the same module kind.
 - Prohibit to apply `JsModule` annotation to non-native declarations, except files.<br/>
 It can be relaxed later e.g. to reuse this annotation to allow translate a file to separate JS module,
 it can be useful to interop with some frameworks (see [KT-12093](https://youtrack.jetbrains.com/issue/KT-12093))
 
 ### IDE
-- Add inspection for the case when some declarations with the same fq-
+- Add inspection for the case when some declarations with the same fq-name
   Consider next cases:
   - function overloads
   - package and functions
@@ -267,16 +276,3 @@ it can be useful to interop with some frameworks (see [KT-12093](https://youtrac
 ## Open questions
 1. Can we introduce default value for `import` parameter of `JsModule` and use the name of declaration as import string when argument not provided?<br/>
 If so, how it should work when the annotation used on file?
-
-2. What should be used as default value of `kind` parameter of `JsModule`?
-    1. all kinds
-    2. all kinds except SIMPLE
-
-    In TypeScript (external) modules can be used only when compiler ran with module kind (in our terms it's all except SIMPLE).
-    So, should the second be default to generate simpler code from TS declarations?
-
-3. Actually, right now we needs to know only is `kind === SIMPLE` or not, so should we simplify API?
-
-4. Unfortunately, we can't use constants for `kind` parameter to make API better. Can we fix it somehow?
-
-5. Will be nice to have the way to say that all declarations in this file are native. But how it fit with the idea to replace `@native` with `external`?
