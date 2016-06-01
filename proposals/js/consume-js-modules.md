@@ -4,7 +4,6 @@
 * **Author**: Zalim Bashorov
 * **Contributors**: Andrey Breslav, Alexey Andreev
 * **Status**: Submitted
-* **Prototype**:
 
 ## Goal
 
@@ -14,12 +13,12 @@ and use this information to generate dependencies.
 ## Intro
 
 In general case JS module can be:
-  - object with a bunch of declarations (in terms of kotlin it can be package or object)
+  - object with a bunch of declarations (in terms of Kotlin it can be package or object)
   - class
   - function
   - variable
 
-Additionally we should keep in mind that module import string should not be valid identifier.
+Additionally, we should keep in mind that module import string should not be a valid identifier.
 
 
 ## Proposed solution
@@ -36,7 +35,7 @@ Propose to add:
     AnnotationTarget.FILE)
 annotation class JsModule(
     val import: String,
-    vararg val kind: JsModuleKind = arrayOf(JsModuleKind.AMD, JsModuleKind.COMMON_JS, JsModuleKind.UMD)
+    vararg val kind: JsModuleKind = ... // arrayOf(JsModuleKind.AMD, JsModuleKind.COMMON_JS, JsModuleKind.UMD)
 )
 
 enum class JsModuleKind {
@@ -53,14 +52,21 @@ It should have **binary retention** to be available from binary data.
 
 Annotation **allowed on classes, properties and functions** according to what can be exported from JS modules.
 
+_**Frontend:** prohibit to use the annotation on `var`_
+<br/>
+_It doesn't make sense on module systems except CommonJS (node.js)
+and to use it with CommonJS we should call `require` on every call sites to get the current value._
+<br/>
+_Since it very rare case propose to prohibit it now._
+
 In JS world objects often used as namespace/package so will be nice to allow to map such objects to Kotlin packages.
 
 Why just not using objects in all cases?
 1. Some IDE features works better with package level declarations (e.g. auto import)
 2. Accessing to package must not have side effects, so in some cases we can generate better code (alternative solution is add marker annotation)
 
-So to achieve that files allowed as target of the annotation.
-But it's not enough, additionally we should provide the way to specify custom qualifier for native declarations in the file.
+So to achieve that files allowed as the target of the annotation.
+But it's not enough, additionally, we should provide the way to specify custom qualifier for native declarations in the file.
 
 It can be achieved by adding yet another parameter to the annotation or add a new annotation, like:
 
@@ -72,9 +78,10 @@ annotation class JsPackage(val path: String)
 [TODO] think up a better name.
 
 The new annotation can be reused in case when we want to have package with long path in Kotlin,
-but don't want to have long path in generated JS, e.g. for public API.
-Of course, this problem can be fixed by adding another file "facade" with short qualifier.
+but don't want to have a long path in generated JS, e.g. for public API.
+Of course, this problem can be fixed by adding another file "facade" with a short qualifier.
 
+// it can't part of JsModule becouse will be reused for native declarations inside nested namespaces/packages
 
 Parameters:
 - `import` -- string which will be used to import related module.
@@ -131,7 +138,7 @@ package MyExternalModule
 @native fun foo() {}
 ```
 
-**Export by assignment form toplevel**
+**Export by assignment from toplevel**
 
 In TypeScript:
 ```typescript
@@ -245,13 +252,14 @@ When **module kind is SIMPLE**
 ```
 
 ### Frontend
-- Report error when try to use native declaration which has `JsModule` annotations, but no one specify rule for current module kind.
+- Report error when try to use native declaration which has `JsModule` annotations, but no one specifies a rule for current module kind.
 - Prohibit to have many annotations which explicitly provide the same module kind.
 - Prohibit to apply `JsModule` annotation to non-native declarations, except files.<br/>
-It can be relaxed later e.g. to reuse this annotation to allow translate a file to separate JS module, it can be useful to interop with some frameworks (see [KT-12093](https://youtrack.jetbrains.com/issue/KT-12093))
+It can be relaxed later e.g. to reuse this annotation to allow translate a file to separate JS module,
+it can be useful to interop with some frameworks (see [KT-12093](https://youtrack.jetbrains.com/issue/KT-12093))
 
 ### IDE
-- Add inspection for case when some declarations with the same fq-name have different JsModule annotations?
+- Add inspection for the case when some declarations with the same fq-
   Consider next cases:
   - function overloads
   - package and functions
@@ -260,15 +268,15 @@ It can be relaxed later e.g. to reuse this annotation to allow translate a file 
 1. Can we introduce default value for `import` parameter of `JsModule` and use the name of declaration as import string when argument not provided?<br/>
 If so, how it should work when the annotation used on file?
 
-2. What should be default value of `kind` parameter of `JsModule`?
+2. What should be used as default value of `kind` parameter of `JsModule`?
     1. all kinds
     2. all kinds except SIMPLE
 
     In TypeScript (external) modules can be used only when compiler ran with module kind (in our terms it's all except SIMPLE).
-    So, should second be default to generate simpler code from TS declarations?
+    So, should the second be default to generate simpler code from TS declarations?
 
-3. Actually right now we needs to know only is `kind === SIMPLE` or not, so should we simplify API?
+3. Actually, right now we needs to know only is `kind === SIMPLE` or not, so should we simplify API?
 
-4. Unfortunately we can't use constants for `kind` parameter to make API better. Can we fix it somehow?
+4. Unfortunately, we can't use constants for `kind` parameter to make API better. Can we fix it somehow?
 
-5. Will be nice to have the way to say that all declarations in this file is native. But how it fit with idea to replace `@native` with `external`?
+5. Will be nice to have the way to say that all declarations in this file are native. But how it fit with the idea to replace `@native` with `external`?
