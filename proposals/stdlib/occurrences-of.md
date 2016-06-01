@@ -3,14 +3,19 @@
 * **Type**: Standard Library API proposal
 * **Author**: Christian Brüggemann
 * **Status**: Submitted
-* **Prototype**: [Implemented](https://github.com/JetBrains/kotlin/pull/821)
+* **Prototype**: Implemented
+* **Discussion**: [KEEP-20](https://github.com/Kotlin/KEEP/issues/20)
+
 
 
 ## Summary
 
-An extension method `CharSequence.occurrencesOf(pattern: CharSequence, ignoreCase: Boolean, matchOverlapping: Boolean): Sequence<Int>` is proposed. 
-It returns a lazy sequence of all indices where the non-regex pattern is found in the receiver, based on a linear-time algorithm.
+An extension method `CharSequence.occurrencesOf(pattern: CharSequence, ignoreCase: Boolean, matchOverlapping: Boolean): Sequence<Int>` is proposed.
+
+It returns a lazy sequence of all indices where the non-regex literal pattern is found in the receiver, based on a linear-time algorithm.
+
 If `ignoreCase` is set to `true`, the method treats all characters case-insensitively, meaning that two characters are considered equal if `Char.equals(other = x, ignoreCase = true)` returns true.
+
 If `matchOverlapping` is set to `false`, only non-overlapping occurrences are matched, meaning that when an occurrence is found, the method does not look for occurrences of the pattern straddling the occurrence that was found just now. Otherwise, they are matched as well.
 
 ## Similar API review
@@ -22,14 +27,48 @@ If `matchOverlapping` is set to `false`, only non-overlapping occurrences are ma
 
 This is a very fundamental method that can be used in a wide-range of specific use cases. Many of them can be grouped into the following categories:
 
-* Search for words/phrases in big documents, web pages, etc., be it in a web search engine, a text editor or even a word processor. A search function is built into many programs, which could benefit from this method.
-* Examples in bioinformatics: Find subsequences of DNA,  proteins that are known to be important.
-* Natural language processing: Find out in which context a word is used.
+1. Search for words/phrases in big documents, web pages, etc., be it in a web search engine, a text editor or even a word processor. A search function is built into many programs, which could benefit from this method.
+2. Examples in bioinformatics: Find subsequences of DNA,  proteins that are known to be important.
+3. Natural language processing: Find out in which context a word is used.
 
 ## Alternatives
 
-* With the solutions presented in the *Similar API review*, a loop would be needed.
-* This proposal is not about current solutions being too verbose, but too slow.
+* Use regular expressions:
+```kotlin
+val occurrences = Regex.fromLiteral(pattern).findAll(text).map { it.range.start }
+```
+
+* With the solutions presented in the *Similar API review*, a loop would be needed:
+```kotlin
+// given text: String and pattern: String
+val result = mutableListOf<Int>()
+var index = 0
+while (true) {
+    index = text.indexOf(pattern, index)
+    if (index < 0) break
+    result.add(index)
+    index += pattern.length
+}
+```
+* or a manual sequence implementation:
+```kotlin
+val result = Sequence {
+    object : AbstractIterator<Int>() {
+        var index = 0
+        override fun computeNext() {
+            index = text.indexOf(pattern, index)
+            if (index < 0)
+                done()
+
+            setNext(index)
+            index += pattern.length
+        }
+    }
+}
+```
+
+However, this proposal is not about current solutions being too verbose, but too slow.
+
 
 ## Dependencies
 
@@ -39,7 +78,8 @@ This is a very fundamental method that can be used in a wide-range of specific u
 
 ## Placement
 
-The method is supposed to be placed inside `kotlin/text/Strings.kt`.
+ - module: `kotlin-stdlib`
+ - package: `kotlin.text`
 
 ## Reference implementation
 
