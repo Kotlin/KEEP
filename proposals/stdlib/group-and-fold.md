@@ -14,13 +14,64 @@ Introduce a function similar to `groupBy`, but folding values of each group on t
 
 * Ceylon: [`Iterable.summarize`](http://modules.ceylon-lang.org/repo/1/ceylon/language/1.2.0/module-doc/api/Iterable.type.html#summarize).
 
+## Description
+
+The operation with the following signature is proposed:
+
+```kotlin
+public inline fun <T, K, R> Iterable<T>.groupFoldBy(
+    keySelector: (T) -> K,
+    initialValue: R,
+    operation: (R, T) -> R
+): Map<K, R>
+```
+
+Also it is possible to provide two more generic forms:
+
+```kotlin
+public inline fun <T, K, R> Iterable<T>.groupFoldBy(
+    keySelector: (T) -> K,
+    initialValueSelector: (K, T) -> R,
+    operation: (K, R, T) -> R
+): Map<K, R>
+```
+> Here initial value and operation depend on the key of a group.
+
+and the most general:
+
+```kotlin
+public inline fun <T, K, R> Iterable<T>.groupFoldBy(
+    keySelector: (T) -> K,
+    operation: (key: K, value: R?, element: T, first: Boolean) -> R
+): Map<K, R>
+```
+
+> This form may be used to implement `groupReduceBy`.
+
+
 ## Use cases
 
 Most common use case is doing some aggregation, broken down by some key:
 
  1. given a text, count frequencies of words/characters;
+
+    ```kotlin
+    val frequencies = words.groupFoldBy({ it }, 0, { acc, w -> acc + 1 })
+    ```
+
  2. given orders in all stores, sum total value of orders by store;
- 3. given orders of all clients, find an order with the maximum value for each client.
+    ```kotlin
+    val storeTotals =
+            orders.groupFoldBy({ it.store }, 0, { acc, order -> acc + order.total })
+    ```
+
+ 3. given orders of all clients, find an order with the maximum total for each client.
+    ```kotlin
+    val bestClientOrders =
+            orders.groupReduceBy(
+                { it.client },
+                { maxValueOrder, order -> maxOfBy(order, maxValueOrder) { it.total } })
+    ```
 
 ## Alternatives
 
@@ -49,40 +100,6 @@ Most common use case is doing some aggregation, broken down by some key:
                     .toIterable()
                     .toMap()
     ```
-
-## Description
-
-The operation with the following signature is proposed:
-
-```
-public inline fun <T, K, R> Iterable<T>.groupFoldBy(
-    keySelector: (T) -> K,
-    initialValue: R,
-    operation: (R, T) -> R
-): Map<K, R>
-```
-
-Also it is possible to provide two more generic forms:
-
-```
-public inline fun <T, K, R> Iterable<T>.groupFoldBy(
-    keySelector: (T) -> K,
-    initialValueSelector: (K, T) -> R,
-    operation: (K, R, T) -> R
-): Map<K, R>
-```
-> Here initial value and operation depend on the key of a group.
-
-and the most general:
-
-```
-public inline fun <T, K, R> Iterable<T>.groupFoldBy(
-    keySelector: (T) -> K,
-    operation: (key: K, value: R?, element: T, first: Boolean) -> R
-): Map<K, R>
-```
-
-> This form may be used to implement `groupReduceBy`.
 
 ## Dependencies
 
