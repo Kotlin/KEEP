@@ -31,10 +31,24 @@ Most common use case is doing some aggregation, broken down by some key:
     Example:
 
     ```
-        values.groupBy { it }.mapValues { it.value.size }
+    val frequencies: Map<String, Int> =
+            words.groupBy { it }.mapValues { it.value.size }
     ```
 
-* Use Rx.observables (TODO: elaborate)
+* Use Rx.observables.
+    * Pro: many operations supported
+    * Con: observable transformations overhead,
+    asymptotically less than that of `mapValues`.
+
+    ```
+    val frequencies: Map<String, Int> =
+            Observable.from(values)
+                    .groupBy { it }
+                    .flatMap { g -> g.count().map { g.key to it } }
+                    .toBlocking()
+                    .toIterable()
+                    .toMap()
+    ```
 
 ## Description
 
