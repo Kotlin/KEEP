@@ -2,8 +2,11 @@
 
 * **Type**: Kotlin JS design proposal
 * **Author**: Zalim Bashorov
-* **Status**: Submitted
+* **Contributors**: Andrey Breslav, Alexey Andreev
+* **Status**: Approved
 * **Related issue**: [KT-2752](https://youtrack.jetbrains.com/issue/KT-2752)
+* **Prototype**: Implemented
+
 
 ## Use cases / motivation
 
@@ -29,13 +32,15 @@ Use **binary retention** since it should be available from deserialized descript
 
 + `PROPERTY`
 <br/>
-New name provided by the annotation should be used for generating name of extension properties too which generated as functions.
+_**Frontend**: prohibit on extension properties, allow on their accessors._
 
 + `CLASS` (class, interface or object, annotation class is also included)
 <br/>
 It's useful for native declarations, e.g. when name in Kotlin looks ugly or name already used somewhere.
 <br/>
 *__Question:__ should be prohibited for non native declarations?*
+<br/>
+*__Decision:__ allow on any declaration.*
 
 + `CONSTRUCTOR` (primary or secondary constructor)
 <br/>
@@ -56,6 +61,9 @@ To generate better name for secondary constructors.
 **Questionable targets:**
 + `VALUE_PARAMETER` (parameter of a function or a constructor)
 <br/>
+*__Decision:__ prohibit parameters as target of the annotation.*
+<br/>
+<br/>
 Can be useful to provide better interop with some frameworks, e.g. angularjs 1.x, where name of parameters used for injection and some frequently used dependencies contains `$`.
 <br/>
 **Notes:**
@@ -71,6 +79,9 @@ Can be useful to provide better interop with some frameworks, e.g. angularjs 1.x
 
 + `PROPERTY_GETTER` and `PROPERTY_SETTER`
 <br/>
+*__Decision:__ allow accessors as target of the annotation.*
+<br/>
+<br/>
 Can be useful for native declarations to provide better api in Kotlin.
 Additionally it can be used to force using functions for accessors to avoid problems with some minifiers
 (e.g. closure-compiler) which treat access to properties as side effect free.
@@ -80,6 +91,9 @@ Additionally it can be used to force using functions for accessors to avoid prob
     *__Frontend:__ the annotation can not be simultaneously applied to the property and its accessors.*
 <br/>
     *__Question:__ should it be prohibited for non-native declarations?*
+<br/>
+    *__Decision:__ allow on any declarations*
+
 <br/>
     *__Backend:__ properties whose accessors has this annotation no longer are treated as JS properties,
     instead they are interpreted as bunch of accessors (like in JVM), so backend:*
@@ -97,7 +111,7 @@ so we can simply get name clash when to inherit from two natives.
 And doesn't make sense to prohibit to use this annotation on non-final declarations.
 
 So propose to **prohibit using JsName on overrides**, but **report about name clashes** on non-native declarations.
-
+_**Decision:** approved_
 
 **Case 1: declarations with different names from different parents with the same requested name (by JsName)**
     _(map many names to the one)_
@@ -141,6 +155,7 @@ class C : A, B
 ```
 
 Proposed solution: allow name clashes on native declarations and prohibit on non-native declarations.
+_**Decision:** approved_
 
 **Case 2: declarations with the same name from different parents with different requested name (by JsName):**
     _(map the one name to many)_
@@ -181,14 +196,15 @@ interface B {
 class C : A, B
 ```
 
-Proposed solution: prohibit to have more than one name candidate for all declarations including native,
-                   because it can confuse and I don't know any real usecases.
+Solution 1: prohibit to have more than one name candidate for all declarations including native,
+because it can confuse and I don't know any real usecases.
 
-Another possible solution:
+Solution 2:
 * allow to have more than one name candidate for all or only native declarations.
 <br/>
 In this case generated code should contain all name candidates which referenced to the same function to be compatible with all implemented interfaces.
 
+_**Decision:** solution 2 chosen_
 
 ## Common
 
