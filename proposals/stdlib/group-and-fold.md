@@ -1,10 +1,10 @@
-# An operation to group by key and fold each group simultaneously
+# Group by key and fold each group simultaneously
 
 * **Type**: Standard Library API proposal
 * **Author**: Ilya Gorbunov
 * **Status**: Submitted
 * **Prototype**: In progress
-
+* **Discussion**: [KEEP-23](https://github.com/Kotlin/KEEP/issues/23)
 
 ## Summary
 
