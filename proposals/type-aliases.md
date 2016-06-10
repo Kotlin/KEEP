@@ -61,7 +61,7 @@ typeAlias
     : modifiers 'typealias' SimpleName (typeParameters)? '=' type
     ;
 ```
-Variants and constraints for type parameters of the generic type aliases are not allowed.
+Variance and constraints for type parameters of the generic type aliases are not allowed.
 > Type alias can't introduce additional constraints for generic type parameters.
 > Repeating constraints of the underlying types would be a boilerplate.
 > If there is a constraint violation error during type alias expansion,
@@ -119,6 +119,7 @@ typealias Pred<T> = (T) -> Boolean  // interface (functional interface for (T) -
 typealias IntC = Int.Companion      // object
 typealias Id<T> = T                 // Error: type alias expands to a type parameter
 typealias Second<T1, T2> = T2       // Error: type alias expands to a type parameter
+typealias Dyn = dynamic             // Error: type alias expands to 'dynamic'
 ```
 
 > Type aliases expanding to a type parameter require special treatment in resolution and are prohibited.
@@ -273,9 +274,26 @@ fun foo(): A = ...          // Error: fun foo exposes typealias A which is priva
 
 Type aliases are treated as classifiers by resolution.
 * When used as type, type alias represents corresponding unabbreviated type.
-* When used as value, as function, or as qualifier in a qualified expression,
-  type alias represents corresponding classifier.
+* When used as value or as function, type alias represents corresponding classifier.
+* When used as a qualifier in a qualified expression, type alias represents corresponding classifier
+with the following restriction:
+nested classifiers can't be referenced via type alias qualifier.
+
 > We need type aliases to work as underlying classes to prevent leaking abstractions.
+>
+> Usage of type alias as qualifier for nested class of the corresponding classifier
+> creates a "goto operator" in qualifier resolution, breaking some important assumptions.
+> Example:
+>
+> class Outer {
+>   class Nested
+> }
+> class Generic<T> {
+>   typealias ON = Outer.Nested
+> }
+> ... Generic<T>.ON.Nested ...
+>
+> This restriction may be removed later.
 
 Type alias declaration conflicts with another type alias declaration or a class (interface, object) declaration
 with the same name (regardless of generic parameters).
@@ -309,11 +327,12 @@ fun foo(s: Set<String>) {}          // Error: conflicting overloads
 ```
 
 If a function return type is `Nothing`, it should be specified explicitly in function declaration.
-Type alias expanding to `Nothing` in a position of function return type is an error.
+Type alias expanding to `Nothing` in a position of function return type or property type is an error.
 ```
 typealias Empty = Nothing
 
 fun throws(): Empty = ...       // Error: return type Nothing should be specified explicitly
+val alsoThrows: Empty =
 ```
 
 ### Type alias companion object
@@ -332,7 +351,7 @@ typealias TA = A
 val ta = TA                 // Error: type alias TA has no companion object
 ```
 
-If a generic type alias expands to a class with companion object, type arguments can be omitted.
+If a generic type alias expands to a class with companion object, type arguments should be omitted.
 ```
 class GenericWithCompanion<T> {
   companion object {
@@ -373,6 +392,22 @@ class V<T>(val x: T)                // constructor V<T>()
 typealias ListV<T> = V<List<T>>     // Error: type alias constructor <T> ListV(List<T>) is conflicting with fun <T> ListV(List<T>)
 fun <T> ListV(x: List<T>) {}        // Error: fun <T> ListV(List<T>) is conflicting with type alias constructor <T> ListV(List<T>)
 ```
+
+### Type alias constructors for inner classes
+
+> Question: how should we better deal with the type arguments?
+> Example:
+>
+>```
+> class Outer<T1> {
+>   inner class Inner<T2>
+> }
+> typealias OI<T1, T2> = Outer<T1>.Inner<T2>
+> val outer = Outer<Int>()
+> val inner = outer.OI< ... >()     // <Int, Int>? Something else?
+>```
+> NB: different combinations of type parameter substitutions are possible.
+> Most likely we'll have to constrain type alias constructors for inner classes somehow.
 
 If a type alias `TA` expands to an inner class `C1.(...).Cn.Inner`,
 for each (primary or secondary) constructor of `Inner` with substituted signature `<T1, ..., Tn> (P1, ..., Pm)`
