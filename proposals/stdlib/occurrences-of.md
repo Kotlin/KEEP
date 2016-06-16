@@ -88,7 +88,7 @@ Tests are also already implemented.
 
 ## Unresolved questions
 
-None.
+* Is the operation really convenient for the use cases given?
 
 ## Future advancements
 
