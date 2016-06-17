@@ -1,5 +1,11 @@
 # JDK dependent built-in classes
 
+* **Type**: Design proposal
+* **Author**: Denis Zharkov
+* **Contributors**: Andrey Breslav, Ilya Gorbunov
+* **Status**: Submitted
+* **Prototype**: In progress
+
 ## Goals
 There are a some members of JDK classes that are not reflected in
 corresponding Kotlin built-in classes. For example `Collection.stream`,
