@@ -92,20 +92,64 @@ and `Object.notify`
 * **Important:** When something appears in built-ins classes, and then it's
 being removed or had signature change, it could be declared as breaking change
 
-#### Solution sketch
-* Take common members from built-in declaration
-* Take common members from JDK prototype like it's subtype of built-in
-* Add all members that are not overrides of built-in ones
-
 ## Chosen solution
 
-Third solution (loading additional methods from JDK classes in class-path)
+Third solution (loading additional methods from JDK classes in a class-path)
 was chosen both because of it's flexibility and implementation simplicity.
 
-### What members should we add
+### Method lists
+Some methods in JDK classes are undesirable to have them in Kotlin built-ins
+analogues (e.g. a lot of String methods or List.sort(), because there are
+already defined Kotlin analogues with better signatures).
 
-### Known problems
-#### Different JDK versions in dependent modules
+Also for Kotlin containers with mutable analogues it's unknown whether given
+additional method actually perform container change or it could be added to
+read-only class.
+
+Thus, to provide some level of control it's proposed to maintain predefined
+lists in compiler describing what to do with given member:
+* *While list* defines the set of method that are allowed to be added into
+Kotlin analogues
+* *Black list* defines the set of method that are prohibited to be added into
+Kotlin analogues. At the same time such methods are still available for override and
+`super`-qualified calls
+* *Mutable methods list* defines the set of methods that should be added to mutable
+Kotlin container classes.
+
+All methods not listed in *White* nor in *Black* lists are available for
+calls, but such usages should be marked with a warning because it may become
+unresolved in the next language version.
+
+### Additional member method list
+* Let X be some Kotlin built-in class
+* If X is Any, then no additional members should be added
+* Let M be a mutable version of X if it exists or X itself
+* Let Y be a JDK analogue for X (e.g. java.util.Set for kotlin.collections.Set)
+* Take every method that exists in member scope of Y and can not be override of
+any member in M
+* Filter out methods with not public API visibility (nor public/protected) and
+ones that are deprecated
+* Process methods in accordance with predefined *Method lists*
+* Annotate non-invariant type parameters occurrences in unsafe variance position
+with `@UnsafeVariance` annotation (e.g. second parameter of `Map.getOrDefault`)
+* Add resulting methods into X member scope
+
+### Additional constructor list
+Rules for constructors are similar to ones for member methods, but they do not
+consider containers' mutability *(interfaces don't have constructors)*
+and instead of plain overridability both-ways overridability is used
+(i.e. two constructors are considered to be the same if their signatures allow
+them to be overrides of each other).
+
+### Static members
+It's proposed not to import additional static members from JDK classes because
+most of them already exist in stdlib as extensions to companion objects of
+corresponding Kotlin classes and have refined signatures.
+
+Also even there is no stdlib analogue, it's always possible to call it through
+JDK class.
+
+### Different JDK versions in dependent modules
 Let module `m1` uses JDK 6, while `m2` depends on `m1` and JDK8.
 
 * If there is some class declared in `m1` implementing `Collection`, `m2`
@@ -114,3 +158,33 @@ should see `stream` in it's member scope
 use it's result as a receiver of `stream` again
 
 i.e. each module X should "see" other modules as they have same JDK as X does.
+
+### Flexible type enhancement
+Some of additional members may have inappropriate nullability/mutability signature
+with flexible types.
+
+It's proposed to maintain another hard-coded list in the compiler describing
+enhanced signatures for some of JDK methods.
+
+### Backward compatible additional methods overrides
+The problem is that it's impossible now to override additional member it could be
+compiled with both language version (1.0/1.1).
+
+```
+abstract class A : Map<String, String> {
+    override fun getOrDefault(key: Any?, defaultValue: String?): String? {
+        return super.getOrDefault(key, defaultValue)
+    }
+}
+```
+In this example `override` keyword is necessary for JDK 8 with 1.1 language version,
+while 1.0 doesn't see such method in Map, thus `override` is error here.
+
+Also similar problem arise when switching between different JDK's.
+
+Solution comes from Java: allow omitting `override` keyword when the only override
+comes from additional member in built-in class.
+
+### Open questions
+* Should fields with public API visibility defined in JDK classes also be added
+to relevant Kotlin built-in classes?
