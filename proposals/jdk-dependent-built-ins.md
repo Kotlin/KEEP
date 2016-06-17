@@ -14,8 +14,6 @@ corresponding Kotlin built-in classes. For example `Collection.stream`,
 This makes impossible to use such members in Kotlin, both as callees and as
 overridden *(may be not impossible but rather hard)*.
 
-**TODO: Keep in mind static members and constructors**
-
 ##### Known workarounds
 * It's always possible to cast an instance to relevant JDK class when calling
 specific method
@@ -59,8 +57,7 @@ class
   * use-site / declaration-site variance?
 
 ###### Cons
-* It's still necessary to maintain different runtime jars (**TODO: this is
-not obvious statement**)
+* It's still necessary to maintain different runtime jars (*anyway it looks necessary now*)
 * There should also several sources versions of built-in declarations with
 some parts shared (*it can be achieved with same mechanism as one used in
 stdlib to specify that given declaration is for X target*)
