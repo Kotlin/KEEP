@@ -10,7 +10,7 @@ Discussion of this proposal is held in [this issue](https://github.com/Kotlin/KE
 
 * Algebraic data types, or (in Kotlin terms) sealed hierarchies:
 
-    ```
+    ``` kotlin
     sealed class Something {
         object Singleton : Something()
         data class Complex(...) : Something()  // <-- !
@@ -54,7 +54,7 @@ In the case when the base class of a data class has a member `M_b` that may clas
 #### Examples
 
 Sealed hierarchy use case:
-```
+``` kotlin
 sealed class Either<out L, out R> {
     data class Left<out L, out R>(val value: L) : Either<L, R>()
     data class Right<out L, out R>(val value: R) : Either<L, R>()
@@ -62,7 +62,7 @@ sealed class Either<out L, out R> {
 ```
 
 Generation of special members in cases when members are present in the base class:
-```
+``` kotlin
 open class Base {
     override /* open */ fun hashCode() = 42
     override final fun toString() = "Base"
@@ -79,7 +79,7 @@ fun test() {
 ```
 
 Properties of base class' primary constructor do not participate in `componentN` and other special functions:
-```
+``` kotlin
 open class Base(val baseParam: Int)
 
 data class Derived(val dataParam: String) : Base(dataParam.length)
