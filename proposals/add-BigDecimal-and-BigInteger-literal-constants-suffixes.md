@@ -61,6 +61,18 @@ Support the `g` and `G` suffixes in literal constants for `BigDecimal`s and
     BigDecimal("0.1") * BigDecimal(3) == BigDecimal("0.3")  // True
 ```
 
+* Create the `toBigDecimal` and `toBigInteger` extension functions for the `String` class:
+
+```kotlin
+    fun String.toBigDecimal(): BigDecimal {
+     return BigDecimal(this)
+    }
+
+    fun String.toBigInteger(): BigInteger {
+      return BigInteger(this)
+    }
+```
+
 ## Parsing
 
     BigDecimalLiteral
