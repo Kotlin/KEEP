@@ -80,3 +80,35 @@ Support the `g` and `G` suffixes in literal constants for `BigDecimal`s and
 
     BigIntegerLiteral
       : IntegerLiteral ["g", "G"]
+
+
+## Additional considerations
+
+The standard library should be enlarged in order to ease arithmetic operations
+where one and only one of the operands is a BigDecimal/BigInteger. For instance:
+
+```kotlin
+    fun Number.toBigDecimal(): BigDecimal {
+      return BigDecimal(this.toString())
+    }
+
+    fun Number.toBigInteger(): BigInteger {
+      return BigInteger(this.toString())
+    }
+
+    operator fun Number.minus(other: BigDecimal): BigDecimal {
+      return this.toBigDecimal().subtract(other)
+    }
+
+    operator fun Number.plus(other: BigDecimal): BigDecimal {
+      return this.toBigDecimal().add(other)
+    }
+
+    operator fun BigDecimal.minus(other: Number): BigDecimal {
+      return this.subtract(other.toBigDecimal())
+    }
+
+    operator fun BigDecimal.plus(other: Number): BigDecimal {
+      return this.add(other.toBigDecimal())
+    }
+```
