@@ -60,9 +60,12 @@ It can be achieved by adding yet another parameter to the annotation or add a ne
 ```kotlin
 @Retention(AnnotationRetention.BINARY)
 @Target(AnnotationTarget.FILE)
-annotation class JsPackage(val path: String)
+annotation class JsQualifier(val value: String)
 ```
-[TODO] think up a better name.
+
+Other possible names:
+* JsPackage(val qualifier: String)
+* JsPackagePrefix(val value: String)
 
 The new annotation prefered because it can be reused in two cases:
 1. _Major:_ for native declarations inside nested namespaces / packages.
@@ -80,8 +83,6 @@ Possible solutions:
 1. Add additional parameter to `JsModule` annotation
 Pros:
 - minor: simpler to discover
-Cons:
-- it makes harder to reuse `JsModule` annotation for non-external declaration in the future
 - maybe it'll strange to see a parameter about declaration in the annotation about module
 
 2. Add separate annotation
@@ -94,9 +95,16 @@ Note:
 - the annotation allowed only on native declarations
 - the annotation w/o `JsModule` doesn't change anything
 
+3. JsModule + native
+Pros:
+- simple, no extra annotation (?)
+Cons:
+- prevents the replacement of `@native` by `external`
+
 Another problem is to think up a good name for that.
 
 Some name candidates:
+- JsPlainAccess (Calls)
 - JsSimpleModule
 - JsNonModule
 - JsPlainModule
@@ -107,8 +115,7 @@ Some name candidates:
 - existsOutsideOfModule
 - availableOutsideOfModule
 
-
-**NOTE: In following code fragments temporary used `JsNonModule` annotation.**
+_**Decision:** use `JsNonModule` annotations in prototype_
 
 ## Use cases (based on TypeScript declarations)
 
@@ -196,83 +203,52 @@ package SomeModule
 @native var prop: MyClass = noImpl
 ```
 
-## Implementation details
+## Frontend
+- Native declarations w/o both annotations (`JsNonModule`, `JsNonModule`) available when compile with any module kind.
+- Prohibit to use native declarations annotated by `JsModule` and not annotated by `JsNonModule` when compile with module kind == PLAIN.
+- Prohibit to use native declarations annotated by `JsNonModule` and not annotated by `JsModule` when compile with module kind != PLAIN.
+- Prohibit to use declarations annotated by only `JsNonModule` or `JsNonModule` when compile with module kind == UMD.
+- Prohibit to apply `JsModule` and `JsNonModule` annotation to non-native declarations, except files.
 
-### Backend
-
-Let's consider the following files:
-
-**declarations1.kt**
-```kotlin
-@file:JsModule("first-module")
-
-var a: Int = noImpl
-```
-
-**declarations2.kt**
-```kotlin
-@JsModule("second-module")
-var b: Int = noImpl
-```
-
-**declarations3.kt**
-```kotlin
-@file: JsModule("thirdModule")
-
-var c: Int = noImpl
-```
-
-**declarations4.kt**
-```kotlin
-@JsModule("fourthModule")
-var d: Int = noImpl
-```
-
-**usage.kt**
-```kotlin
-fun test() {
-    println(a)
-    println(b)
-    println(c)
-    println(d)
-}
-```
-
-Use import value as is to declare dependencies when translate them with **module kind COMMON_JS or AMD**.
-<br/>E.g. for CommonJS generate following:
-```javascript
-var first_module = require("first-module");
-var b = require("second-module");
-var thirdModule = require("thirdModule");
-var d = require("fourthModule");
-//...
-```
-
-When **module kind is SIMPLE**
-- If import value is valid JS identifier use it as is as name of identifier;
-- Otherwise, try to get from `this` using import value as is (as string).
-
-```javascript
-(function(first_module, b, thirdModule, d) {
-// ...
-   println(first_module.a, b, thirdModule.c, d);
-// ...
-}(this["first-module"], this["second-module"], thirdModule, fourthModule));
-```
-
-And for **module kind is UMD** compiler should use relevant rule for each block.
-
-### Frontend
-- Prohibit to apply `JsModule` annotation to non-native declarations, except files.<br/>
-It can be relaxed later e.g. to reuse this annotation to allow translate a file to separate JS module,
-it can be useful to interop with some frameworks (see [KT-12093](https://youtrack.jetbrains.com/issue/KT-12093))
-
-### IDE
-- Add inspection for the case when some declarations with the same fq-name
-  Consider next cases:
-  - function overloads
-  - package and functions
 
 ## Open questions
 1. Can we introduce default value for `import` parameter of `JsModule` and use the name of declaration as import string when argument not provided?<br/>
 If so, how it should work when the annotation used on file?
+
+_**Decision:** not now_
+
+2. How import/export modules in non module kinds when import string is not valid identifier (it's possible for IDEA modules)?
+<br/>
+Right now we valid identifiers  use as is and generate something like `this["module-name"]` otherwise. But:
+- it looks asymmetric;
+- nobody use `this["module-name"]`.
+
+Possible solutions:
+- always use `sanitized_name`;
+- always use `this[module-name]`;
+- always use both.
+
+_**Propose:** decide it later._
+
+
+## Alternative solution
+Use the one annotation instead of two:
+
+```kotlin
+@Retention(AnnotationRetention.BINARY)
+@Target(
+    AnnotationTarget.CLASS,
+    AnnotationTarget.PROPERTY,
+    AnnotationTarget.FUNCTION,
+    AnnotationTarget.FILE)
+@Repeatable
+annotation class JsAccessible(from: ModuleType, import: String)
+
+// alternative names: JsModule, Module
+enum class ModuleType {
+    NONE, // NON_MODULE
+    SYSTEM // MODULE_SYSTEM
+}
+```
+
+So, current default PLAIN requires NON_MODULE type; AMD, CommonJS, SystemJS and ES2016 -- MODULE_SYSTEM; and UMD -- MODULE_SYSTEM & NON_MODULE
