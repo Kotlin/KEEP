@@ -77,19 +77,28 @@ Dependencies required by the script are provided by the resolvers specified in p
 
 ```
 interface KotlinScriptDependenciesResolver {
-    fun resolve(scriptFile: File?,
-                @param:AcceptedAnnotations(...)  // allows to specify particular types of annotations accepted by the resolver
-                annotations: Iterable<Annotation>,
-                environment: Map<String, Any?>?,
-                previousDependencies: KotlinScriptExternalDependencies?
+        @AcceptedAnnotations(...)  // allows to specify particular types of annotations accepted by the resolver
+        fun resolve(script: ScriptContents,
+                    environment: Map<String, Any?>?,
+                    previousDependencies: KotlinScriptExternalDependencies?
         ): KotlinScriptExternalDependencies?
 }
 ```
 
 The method is called after script parsing in compiler and IDE and allows resolver to discover particular script dependencies using any annotations as well as to pass predefined dependencies for all scripts built with appropriate template. The parameters:
 
-* scriptFile - the script file being processed, or null if script is not file-based (e.g. in REPL)
-* annotations - a list of file-targeted annotations from the script file filtered according to  `AcceptedAnnotations` annotation.
+* script - the interface to the script file being processed defined as
+    ```
+    interface ScriptContents {
+        val file: File?
+        val annotations: Iterable<Annotation>
+        val text: CharSequence?
+    }
+    ```
+    where:
+    * file - script file, if it is a file-based script
+    * annotations - a list of file-targeted annotations from the script file filtered according to  `AcceptedAnnotations` annotation
+    * text - an interface to the script contents
 * environment - a map of entries representing environment specific for particular script template. The environment allows generally stateless resolver to extract dependencies according to the environment. E.g. for the gradle it could contain the gradle's `ProjectConnection` object used in the gradle IDEA plugin, allowing to reuse the project model already loaded into the plugin. The values are taken from the `ScriptTemplateProvider` extension point or script compilation call parameter. Could also contain a predefined set of parameters, e.g. “projectRootPath”
 * previousDependencies - a value returned from the previous call to resolver, if any. It allows generally stateless resolver to implement an effective change detection logic, if the resolving is expensive
 
@@ -97,9 +106,11 @@ Returned `KotlinScriptExternalDependencies` is defined as:
 
 ```
 interface KotlinScriptExternalDependencies {
-    val classpath: Iterable<File> get() = emptyList()
-    val imports: Iterable<String> get() = emptyList()
-    val sources: Iterable<File> get() = emptyList()
+    val javaHome: String? = null                      // JAVA_HOME path to use with the script
+    val classpath: Iterable<File> get() = emptyList() // dependencies classpath
+    val imports: Iterable<String> get() = emptyList() // implicit imports
+    val sources: Iterable<File> get() = emptyList()   // dependencies sources for source navigation in IDE
+    val scripts: Iterable<File> get() = emptyList()   // additional scripts to compile along with the current one
 }
 ```
 
@@ -112,6 +123,4 @@ This schema allows user to implement any annotation-based syntax for dependency 
     * `ScriptDependencies` - for defining simple dependencies like JDK, kotlin stdlib or files with simple file searching scheme (e.g. from project's lib folder)
     * `ScriptDependenciesRepository` - for using with a “standard” dependency resolver, like maven, could be used together with a form of `ScriptDependencies` annotation accepting library coordinates.
     * `ScriptImplicitImports` - as a compliment to the direct dependencies specification, to allow specifying implicit imports directly
-* Resolver's `resolve` method accepting file contents, for the non-file based operations (or may be even file-based then contents are easily accessible from memory)
-
 
