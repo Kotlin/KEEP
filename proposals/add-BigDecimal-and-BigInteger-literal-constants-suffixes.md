@@ -31,23 +31,22 @@ val myBigInteger = 1G
 0.1 * 3 == 0.3  // False
 0.1 * 5 == 0.5  // True
 
-0.1G * 3 == 0.3  // True
-0.1G * 5 == 0.5  // True
+0.1G * 3G == 0.3G  // True
+0.1G * 5G == 0.5G  // True
 ```
-
 
 * Avoid obtaining the wrong result due to arithmetic overflow and underflow
 
 ```kotlin
-Int.MAX_VALUE + 1    // -2147483648
-Int.MIN_VALUE - 1    // 2147483647
-Long.MAX_VALUE + 1   // -9223372036854775808
-Long.MIN_VALUE - 1   // 9223372036854775807
+2147483647 + 1               // -2147483648
+-2147483648 - 1              // 2147483647
+9223372036854775807 + 1      // -9223372036854775808
+-9223372036854775808 - 1     // 9223372036854775807
 
-Int.MAX_VALUE + 1G   // 2147483648
-Int.MIN_VALUE - 1G   // -2147483649
-Long.MAX_VALUE + 1G  // 9223372036854775808
-Long.MIN_VALUE - 1G  // -9223372036854775809
+2147483647G + 1G             // 2147483648G
+-2147483648G - 1G            // -2147483649G
+9223372036854775807G + 1G    // 9223372036854775808G
+-9223372036854775808G - 1G   // -9223372036854775809G
 ```
 
 ## Alternatives
@@ -56,9 +55,9 @@ Long.MIN_VALUE - 1G  // -9223372036854775809
 
 ```kotlin
 val myBigDecimal = BigDecimal("0.1")
-val myBigInteger = BigInteger(1)
+val myBigInteger = BigInteger("1")
 
-BigDecimal("0.1") * BigDecimal(3) == BigDecimal("0.3")  // True
+BigDecimal("0.1") * BigDecimal("3") == BigDecimal("0.3")  // True
 ```
 
 * Create the `toBigDecimal` and `toBigInteger` extension functions for the `String` class:
@@ -80,35 +79,3 @@ fun String.toBigInteger(): BigInteger {
 
     BigIntegerLiteral
       : IntegerLiteral ["g", "G"]
-
-
-## Additional considerations
-
-The standard library should be enlarged in order to ease arithmetic operations
-where one and only one of the operands is a BigDecimal/BigInteger. For instance:
-
-```kotlin
-fun Number.toBigDecimal(): BigDecimal {
-  return BigDecimal(this.toString())
-}
-
-fun Number.toBigInteger(): BigInteger {
-  return BigInteger(this.toString())
-}
-
-operator fun Number.minus(other: BigDecimal): BigDecimal {
-  return this.toBigDecimal().subtract(other)
-}
-
-operator fun Number.plus(other: BigDecimal): BigDecimal {
-  return this.toBigDecimal().add(other)
-}
-
-operator fun BigDecimal.minus(other: Number): BigDecimal {
-  return this.subtract(other.toBigDecimal())
-}
-
-operator fun BigDecimal.plus(other: Number): BigDecimal {
-  return this.add(other.toBigDecimal())
-}
-```
