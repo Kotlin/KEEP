@@ -79,3 +79,18 @@ fun String.toBigInteger(): BigInteger {
 
     BigIntegerLiteral
       : IntegerLiteral ["g", "G"]
+
+
+## Benefits over the alternatives
+
+* "Possible speed improvements vs. Strings. The compiler can parse the number
+  and store the data more efficiently (maybe a byte array or serialized) so
+  that the actual object can be constructed faster at runtime. Literals used
+  multiple times maybe could also all be the same object." `Jonathan Haas`
+
+* "The compiler can check if the number is valid instead of getting a runtime
+  error." `Jonathan Haas`
+
+* "Make BigInteger/BigDecimal first class citizens. Operator overloading
+  already has helped a lot vs. normal Java when using these classes. Literals
+  would make them perfect." `Jonathan Haas`
