@@ -70,6 +70,10 @@ fun String.toBigDecimal(): BigDecimal {
 fun String.toBigInteger(): BigInteger {
   return BigInteger(this)
 }
+
+"-9223372036854775808".toBigInteger() - "1".toBigInteger() == "-9223372036854775809".toBigInteger()  // True
+
+"0.1".toBigDecimal() * "3".toBigDecimal() == "0.3".toBigDecimal()  // True
 ```
 
 ## Parsing
