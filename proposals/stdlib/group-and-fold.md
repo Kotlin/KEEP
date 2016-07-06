@@ -3,7 +3,7 @@
 * **Type**: Standard Library API proposal
 * **Author**: Ilya Gorbunov
 * **Status**: Submitted
-* **Prototype**: In progress
+* **Prototype**: Implemented
 * **Discussion**: [KEEP-23](https://github.com/Kotlin/KEEP/issues/23)
 
 ## Summary
@@ -112,14 +112,16 @@ Only a subset of Kotlin Standard Library available on all supported platforms is
 
 ## Reference implementation
 
+See reference implementation in the repository [kotlinx.collections.experimental](https://github.com/ilya-g/kotlinx.collections.experimental/tree/master/kotlinx-collections-experimental/src/main/kotlin/kotlinx.collections.experimental/grouping)
+
 
 ### Receivers
 
-It is possible to provide operation for each collection-like receiver.
+It is possible to provide the operation for each collection-like receiver.
 
 ### Return type
 
-The operation returns `Map<K, R>`, where `K` is the type of key and `R` is the type of accumulator.
+The operation returns `Map<K, R>`, where `K` is the type of the key and `R` is the type of the accumulator.
 
 ## Unresolved questions
 
@@ -131,12 +133,15 @@ The operation returns `Map<K, R>`, where `K` is the type of key and `R` is the t
     * `aggregateBy` (aggregate is fold in .NET)
 
 2. Which general forms of `groupFoldBy` should we provide?
-    * Method cound is increased
+    * Method count is increased
     * Having them as overloads hurts completion during gradual typing.
 3. Should we provide `groupReduceBy` or it would be enough if it's expressible with general form of `groupFold`?
 4. Should we provide some specific forms, such as `groupCountBy`?
 5. Should we provide `To`-overloads (like `groupByTo`) with target mutable map as a parameter?
+6. Having primitive fold accumulators stored in a map introduces a lot of boxing.
 
 ## Future advancements
 
 * If we do not provide some forms, evaluate whether they could be introduced later.
+* Converting collection operations to folds is quite error-prone, maybe we should provide some standard reduction functions,
+  such as Count, Sum etc.
