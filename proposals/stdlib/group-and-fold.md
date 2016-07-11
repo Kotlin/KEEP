@@ -19,58 +19,102 @@ Introduce a function similar to `groupBy`, but folding values of each group on t
 The operation with the following signature is proposed:
 
 ```kotlin
-public inline fun <T, K, R> Iterable<T>.groupFoldBy(
-    keySelector: (T) -> K,
+public inline fun <T, K> Iterable<T>.groupingBy(
+    crossinline keySelector: (T) -> K
+): Grouping<T, K>
+```
+
+where `Grouping<T, K>` is an interface defined as following:
+
+```
+interface Grouping<T, out K> {
+    fun iterator(): Iterator<T>
+    fun keySelector(element: T): K
+}
+```
+
+It represents a wrapper around a source of iterator with the `keySelector`
+function attached to it.
+
+After that it becomes possible to provide various useful extensions for `Grouping<T, K>`.
+
+### Generic aggregation (fold or reduce)
+
+The most generic form of aggreration, that other overloads delegate their implementation to.
+
+```
+public inline fun <T, K, R> Grouping<T, K>.aggregate(
+    operation: (key: K, value: R?, element: T, first: Boolean) -> R
+): Map<K, R>
+```
+
+### Key-parametrized fold
+
+Here the initial value and the operation depend on the key of a group.
+
+```
+public inline fun <T, K, R> Grouping<T, K>.fold(
+    initialValueSelector: (K, T) -> R,
+    operation: (K, R, T) -> R
+): Map<K, R>
+```
+
+### Simplified fold
+
+The `initialValue` is a constant and the operation do not depend on the group key.
+
+```
+public inline fun <T, K, R> Grouping<T, K>.fold(
     initialValue: R,
     operation: (R, T) -> R
 ): Map<K, R>
 ```
 
-Also it is possible to provide two more generic forms:
+### Reduce
 
-```kotlin
-public inline fun <T, K, R> Iterable<T>.groupFoldBy(
-    keySelector: (T) -> K,
-    initialValueSelector: (K, T) -> R,
-    operation: (K, R, T) -> R
-): Map<K, R>
 ```
-> Here initial value and operation depend on the key of a group.
-
-and the most general:
-
-```kotlin
-public inline fun <T, K, R> Iterable<T>.groupFoldBy(
-    keySelector: (T) -> K,
-    operation: (key: K, value: R?, element: T, first: Boolean) -> R
-): Map<K, R>
+public inline fun <S, T : S, K> Grouping<T, K>.reduce(
+    operation: (K, S, T) -> S
+): Map<K, S>
 ```
 
-> This form may be used to implement `groupReduceBy`.
+### Count
 
+No inlining is required.
+```
+public fun <T, K> Grouping<T, K>.count(): Map<K, Int>
+```
+
+### SumBy
+
+```
+public inline fun <T, K> Grouping<T, K>.sumBy(
+    valueSelector: (T) -> Int
+): Map<K, Int> =
+```
 
 ## Use cases
 
-Most common use case is doing some aggregation, broken down by some key:
+The most common use case is doing some aggregation, broken down by some key:
 
  1. given a text, count frequencies of words/characters;
 
     ```kotlin
-    val frequencies = words.groupFoldBy({ it }, 0, { acc, w -> acc + 1 })
+    val frequencies = words.groupingBy { it }.count()
     ```
 
  2. given orders in all stores, sum total value of orders by store;
     ```kotlin
     val storeTotals =
-            orders.groupFoldBy({ it.store }, 0, { acc, order -> acc + order.total })
+            orders.groupingBy { it.store }
+                  .sumBy { order -> order.total }
     ```
 
  3. given orders of all clients, find an order with the maximum total for each client.
     ```kotlin
     val bestClientOrders =
-            orders.groupReduceBy(
-                { it.client },
-                { maxValueOrder, order -> maxOfBy(order, maxValueOrder) { it.total } })
+            orders.groupingBy { it.client }
+                  .reduce { k, maxValueOrder, order -> maxOfBy(order, maxValueOrder) { it.total } }
     ```
 
 ## Alternatives
@@ -101,6 +145,18 @@ Most common use case is doing some aggregation, broken down by some key:
                     .toMap()
     ```
 
+* [Previous version of this proposal](https://github.com/Kotlin/KEEP/blob/f1cdce73b5c1983d9380d632d2fcdd73c6253c23/proposals/stdlib/group-and-fold.md)
+intended to introduce fully inlined operations, such as `groupFoldBy(keySelector, initialValue, operation)`.
+    * Pro: do not require a wrapper `Grouping` object to be allocated.
+    * Pro: may require less intermediate boxing in case of receivers with primitive elements, such as primitive arrays and char sequences.
+    * Con: several labmdas in the parameter list makes an invocation akward.
+    * Con: duplicating all the operations for each receiver type implies high method count.
+
+    A benchmark was conducted to study the performance impact of not inlining `keySelector` function.
+    That impact was shown to be negligible for receivers with object elements,
+    and on the other side noticeable for receivers with primitive elements.
+    However, the latter is hardly to be the use case covered by this operation.
+
 ## Dependencies
 
 Only a subset of Kotlin Standard Library available on all supported platforms is required.
@@ -112,12 +168,13 @@ Only a subset of Kotlin Standard Library available on all supported platforms is
 
 ## Reference implementation
 
-See reference implementation in the repository [kotlinx.collections.experimental](https://github.com/ilya-g/kotlinx.collections.experimental/tree/master/kotlinx-collections-experimental/src/main/kotlin/kotlinx.collections.experimental/grouping)
-
+See the reference implementation in the repository [kotlinx.collections.experimental](https://github.com/ilya-g/kotlinx.collections.experimental/tree/master/kotlinx-collections-experimental/src/main/kotlin/kotlinx.collections.experimental/grouping)
 
 ### Receivers
 
-It is possible to provide the operation for each collection-like receiver.
+It is possible to provide `groupingBy` operation for each collection-like receiver, such as
+`Iterable`, `Sequence`, `Array`, `CharSequence`, `(Primitive)Array`,
+however for primitive arrays this operation does not make much sense.
 
 ### Return type
 
@@ -126,22 +183,17 @@ The operation returns `Map<K, R>`, where `K` is the type of the key and `R` is t
 ## Unresolved questions
 
 1. Naming options:
-    * `groupFoldBy`/`groupReduceBy`/`groupCountBy`
-    * `groupByAndFold`/`groupByAndReduce`/`groupByAndCount`
-    * `foldBy`/`reduceBy`/`countBy`
-    * `summarizeBy` as in Ceylon
-    * `aggregateBy` (aggregate is fold in .NET)
+    * `groupingBy` or just `grouping`
+    * `count`/`sumBy` can be misinterpreted as operations on the whole collection, rather on each group.
 
-2. Which general forms of `groupFoldBy` should we provide?
+2. Which general forms of `fold`/`reduce`/`aggregate` should we provide?
     * Method count is increased
     * Having them as overloads hurts completion during gradual typing.
-3. Should we provide `groupReduceBy` or it would be enough if it's expressible with general form of `groupFold`?
-4. Should we provide some specific forms, such as `groupCountBy`?
-5. Should we provide `To`-overloads (like `groupByTo`) with target mutable map as a parameter?
-6. Having primitive fold accumulators stored in a map introduces a lot of boxing.
+3. Should we provide `To`-overloads (like `groupByTo`) with a mutable map as a target parameter?
+4. Having primitive fold accumulators stored in a map introduces a lot of boxing.
 
 ## Future advancements
 
 * If we do not provide some forms, evaluate whether they could be introduced later.
-* Converting collection operations to folds is quite error-prone, maybe we should provide some standard reduction functions,
-  such as Count, Sum etc.
+* Converting collection operations to folds can be error-prone, maybe we should provide
+  some standard reducer functions, such as Count, Sum etc.
