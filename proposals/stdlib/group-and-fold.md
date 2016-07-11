@@ -203,3 +203,5 @@ The operation returns `Map<K, R>`, where `K` is the type of the key and `R` is t
 * If we do not provide some forms, evaluate whether they could be introduced later.
 * Converting collection operations to folds can be error-prone, maybe we should provide
   some standard reducer functions, such as Count, Sum etc.
+* In Java 8 it is possible to engage standard Collectors API by providing the operation
+  `Grouping<T, K>.collectEach(Collector<T, A, R>)`
