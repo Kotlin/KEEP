@@ -2,7 +2,7 @@
 
 * **Type**: Standard Library API proposal
 * **Author**: Ilya Gorbunov
-* **Status**: Submitted
+* **Status**: Discussed
 * **Prototype**: Implemented
 * **Discussion**: [KEEP-23](https://github.com/Kotlin/KEEP/issues/23)
 
@@ -16,7 +16,7 @@ Introduce a function similar to `groupBy`, but folding values of each group on t
 
 ## Description
 
-The operation with the following signature is proposed:
+The following extension for `Iterable` and iterable-like receivers is proposed:
 
 ```kotlin
 public inline fun <T, K> Iterable<T>.groupingBy(
@@ -28,7 +28,7 @@ where `Grouping<T, K>` is an interface defined as following:
 
 ```
 interface Grouping<T, out K> {
-    fun iterator(): Iterator<T>
+    fun elementIterator(): Iterator<T>
     fun keySelector(element: T): K
 }
 ```
@@ -80,17 +80,16 @@ public inline fun <S, T : S, K> Grouping<T, K>.reduce(
 
 ### Count
 
-No inlining is required.
 ```
-public fun <T, K> Grouping<T, K>.count(): Map<K, Int>
+public fun <T, K> Grouping<T, K>.countEach(): Map<K, Int>
 ```
 
 ### SumBy
 
 ```
-public inline fun <T, K> Grouping<T, K>.sumBy(
+public inline fun <T, K> Grouping<T, K>.sumEachBy(
     valueSelector: (T) -> Int
-): Map<K, Int> =
+): Map<K, Int>
 ```
 
 ## Use cases
@@ -100,14 +99,14 @@ The most common use case is doing some aggregation, broken down by some key:
  1. given a text, count frequencies of words/characters;
 
     ```kotlin
-    val frequencies = words.groupingBy { it }.count()
+    val frequencies = words.groupingBy { it }.countEach()
     ```
 
  2. given orders in all stores, sum total value of orders by store;
     ```kotlin
     val storeTotals =
             orders.groupingBy { it.store }
-                  .sumBy { order -> order.total }
+                  .sumEachBy { order -> order.total }
     ```
 
  3. given orders of all clients, find an order with the maximum total for each client.
@@ -149,11 +148,12 @@ The most common use case is doing some aggregation, broken down by some key:
 intended to introduce fully inlined operations, such as `groupFoldBy(keySelector, initialValue, operation)`.
     * Pro: do not require a wrapper `Grouping` object to be allocated.
     * Pro: may require less intermediate boxing in case of receivers with primitive elements, such as primitive arrays and char sequences.
-    * Con: several labmdas in the parameter list makes an invocation akward.
+    * Con: having several functional parameters makes an invocation awkward.
     * Con: duplicating all the operations for each receiver type implies high method count.
 
     A benchmark was conducted to study the performance impact of not inlining `keySelector` function.
-    That impact was shown to be negligible for receivers with object elements,
+    That impact [was shown](https://github.com/ilya-g/kotlinx.collections.experimental/blob/master/kotlinx-collections-experimental/benchmarks/src/main/kotlin/results.txt)
+    to be negligible for receivers with object elements,
     and on the other side noticeable for receivers with primitive elements.
     However, the latter is hardly to be the use case covered by this operation.
 
@@ -184,13 +184,19 @@ The operation returns `Map<K, R>`, where `K` is the type of the key and `R` is t
 
 1. Naming options:
     * `groupingBy` or just `grouping`
+
+        There is a risk of confusing `groupingBy` and `groupBy`.
+
     * `count`/`sumBy` can be misinterpreted as operations on the whole collection, rather on each group.
+        * resolution: `countEach`, `sumEachBy`
 
 2. Which general forms of `fold`/`reduce`/`aggregate` should we provide?
     * Method count is increased
     * Having them as overloads hurts completion during gradual typing.
 3. Should we provide `To`-overloads (like `groupByTo`) with a mutable map as a target parameter?
 4. Having primitive fold accumulators stored in a map introduces a lot of boxing.
+
+    * resolution: provide optimized implementations of `countEach` and `sumEachBy`.
 
 ## Future advancements
 
