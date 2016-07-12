@@ -19,31 +19,29 @@ sealed class A {
 }
 ```
 
-For some cases such limitation is not convenient. (see use cases below)
+For some cases such limitation is not inconvenient (see use cases below).
 
 Proposal: allow top-level subclasses for a top-level sealed class in the same file.
-
-
 
 ## Motivation / use cases
 
 - Nicer names for subclasses
-- It's painful to create complex sealed class hierarchy -- nested level is too big
+- It's painful to create complex sealed class hierarchy -- nesting is too deep
 - >7 votes on [KT-11573](https://youtrack.jetbrains.com/issue/KT-11573): Support sealed class inheritors in the same file
 
 ## Implementation details
 
 ### Compiler checks
 
-For non top-level sealed class all subclasses should be declared inside such class. 
+For a non top-level sealed class all subclasses should be declared inside it. 
 So, for such classes nothing changes.
 
 Let us describe changes for top-level sealed classes.
-Suppose that we have top-level class `A`.
-For every class `B` which has class `A` in supertypes, we should check:
+Suppose that we have a top-level class `A`.
+For every class `B` which has a class `A` among its supertypes, we should check:
 
-- if `B` is a top-level class, then we should check that `A` and `B` are declared in same file.
-- otherwise we should check that `B` is declared inside class `A`.
+- if `B` is a top-level class, then we should check that `A` and `B` are declared in same file;
+- otherwise we should check that `B` is declared inside `A`.
 
 Examples:
 ```kotlin
@@ -65,7 +63,7 @@ class F: A() // F and A are declared in different files -- error
 
 ### Exhaustive `when` check
 
-Suppose we have `when` with parameter `a` where `a` is an instance of sealed class `A`.
+Suppose we have `when` with parameter `a` where `a` is an instance of a sealed class `A`.
 Example:
 ```kotlin
 fun foo(a: A) = when(a) {
@@ -73,9 +71,9 @@ fun foo(a: A) = when(a) {
   is C -> 2
 }
 ```
-In such code compiler should check that `when` is exhaustive, i.e. all branches are presented.
-To do this, we want to collect all direct subclasses of sealed class `A`.
-So we should collect all classes inside and, if class `A` is top-level, collect all classes in the same package.
+In such code the compiler should check that `when` is exhaustive, i.e. all branches are presented.
+To do this, we want to collect all direct subclasses of `A`.
+So we should collect all classes inside it and, if class `A` is top-level, collect all classes in the same package.
 After this we should choose from them only direct subclasses of class `A`.
 
 As we see above, all direct subclasses of sealed classes will be declared in same file with corresponding sealed class.
