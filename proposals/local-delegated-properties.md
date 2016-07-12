@@ -3,7 +3,7 @@
 * **Type**: Design proposal
 * **Author**: Michael Bogdanov
 * **Contributors**: Dotlin, Michael Bogdanov
-* **Status**: Submitted
+* **Status**: Under consideration
 * **Prototype**: In progress
 
 ## Feedback 
@@ -12,11 +12,12 @@ Discussion of this proposal is held in [this issue](https://github.com/Kotlin/KE
 
 ## Summary
 
-Support delegated properties feature for local variables (local delegated properties, ldp).
+Support delegated properties for local scopes (local delegated properties).
 
 ## Description
 
-Allow to use delegated calculation of local variables similar to general delegated properties:
+Allow to use delegates for local variables similar to general delegated properties:
+
 ```
 import kotlin.reflect.KProperty
 
@@ -32,7 +33,8 @@ fun box(): String {
 
 ## Open questions
 
-- How property metadata should be linked to ldp: staticaly or dinamically?
+- How property metadata should be linked to local delegated properties: statically or dynamically?
+
 ```
 fun test() {
     val prop: Int by Delegate() //Is property metadata created on each invocation of 'test' function or just once?
@@ -47,7 +49,7 @@ fun test2(){
 }
 ```
 
-- Should property metadata be changed on function inlining?
+- Should property metadata be changed upon function inlining?
 ```
 inline fun test() {
     val prop: Int by Delegate() //Is metadata for prop variable same or not after inlining into 'main' function?
