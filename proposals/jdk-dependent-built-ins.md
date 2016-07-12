@@ -18,6 +18,10 @@ This makes such members unavailable in Kotlin: for both calling and overriding *
 
 The goal of this proposal is to fix this and make the members available if they are available in the current JDK.
 
+## Feedback
+
+Discussion of this proposal is held in [this issue](https://github.com/Kotlin/KEEP/issues/30).
+
 ## Known problematic members
 
 * Related to Stream API, in `Collection`: `stream`, `parallelStream`, `spliterator`
