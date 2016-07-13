@@ -11,7 +11,7 @@ Discussion of this proposal is held in [this issue](https://github.com/Kotlin/KE
 
 ## Summary
 
-Support `inline` modifier for accessors of properties that don't have a backing field.
+Support `inline` modifier for properties that don't have a backing field and accessors of such properties.
 
 ## Description
 
@@ -33,3 +33,15 @@ var bar: Bar
 ```
 
 At the call site the accessors are inlined as normal functions.
+
+The `inline` modifier may also be used on the property itself:
+
+``` kotlin
+inline var bar: Bar
+    get() = ...
+    set(v) { ... }
+```
+
+In such a case, all accessors are marked `inline` automatically.
+
+Applying `inline` to a property that has a backing field, or its accessor, results in a compile-time error.
