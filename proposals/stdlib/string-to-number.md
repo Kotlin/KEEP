@@ -91,8 +91,9 @@ The reference implementation is provided in the pull request [PR #839](https://g
     * `String.tryParseInt()`
 * Difference between JDK6 and JDK8 in allowing the leading `+` sign.
 * Returning nullable number introduces boxing which may be wasteful.
-* Future Binary compatibility
-    * Other proposed enhancements to the `toInt()` functions ([KT-8286](https://youtrack.jetbrains.com/issue/KT-8286), [KT-9374](https://youtrack.jetbrains.com/issue/KT-9374)) will be harder to implement without breaking binary compatibility after this proposal is in the release.
+* Investigate how to introduce `base`/`radix` parameter for string-to-integral type conversion functions [KT-8286](https://youtrack.jetbrains.com/issue/KT-8286):
+    * Should it be another parameter or an overload with a different name (like `toIntBase(16)`)?
+    * Should it be a single overload with an optional parameter or two overloads?
 
 ## Future advancements
 
