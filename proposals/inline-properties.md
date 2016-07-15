@@ -13,6 +13,11 @@ Discussion of this proposal is held in [this issue](https://github.com/Kotlin/KE
 
 Support `inline` modifier for properties that don't have a backing field and accessors of such properties.
 
+## Motivation
+
+* Enable `@InlineOnly` properties whose signatures can be changed without affecting the binary compatiblity of a library
+* Make reified type parameters available for property accessors
+
 ## Description
 
 We propose to allow the `inline` modifier on properties that do not have a backing field.
