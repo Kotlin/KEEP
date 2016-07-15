@@ -19,7 +19,7 @@ sealed class A {
 }
 ```
 
-For some cases such limitation is not inconvenient (see use cases below).
+For some cases such limitation is inconvenient (see use cases below).
 
 Proposal: allow top-level subclasses for a top-level sealed class in the same file.
 
