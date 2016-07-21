@@ -31,13 +31,13 @@ This is relevant for
 
 In the projects we have access to, we have the following frequency of such cases:
 
-| Project | Total properties | Simple get-only properties | Overridden get-only properties |
+| Project | Total `val`'s | Simple get-only `val`'s | Overridden get-only `val`'s |
 | ------- | ---------------- | ----------- | ------ |
-| Kotlin        | # (TODO) | #(%) | #(%) |
-| Ktor          | # (TODO) | #(%) | #(%) |
-| IntelliJ IDEA | # (TODO) | #(%) | #(%) |
-| JB Project 1  | # (TODO) | #(%) | #(%) |
-| JB Project 2  | # (TODO) | #(%) | #(%) |
+| Kotlin        | 34850 | 2624 (7.52%) | 826 (2.37%) |
+| Ktor          | 2095 | 116 (5.53%) | 73 (3.48%) |
+| IntelliJ IDEA | 7016 | 230 (3.27%) | 80 (1.14%) |
+| JB Project 1  | 1264 | 25 (1.97%) | 0 (0%) |
+| JB Project 2  | 9742 | 272 (2.79%) | 33 (0.33%) |
 | All of GitHub | # (TODO) | #(%) | #(%) |
 
 **NOTE**: The straightforward syntax like `override val length = 0` has the performance disadvantage of creating an unnecessary field for such a property.  
