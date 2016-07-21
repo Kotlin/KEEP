@@ -78,6 +78,7 @@ override val length() = 0
 
 - **pro**: this is more or less aligned with Scala's and Groovy's `def length() = 0`
 - **con**: `val length(): Int = 0` doesn't look all that smooth
+- **con**: this break the symmetry between the call site an the declarartion site: before this we had either parenthese on both sites, or on no site
 
 **NOTE**: A variation of this is `val length: Int ()= 0`, which makes `()=` a new operator, but this looks really weird when we can't put a space between `()` and `=`.
   
