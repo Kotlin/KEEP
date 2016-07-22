@@ -31,14 +31,15 @@ This is relevant for
 
 In the projects we have access to, we have the following frequency of such cases:
 
-| Project | Total `val`'s | Simple get-only `val`'s | Overridden get-only `val`'s |
-| ------- | ---------------- | ----------- | ------ |
-| Kotlin        | 34850 | 2624 (7.52%) | 826 (2.37%) |
-| Ktor          | 2095 | 116 (5.53%) | 73 (3.48%) |
-| IntelliJ IDEA | 7016 | 230 (3.27%) | 80 (1.14%) |
-| JB Project 1  | 1264 | 25 (1.97%) | 0 (0%) |
-| JB Project 2  | 9742 | 272 (2.79%) | 33 (0.33%) |
-| All of GitHub | # (TODO) | #(%) | #(%) |
+Repo | Total val's | With getter | % w/expression body | Overrides with getter | % overrides w/expression body
+---- | ---- | ---- | ---- | ---- | ----
+Kotlin | 34850 | 2624 | 94.93% (2491) | 826 | 94.79% (783)
+JB_Project_1 | 9742 | 272 | 71.69% (195) | 33 | 84.85% (28)
+IntelliJ IDEA | 7016 | 230 | 87.39% (201) | 80 | 83.75% (67)
+Ktor | 2095 | 116 | 99.14% (115) | 73 | 98.63% (72)
+All of GitHub | TODO
+
+> Computed with [ktrawler](https://github.com/abreslav/ktrawler/blob/master/src/val-getters-runner.kt)
 
 **NOTE**: The straightforward syntax like `override val length = 0` has the performance disadvantage of creating an unnecessary field for such a property.  
 
