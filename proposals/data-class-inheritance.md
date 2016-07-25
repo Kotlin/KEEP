@@ -1,5 +1,10 @@
 # Data Class Inheritance
 
+* **Type**: Design proposal
+* **Author**: Alexander Udalov
+* **Status**: Under consideration
+* **Prototype**: In progress
+
 Goal: allow `data` classes to inherit from other (non-final) classes.
 
 ## Feedback
