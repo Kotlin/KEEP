@@ -99,4 +99,5 @@ Possible names for the annotation:
 ## Arguments against this proposal
  
 - Adding an annotation that affects name resolution severely (special syntax/modifier may be considered as an alternative)
+  - We can consider implementing this as a "language extension", e.g. a compiler plugin 
 - It doesn't cover cases like "screen from the immediate outer, but not the rest of the receivers"  
