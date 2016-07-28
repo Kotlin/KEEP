@@ -20,14 +20,16 @@ Overload mathematical operations and infix functions to work with BigInteger and
 
 This proposal contains 4 "levels" which can be implemented. Every next level include all operations from previous ones:
 
-**level 1:** operations for `BigInteger`; operations for `BigDecimal`; extension functions for converting to and from basic types. 
+###**level 1:** 
+Operations for `BigInteger`; operations for `BigDecimal`; extension functions for converting to and from basic types. 
 
 This implementation only improves the Java API and does not introduce any additional semantics. The goal here is to have a **complete** set of operators and standard functions comparable to those for basic numeric types. Kotlin stdlib already [contains](https://github.com/JetBrains/kotlin/blob/master/libraries/stdlib/src/kotlin/util/BigNumbers.kt) 12 of 39 proposed functions, but that set is not complete or even semetrical.
 
     val a = BigInteger.valueOf(239)
     val b: BigDecimal = a.toBigDecimal() + 30.toBigDecimal()
 
-**level 2:** mixed operations for `BigInteger` and `BigDecimal`. 
+###**level 2:** 
+Mixed operations for `BigInteger` and `BigDecimal`. 
 
 This implementation carries Kotlin semantic for `Int` and `Double` onto `BigInteger` and `BigDecimal`, but the "big" types are still not easily mixed with the basic ones. This helps to draw a line for less-than-usulal-performant-code. The goal for this level is create a comfortable environment for long-ariphmetic computations. The usecases might be in the finantial computations, where the formulas requare `BigDecimal` but the results are easier storred in `BigInteger`.
 
@@ -38,7 +40,8 @@ This implementation carries Kotlin semantic for `Int` and `Double` onto `BigInte
     val ac: BigDecimal = a / c   // 4.0 / 2 == 2.0
     val bc: BigInteger = b / c   //   4 / 2 == 2
     
-**level 3:** mixed one-sided productive operations between "big" types and the basic ones (same logic as with `String.plus(Int)`). 
+###**level 3:** 
+Mixed one-sided productive operations between "big" types and the basic ones (same logic as with `String.plus(Int)`). 
 
 Encourages the usage of the "big" types, may be useful for scientific applications. The goal is to write 99% of formulas in applications without explicit conversions. This part may be extracted into a separate module or library `kotlinx.science`.
 
@@ -46,9 +49,10 @@ Encourages the usage of the "big" types, may be useful for scientific applicatio
     val b: BigInteger = a + 30
     30 + a //Error
 
-**level 4:** unifies  `BigInteger` and `BigDecimal` with the basic types.
+###**level 4:** 
+Unifies  `BigInteger` and `BigDecimal` with the basic types.
 
-The goal is "extend" the notion of basic types on `BigInteger` and `BigDecimal` (except for literals and some compiler inference). May be in a separate library (see level-3)
+The goal is to extend the notion of basic types on `BigInteger` and `BigDecimal` (except for literals and some compiler inference). May be in a separate library (see level-3)
 
 ## Alternatives
 
