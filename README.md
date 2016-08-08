@@ -15,6 +15,7 @@ There are also some KEEPs having their own repository for specification and disc
 | KEEP Title | Proposal | Discussion |
 | ---- | -------- | ---------- |
 | Coroutines | repo: [kotlin-coroutines](https://github.com/Kotlin/kotlin-coroutines) | [Issues](https://github.com/Kotlin/kotlin-coroutines/issues)
+| Immutable Collections | repo: [kotlinx.collections.immutable](https://github.com/Kotlin/kotlinx.collections.immutable/blob/master/proposal.md) | [Issues](https://github.com/Kotlin/kotlinx.collections.immutable/issues)
 
 ## How to give feedback
 
