@@ -105,7 +105,7 @@ A subset of Kotlin Standard Library available on all supported platforms.
 
 ## Reference implementation
 
-See branch [rr/stdlib/map-copying](https://github.com/JetBrains/kotlin/compare/rr/stdlib/map-copying).
+See branch [rr/stdlib/map-copying](https://github.com/JetBrains/kotlin/compare/rr/stdlib/map-copying~2...rr/stdlib/map-copying).
 
 ## Future advancements
 
