@@ -33,6 +33,10 @@ fun sortedByComparator(strings: List<String>, comparator: Comparator<String>) =
     strings.sortedBy(comparator::compare)
 ```
 
+The function type of a bound reference differs from the type of the corresponding *unbound* reference in that it has arity lower by 1, and doesn't have the first type argument (the type of the instance or extension receiver parameter).
+
+Both function references and property references can be bound.
+
 Bound class literal is an expression which is evaluated to the runtime representation of the class of an object, similarly provided as an expression before `::`. Its semantics are similar to Java's `java.lang.Object#getClass`, except that its type is `kotlin.reflect.KClass<...>`, not `java.lang.Class<...>`. Example:
 ```
     val x: Widget = ...
