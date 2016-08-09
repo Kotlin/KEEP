@@ -26,70 +26,86 @@ public inline fun <T, K> Iterable<T>.groupingBy(
 
 where `Grouping<T, K>` is an interface defined as following:
 
-```
+```kotlin
+// A wrapper around a source of elements which could be iterated 
+// with the `keySelector` function attached to it.
 interface Grouping<T, out K> {
     fun elementIterator(): Iterator<T>
     fun keySelector(element: T): K
 }
 ```
 
-It represents a wrapper around a source of iterator with the `keySelector`
-function attached to it.
+Provide the following extensions for `Grouping<T, K>`:
 
-After that it becomes possible to provide various useful extensions for `Grouping<T, K>`.
-
-### Generic aggregation (fold or reduce)
-
-The most generic form of aggreration, that other overloads delegate their implementation to.
-
-```
+```kotlin
+// Generic aggregation (fold or reduce)
+// The most generic form of aggregation, that other overloads 
+// delegate their implementation to.
 public inline fun <T, K, R> Grouping<T, K>.aggregate(
-    operation: (key: K, value: R?, element: T, first: Boolean) -> R
+        operation: (key: K, value: R?, element: T, first: Boolean) -> R
 ): Map<K, R>
-```
 
-### Key-parametrized fold
+public inline fun <T, K, R, M : MutableMap<in K, R>> Grouping<T, K>.aggregateTo(
+        destination: M,
+        operation: (key: K, accumulator: R?, element: T, first: Boolean) -> R
+): M
 
-Here the initial value and the operation depend on the key of a group.
 
-```
+// Key-parametrized fold
+// Here the initial value and the operation depend on the key of a group.
 public inline fun <T, K, R> Grouping<T, K>.fold(
-    initialValueSelector: (K, T) -> R,
-    operation: (K, R, T) -> R
+        initialValueSelector: (key: K, element: T) -> R,
+        operation: (key: K, accumulator: R, element: T) -> R
 ): Map<K, R>
-```
 
-### Simplified fold
+public inline fun <T, K, R, M : MutableMap<in K, R>> Grouping<T, K>.foldTo(
+        destination: M,
+        initialValueSelector: (key: K, element: T) -> R,
+        operation: (key: K, accumulator: R, element: T) -> R
+): M
 
-The `initialValue` is a constant and the operation do not depend on the group key.
 
-```
+// Simplified fold
+// The `initialValue` is a constant and the operation do not depend on the group key.
 public inline fun <T, K, R> Grouping<T, K>.fold(
-    initialValue: R,
-    operation: (R, T) -> R
+        initialValue: R,
+        operation: (accumulator: R, element: T) -> R
 ): Map<K, R>
-```
 
-### Reduce
+public inline fun <T, K, R, M : MutableMap<in K, R>> Grouping<T, K>.foldTo(
+        destination: M,
+        initialValue: R,
+        operation: (accumulator: R, element: T) -> R
+): M
 
-```
+
+// Reduce
 public inline fun <S, T : S, K> Grouping<T, K>.reduce(
-    operation: (K, S, T) -> S
+        operation: (key: K, accumulator: S, element: T) -> S
 ): Map<K, S>
-```
 
-### Count
+public inline fun <S, T : S, K, M : MutableMap<in K, S>> Grouping<T, K>.reduceTo(
+        destination: M,
+        operation: (key: K, accumulator: S, element: T) -> S
+): M
 
-```
+
+// Count
 public fun <T, K> Grouping<T, K>.countEach(): Map<K, Int>
-```
 
-### SumBy
+public fun <T, K, M : MutableMap<in K, Int>> Grouping<T, K>.countEachTo(destination: M): M
 
-```
+
+// SumBy
 public inline fun <T, K> Grouping<T, K>.sumEachBy(
     valueSelector: (T) -> Int
 ): Map<K, Int>
+
+public inline fun <T, K, M : MutableMap<in K, Int>> Grouping<T, K>.sumEachByTo(
+    destination: M, 
+    valueSelector: (T) -> Int
+): M
+
 ```
 
 ## Use cases
@@ -124,7 +140,7 @@ The most common use case is doing some aggregation, broken down by some key:
 
     Example:
 
-    ```
+    ```kotlin
     val frequencies: Map<String, Int> =
             words.groupBy { it }.mapValues { it.value.size }
     ```
@@ -134,7 +150,7 @@ The most common use case is doing some aggregation, broken down by some key:
     * Con: observable transformations overhead,
     asymptotically less than that of `mapValues`.
 
-    ```
+    ```kotlin
     val frequencies: Map<String, Int> =
             Observable.from(values)
                     .groupBy { it }
