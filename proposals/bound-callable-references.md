@@ -157,7 +157,7 @@ class C {
 fun test() {
     C::class            // class of C
     C()::class          // class of C
-    (C)::foo            // class of C.Companion
+    (C)::class          // class of C.Companion
     C.Companion::class  // class of C.Companion
 }
 ```
