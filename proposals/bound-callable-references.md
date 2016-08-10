@@ -69,9 +69,9 @@ Double colon expressions are postfix expressions, so `::`'s priority is maximal 
 
 Note that now any expression can be followed by question marks (`?`) and then `::`. So, if we see `?` after an expression, we must perform a lookahead until the first non-`?`, and if it's `::`, parse this as a double colon expression.
 
-### Resolution
+### Resolution: left-hand side of callable reference
 
-The LHS may now be interpreted as an expression, or a type, or both.
+The LHS of a callable reference expression may now be interpreted as an expression, or a type, or both.
 ```
     SimpleName::foo           // expression (variable SimpleName) or type (class SimpleName)
     Qualified.Name::foo       // expression or type
@@ -131,20 +131,61 @@ fun test() {
 }
 ```
 
-Resolution of a LHS of a class literal expression is performed exactly the same,
-so that `C::class` means the class of C and `(C)::class` means the class of C.Companion.
-
-It is an error if the LHS expression has nullable type and the resolved member is not an extension to nullable type.
-It is an error if the LHS of a bound class literal has nullable type:
+It is an error if the LHS expression has nullable type and the resolved member is not an extension to nullable type:
 ```
 class C {
     fun foo() {}
 }
 
+fun C?.ext() {}
+
 fun test(c: C?) {
-    c::foo             // error
-    c::class           // error
-    null::class        // error
+    c::foo    // error
+    c::ext    // ok
+}
+```
+
+### Resolution: class literal
+
+Resolution of the LHS of a class literal expression is performed with the same algorithm.
+
+```
+class C {
+    companion object
+}
+
+fun test() {
+    C::class            // class of C
+    C()::class          // class of C
+    (C)::foo            // class of C.Companion
+    C.Companion::class  // class of C.Companion
+}
+```
+
+Once the LHS is type-checked and its type is determined to be `T`, the type of the whole class literal expression is `kotlin.reflect.KClass<T'>` where `T'` is a type obtained by _substituting `T`'s arguments with star projections (`*`)_. Example:
+```
+fun test() {
+    "a"::class               // KClass<String>
+    listOf("a")::class       // KClass<List<*>> (not "KClass<List<String>>"!)
+    mapOf("a" to 42)::class  // KClass<Map<*, *>>
+}
+```
+
+> The reason for substitution with star projections is erasure: type arguments are not reified at runtime in Kotlin, so using class literals with seemingly full type information could result in exceptions at runtime. For example, consider the following code, where if we don't substitute arguments with `*`, an exception is thrown:
+> ```
+> fun test(): String {
+>     val kClass: KClass<List<String>> = listOf("")::class
+>     val strings: List<String> = kClass.cast(listOf(42))
+>     return strings[0]    // ClassCastException!
+> }
+> ```
+> If we do the substitution as proposed above, the type of `kClass` is `KClass<List<*>>` and you must perform a cast to make the code compile.
+
+It is an error if the LHS of a bound class literal has nullable type:
+```
+fun test(s: String?) {
+    s::class       // error
+    null::class    // error
 }
 ```
 
