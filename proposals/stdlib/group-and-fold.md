@@ -184,7 +184,9 @@ Only a subset of Kotlin Standard Library available on all supported platforms is
 
 ## Reference implementation
 
-See the reference implementation in the repository [kotlinx.collections.experimental](https://github.com/ilya-g/kotlinx.collections.experimental/tree/master/kotlinx-collections-experimental/src/main/kotlin/kotlinx.collections.experimental/grouping)
+Prototypes are implemented in the repository [kotlinx.collections.experimental](https://github.com/ilya-g/kotlinx.collections.experimental/tree/master/kotlinx-collections-experimental/src/main/kotlin/kotlinx.collections.experimental/grouping).
+
+Standard library implementation is in the branch [rr/stdlib/groupingBy](https://github.com/JetBrains/kotlin/compare/rr/stdlib/groupingBy).
 
 ### Receivers
 
