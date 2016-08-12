@@ -162,12 +162,24 @@ fun test() {
 }
 ```
 
-Once the LHS is type-checked and its type is determined to be `T`, the type of the whole class literal expression is `kotlin.reflect.KClass<T'>` where `T'` is a type obtained by _substituting `T`'s arguments with star projections (`*`)_. Example:
+Once the LHS is type-checked and its type is determined to be `T`, the type of the whole class literal expression is `KClass<erase(T)>`, where `erase(T)` represents the most accurate possible type-safe representation of the type `T` and is obtained by substituting `T`'s arguments with star projections (`*`), except when the type is an array.
+
+More formally, let `T` = `C<A1, ..., AN>`, where `C` is a class and `N`, the number of type arguments, might be zero. `erase(T)` is then defined as follows:
+- if `C` = `kotlin.Array`:
+    - if `A1` is a projection of some type (covariant, contravariant, or star), `erase(T)` = `kotlin.Array<*>`
+    - otherwise `erase(T)` = `kotlin.Array<erase(A1)>`
+- otherwise `erase(T)` = `C<*, ..., *>`
+
+Examples:
 ```
 fun test() {
-    "a"::class               // KClass<String>
-    listOf("a")::class       // KClass<List<*>> (not "KClass<List<String>>"!)
-    mapOf("a" to 42)::class  // KClass<Map<*, *>>
+    "a"::class                   // KClass<String>
+    listOf("a")::class           // KClass<List<*>> (not "KClass<List<String>>"!)
+    listOf(listOf("a"))::class   // KClass<List<*>> (not "KClass<List<List<String>>>"!)
+    mapOf("a" to 42)::class      // KClass<Map<*, *>>
+    arrayOf("a")::class          // KClass<Array<String>>
+    arrayOf(arrayOf("a"))::class // KClass<Array<Array<String>>>
+    arrayOf(listOf("a"))::class  // KClass<Array<List<*>>>
 }
 ```
 
