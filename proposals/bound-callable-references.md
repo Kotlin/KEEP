@@ -193,6 +193,8 @@ fun test() {
 > ```
 > If we do the substitution as proposed above, the type of `kClass` is `KClass<List<*>>` and you must perform a cast to make the code compile.
 
+TODO: in JS, there seems to be no way to determine type arguments of arrays at runtime
+
 It is an error if the LHS of a bound class literal has nullable type:
 ```
 fun test(s: String?) {
