@@ -42,17 +42,25 @@ As described in the related [YouTrack issue](https://youtrack.jetbrains.com/issu
 * RxJava contains a method called `doOnNext` ([docs](http://reactivex.io/documentation/operators/do.html))
 
 ## Use cases
-
+For debugging (the strongest use case):
 ```
 inputDir.walk()
     .filter { it.isFile && it.name.endsWith(".txt") }
     .peek { println("Moving $it to $outputDir") }
     .forEach { moveFile(it, File(outputDir, it.toRelativeString(inputDir))) }
 ```
+For various intermediate operations, real-world example from a distributed hashtable:
+```
+internalMap.entrySet().stream()
+		.filter(entryBelongsToNeighbor(newNeighbor))
+		.peek(entry -> newNeighbor.send(new AckPutMessage<>(this, entry.getKey(), entry.getValue())))
+		.map(Map.Entry::getKey)
+		.forEach(key -> System.out.println("Moving key " + toProperKey(key) + " to neighbor " + newNeighbor.id()));
+```
 
-* https://github.com/norswap/violin/blob/9e8463b95ea8946dd87eb4f4f4c8f8204179fbd8/test/norswap/violin/stream/TestPeekStream.kt
 * http://www.leveluplunch.com/java/examples/stream-intermediate-operations-example/
-* Many more due to equivalent methods in Java 8 and RxJava
+* The lambda passed to `peek` is a good place to set breakpoints
+* Perhaps more due to equivalent methods in Java 8 and RxJava, though it is hard to find examples where `peek` was not used for debugging (for instance `println` or using a logging method).
 
 ## Alternatives
 
