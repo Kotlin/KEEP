@@ -60,7 +60,12 @@ internalMap.entrySet().stream()
 
 * http://www.leveluplunch.com/java/examples/stream-intermediate-operations-example/
 * The lambda passed to `peek` is a good place to set breakpoints
-* Perhaps more due to equivalent methods in Java 8 and RxJava, though it is hard to find examples where `peek` was not used for debugging (for instance `println` or using a logging method).
+* Perhaps more due to equivalent methods in Java 8 and RxJava, though it is hard to find examples where `peek` was not used for debugging (for instance `println` or using a logging method). Here are some from RxJava (`doOnNext`):
+  * https://searchcode.com/file/116104738/main/src/cgeo/geocaching/sensors/Sensors.java#l-74
+  * https://searchcode.com/file/115079675/src/test/java/rx/internal/operators/OnSubscribeRefCountTest.java#l-59
+  * https://searchcode.com/file/115119425/hystrix-core/src/test/java/com/netflix/hystrix/HystrixObservableCommandTest.java#l-3661
+  * https://searchcode.com/file/116021346/couchbase2/src/main/java/com/yahoo/ycsb/db/couchbase2/Couchbase2Client.java#l-621
+  * https://searchcode.com/file/116104915/main/src/cgeo/geocaching/utils/RxUtils.java#l-36
 
 ## Alternatives
 
