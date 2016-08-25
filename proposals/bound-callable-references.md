@@ -33,6 +33,10 @@ fun sortedByComparator(strings: List<String>, comparator: Comparator<String>) =
     strings.sortedBy(comparator::compare)
 ```
 
+The function type of a bound reference differs from the type of the corresponding *unbound* reference in that it has arity lower by 1, and doesn't have the first type argument (the type of the instance or extension receiver parameter).
+
+Both function references and property references can be bound.
+
 Bound class literal is an expression which is evaluated to the runtime representation of the class of an object, similarly provided as an expression before `::`. Its semantics are similar to Java's `java.lang.Object#getClass`, except that its type is `kotlin.reflect.KClass<...>`, not `java.lang.Class<...>`. Example:
 ```
     val x: Widget = ...
@@ -65,15 +69,15 @@ Double colon expressions are postfix expressions, so `::`'s priority is maximal 
 
 Note that now any expression can be followed by question marks (`?`) and then `::`. So, if we see `?` after an expression, we must perform a lookahead until the first non-`?`, and if it's `::`, parse this as a double colon expression.
 
-### Resolution
+### Resolution: left-hand side of callable reference
 
-The LHS may now be interpreted as an expression, or a type, or both.
+The LHS of a callable reference expression may now be interpreted as an expression, or a type, or both.
 ```
     SimpleName::foo           // expression (variable SimpleName) or type (class SimpleName)
     Qualified.Name::foo       // expression or type
 
-    Nullable?::foo            // type (see section Nullable references below)
-    Generic<Arg>::foo         // type
+    Nullable?::foo            // type (see section "Nullable references" below)
+    Generic<Arg>::foo         // type (see section "Calls to generic properties" below)
 
     Generic<Arg>()::foo       // expression
     this::foo                 // expression
@@ -82,13 +86,17 @@ The LHS may now be interpreted as an expression, or a type, or both.
     (ParenNullable)?::foo     // type
 ```
 
-The semantics are different when the LHS is interpreted as an expression or a type, so we establish a priority of one over another when both interpretations are applicable.
-The algorithm is the following:
+The semantics are different when the LHS is interpreted as an expression or a type, so we introduce the following algorithm to choose the resulting interpretation when both are applicable:
 
-1. Try interpreting the LHS as an **expression** with the usual resolution algorithm for qualified expressions.
-   If the result represents a companion object of some class, continue to p.2.
-   Otherwise continue resolution of the member in the scope of the expression's type.
-2. Resolve the unbound reference with the existing algorithm.
+1. Type-check the LHS as an **expression**.
+   - If the result represents a _companion object of some class_ specified with the short syntax (via the short/qualified name of the containing class), discard the result and continue to p.2.
+   - If the result represents an _object_ (either non-companion, or companion specified with the full syntax: `org.foo.Bar.Companion` or just `Bar.Companion`), remember the result and continue to p.2.
+   - Otherwise the resolution of the LHS is complete and the result is the type-checked expression. Note that the resolution of the LHS is finished at this point even if errors were reported.
+2. Resolve the LHS as a **type**.
+   - If the resulting type refers to the same object that was obtained in the first step, complete the resolution with the result obtained in the first step. In other words, the result is the object type-checked as expression, and the object instance will be bound to the reference.
+   - Otherwise the result is the resolved type and the reference is unbound.
+
+> If there were no `object`s or `companion object`s in Kotlin, the algorithm would be very simple: first try resolving as expression, then as type. However, this would not be backwards compatible for a very common case: in an expression like `Obj::foo`, without any changes to the source code an object `Obj` might now win the resolution where previously (in Kotlin 1.0) a completely different class `Obj` had been winning. This is possible when you have a class named `Obj` and an object `Obj` in another package, coming from a star import.
 
 Examples:
 ```
@@ -123,20 +131,75 @@ fun test() {
 }
 ```
 
-Resolution of a LHS of a class literal expression is performed exactly the same,
-so that `C::class` means the class of C and `(C)::class` means the class of C.Companion.
-
-It is an error if the LHS expression has nullable type and the resolved member is not an extension to nullable type.
-It is an error if the LHS of a bound class literal has nullable type:
+It is an error if the LHS expression has nullable type and the resolved member is not an extension to nullable type:
 ```
 class C {
     fun foo() {}
 }
 
+fun C?.ext() {}
+
 fun test(c: C?) {
-    c::foo             // error
-    c::class           // error
-    null::class        // error
+    c::foo    // error
+    c::ext    // ok
+}
+```
+
+### Resolution: class literal
+
+Resolution of the LHS of a class literal expression is performed with the same algorithm.
+
+```
+class C {
+    companion object
+}
+
+fun test() {
+    C::class            // class of C
+    C()::class          // class of C
+    (C)::class          // class of C.Companion
+    C.Companion::class  // class of C.Companion
+}
+```
+
+Once the LHS is type-checked and its type is determined to be `T`, the type of the whole class literal expression is `KClass<erase(T)>`, where `erase(T)` represents the most accurate possible type-safe representation of the type `T` and is obtained by substituting `T`'s arguments with star projections (`*`), except when the type is an array.
+
+More formally, let `T` = `C<A1, ..., AN>`, where `C` is a class and `N`, the number of type arguments, might be zero. `erase(T)` is then defined as follows:
+- if `C` = `kotlin.Array`:
+    - if `A1` is a projection of some type (covariant, contravariant, or star), `erase(T)` = `kotlin.Array<*>`
+    - otherwise `erase(T)` = `kotlin.Array<erase(A1)>`
+- otherwise `erase(T)` = `C<*, ..., *>`
+
+Examples:
+```
+fun test() {
+    "a"::class                   // KClass<String>
+    listOf("a")::class           // KClass<List<*>> (not "KClass<List<String>>"!)
+    listOf(listOf("a"))::class   // KClass<List<*>> (not "KClass<List<List<String>>>"!)
+    mapOf("a" to 42)::class      // KClass<Map<*, *>>
+    arrayOf("a")::class          // KClass<Array<String>>
+    arrayOf(arrayOf("a"))::class // KClass<Array<Array<String>>>
+    arrayOf(listOf("a"))::class  // KClass<Array<List<*>>>
+}
+```
+
+> The reason for substitution with star projections is erasure: type arguments are not reified at runtime in Kotlin, so using class literals with seemingly full type information could result in exceptions at runtime. For example, consider the following code, where if we don't substitute arguments with `*`, an exception is thrown:
+> ```
+> fun test(): String {
+>     val kClass: KClass<List<String>> = listOf("")::class
+>     val strings: List<String> = kClass.cast(listOf(42))
+>     return strings[0]    // ClassCastException!
+> }
+> ```
+> If we do the substitution as proposed above, the type of `kClass` is `KClass<List<*>>` and you must perform a cast to make the code compile.
+
+TODO: in JS, there seems to be no way to determine type arguments of arrays at runtime
+
+It is an error if the LHS of a bound class literal has nullable type:
+```
+fun test(s: String?) {
+    s::class       // error
+    null::class    // error
 }
 ```
 
@@ -212,7 +275,8 @@ class A {
 }
 ```
 
-Generated bytecode for `<expr>::class` should be similar to `<expr>.javaClass.kotlin`.
+Generated bytecode for `<expr>::class` should be similar to `<expr>.javaClass.kotlin`. Note that for expressions of primitive types, the corresponding `KClass` instance at runtime should be backed by the primitive `Class` object, not the wrapper class. For example, `42::class.java` should return the `int` class, not `java.lang.Integer`.
+
 An intrinsic for `<expr>::class.java`, meaning `<expr>.javaClass`, would be useful.
 
 ### Reflection
