@@ -71,6 +71,10 @@ It is proposed to introduce extensions for map which make various copies of the 
   val treeMap = TreeMap(map)
   ```
   
+  Advantages:
+  
+  - allows to presize the map being created to hold all the content of the original map.
+  
   Disadvantages:
   
   - in case 1 produces more specific map than required;
