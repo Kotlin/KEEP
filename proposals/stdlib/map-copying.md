@@ -24,10 +24,10 @@ The following table summarizes which operations are available for Lists, Sets an
 | create mutable from iterable of elements | toMutableList | toMutableSet	| - |
 | create special from iterable of elements | 	- |	toHashSet toSortedSet	| - |
 | fill target from iterable of elements |	toCollection(MutableList) | toCollection(MutableSet) | toMap(MutableMap) |
-| copy of self |	toList |	toSet	| - |
-| mutable copy of self |	toMutableList	| toMutableSet | - |
+| copy of self |	toList |	toSet	| PROPOSED: _toMap_ |
+| mutable copy of self |	toMutableList	| toMutableSet | PROPOSED: _toMutableMap_ |
 | special copy of self |	- |	toHashSet toSortedSet |	toSortedMap |
-| fill target from self |	toCollection(MutableList)	| toCollection(MutableSet) |	- |
+| fill target from self |	toCollection(MutableList)	| toCollection(MutableSet) |	PROPOSED: _toMap(MutableMap)_ |
 
 The elements to create map from here are key-value pairs `Pair<K,V>`.
 
