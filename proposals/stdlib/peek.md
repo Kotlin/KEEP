@@ -4,6 +4,7 @@
 * **Author**: Christian Brüggemann
 * **Status**: Submitted
 * **Prototype**: Not started
+* **Discussion**: [KEEP-47](https://github.com/Kotlin/KEEP/issues/47)
 
 
 ## Summary
