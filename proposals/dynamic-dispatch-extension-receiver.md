@@ -8,7 +8,7 @@
 
 ## Feedback 
 
-Discussion has been started in [this pull request](https://github.com/Kotlin/KEEP/pull/35) regarding type-checking of reified type parameters so far. Further discussion should be done in the pull request for this proposal. An issue in the KEEP project has to be opened.
+Discussion has been started in [this pull request](https://github.com/Kotlin/KEEP/pull/35) regarding type-checking of reified type parameters so far. Further discussion should be done in [the pull request for this proposal](https://github.com/Kotlin/KEEP/pull/46). An issue in the KEEP project has to be opened.
 
 ## Summary
 
