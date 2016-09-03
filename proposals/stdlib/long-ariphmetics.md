@@ -22,7 +22,7 @@ The motivation is to provide a complete and symmetrical set of operators for lon
 
 A "complete" set of operations in this context means that all operators on a basic type are available on the corresponding big type. Operations for `BigInteger` are modelled after `Long`, and operations on `BigDecimal` are modelled after `Double`. The goal is to improve the Java API and not to introduce any additional semantics.
 
-Kotlin stdlib already [contains](https://github.com/JetBrains/kotlin/blob/master/libraries/stdlib/src/kotlin/util/BigNumbers.kt) 12 of 39 proposed functions, but that set is neither complete nor symmetrical. That determines the placement of the additional functions.  
+Kotlin stdlib already [contains](https://github.com/JetBrains/kotlin/blob/master/libraries/stdlib/src/kotlin/util/BigNumbers.kt) 12 of 43 proposed functions, but that set is neither complete nor symmetrical. That determines the placement of the additional functions.  
 
 The proposal does not include mixed operations between `BigInteger` and `BigDecimal` since we did not find any evidence of their use.
 
@@ -94,9 +94,9 @@ Some of the following functions already implemented in the stdlib, but listed he
     BigDecimal.toFloat()
     BigDecimal.toDouble()
 
-	Int.toBigDecimal() 
-	Long.toBigDecimal() 
-	Float.toBigDecimal() 
+    Int.toBigDecimal() 
+    Long.toBigDecimal() 
+    Float.toBigDecimal() 
     Double.toBigDecimal()
      
     String.toBigDecimal()
