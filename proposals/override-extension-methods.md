@@ -35,7 +35,6 @@ fun main(args: Array<String>) {
 }
 
 open class A {
-
     open fun foo() {
         println("A")
     }
@@ -48,7 +47,6 @@ open class A {
 }
 
 open class B: A() {
-
     override fun foo() {
         println("B")
     }
@@ -61,7 +59,6 @@ open class B: A() {
 }
 
 open class C: B() {
-
     override fun foo() {
         println("C")
     }
@@ -74,7 +71,6 @@ open class C: B() {
 }
 
 open class D: A() {
-
     override fun foo() {
         println("D")
     }
