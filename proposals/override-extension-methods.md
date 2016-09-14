@@ -119,10 +119,12 @@ open class B: A() {
 }
 ```
 
-Now consider a scenario, where we have an existing compilation unit (module) *M1* that is not under our control, e.g., a third-party library. In M1 a set of interfaces exists, that all inherit from a base interface `A` and have a complex inheritance structure among each other (so very similar to the former issue):
+Now consider a scenario, where we have an existing (compilation) unit/module *M1* that is not under our control, e.g., a third-party library. In M1 a set of interfaces exists, that all inherit from a base interface `A` and have a complex inheritance structure among each other (so very similar to the former issue):
 
 ```kotlin
-// compilation unit M1
+// module M1
+package m1
+
 interface A
 interface B: A
 interface C: A
@@ -134,7 +136,8 @@ interface E: B, C
 Our client code of the third-party module M1 is called *M2*. Assume that we need to copy a list of objects conforming to `A` and again call method `foo` on it (dynamically dispatched):
 
 ```kotlin
-// compilation unit M2
+// module M2
+package m2
 
 val l = // retrieve some objects conforming to `A`, `B`, ...
 
@@ -146,7 +149,7 @@ l.map { it.copy() }.forEach { it.foo() }
 Unfortunately, the interface currently does not offers neither a copy nor a foo method. So the task is to implement a method `foo` in M2 which takes an object of any subtype of `A` and prints out the name of the class of the extension receiver (if an override is available for this class):
 
 ```kotlin
-// (still) compilation unit M2
+// (still) module M2
 
 // mark as overridable
 open fun A.foo() {
@@ -172,6 +175,8 @@ override fun D.foo() {
 Next let us define a corresponding copy method taking an object of any subtype of `A` and returning a copy of that object (using for brevity the variant with cast from above). Of course, if no extension method exists for a subclass/interface of `A` the copy method on `A` will be used:
 
 ```kotlin
+// (still) module M2
+
 // mark as overridable
 open fun A.copy(): A {
     val copy = this.javaClass.newInstance()
@@ -203,12 +208,115 @@ override fun D.copy(): D {
 
 This should **not** be limited to methods with no parameters. It should just behave like overriding normal member methods (parameters are statically dispatched). The same holds for overloading methods in a type (but this works already as expected in extension functions).
 
+The scope of such an extension method (**both** overriding or not) is the same as before. So, if we have a third compilation unit *M3* (or another package `m3`) the extension methods do not interfere with our local ones:
+
+```kotlin
+// module M3
+package m3
+
+open fun A.foo() {
+    println("extension for A in M3.")
+}
+
+val b = B()
+
+// prints "extension for A in M3." and **not** "B"
+b.foo()
+```
+
+If we import the other extension it is used and name clashes occur as usual:
+
+```kotlin
+// (still) module M3
+
+// import all extension methods from module M2 (consider that the package `m2` is in M2) 
+import m2.*
+
+// results in an compilation error "This function has the same signature as m2.foo(A)"
+open fun.A.foo() {
+  println("extension for A in M3.")
+}
+```
+
+## Realization
+
+Technically this can be realized via a single dispatch method with the most general extension receiver type, which uses a `when` expression that takes into account all overriding extension functions in scope (including imported ones) and makes a static call to the most specialized matching function. The respective overriding functions get a leading `_` to distinguish them. The following example shows a realization (what the compiler would output) in *pseudo kotlin*:
+
+```kotlin
+// module M1
+package m1
+
+open class A
+open class B: A()
+open class C: A()
+open class D: B()
+
+// module M2
+package m2
+
+fun A.foo() {
+    when(this) {
+        is C -> _foo(c = this)
+        is B -> _foo(b = this)
+        is A -> _foo(a = this)
+    }
+}
+
+fun _foo(a: A) {
+    println("A")
+}
+
+fun _foo(b: B) {
+    println("B")
+}
+
+fun _foo(c: C) {
+    println("C")
+}
+
+val l = arrayOf(A(), B(), C(), D())
+
+// prints "A\nB\nC\nB\n" since we have no override for `D`
+l.forEach { it.foo() }
+
+// module M3 (in this example we add here the function `D.foo`)
+package m3
+
+import m2._foo
+import m2.A
+import m2.B
+import m2.C
+import m2.D
+
+fun A.foo() {
+    when(this) {
+        is D -> _foo(d = this)
+        is B -> _foo(b = this)
+        is C -> _foo(c = this)
+        is A -> _foo(a = this)
+    }
+}
+
+fun _foo(d: D) {
+    println("D")
+}
+
+val l = arrayOf(A(), B(), C(), D())
+
+// prints "A\nB\nC\nD\n"
+l.forEach { it.foo() }
+```
+
+If we would not add any override in M3 the dispatch method `A.foo` would be imported instead of redefining it, using the `_foo` as in the example above.
+
 ## Outlook
 
 A possible addition to this proposal would be to allow to override `open` member functions via extension functions for (sub)classes that do not overide the given method of the superclass themselves like this (introducing a new keyword `overload`):
 
 ```kotlin
 // M1
+package m1
+
 open class A {
   open fun foo() {
     println("A")
@@ -218,6 +326,8 @@ open class A {
 open class B: A()
 
 // M2
+package m2
+
 override fun B.foo() {
   println("B")
 }
