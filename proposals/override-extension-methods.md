@@ -238,6 +238,42 @@ open fun.A.foo() {
 }
 ```
 
+## Interplay with Type Parameters
+
+A nice sideeffect of this proposal for extension functions with a type parameter as extension receiver could be, that you can do something, that is not possible with member functions, easily:
+
+```kotlin
+// (alternative variant of) module M2
+
+// mark as overridable
+open fun <T: A> T.copy(): T {
+    val copy = this.javaClass.newInstance()
+    // do copy stuff
+    return copy
+}
+
+//overrides `fun <T: A> T.copy`
+override fun <T: B> T.copy(): T {
+    val copy = super.copy()
+    // do copy stuff
+    return copy
+}
+
+//overrides `fun <T: B> T.copy`
+override fun <T: C> T.copy(): T {
+    val copy = super.copy()
+    // do copy stuff
+    return copy
+}
+
+//overrides `fun <T: A> T.copy`
+override fun <T: D> T.copy(): T {
+    val copy = super.copy()
+    // do copy stuff
+    return copy
+}
+```
+
 ## Realization
 
 Technically this can be realized via a single dispatch method with the most general extension receiver type, which uses a `when` expression that takes into account all overriding extension functions in scope (including imported ones) and makes a static call to the most specialized matching function. The respective overriding functions get a leading `_` to distinguish them. The following example shows a realization (what the compiler would output) in *pseudo kotlin*:
@@ -248,8 +284,8 @@ package m1
 
 open class A
 open class B: A()
-open class C: A()
-open class D: B()
+open class C: B()
+open class D: A()
 
 // module M2
 package m2
@@ -276,7 +312,7 @@ fun _foo(c: C) {
 
 val l = arrayOf(A(), B(), C(), D())
 
-// prints "A\nB\nC\nB\n" since we have no override for `D`
+// prints "A\nB\nC\nA\n" since we have no override for `D`
 l.forEach { it.foo() }
 
 // module M3 (in this example we add here the function `D.foo`)
@@ -291,8 +327,8 @@ import m2.D
 fun A.foo() {
     when(this) {
         is D -> _foo(d = this)
-        is B -> _foo(b = this)
         is C -> _foo(c = this)
+        is B -> _foo(b = this)
         is A -> _foo(a = this)
     }
 }
@@ -378,4 +414,4 @@ This is **not** about co- and contravariance, but just about overloading of meth
 
 ## Open Questions
 
-*Not yet.*
+* Is overriding as shown in section "Interplay with Type Parameters" ok?
