@@ -119,7 +119,7 @@ open class B: A() {
 }
 ```
 
-Now consider a scenario, where we have an existing compilation unit/module *M1* that is not under our control, e.g., a third-party library. For now, we have exactly one package per compilation unit equally named (with first character in lower case). For ease of presentation code snippets may contain code of different packages and even compilation units, but the areas are separated by comments. Section "Alternative Realization" elaborates on scenarios, where different compilation units use the same package. In M1 a set of interfaces exists, that all inherit from a base interface `A` and have a complex inheritance structure among each other (so very similar to the former issue):
+Now consider a scenario, where we have an existing compilation unit/module *M1* that is not under our control, e.g., a third-party library. For now, we have exactly one package per compilation unit equally named (with first character in lower case). For ease of presentation code snippets may contain code of different packages and even compilation units, but the areas are separated by comments. Section [Alternative Realization](#alternative-realization) elaborates on scenarios, where different compilation units use the same package. In M1 a set of interfaces exists, that all inherit from a base interface `A` and have a complex inheritance structure among each other (so very similar to the former issue):
 
 ```kotlin
 // module M1
