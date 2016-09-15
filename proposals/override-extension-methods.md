@@ -557,7 +557,7 @@ val l = arrayOf(A(), B(), C(), D())
 l.forEach { it.foo() }
 ```
 
-For "local method overrides" (see above) a `A.foo` dispatch function can be generated into the sourrounding function, which automatically has the correct scope (if inline methods should resolve a call to an overriden extension function at declaration site... see [Open Questions](#open-questions]).
+For "local method overrides" (see above) a `A.foo` dispatch function can be generated into the sourrounding function, which automatically has the correct scope (if inline methods should resolve a call to an overriden extension function at declaration site... see [Open Questions](#open-questions)).
 
 ## Alternative Realization
 
