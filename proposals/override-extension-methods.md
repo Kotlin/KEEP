@@ -119,7 +119,7 @@ open class B: A() {
 }
 ```
 
-Now consider a scenario, where we have an existing (compilation) unit/module *M1* that is not under our control, e.g., a third-party library. In M1 a set of interfaces exists, that all inherit from a base interface `A` and have a complex inheritance structure among each other (so very similar to the former issue):
+Now consider a scenario, where we have an existing compilation unit/module *M1* that is not under our control, e.g., a third-party library. For now, we have exactly one package per compilation unit equally named (with first character in lower case). For ease of presentation code snippets may contain code of different packages and even compilation units, but the areas are separated by comments. Section "Alternative Realization" elaborates on scenarios, where different compilation units use the same package. In M1 a set of interfaces exists, that all inherit from a base interface `A` and have a complex inheritance structure among each other (so very similar to the former issue):
 
 ```kotlin
 // module M1
@@ -208,7 +208,7 @@ override fun D.copy(): D {
 
 This should **not** be limited to methods with no parameters. It should just behave like overriding normal member methods (parameters are statically dispatched). The same holds for overloading methods in a type (but this works already as expected in extension functions).
 
-The scope of such an extension method (**both** overriding or not) is the same as before. So, if we have a third compilation unit *M3* (or another package `m3`) the extension methods do not interfere with our local ones:
+The scope of such an extension method (**both** overriding or not) is the same as before. So, if we have a third compilation unit *M3* (with another package `m3`) the extension methods do not interfere with our local ones:
 
 ```kotlin
 // module M3
