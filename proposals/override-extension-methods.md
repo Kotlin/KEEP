@@ -276,7 +276,7 @@ override fun <T: D> T.copy(): T {
 
 ## Realization
 
-Technically this can be realized via a single dispatch method with the most general extension receiver type, which uses a `when` expression that takes into account all overriding extension functions in scope (including imported ones) and makes a static call to the most specialized matching function. The respective overriding functions get a leading `_` to distinguish them. The following example shows a realization (what the compiler would output) in *pseudo kotlin*:
+Technically this can be realized via a single dispatch method with the most general extension receiver type, which uses a `when` expression that takes into account all overriding extension functions in scope (including imported ones) and makes a static call to the most specialized matching function. The respective overriding functions get a leading `_` to distinguish them. The following example shows a realization (what the compiler would output) in *pseudo kotlin*. First, let us see how the code we give the compiler would look like:
 
 ```kotlin
 // module M1
@@ -289,6 +289,54 @@ open class D: A()
 
 // module M2
 package m2
+import m1.*
+
+fun A.foo() {
+    println("A")
+}
+
+fun B.foo() {
+    println("B")
+}
+
+fun C.foo() {
+    println("C")
+}
+
+val l = arrayOf(A(), B(), C(), D())
+
+// prints "A\nB\nC\nA\n" since we have no override for `D`
+l.forEach { it.foo() }
+
+// module M3 (in this example we add here the function `D.foo`)
+package m3
+import m1.*
+import m2.*
+
+fun D.foo() {
+    println("D")
+}
+
+val l = arrayOf(A(), B(), C(), D())
+
+// prints "A\nB\nC\nD\n"
+l.forEach { it.foo() }
+```
+
+Second, we take a look at the compilers pseudo kotlin output would look like (it is not really "pseudo" as it compiles and works in kotlin 1.0.3 😇):
+
+```kotlin
+// module M1
+package m1
+
+open class A
+open class B: A()
+open class C: B()
+open class D: A()
+
+// module M2
+package m2
+import m1.*
 
 fun A.foo() {
     when(this) {
@@ -319,10 +367,7 @@ l.forEach { it.foo() }
 package m3
 
 import m2._foo
-import m2.A
-import m2.B
-import m2.C
-import m2.D
+import m1.*
 
 fun A.foo() {
     when(this) {
