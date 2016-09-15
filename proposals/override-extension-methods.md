@@ -390,6 +390,124 @@ l.forEach { it.foo() }
 
 If we would not add any override in M3 the dispatch method `A.foo` would be imported instead of redefining it, using the `_foo` as in the example above.
 
+Next, let us take a look at the realization of `super`-calls in overriden extension methods. Take this enhanced example in (future-) kotlin:
+
+```kotlin
+// module M1
+package m1
+
+open class A
+open class B: A()
+open class C: B()
+open class D: A()
+
+// module M2
+package m2
+import m1.*
+
+open fun A.foo() {
+    print("A")
+}
+
+override fun B.foo() {
+    super.foo()
+    print("B")
+}
+
+override fun C.foo() {
+    super.foo()
+    print("C")
+}
+
+val l = arrayOf(A(), B(), C(), D())
+
+// prints "A\nAB\nABC\nA" since we have no override for `D`
+l.forEach { it.foo() }
+
+// module M3 (in this example we add here the function `D.foo`)
+package m3
+import m1.*
+import m2.*
+
+override fun D.foo() {
+    super.foo()
+    print("D")
+}
+
+val l = arrayOf(A(), B(), C(), D())
+
+// prints "A\nAB\nABC\nAD"
+l.forEach { it.foo(); println() }
+```
+
+The realization in pseudo kotlin compiler output would add an additional implicit parameter to all overriden `_*` methods which retrieves the jump address (here it is a lambda) to the super function (this again compiles well in kotlin 1.0.3 😇:
+
+```kotlin
+// module M1
+package m1
+
+open class A
+open class B: A()
+open class C: B()
+open class D: A()
+
+// module M2
+package m2
+import m1.*
+
+fun A.foo() {
+    when(this) {
+        is C -> _foo(c = this, superFunction = { c: C -> _foo(b = c, superFunction = { b: B -> _foo(a = b) }) })
+        is B -> _foo(b = this, superFunction = { b: B -> _foo(a = b) })
+        is A -> _foo(a = this)
+    }
+}
+
+fun _foo(a: A) {
+    print("A")
+}
+
+fun _foo(b: B, superFunction: (B) -> Unit) {
+    superFunction(b)
+    print("B")
+}
+
+fun _foo(c: C, superFunction: (C) -> Unit) {
+    superFunction(c)
+    print("C")
+}
+
+val l = arrayOf(A(), B(), C(), D())
+
+// prints "A\nAB\nABC\nA" since we have no override for `D`
+l.forEach { it.foo() }
+
+// module M3 (in this example we add here the function `D.foo`)
+package m3
+
+import m2._foo
+import m1.*
+
+fun A.foo() {
+    when(this) {
+        is D -> _foo(d = this, superFunction = { d: D -> _foo(a = d) })
+        is C -> _foo(c = this, superFunction = { c: C -> _foo(b = c, superFunction = { b: B -> _foo(a = b) }) })
+        is B -> _foo(b = this, superFunction = { b: B -> _foo(a = b) })
+        is A -> _foo(a = this)
+    }
+}
+
+fun _foo(d: D, superFunction: (D) -> Unit) {
+    superFunction(d)
+    print("D")
+}
+
+val l = arrayOf(A(), B(), C(), D())
+
+// prints "A\nAB\nABC\nAD"
+l.forEach { it.foo() }
+```
+
 ## Outlook
 
 A possible addition to this proposal would be to allow to override `open` member functions via extension functions for (sub)classes that do not overide the given method of the superclass themselves like this (introducing a new keyword `overload`):
