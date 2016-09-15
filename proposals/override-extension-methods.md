@@ -291,15 +291,15 @@ open class D: A()
 package m2
 import m1.*
 
-fun A.foo() {
+open fun A.foo() {
     println("A")
 }
 
-fun B.foo() {
+override fun B.foo() {
     println("B")
 }
 
-fun C.foo() {
+override fun C.foo() {
     println("C")
 }
 
@@ -313,7 +313,7 @@ package m3
 import m1.*
 import m2.*
 
-fun D.foo() {
+override fun D.foo() {
     println("D")
 }
 
