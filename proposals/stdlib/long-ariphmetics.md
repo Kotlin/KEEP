@@ -22,7 +22,7 @@ The motivation is to provide a complete and symmetrical set of operators for lon
 
 A "complete" set of operations in this context means that all operators on a basic type are available on the corresponding big type. Operations for `BigInteger` are modelled after `Long`, and operations on `BigDecimal` are modelled after `Double`. The goal is to improve the Java API and not to introduce any additional semantics.
 
-Kotlin stdlib already [contains](https://github.com/JetBrains/kotlin/blob/master/libraries/stdlib/src/kotlin/util/BigNumbers.kt) 12 of 43 proposed functions, but that set is neither complete nor symmetrical. That determines the placement of the additional functions.  
+Kotlin stdlib already [contains](https://github.com/JetBrains/kotlin/blob/master/libraries/stdlib/src/kotlin/util/BigNumbers.kt) 12 of 35 proposed functions, but that set is neither complete nor symmetrical. That determines the placement of the additional functions.  
 
 The proposal does not include mixed operations between `BigInteger` and `BigDecimal` since we did not find any evidence of their use.
 
@@ -37,11 +37,11 @@ The proposal does not include mixed operations between `BigInteger` and `BigDeci
 
 ## Placement
 
-* Standard Library, `java.math`, since there is already a part of the prosed API for [BigInteger](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/java.math.-big-integer/) and [BigDecimal](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/java.math.-big-decimal/)
+* Standard Library, `kotlin` package, since there is already a part of the prosed API for [BigInteger](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/java.math.-big-integer/) and [BigDecimal](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/java.math.-big-decimal/)
 
 ## Reference implementation
 
-Some of the following functions already implemented in the stdlib, but listed here to provide the whole picture. Those functions are marked with `/* implemented */`.
+Some of the following functions are already implemented in the stdlib, but listed here to provide the whole picture. Those functions are marked with `/* implemented */`.
 
 >Implementation notes:
 >
@@ -49,6 +49,7 @@ Some of the following functions already implemented in the stdlib, but listed he
 > - Conversion between `BigInteger` and `BigDouble` has no cost except for the obvious creating of a new object
 > - `Number` is an open class, so generic functions accepting `Number` may clash with something else
 > - default rounding mode is `HALF_EVEN` ([KT-10462] (https://youtrack.jetbrains.com/issue/KT-10462))
+> - `toInt`, `toLong`, etc are already implemented on `Number`
 > (JDK) Note: For values other than float and double NaN and ±Infinity, this constructor is compatible with the values returned by Float.toString(float) and Double.toString(double). This is generally the preferred way to convert a float or double into a BigDecimal, as it doesn't suffer from the unpredictability of the BigDecimal(double) constructor.
 
 #### BigInteger:
@@ -61,7 +62,7 @@ Some of the following functions already implemented in the stdlib, but listed he
     BigInteger.unaryMinus()       /* implemented */
     BigInteger.unaryPlus()
     
-    BigInteger.inv()  // uses `BigInteger#not`
+    BigInteger.inv()                                 //use `BigInteger#not`
     BigInteger.and(BigInteger)
     BigInteger.or(BigInteger)
     BigInteger.xor(BigInteger)
@@ -71,11 +72,6 @@ Some of the following functions already implemented in the stdlib, but listed he
     String.toBigInteger()
     BigInteger.toBigDecimal()
     
-    BigInteger.toInt()
-    BigInteger.toLong()
-    BigInteger.toFloat()
-    BigInteger.toDouble()
-
     Int.toBigInteger()
     Long.toBigInteger()
     // `Float` and `Double` would lose information
@@ -89,11 +85,6 @@ Some of the following functions already implemented in the stdlib, but listed he
     BigDecimal.mod(BigDecimal)    /* implemented */  //use `BigInteger#remainder`
     BigDecimal.unaryMinus()       /* implemented */
     BigDecimal.unaryPlus()
-    
-    BigDecimal.toInt()
-    BigDecimal.toLong()
-    BigDecimal.toFloat()
-    BigDecimal.toDouble()
 
     Int.toBigDecimal() 
     Long.toBigDecimal() 
@@ -112,14 +103,6 @@ Some of the following functions already implemented in the stdlib, but listed he
     BigDecimal.inc()
     BigDecimal.dec()
 	
-
-## Unresolved questions
-
-* Exception in  `BigDecimal.	divide(BigDecimal)`: "if the exact quotient cannot be represented (because it has a non-terminating decimal expansion) an `ArithmeticException` is thrown."
-	- use default `roundingMode` with `divide(BigDecimal divisor, int roundingMode)` 
-	- throw `ArithmeticException` (as in JDK)
-
-
 ## Future advancements
 
 ###Universal comparison
