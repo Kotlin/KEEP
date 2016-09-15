@@ -575,6 +575,51 @@ overload fun eat(b: B) {
 
 This is **not** about co- and contravariance, but just about overloading of methods in a type hierarchy.
 
+## Further Discussion
+
+This feature is completely additive as the current behavior stays the same although I think that the current overload behavior of extension functions in kotlin is inconsistent with member functions: It is allowed to overload an extension function with a function of the same signature (and statically dispatched) but not on member functions (when omitting the open keyword). It would be more consistent to allow this on member functions, too (which is completly additive):
+
+```kotlin
+open class A {
+  fun foo() {
+    println("A")
+  }
+}
+
+class B: A {
+  // should be allowed and overload A.foo since A.foo is not `open`. 
+  // If A.foo would have been `open`, this would be denied and the 
+  // keyword `override` is required (and then it behaves like a normal 
+  // overriden method).
+  fun foo() {
+    println("B")
+  }
+}
+
+val b: A = B()
+b.foo() // prints "A"
+val b2 = B()
+b2.foo() // prints "B"
+
+// rationale, this is perfectly ok in current kotlin:
+
+open class A
+class B: A
+
+fun A.foo() {
+  println("A")
+}
+
+fun B.foo() {
+  println("B")
+}
+
+val b: A = B()
+b.foo() // prints "A"
+val b2 = B()
+b2.foo() // prints "B"
+``` 
+
 ## Open Questions
 
-* Is overriding as shown in section "Interplay with Type Parameters" ok?
+Is overriding as shown in section "Interplay with Type Parameters" ok?
