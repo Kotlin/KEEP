@@ -566,11 +566,11 @@ The possible realization in the example above shows the semantics in a translati
 1. Imagine you add in the example of the section "Possible Realization" M2 with another class `E` and a corresponding override of the `foo`-function. Now you have to recompile M3 in order to update the local `A.foo` dispatch function implementation, accordingly. This means, existing generated code will break just because a dependency has been changed. This is bad.
 2. Consider you have more than one compilation unit (e.g. *M2'*, *M2''*, ...) that have overrides of `foo` in package `m2`, but during compilation of M3 only M2 is on the compilation path, and at runtime M2', M2'' are loaded, too. Then the generated dispatch function `A.foo` in M3 will behave oddly.
 
-Hence, this realization should **not** be used. Instead a V-table (V stands for virtual) approach should be used, which contains a mapping "Scope -> Type -> Method" and instead of calling a dispatch function `A.foo` a call to `A.foo` will generate to a lookup in the V-table and call the respective `_foo`-function. Done right this implementation can circumvent the "bad" behavior of local overides in combination with inline functions as shown above without the need to realize [proposal35](https://github.com/Kotlin/KEEP/pull/35).
+Hence, this realization should **not** be used. Instead a V-table (V stands for virtual) approach should be used, which contains a mapping "Scope -> Type -> Method" and instead of calling a dispatch function `A.foo` a call to `A.foo` will generate to a lookup in the V-table and call the respective `_foo`-function. Done right this implementation can circumvent the "bad" behavior of local overrides in combination with inline functions as shown above without the need to realize [proposal35](https://github.com/Kotlin/KEEP/pull/35).
 
 ## Outlook
 
-A possible addition to this proposal would be to allow to override `open` member functions via extension functions for (sub)classes that do not overide the given method of the superclass themselves like this (introducing a new keyword `overload`):
+A possible addition to this proposal would be to allow to override `open` member functions via extension functions for (sub)classes that do not override the given method with a member method themselves, like this:
 
 ```kotlin
 // M1
@@ -592,7 +592,7 @@ override fun B.foo() {
 }
 ```
 
-Another addition would be to allow to explicitly overload methods in subtypes if they are defined open like this:
+Another addition would be to allow to explicitly overload methods in subtypes (introducing a new keyword `overload`) if they are defined open like this:
 
 ```kotlin
 open class A {
