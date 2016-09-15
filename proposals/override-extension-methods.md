@@ -260,7 +260,7 @@ fun B.foo() {
 B().foo()
 ```
 
-In order to be consistent with the current behavior in Kotlin, for inline methods the scope of the declaration-site could be used (although I dislike this... see open questions):
+In order to be consistent with the current behavior in Kotlin, for inline methods the scope of the declaration-site could be used (although I dislike this... see [Open Questions](#open-questions)):
 
 ```kotlin
 interface A
@@ -285,7 +285,7 @@ fun B.foo() {
 B().foo()
 ```
 
-If [proposal 35](https://github.com/Kotlin/KEEP/pull/35) becomes accepted (or a V-table is used... see "Alternative Realization"), the above mentioned behavior should change, of course. Then "inlining" would mean to really copy the body of the method and run the typechecker on the resulting code afterwards. So, the above code should print "B" then, too.
+If [proposal 35](https://github.com/Kotlin/KEEP/pull/35) becomes accepted (or a V-table is used... see [Alternative Realization](#alternative-realization)), the above mentioned behavior should change, of course. Then "inlining" would mean to really copy the body of the method and run the typechecker on the resulting code afterwards. So, the above code should print "B" then, too.
 
 ## Interplay with Type Parameters
 
@@ -557,16 +557,16 @@ val l = arrayOf(A(), B(), C(), D())
 l.forEach { it.foo() }
 ```
 
-For "local method overrides" (see above) a `A.foo` dispatch function can be generated into the sourrounding function, which automatically has the correct scope (if inline methods should resolve a call to an overriden extension function at declaration site... see open questions).
+For "local method overrides" (see above) a `A.foo` dispatch function can be generated into the sourrounding function, which automatically has the correct scope (if inline methods should resolve a call to an overriden extension function at declaration site... see [Open Questions](#open-questions]).
 
 ## Alternative Realization
 
 The possible realization in the example above shows the semantics in a translational fashion very well, but has a few major drawbacks:
 
-1. Imagine you add in the example of the section "Possible Realization" M2 with another class `E` and a corresponding override of the `foo`-function. Now you have to recompile M3 in order to update the local `A.foo` dispatch function implementation, accordingly. This means, existing generated code will break just because a dependency has been changed. This is bad.
+1. Imagine you add in the example of the section [Possible Realization](#possible-realization) M2 with another class `E` and a corresponding override of the `foo`-function. Now you have to recompile M3 in order to update the local `A.foo` dispatch function implementation, accordingly. This means, existing generated code will break just because a dependency has been changed. This is bad.
 2. Consider you have more than one compilation unit (e.g. *M2'*, *M2''*, ...) that have overrides of `foo` in package `m2`, but during compilation of M3 only M2 is on the compilation path, and at runtime M2', M2'' are loaded, too. Then the generated dispatch function `A.foo` in M3 will behave oddly.
 
-Hence, this realization should **not** be used. Instead a V-table (V stands for virtual) approach should be used, which contains a mapping "Scope -> Type -> Method" and instead of calling a dispatch function `A.foo` a call to `A.foo` will generate to a lookup in the V-table and call the respective `_foo`-function. Done right this implementation can circumvent the "bad" behavior of local overrides in combination with inline functions as shown above without the need to realize [proposal35](https://github.com/Kotlin/KEEP/pull/35).
+Hence, this realization should **not** be used. Instead a V-table (V stands for virtual) approach should be used, which contains a mapping "Scope -> Type -> Method" and instead of calling a dispatch function `A.foo` a call to `A.foo` will generate to a lookup in the V-table and call the respective `_foo`-function. Done right this implementation can circumvent the "bad" behavior of local overrides in combination with inline functions as shown above without the need to realize [proposal 35](https://github.com/Kotlin/KEEP/pull/35).
 
 ## Outlook
 
