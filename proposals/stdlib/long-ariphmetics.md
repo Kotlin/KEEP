@@ -48,15 +48,16 @@ Some of the following functions already implemented in the stdlib, but listed he
 > - Boxing of primitives should not be a concern
 > - Conversion between `BigInteger` and `BigDouble` has no cost except for the obvious creating of a new object
 > - `Number` is an open class, so generic functions accepting `Number` may clash with something else
+> - default rounding mode is `HALF_EVEN` ([KT-10462] (https://youtrack.jetbrains.com/issue/KT-10462))
 > (JDK) Note: For values other than float and double NaN and ±Infinity, this constructor is compatible with the values returned by Float.toString(float) and Double.toString(double). This is generally the preferred way to convert a float or double into a BigDecimal, as it doesn't suffer from the unpredictability of the BigDecimal(double) constructor.
 
 #### BigInteger:
 
     BigInteger.plus(BigInteger)   /* implemented */
     BigInteger.minus(BigInteger)  /* implemented */
-    BigInteger.times(BigInteger)  /* implemented */  // optimize for TEN^n
-    BigInteger.div(BigInteger)    /* implemented */  // optimize for TEN^n
-    BigInteger.mod(BigInteger)                       // optimize for TEN^n, also use `BigInteger#mod`
+    BigInteger.times(BigInteger)  /* implemented */
+    BigInteger.div(BigInteger)    /* implemented */
+    BigInteger.mod(BigInteger)                       //use `BigInteger#mod`
     BigInteger.unaryMinus()       /* implemented */
     BigInteger.unaryPlus()
     
@@ -83,9 +84,9 @@ Some of the following functions already implemented in the stdlib, but listed he
 
     BigDecimal.plus(BigDecimal)   /* implemented */
     BigDecimal.minus(BigDecimal)  /* implemented */
-    BigDecimal.times(BigDecimal)  /* implemented */  // optimize for TEN^n
-    BigDecimal.div(BigDecimal)    /* implemented */  // optimize for TEN^n
-    BigDecimal.mod(BigDecimal)    /* implemented */  // optimize for TEN^n, use `BigInteger#remainder`
+    BigDecimal.times(BigDecimal)  /* implemented */
+    BigDecimal.div(BigDecimal)    /* implemented */  //use  BigDecimal#divide(divisor, RoundingMode.HALF_EVEN)
+    BigDecimal.mod(BigDecimal)    /* implemented */  //use `BigInteger#remainder`
     BigDecimal.unaryMinus()       /* implemented */
     BigDecimal.unaryPlus()
     
@@ -113,11 +114,6 @@ Some of the following functions already implemented in the stdlib, but listed he
 	
 
 ## Unresolved questions
-
-* Converting `Double.POSITIVE_INFINITY`, `DOUBLE.NEGATIVE_INFINITY` into `BigDecimal`
-	- throw `NumberFormatException` (as in JDK)
-	- assume that  `Double.POSITIVE_INFINITY == Double.MAX_VALUE + 1`
-	- assume that  `Double.POSITIVE_INFINITY == Double.MAX_VALUE + Double.MIN_VALUE`
 
 * Exception in  `BigDecimal.	divide(BigDecimal)`: "if the exact quotient cannot be represented (because it has a non-terminating decimal expansion) an `ArithmeticException` is thrown."
 	- use default `roundingMode` with `divide(BigDecimal divisor, int roundingMode)` 
