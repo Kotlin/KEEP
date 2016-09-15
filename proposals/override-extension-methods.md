@@ -238,6 +238,55 @@ open fun.A.foo() {
 }
 ```
 
+Local overrides should be possible, too, but will be visible only in the scope of the method:
+
+```kotlin
+interface A
+interface B : A
+
+open fun A.bar() {
+    print("A")
+}
+
+fun B.foo() {
+    override fun B.bar() {
+        print("B")
+    }
+    
+    this.bar()
+}
+
+// prints "B"
+B().foo()
+```
+
+In order to be consistent with the current behavior in Kotlin, for inline methods the scope of the declaration-site should be used:
+
+```kotlin
+interface A
+interface B : A
+
+open fun A.bar() {
+    print("A")
+}
+
+inline fun <reified T: A> T.doBar() { 
+    bar() 
+}
+
+fun B.foo() {
+    override fun B.bar() {
+        print("B")
+    }
+    doBar()
+}
+
+// prints "A"
+B().foo()
+```
+
+If [proposal 35](https://github.com/Kotlin/KEEP/pull/35) becomes accepted, the above mentioned behavior should change, of course. Then "inlining" would mean to really copy the body of the method and run the typechecker on the resulting code afterwards. So, the above code should print "B" then, too.
+
 ## Interplay with Type Parameters
 
 A nice sideeffect of this proposal for extension functions with a type parameter as extension receiver could be, that you can do something, that is not possible with member functions, easily:
@@ -274,7 +323,7 @@ override fun <T: D> T.copy(): T {
 }
 ```
 
-## Realization
+## Possible Realization
 
 Technically this can be realized via a single dispatch method with the most general extension receiver type, which uses a `when` expression that takes into account all overriding extension functions in scope (including imported ones) and makes a static call to the most specialized matching function. The respective overriding functions get a leading `_` to distinguish them. The following example shows a realization (what the compiler would output) in *pseudo kotlin*. First, let us see how the code we give the compiler would look like:
 
@@ -507,6 +556,8 @@ val l = arrayOf(A(), B(), C(), D())
 // prints "A\nAB\nABC\nAD"
 l.forEach { it.foo() }
 ```
+
+For "local method overrides" (see above) a `A.foo` dispatch function can be generated into the sourrounding function, which automatically has the correct scope.
 
 ## Outlook
 
