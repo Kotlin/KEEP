@@ -17,60 +17,51 @@ Support for `slidingWindow` and `slidingWindowBackward` extension functions for 
  - Scala: [sliding](http://www.scala-lang.org/api/2.11.8/index.html#scala.collection.IterableLike@sliding%28size:Int,step:Int%29:Iterator[Repr])
  - RxJava: [buffer](http://reactivex.io/documentation/operators/buffer.html)
  - F#: [windowed](https://msdn.microsoft.com/visualfsharpdocs/conceptual/seq.windowed['t]-function-[fsharp])
+ - Clojure: [partition](https://clojuredocs.org/clojure.core/partition)
  - Klutter: [batch and lazyBatch](https://github.com/kohesive/klutter/blob/master/core-jdk6/src/main/kotlin/uy/klutter/core/common/CollectionsBatching.kt)
-
+ - StreamEx: [StreamEx.ofSubLists](https://github.com/amaembo/streamex/blob/f5bd4c3ba79aa0de87ea834e87ac1040a67fa5d8/src/main/java/one/util/streamex/StreamEx.java#L2677)
+ 
 ## Use cases
 
- - pagination
- ```kotlin
- fun view(page: Int) = source.slidingWindow(pageSize).drop(page).firstOrNull()
- ```
- 
  - buffering/batching
  
- ```kotlin
- class EventProcessor<E : Event>(val batchSize: Int, val eventBus: Sequence<E>) {
-     fun doBatchProcessing(operation: (List<E>) -> Unit) {
-         eventBus.slidingWindow(batchSize).forEach(operation)
-     }
- }
- ```
- 
- - permutations generation
- 
- ```kotlin
- fun IntArray.pairs() = sorted().slidingWindow(2, step = 1)
- ```
- 
- - advanced signal processing
- 
- ```kotlin
- class ChangeListener<E>(val source: Sequence<E>) {
-     fun listen(handler: (E, E, E) -> Unit) {
-         source.windowSliding(3, step = 1).forEach { p ->
-             handler(p[0], p[1], p[2])
-         }
-     }
- }
- ```
- 
- - small auxiliaries such as hex to byte array
- ```kotlin
- fun bytesFromHex(hex: String): ByteArray {
-      val result = ByteArray(hex.length / 2)
+    ```kotlin
+    class EventProcessor<E : Event>(val batchSize: Int, val eventBus: Sequence<E>) {
+        fun doBatchProcessing(operation: (List<E>) -> Unit) {
+            for (batch in eventBus.slidingWindow(batchSize)) {
+                operation(batch)
+            }    
+        }
+    }
+    ```
 
-      for ((idx, v) in hex.windowSliding(2).withIndex()) {
-          result[idx] = Integer.parseInt(v, 16).toByte()
-      }
+ - computing moving average (this may require dropping partial windows)
 
-      return result
- }
- ```
+    ```kotlin
+    val averaged = values.slidingWindow(size = 5, step = 1).map { it.average() }
+    ```
+ 
+ - sequence sampling
+ 
+    ```kotlin
+    // downsample by factor 2
+    val sampled = values.slidingWindow(size = 1, step = 2).map { it.single() }
+    
+    // take every tenth value and average it with two neighbours
+    val decimated = values.slidingWindow(size = 3, step = 10).map { it.average() }
+    ```
+ 
+ 
+ - permutations generation (unless there is more specialized `pairwise` operation)
+ 
+    ```kotlin
+    fun IntArray.pairs() = sorted().slidingWindow(2, step = 1)
+    ```
 
 ## Alternatives
 
- - copy-paste it everywhere
-    * cons: obviously you need to copy and paste it often while other languages already have it. Also the implementation is not so simple so it may cause a lot of very similar but slightly different implementations.
+ - use imperative loops
+    * cons: the implementation is not so simple so it may cause a lot of very similar but slightly different implementations.
 
  - keep it in a separate library
     * cons: too small functionality for a separate library, nobody would like to add it just because of one function
@@ -129,8 +120,13 @@ See reference implementation in branch [rr/cy/window-sliding](https://github.com
     * (con) strange corner case — makes not much of sense to obtain a series of zero-sized windows.
     * (pro) valid operation and it's possible to implement.
     * (pro) reduce possible crash cases as crash generally is more dangerous
- - do we need `dropTrailing` parameter? 
-    * Trailing batches could be filtered out with `filterNot { it.size < windowSize }` operation.
+ - what to do with the last window having less than the specified `size` elements:
+    - keep partial window(s) — required for cases like batch processing
+    - drop partial window(s) — for cases like moving average
+        * Trailing batches could be filtered out with `filterNot { it.size < windowSize }` operation.
+    - pad partial windows to required size 
+        * Could be achieved with `map { it.padEnd(size, paddingElement) }`, but it requires
+        introducing `padStart`/`padEnd` for collections.
  - do we need `slidingWindow2` and `slidingWindow3` as described in [KT-10021](https://youtrack.jetbrains.com/issue/KT-10021) with the following signatures:
      * `slidingWindow2([step], operation: (T, T) -> Unit)`
      * `slidingWindow3([step], operation: (T, T, T) -> Unit)`
