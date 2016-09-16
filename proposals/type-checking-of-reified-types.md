@@ -95,6 +95,19 @@ The Kotlin documentation reads:
 
 But in this case it does not behave as if it were a normal class although `return copyAction as T` is allowed.
 
+This proposal is not a solution for [proposal 46](https://github.com/Kotlin/KEEP/pull/46), since calling the copy-method above (even with the new behavior) would lead to unwanted results:
+
+```kotlin
+// here it is called:
+fun someMethod() {
+  val sequenceAction: Action = SequenceAction()
+  // `T` will be of type `Action` although I would like to copy a `SequenceAction`
+  sequenceAction.copy()
+}
+```
+
+So, independent from this proposal ["overriding extension methods"](https://github.com/Kotlin/KEEP/pull/46) has its own right to exist.
+
 No macros are necessary for implementing this proposal. The compiler should be able to inline the function body 
 and recheck without a macro since it is a multi-pass compiler. Naively, the inlining could be done in a 
 preprocessing step (not a macro) on the code-level and then compile it.
@@ -130,6 +143,10 @@ fun test() {
 ```
 
 Inline functions are inlined at compile-time. Operations involving reified type parameters are annotated with special bytecode instructions. Bytecode is post-processed at call-site, where corresponding type arguments are known. Hence, all information is available at compile-time to produce this error although one might argue that this results in leaking abstraction.
+
+## Realization
+
+Since the naive solution mentioned above (just copy the code to inline before compilation) needs access to the source code of the inline function it is not feasible. The current solution uses special bytecode instructions in the body of inline functions, which are post-processed after inlining. This approach can be enhanced to replace any call to methods on instances of the reified type by one typechecked at call-site.
 
 ## Open Questions
 
