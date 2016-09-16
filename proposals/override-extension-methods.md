@@ -285,7 +285,7 @@ fun B.foo() {
 B().foo()
 ```
 
-If [proposal 35](https://github.com/Kotlin/KEEP/pull/35) becomes accepted (or a V-table is used... see [Alternative Realization](#alternative-realization)), the above mentioned behavior should change, of course. Then "inlining" would mean to really copy the body of the method and run the typechecker on the resulting code afterwards. So, the above code should print "B" then, too.
+If [proposal 35](https://github.com/Kotlin/KEEP/pull/35) becomes accepted (or a V-table is used... see [Alternative Realization](#alternative-realization)), the above mentioned behavior should change, of course. Then "inlining" would behave as if the body of the method has been copied and the typechecker has been run on the resulting code afterwards (although this would be realized via copying annotated bytecode, where the annotated statements are replaced during inlining). So, the above code should print "B" then, too.
 
 ## Interplay with Type Parameters
 
