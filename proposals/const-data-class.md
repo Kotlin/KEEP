@@ -68,6 +68,8 @@ This would allow the programmer to achieve the same result but, again, with no s
 ## Arguments against this proposal
 
 - This is an optimization that can be easily implemented by the programmer (at the cost of some boilerplate code that can be reduced with KT-12991).
+- This optimization is useful *if and only if* keys to `HashMap` & `HashSet` are *reused*.
+  Recreating the object everytime (e.g. `map.contains(Key(1, 2))`) renders the optimisation completely useless.
 
 ## Appendix
 
