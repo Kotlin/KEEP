@@ -8,7 +8,7 @@
 
 ## Feedback
 
-Discussion of this proposal is held in [this issue](TODO).
+Discussion of this proposal is held in [this issue](https://github.com/Kotlin/KEEP/pull/51).
 
 ## Synopsis
 
