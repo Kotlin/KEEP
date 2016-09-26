@@ -51,14 +51,14 @@ Because the hash is most likely already cached, this enables to fail fast.
 
 #### Example
 
-See appendix 1 implementation of `Optimized` class that features optimized `hashcode` and `equals` functions.
+See appendix 1 implementation of the `Optimized` class that features optimized `hashcode` and `equals` functions.
 
 ## Alternative approaches
 
 #### Annotation `@CachedHashcode`
 
 This annotation would be allowed only on data classes.
-As stated in the synopsis, there would be no *guarantee* that the data class is effectively constant, and that the cached hash code do represents the current state of the data class.
+As stated in the synopsis, there would be no *guarantee* that the data class is effectively constant, and that the cached hash code does represent the current state of the data class.
 
 #### Manually caching the result
 
@@ -80,7 +80,6 @@ import java.util.*
 
 data class Person(val firstName: String, val lastName: String)
 
-@Suppress("EqualsOrHashCode")
 data class Optimized(val id: Int, val person: Person) {
     private var _hashcode = 0;
     override fun hashCode(): Int{
