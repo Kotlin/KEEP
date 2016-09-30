@@ -59,7 +59,7 @@ Some of the following functions are already implemented in the stdlib, but liste
     BigInteger.minus(BigInteger)  /* implemented */
     BigInteger.times(BigInteger)  /* implemented */
     BigInteger.div(BigInteger)    /* implemented */
-    BigInteger.mod(BigInteger)                       //use `BigInteger#mod`
+    //BigInteger.mod(BigInteger)  /* implemented in JDK */
     BigInteger.unaryMinus()       /* implemented */
     BigInteger.unaryPlus()
     
