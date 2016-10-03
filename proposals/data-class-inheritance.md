@@ -97,12 +97,12 @@ fun test() {
 }
 ```
 
-## Related issues
+## Issues to be fixed
 
 * [KT-10330](https://youtrack.jetbrains.com/issue/KT-10330).
    The original issue with the sealed hierarchy use case.
 * [KT-11306](https://youtrack.jetbrains.com/issue/KT-11306).
-   Because of this issue, it's not possible to specify for example abstract `toString` in the base class and rely on auto-generated members in data subclasses. This can hurt in sealed hierarchies where some of the subclasses are data classes and some are not.
+   Unless this issue is fixed, it's not possible to specify for example abstract `toString` in the base class and rely on auto-generated members in data subclasses. This can hurt in sealed hierarchies where some of the subclasses are data classes and some are not.
 
 ## Alternatives
 
