@@ -59,7 +59,7 @@ Some of the following functions are already implemented in the stdlib, but liste
     BigInteger.minus(BigInteger)  /* implemented */
     BigInteger.times(BigInteger)  /* implemented */
     BigInteger.div(BigInteger)    /* implemented */
-    BigInteger.mod(BigInteger)                       //use `BigInteger#mod`
+    //BigInteger.mod(BigInteger)  /* implemented in JDK */
     BigInteger.unaryMinus()       /* implemented */
     BigInteger.unaryPlus()
     
@@ -103,6 +103,12 @@ Some of the following functions are already implemented in the stdlib, but liste
 
     BigDecimal.inc()
     BigDecimal.dec()
+    
+## Unresolved Questions
+
+- In Kotlin v1.0 operator `%` was resolved to the method `BigInteger#mod` instead of `BigInteger#reminder`. As a result `BigInteger("-5") % BigInteger("3") == BigInteger("1")` (the result is always positive). That is inconsistent with basic types: `-5 % 3 == -2` and `BigDecimal`: `BigDecimal("-5") % BigDecimal("3") == BigDecimal("-2")`, which uses `BigDecimal#reminder` and was avaliable in v1.0.
+   - Leave it as is with an inconsistency which does not exist in Java (all use `reminder`)
+   - Change the `%` operator to use `BigInteger#reminder` (a braking change)
 	
 ## Future advancements
 
