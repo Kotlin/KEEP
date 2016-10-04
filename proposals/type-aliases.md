@@ -587,7 +587,7 @@ In kotlin.annotation.AnnotationTarget:
 
 In JVM, annotations for type aliases are written on a special synthetic method (similar to annotations on properties).
 
-Standard annotations `kotlin.Deprecated` and `kotlin.Suppress` are applicable to type aliases:
+Standard language annotations for declarations (`kotlin.Deprecated`, `kotlin.SinceKotlin`, `kotlin.Suppress`, etc.) are applicable to type aliases:
 ```
 @Deprecated("For some good reason")
 typealias Str = String
