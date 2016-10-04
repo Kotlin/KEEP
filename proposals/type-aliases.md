@@ -229,7 +229,7 @@ typealias T4 = Array2D<out Number>          // Array<Array<out Number>>
 >
 > In this example, information that both parameters of `Map<T, T>` are the same type is lost.
 > It could be preserved by introducing existential types (`TMap<*> = exists T : Any?. Map<T, T>`),
-> but this would open even bigger can of worms in the type system.
+> but this would require full existential types support in the type system.
 
 ## Type aliases and visibility
 
@@ -242,7 +242,7 @@ Type aliases can have the same visibility modifiers as other members of the corr
 
 Type aliases can't be declared in annotation classes, since annotation classes can't have bodies.
 
-Type aliases can't expose package or class members (including other type aliases) with more restricted visibility.
+Type aliases can't expose package or class members (excluding other type aliases) with more restricted visibility.
 ```
 class C {
   protected class Nested { ... }
@@ -257,17 +257,8 @@ typealias P = Hidden        // Error: typealias P exposes class Hidden which is 
 
 ```
 class C
-private typealias A = C     // C is public, but A is private in file
-typealias AA = A            // Error: typealias AA exposes typealias A which is private in file
-```
-
-Type aliases can't be exposed by other class or package members with more permissive visibility.
-```
-class C
-private typealias A = C     // C is public, but A is private in file
-
-val x: A = ...              // Error: val x exposes typealias A which is private in file
-fun foo(): A = ...          // Error: fun foo exposes typealias A which is private in file
+private typealias A = C     // C is public, A is private in file
+typealias AA = A            // Expanded type for AA is C, thus, no error.
 ```
 
 ## Resolution
@@ -281,19 +272,9 @@ nested classifiers can't be referenced via type alias qualifier.
 
 > We need type aliases to work as underlying classes to prevent leaking abstractions.
 >
-> Usage of type alias as qualifier for nested class of the corresponding classifier
-> creates a "goto operator" in qualifier resolution, breaking some important assumptions.
-> Example:
+> Resolution should treat type aliases and classifiers similarly.
 >
-> class Outer {
->   class Nested
-> }
-> class Generic<T> {
->   typealias ON = Outer.Nested
-> }
-> ... Generic<T>.ON.Nested ...
->
-> This restriction may be removed later.
+> See [Nested type aliases](#nested-type-aliases) section for related issues & discussion.
 
 Type alias declaration conflicts with another type alias declaration or a class (interface, object) declaration
 with the same name (regardless of generic parameters).
@@ -435,52 +416,84 @@ typealias SGI = G<String>.Inner     // Error: type alias constructor G<String>.S
 fun G<String>.SGI() {}              // Error: fun G<String>.SGI() is conflicting with type alias constructor G<String>.SGI()
 ```
 
+### Type aliases and Java static members
+
+Scope for type alias expanding to the Java class in a qualifier position is a static member scope of the corresponding class.
+```
+typealias CompletableFuture<T> = java.util.concurrent.CompletableFuture<T>
+
+fun test() {
+    CompletableFuture.runAsync { /* ... */ }
+}
+```
+
+### Type aliases and super qualifiers
+
+Type alias in super qualifier is resolved to the corresponding class or interface.
+Type arguments are ignored.
+This class should be a parent class or interface of the current class or interface.
+
+```
+interface IFoo1<in T> {
+    fun foo(x: T) {
+        println("IFoo1")
+    }
+}
+
+interface IFoo2<in T> {
+    fun foo(x: T) {
+        println("IFoo2")
+    }
+}
+
+typealias T1<T> = IFoo1<T>
+typealias T2<T> = IFoo2<T>
+
+class C<T>: T1<T>, T2<T> {
+    override fun foo(x: T) {
+        super<T1>.foo(x)        // super<IFoo1>.foo(x)
+        super<T2>.foo(x)        // super<IFoo2>.foo(x)
+        super<T1String>.foo(x)  // Not an error; super<IFoo1>.foo(x)
+    }
+}
+```
+
+> NB type arguments can't be specified in super qualifier for classes and interfaces.
+
 ## Nested type aliases
 
 Type aliases declared in classes, objects, or interfaces are called nested.
+Same resolution rules are applied for nested type aliases as for other nested classifiers.
 
-Nested type aliases are inherited in child classes (objects, interfaces),
-with corresponding underlying types substituted accordingly.
-```
-interface Map<K, V> {
-  typealias KeySet = Set<K>
-}
-
-interface Dictionary<V> : Map<String, V> {
-  fun keys(): KeySet = ...      // OK, KeySet == Set<String>
-}
-```
-
-Type alias declared in a child class (object, interface) shadows type alias declared in a super class (interface).
-```
-interface UndirectedVertexGraph<V> {
-  typealias Edge = UnorderedPair<V>
-}
-
-interface DirectedVertexGraph<V> : UndirectedVertexGraph<V> {
-  typealias Edge = OrderedPair<V>      // shadows UndirectedVertexGraph<V>::Edge
-}
-```
-
-Like nested classes, it is not possible to reference inherited nested type alias by a child class.
-```
-interface Base {
-  typealias Nested = ...
-}
-
-interface Derived : Base {
-  fun foo(): Nested = ...               // OK
-}
-
-fun test(): Derived.Nested = ...        // Error
-```
+> This causes problems with nested type aliases in interfaces, see:
+>
+> * [KT-13247 Type aliases inherited from interfaces](https://youtrack.jetbrains.com/issue/KT-13247)
+>
+> Main issue is about to companion objects hierarchy and related static scopes:
+> ```
+> interface Base<T> {
+>     typealias List = List<T> 
+> }
+>
+> abstract class X {
+>     companion object : Base<String>
+> }
+>
+> absctract class Y : X(), Base<Int>
+>
+> class Z : Y() {
+>     val z: List
+>     // Can be resolved as 'Base<Int>.List' (from Y : Base<Int>)
+>     // or as 'Base<String>.List' (from X.Companion : Base<String>)
+> }
+> ```
+>
+> Note that unlike Scala, Kotlin doesn't have linearization rules for inherited members so far.
 
 ## Type aliases in binary metadata
 
-TODO
+Abbreviated types should be present in the serialized descriptors.
 
-> Abbreviated types should be present in the serialized signatures.
->
 > Note that additional check is required: if a type alias expansion gives a different type,
 > we can't use corresponding abbreviated form (due to incompatible changes).
 > We would still be able to compile against such binaries, just without abbreviated types in diagnostics.
@@ -506,12 +519,79 @@ TODO
 
 ## Type aliases and reflection
 
-TODO
+TODO do we need "type alias literals"?
+
+>```
+>typealias MyAlias = MyClass
+> 
+>... println(MyAlias::typealias.simpleName) ...
+>```
+
+### Reflection API for type aliases
+
+> Most likely something like:
+>
+> in kotlin.reflect.KType:
+>```
+>   /**
+>    * Type abbreviation used to denote this type in the source code definition.
+>    * May contain type aliases.
+>    *
+>    * `null` if this type is represented as is.
+>    */
+>   val abbreviatedType: KType?
+>```   
+>
+>```
+>public interface KTypeAlias<T : Any> : KAnnotatedElement, KClassifier {
+>    /**
+>     * Simple name of the type alias as declared in the source code.
+>     */
+>    public val simpleName: String
+>
+>    /**
+>     * Fully-qualified dot-separated name of the type alias,
+>     * or 'null' if type alias is local or a member of a local class.
+>     */
+>    public val qualifiedName: String?
+>
+>    /**
+>     * Right-hand side of the type alias definition.
+>     * May contain type aliases and type parameters.
+>     */
+>    public val underlyingType: KType
+>
+>    /**
+>     * Fully expanded type corresponding to this type alias.
+>     * May contain type parameters of the corresponding type alias.
+>     * May not contain type aliases.
+>     */
+>    public val expandedType: KType
+>
+>    /**
+>     * Class corresponding to this type alias.
+>     */
+>    public val correspondingClass: KClass<T>
+>}
+>
+>```
 
 ### Type aliases and annotations
 
-TODO
+Special annotation target for annotations applicable to type aliases is required:
+In kotlin.annotation.AnnotationTarget:
+```
+    /** Type alias */
+    TYPEALIAS,
+```
 
-## Extensions in stdlib
+In JVM, annotations for type aliases are written on a special synthetic method (similar to annotations on properties).
 
-TODO
+Standard annotations `kotlin.Deprecated` and `kotlin.Suppress` are applicable to type aliases:
+```
+@Deprecated("For some good reason")
+typealias Str = String
+
+@Suppress("UNUSED_TYPEALIAS_PARAMETER")
+typealias Repr<T> = IntArray
+```
