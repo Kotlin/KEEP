@@ -24,7 +24,7 @@ Support *bound callable references* (`<expression>::<member name>`) and *bound c
 ## Description
 
 *Bound* callable reference is the one which has its receiver "attached" to it. That receiver may be any expression, it is provided to the reference syntactically before `::`, is memoized in the reference after its construction, and is used as the receiver on each call to the underlying referenced function/property/constructor. Example:
-```
+```kotlin
 interface Comparator<T> {
     fun compare(first: T, second: T): Int
 }
@@ -38,7 +38,7 @@ The function type of a bound reference differs from the type of the correspondin
 Both function references and property references can be bound.
 
 Bound class literal is an expression which is evaluated to the runtime representation of the class of an object, similarly provided as an expression before `::`. Its semantics are similar to Java's `java.lang.Object#getClass`, except that its type is `kotlin.reflect.KClass<...>`, not `java.lang.Class<...>`. Example:
-```
+```kotlin
     val x: Widget = ...
     assert(x is GoodWidget) { "Bad widget: ${x::class.qualifiedName}" }
 ```
@@ -49,7 +49,7 @@ Now the LHS of a callable reference expression or a class literal expression (or
 
 The rules below are simplified for clarity:
 
-```
+```kotlin
 callableReferenceExpression
     : (expression "?"*)? "::" SimpleName typeArguments?
     ;
@@ -62,7 +62,7 @@ classLiteralExpression
 Note: type arguments after callable reference expressions are reported as unsupported at the moment, this syntax is reserved for the future.
 
 Double colon expressions are postfix expressions, so `::`'s priority is maximal and is equal to that of the dot (`.`).
-```
+```kotlin
     a+b::foo     // parsed as "a+(b::foo)"
     a.b::class   // parsed as "(a.b)::class"
 ```
@@ -72,7 +72,7 @@ Note that now any expression can be followed by question marks (`?`) and then `:
 ### Resolution: left-hand side of callable reference
 
 The LHS of a callable reference expression may now be interpreted as an expression, or a type, or both.
-```
+```kotlin
     SimpleName::foo           // expression (variable SimpleName) or type (class SimpleName)
     Qualified.Name::foo       // expression or type
 
@@ -99,7 +99,7 @@ The semantics are different when the LHS is interpreted as an expression or a ty
 > If there were no `object`s or `companion object`s in Kotlin, the algorithm would be very simple: first try resolving as expression, then as type. However, this would not be backwards compatible for a very common case: in an expression like `Obj::foo`, without any changes to the source code an object `Obj` might now win the resolution where previously (in Kotlin 1.0) a completely different class `Obj` had been winning. This is possible when you have a class named `Obj` and an object `Obj` in another package, coming from a star import.
 
 Examples:
-```
+```kotlin
 class C {
     companion object {
         fun foo() {}
@@ -118,7 +118,7 @@ fun test() {
 
 Note that references to object members will be considered bound by this algorithm
 (whether or not it should be possible to obtain an unbound reference for an object/companion member is an open question):
-```
+```kotlin
 object O {
     fun foo() {}
 }
@@ -132,7 +132,7 @@ fun test() {
 ```
 
 It is an error if the LHS expression has nullable type and the resolved member is not an extension to nullable type:
-```
+```kotlin
 class C {
     fun foo() {}
 }
@@ -149,7 +149,7 @@ fun test(c: C?) {
 
 Resolution of the LHS of a class literal expression is performed with the same algorithm.
 
-```
+```kotlin
 class C {
     companion object
 }
@@ -171,7 +171,7 @@ More formally, let `T` = `C<A1, ..., AN>`, where `C` is a class and `N`, the num
 - otherwise `erase(T)` = `C<*, ..., *>`
 
 Examples:
-```
+```kotlin
 fun test() {
     "a"::class                   // KClass<String>
     listOf("a")::class           // KClass<List<*>> (not "KClass<List<String>>"!)
@@ -184,7 +184,7 @@ fun test() {
 ```
 
 > The reason for substitution with star projections is erasure: type arguments are not reified at runtime in Kotlin, so using class literals with seemingly full type information could result in exceptions at runtime. For example, consider the following code, where if we don't substitute arguments with `*`, an exception is thrown:
-> ```
+> ```kotlin
 > fun test(): String {
 >     val kClass: KClass<List<String>> = listOf("")::class
 >     val strings: List<String> = kClass.cast(listOf(42))
@@ -196,7 +196,7 @@ fun test() {
 TODO: in JS, there seems to be no way to determine type arguments of arrays at runtime
 
 It is an error if the LHS of a bound class literal has nullable type:
-```
+```kotlin
 fun test(s: String?) {
     s::class       // error
     null::class    // error
@@ -210,19 +210,19 @@ To give room for some future language features, we might restrict some rare usag
 #### Nullable references
 
 According to this proposal, in the following syntax
-```
+```kotlin
 Foo?::bar
 ```
 the left-hand side can only be interpreted as a type because `Foo?` is not a valid expression. Therefore this would necessarily be a reference to an extension function named `bar` to the type `Foo?`.
 
 However, at some point we may want to give it the semantics of a reference to an expression `Foo` which is null when the result of that expression is null. In other words, it would be equivalent to
-```
+```kotlin
 Foo?.let { it::bar }
 
 ```
 
 To be able to introduce this later, we should **prohibit** double colon expressions of the form `Foo?::bar` where `Foo` may be resolved as an *expression*. This usually happens when there's a variable or a property named `Foo` in the scope. `Foo` in this case must be either a simple name or a dot qualified name expression. This restriction is needed to prevent the change of behavior:
-```
+```kotlin
 class Foo
 fun Foo?.bar() {}
 
@@ -235,7 +235,7 @@ fun test() {
 ```
 
 One particular case is object declarations. An object name is both a variable and a type, so, according to the rule above, references to extensions to nullable object types will be forbidden, to prevent such references from changing the semantics in the future:
-```
+```kotlin
 object Obj
 fun Obj?.ext() {}
 
@@ -247,7 +247,7 @@ fun test() {
 #### Calls to generic properties
 
 It's possible that one day we will support calling generic properties with explicit type arguments:
-```
+```kotlin
 val <T> id: (T) -> (T)
     get() = { x -> x }
 
@@ -259,13 +259,13 @@ To be able to implement it later, similarly to nullable references above, we sho
 ### Code generation (JVM)
 
 Putting aside reflection features, generated bytecode for `val res = <expr>::foo` should be similar to the following:
-```
+```kotlin
 val tmp = <expr>
 val res = { args -> tmp.foo(args) }
 ```
 
 If a function reference is passed as an argument to an `inline` function, the corresponding call should be inlined and no anonymous class should be generated. The receiver should be calculated once and saved to a temporary variable before inlining the call:
-```
+```kotlin
 class A {
     val strings: List<String> = ...
         get() = field.apply { println("Side effect!") }
@@ -287,7 +287,7 @@ Its `parameters` property doesn't have this parameter and the argument should no
 ## Open questions
 
 - Referencing member extensions, implicitly binding one of the receivers to `this`:
-  ```
+  ```kotlin
   class Bar
 
   class Foo {
@@ -302,7 +302,7 @@ Its `parameters` property doesn't have this parameter and the argument should no
     - Information about the original receiver type is absent in the type of a bound reference, so it's unclear what signature will the hypothetical "unbind" function have.
         - One option would be an _unsafe_ "unbind" with a generic parameter which prepends that parameter to function type's parameter types:
 
-          ```
+          ```kotlin
           class O {
               fun foo() {}
               val bound: () -> Unit = this::foo
@@ -331,7 +331,7 @@ There are a few possible improvements which are related to this proposal, but do
 
 - For a class member (or an extension), empty LHS of a callable reference (or a class literal) may mean `this`. The rationale is: inside the class `bar()` is equivalent to `this.bar()`, so `::bar` may be equivalent to `this::bar`.
 
-  ```
+  ```kotlin
   class Foo {
       fun bar() {}
 
@@ -343,7 +343,7 @@ There are a few possible improvements which are related to this proposal, but do
 
 - Another possible use of the empty LHS would be to avoid specifying the type of the receiver of the expected function type, when passing an unbound reference as an argument:
 
-  ```
+  ```kotlin
   val maps: List<Map<String, Int>> = ...
   val nonEmpty = maps.filter(::isNotEmpty)   // equivalent to "Map<String, Int>::isNotEmpty"
   ```
