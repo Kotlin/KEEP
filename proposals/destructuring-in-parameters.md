@@ -2,7 +2,8 @@
 
 * **Type**: Design proposal
 * **Author**: Andrey Breslav
-* **Status**: Under consideration
+* **Status**: In progress
+* **Discussion**: [KEEP-32](https://github.com/Kotlin/KEEP/issues/32)
 
 ## Goal
 
