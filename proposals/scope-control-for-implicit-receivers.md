@@ -5,8 +5,7 @@
 * **Contributors**: Ilya Ryzhenkov, Denis Zharkov
 * **Status**: Under consideration
 * **Prototype**: In Progress
-
-Discussion of this proposal is held in [this issue](TODO).
+* **Discussion**: [KEEP-57](https://github.com/Kotlin/KEEP/issues/57)
 
 ## Problem description
 
