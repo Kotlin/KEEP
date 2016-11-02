@@ -2,9 +2,9 @@
 
 * **Type**: Design proposal
 * **Author**: Andrey Breslav
-* **Contributors**: Ilya Ryzhenkov
+* **Contributors**: Ilya Ryzhenkov, Denis Zharkov
 * **Status**: Under consideration
-* **Prototype**: Not started
+* **Prototype**: In Progress
 
 Discussion of this proposal is held in [this issue](TODO).
 
@@ -50,7 +50,37 @@ This approach has the following major disadvantages:
 - one can't anticipate all cases of DSL composition, so there's no way to know the complete set of functions to screen against,
 - there's no way to know in advance all possible extensions defined for outer receivers, so screening for them is also impossible.  
 
-## Proposed solution
+## Proposed solutions
+
+### DslMarker (the one currently implemented)
+
+We introduce `DslMarker` annotation with the following definition:
+```kotlin
+@Target(ANNOTATION_CLASS)
+@Retention(RUNTIME)
+@MustBeDocumented
+annotation class DslMarker
+```
+
+An annotation class `Ann` is called *a DSL marker* if it is annotated with the `@DslMarker` annotation.
+
+The general rule:
+* an implicit receiver may *belong to a DSL `@Ann`* if it's marked with a corresponding DSL marker annotation
+* two implicit receivers of the same DSL are not accessible in the same scope
+    * the closest one wins
+    * other available receivers are resolved as usual, but if the resulting resolved call binds to such a receiver, it's a compilation error
+
+Marking rules: an implicit receiver is considered marked with `@Ann` if
+* its type is marked, or
+* its type's classifier is marked
+    * or any of its superclasses/superinterfaces
+
+Additional notes
+* Receivers can be accessed through `this@label` regardless of their marking
+* Multiple markers on the same receivers:
+    * If receivers tower looks like (2, 1+2, 1), we consider both 2 and 1+2 unavailable
+
+### ScreenFrom (obsolete)
 
 We propose to control availability of outer receivers inside a builder lambda through an annotation on the lambda parameter:
 
@@ -74,7 +104,7 @@ An empty set of receivers may mean either
 - screen from all (equivalent to `@ScreenFrom(Any::class)`)
 - screen from nothing.
 
-## Terminology and Naming
+#### Terminology and Naming
 
 The proposed technique requires a name. Possible options include:
 - scope control for implicit receivers
@@ -90,14 +120,14 @@ Possible names for the annotation:
 - IsolateReceiver
 - IsolateFrom
 
-## Open questions
+#### Open questions
 
 - Classes vs types in the annotation arguments: classes may be too imprecise. E.g. when all receivers are of type `Tag<something>`, `something` is the only thing that we can differentiate for, and classes can't express that.
 
 > This is an important question, actually. We may well support types as arguments to annotations at some point, e.g. `@Ann(Foo<Bar>)` (syntax is questionable). So, if we implement this through classes now, we should have a clear transition path for introducing types later.
  
-## Arguments against this proposal
+#### Arguments against this proposal
  
 - Adding an annotation that affects name resolution severely (special syntax/modifier may be considered as an alternative)
   - We can consider implementing this as a "language extension", e.g. a compiler plugin 
-- It doesn't cover cases like "screen from the immediate outer, but not the rest of the receivers"  
+- It doesn't cover cases like "screen from the immediate outer, but not the rest of the receivers"
