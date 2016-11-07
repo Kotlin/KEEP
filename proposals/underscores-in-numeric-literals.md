@@ -10,7 +10,7 @@ Support underscores in numeric literals for separating digit groups.
 
 ## Motivation
 
-Numeric values wth a high number of digits are hard to read which is why it is proposed to support underscores as digit group separators. This results in easier to read code and doesn't affect the semantics at all.
+Numeric values with a high number of digits are hard to read which is why it is proposed to support underscores as digit group separators. This results in easier to read code and doesn't affect the semantics at all.
 
 ### Comparison
 
