@@ -40,8 +40,8 @@ and so on.
 Type aliases do not introduce new types.
 Instead, they are fully expanded, and are equivalent to the corresponding underlying types.
 
-Use **value classes** to define new types (which are not assignment-compatible with the corresponding underlying types,
-but do not introduce overhead related to additional heap allocations),
+To introduce new types (which are not assignment-compatible with the corresponding underlying types,
+but do not introduce overhead related to additional heap allocations), use **value classes**.
 Value classes will be supported closer to [Project Valhalla](http://openjdk.java.net/projects/valhalla/) release.
 
 **NB** Java has no concept of "type aliases" and can't see them in class member signatures.
@@ -109,7 +109,7 @@ class MyMap<K, out V> : Map<K, V> {
 ## Type alias expansion
 
 Type is *abbreviated* if it contains type aliases.
-Type alias is *unabbreviated* if it doesn't contain type aliases.
+Type is *unabbreviated* if it doesn't contain type aliases.
 
 Type alias can expand to a class, interface, or object:
 ```
@@ -236,7 +236,7 @@ typealias T4 = Array2D<out Number>          // Array<Array<out Number>>
 Type aliases can have the same visibility modifiers as other members of the corresponding scope:
 * type aliases declared in packages can be `public`, `internal`, or `private` (public by default);
 * type aliases declared in classes can be `public`, `internal`, `protected`, or `private` (public by default);
-* type aliases declared in interfaces can be `public`, `internal`, or `private` (public by default);
+* type aliases declared in interfaces can be `public` or `private` (public by default);
 * type aliases declared in objects can be `public`, `internal`, or `private` (public by default);
 * block-level type aliases are local to the block.
 
@@ -362,8 +362,18 @@ val EmptyList = emptyList()             // Error: val EmptyList is conflicting w
 If a type alias `TA` expands to a top-level or nested (but not inner) class `C`,
 for each (primary or secondary) constructor of `C` with substituted signature `<T1, ..., Tn> (P1, ..., Pm)`
 a corresponding type alias constructor function `<T1, ..., Tn> TA(P1, ..., Pm)`
-is introduced in the corresponding surrounding scope,
-which can conflict with other functions with name `TA` declared in that scope.
+is accessible in the corresponding scope, if the constructor `C` is accessible in this scope.
+```
+class C(val x: Int) {
+  private constructor(): this(0)
+}
+typealias CA = C
+
+val example1 = CA(1)    // Ok
+val example2 = CA()     // Error
+```
+
+Type alias constructor can conflict with other functions with name `TA` declared in that scope.
 ```
 class A                 // constructor A()
 typealias B = A         // Error: type alias constructor B() is conflicting with fun B()
@@ -372,6 +382,16 @@ fun B() {}              // Error: fun B() is conflicting with type alias constru
 class V<T>(val x: T)                // constructor V<T>()
 typealias ListV<T> = V<List<T>>     // Error: type alias constructor <T> ListV(List<T>) is conflicting with fun <T> ListV(List<T>)
 fun <T> ListV(x: List<T>) {}        // Error: fun <T> ListV(List<T>) is conflicting with type alias constructor <T> ListV(List<T>)
+```
+
+Type arguments for type alias constructors are inferred from argument types.
+Resulting type should be valid, e.g.:
+```
+class Num<T : Number>(val x: T)
+typealias N<T> = Num<T>
+
+val example1 = N(1)     // Ok
+val example2 = N("")    // Error: upper bound violated
 ```
 
 ### Type alias constructors for inner classes
