@@ -123,13 +123,16 @@ is translated to
 
 **Typing rule**: Types of the components must be compatible with component-functions (`componentN()`) resolvable on corresponding parameters. When such functions can not be applied or their return types are not assignable to declared types of components, an error is reported.
    
-Component-functions are resolved in the scope that contains the lambda, i.e. this should not compile:
-   
+Component-functions are resolved in the same scope as the first statement of the lambda.
+The reason is that we want to preserve desugaring semantics described above.
+
+But the following example still must not compile because
+the relevant parameters are not and cannot be marked as operators.
 ``` kotlin
 {
   component1: P.() -> A,
   component2: P.() -> B,
-  (a, b): P // error: component functions not found 
+  (a, b): P // error: component functions not resolved
   -> 
   ...  
 ```
