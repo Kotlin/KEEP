@@ -2,7 +2,7 @@
 
 * **Type**: Design proposal
 * **Author**: Kirill Rakhman
-* **Status**: Under consideration
+* **Status**: Implemented
 
 ## Synopsis
 
@@ -63,10 +63,6 @@ val x5 = 0_x52            // Invalid cannot put underscores in the 0x radix pref
 val x6 = 0x_52            // Invalid cannot put underscores at the beginning of a number
 val x7 = 0x5_2            // OK (hexadecimal literal)
 val x8 = 0x52_            // Invalid cannot put underscores at the end of a number
-
-val x9 = 0_52             // OK (octal literal)
-val x10 = 05_2            // OK (octal literal)
-val x11 = 052_            // Invalid cannot put underscores at the end of a number
 ```
 
 ## Comparison to other languages
