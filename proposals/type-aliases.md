@@ -68,6 +68,9 @@ Variance and constraints for type parameters of the generic type aliases are not
 > it will be reported with additional details about type alias expansion context.
 
 Type aliases can be top-level declarations, member declarations, or local declarations.
+
+In **Kotlin 1.1**, only top-level type alias declarations are supported.
+See [Nested type aliases](#nested_type_aliases) for more details. 
 ```
 toplevelObject
     : ...
@@ -394,6 +397,20 @@ val example1 = N(1)     // Ok
 val example2 = N("")    // Error: upper bound violated
 ```
 
+If the corresponding expanded type contains type projections as top-level arguments, it can not be constructed, and can not be a supertype
+(same restriction applies to classes and interfaces).
+```
+class CInv<T>
+interface IInv<T>
+
+typealias COut<T> = CInv<out T>
+interface IOut<T> = IInv<out T>
+
+val example1 = COut<Number>()   // Error: expanded type CInv<out Number> can not be constructed
+
+class Example2 : IOut<Number>   // Error: expanded type IInv<out Number> can not be a supertype
+```
+
 ### Type alias constructors for inner classes
 
 > Question: how should we better deal with the type arguments?
@@ -480,7 +497,36 @@ class C<T>: T1<T>, T2<T> {
 
 > NB type arguments can't be specified in super qualifier for classes and interfaces.
 
-## Nested type aliases
+## <a name="nested_type_aliases"></a>Nested type aliases
+
+> Only top-level type aliases are supported in **Kotlin 1.1**.
+> Main problem is that currently we have no scope that would capture type parameters of a class, 
+> but not a receiver value. 
+> Such scopes roughly correspond to static scope in C#.
+>
+> Example 1:
+> ```
+> class Outer<T> {
+>     typealias Set = HashSet<T> 
+> }
+>
+> // This syntax is currently not supported in qualified expression resolution:
+> val example1 = Outer<String>.Set()
+> ```
+> 
+> Example 2:
+> ```
+> class Outer1<T1> {
+>     inner class Inner1
+> }
+>
+> class Outer2<T2> {
+>     // What is the signature of type alias constructor for A 
+>     // corresponding to 'Outer1<T1>.Inner1()'?   
+>     typealias A = Outer1<T2>.Inner1 
+> }
+> ```
+
 
 Type aliases declared in classes, objects, or interfaces are called nested.
 Same resolution rules are applied for nested type aliases as for other nested classifiers.
