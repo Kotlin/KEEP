@@ -29,7 +29,7 @@ Currently, there's no performant way of retrieving `values()`/`valueOf()` from a
 > The initial YouTrack issue: 
 >- *[KT-10569](https://youtrack.jetbrains.com/issue/KT-10569) Cannot iterate over values of an enum class when it is used as a generic parameter*   
    
-We propose to support `values()`/`valueOf()` for reified type parameters that extend `Enum<T>` through a compiler intrinsic that would generate appropriate static calls to the particular enum class.
+We propose to support `enumValues()`/`enumValueOf()` for reified type parameters that extend `Enum<T>` through a compiler intrinsic that would generate appropriate static calls to the particular enum class.
    
 ## References
    
@@ -46,11 +46,9 @@ There are several options of expressing this in the language. Note that this is 
 We can define the following functions in the standard library:
 
 ``` kotlin
-@InlineOnly
-fun <reified E : Enum<E>> Enum.Companion.values(): Array<E> = null!!
+public inline fun <reified E : Enum<E>> enumValues(): Array<T>
 
-@InlineOnly
-fun <reified E : Enum<E>> Enum.Companion.valueOf(name: String): E = null!!
+public inline fun <reified E : Enum<E>> enumValueOf(name: String): T
 ```
 
 Both should be intrinsics and the back-end should emit static calls to the `values()`/`valueOf()` methods of the actual enum class passed for `E` instead of inlining the bodies of these functions.
