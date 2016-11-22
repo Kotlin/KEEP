@@ -2,13 +2,12 @@
 
 * **Type**: Design proposal
 * **Author**: Andrey Breslav
-* **Contributors**: Stanislav Erokhin, Alexander Udalov
-* **Status**: Under consideration
-* **Prototype**: Not started
+* **Contributors**: Stanislav Erokhin, Alexander Udalov, Michael Bogdanov
+* **Status**: Implemented in 1.1-M03
 
 ## Feedback
 
-Discussion of this proposal is held in [this issue](TODO).
+Discussion of this proposal is held in [this issue](https://github.com/Kotlin/KEEP/issues/61).
 
 ## Synopsis
 
