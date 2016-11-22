@@ -5,6 +5,7 @@
 * **Contributors**: Andrey Breslav, Ilya Gorbunov
 * **Status**: Submitted
 * **Prototype**: In progress
+* **Discussion**: https://github.com/Kotlin/KEEP/issues/30
 
 ## Goals
 
