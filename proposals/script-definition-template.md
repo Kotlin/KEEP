@@ -2,6 +2,9 @@
 
 Goal: flexibly defining script behaviour using Kotlin syntax and simple usage scheme.
 
+## Feedback
+
+Discussion of this proposal is held in [this issue](https://github.com/Kotlin/KEEP/issues/28)
 
 ## Use cases
 
