@@ -20,6 +20,7 @@ Support for `slidingWindow` and `slidingWindowBackward` extension functions for 
  - Clojure: [partition](https://clojuredocs.org/clojure.core/partition)
  - Klutter: [batch and lazyBatch](https://github.com/kohesive/klutter/blob/master/core-jdk6/src/main/kotlin/uy/klutter/core/common/CollectionsBatching.kt)
  - StreamEx: [StreamEx.ofSubLists](https://github.com/amaembo/streamex/blob/f5bd4c3ba79aa0de87ea834e87ac1040a67fa5d8/src/main/java/one/util/streamex/StreamEx.java#L2677)
+ - ProtonPack: [windowed](https://github.com/poetix/protonpack/blob/master/src/main/java/com/codepoetics/protonpack/StreamUtils.java#L210)
  
 ## Use cases
 
