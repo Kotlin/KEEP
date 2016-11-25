@@ -2,43 +2,48 @@
 
 * **Type**: Standard Library API proposal
 * **Author**: Christian Brüggemann
-* **Status**: Submitted
-* **Prototype**: Not started
+* **Status**: Discussed
+* **Prototype**: Implemented
+* **Related issues**: [KT-8220](https://youtrack.jetbrains.com/issue/KT-8220)
 * **Discussion**: [KEEP-47](https://github.com/Kotlin/KEEP/issues/47)
 
 
 ## Summary
 
-The goal is to introduce a function called `peek`, which allows the user to perform an action on each element of a `Sequence` or an `Iterable` without breaking the functional chain like `forEach` does.
+The goal is to introduce a function called `onEach`, which allows the user to perform an action on each element of a `Sequence` or an `Iterable` without breaking the functional chain like `forEach` does.
 
 ## Description
 
-When working with `Sequences` or `Iterables`, it can be useful to take a look at what items are passed through the stream. This is especially useful for debugging. Effectively, `peek` would work like this:
+When working with `Sequences` or `Iterables`, it can be useful to take a look at what items are passed through the stream. This is especially useful for debugging. Effectively, `onEach` would work like this:
 
 ```
-inline fun <T> Sequence<T>.peek(f: (T) -> Unit): Sequence<T> = map { f(it); it }
-inline fun <T> Iterable<T>.peek(f: (T) -> Unit): Iterable<T> = apply { forEach(f) }
+fun <T> Sequence<T>.onEach(f: (T) -> Unit): Sequence<T> = map { f(it); it }
+// the following signatures are similified, look for actual ones in the prototype
+inline fun <T> Iterable<T>.onEach(f: (T) -> Unit): Iterable<T> = apply { forEach(f) }
+inline fun <K, V> Map<out K, V>.onEach(action: (Map.Entry<K, V>) -> Unit)
+inline fun CharSequence.onEach(action: (Char) -> Unit)
 ```
 
-However, `peek` could also be implemented without relying on `map` by implementing a custom `Sequence`/`Iterator` which allows for peeking.
+However, `onEach` could also be implemented without relying on `map` by implementing a custom `Sequence`/`Iterator` which allows for peeking.
 
 ### Example usage
 
 ```
-val sum = listOf(1, 2, 3).asSequence().peek { println("Adding $it") }.sum()
+val sum = listOf(1, 2, 3).asSequence().onEach { println("Adding $it") }.sum()
 ```
 
 ### Naming
 
-As described in the related [YouTrack issue](https://youtrack.jetbrains.com/issue/KT-8220#tab=Comments), the name `peek` could be confused with `Queue.peek`. Thus, the following alternatives could be considered to mitigate this:
+As described in the related [YouTrack issue](https://youtrack.jetbrains.com/issue/KT-8220#tab=Comments), the name `peek` could be confused with `Queue.peek`. Thus, the following alternatives was considered to mitigate this:
 
 * onEach
 * peekEach
 * doOnEach
 
+Overall, `onEach` was chosen to reflect similarity with `forEach`.
+
 ## Similar API review
 
-* As outlined above, `map` can be used for implementing `peek`.
 * Java `Streams` have `peek` ([docs](https://docs.oracle.com/javase/8/docs/api/java/util/stream/Stream.html#peek-java.util.function.Consumer-)) as well.
 * RxJava contains a method called `doOnNext` ([docs](http://reactivex.io/documentation/operators/do.html))
 
@@ -70,7 +75,7 @@ internalMap.entrySet().stream()
 
 ## Alternatives
 
-If `peek` is defined once as a function somewhere, verbosity is not increased apart from the function definition. That does not imply though that `peek` should not be a part of the standard library, since standardizing commonly used patterns helps avoiding fragmentation.
+- use `apply { forEach { } }` for collections, and roughly `map { apply { } }` for sequences.
 
 ## Dependencies
 
@@ -83,9 +88,11 @@ Only the stdlib.
 
 ## Reference implementation
 
-If no custom `Sequence`/`Iterator` is required, the function definition in the description can be considered the reference implementation. Since it is very simple, additional tests should not be necessary.
+Reference implementation is provided in [rr/stdlib/oneach](https://github.com/JetBrains/kotlin/compare/rr/stdlib/oneach) branch.
 
 ## Unresolved questions
 
 * Which name should be picked?
-* Should `peek` delegate to `map`/`forEach` or be implemented using a custom `Sequence`/`Iterator`?
+    - settled on `onEach`
+* Should `onEach` delegate to `map`/`forEach` or be implemented using a custom `Sequence`/`Iterator`?
+    - `onEach` for sequences should delegate to `map` to reuse its possible optimizations.
