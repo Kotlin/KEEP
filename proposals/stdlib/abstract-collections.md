@@ -2,7 +2,7 @@
 
 * **Type**: Standard Library API proposal
 * **Author**: Ilya Gorbunov
-* **Status**: Under consideration
+* **Status**: Implemented
 * **Prototype**: Implemented
 * **Discussion**: [KEEP-53](https://github.com/Kotlin/KEEP/issues/53)
 

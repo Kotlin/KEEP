@@ -3,7 +3,7 @@
 * **Type**: Standard Library API proposal
 * **Author**: Daniil Vodopian
 * **Contributors**: Ilya Gorbunov
-* **Status**: Submitted
+* **Status**: Implemented
 * **Prototype**: Implemented
 * **Related issues**: [KT-7930](https://youtrack.jetbrains.com/issue/KT-7930)
 * **Indirectly related issues**: [KT-8286](https://youtrack.jetbrains.com/issue/KT-8286), [KT-9374](https://youtrack.jetbrains.com/issue/KT-9374)
@@ -90,10 +90,14 @@ The reference implementation is provided in the pull request [PR #839](https://g
     * `String.tryToInt()`
     * `String.tryParseInt()`
 * Difference between JDK6 and JDK8 in allowing the leading `+` sign.
+    * This is acceptable difference.
 * Returning nullable number introduces boxing which may be wasteful.
 * Investigate how to introduce `base`/`radix` parameter for string-to-integral type conversion functions [KT-8286](https://youtrack.jetbrains.com/issue/KT-8286):
     * Should it be another parameter or an overload with a different name (like `toIntBase(16)`)?
+        - it will be an additional parameter `radix`
     * Should it be a single overload with an optional parameter or two overloads?
+        - given that a method with default arguments gets compiled to two methods in bytecode, two overloads with no default arguments 
+        will result in the same number of methods, but providing more convenient way to call them from Java.
 
 ## Future advancements
 

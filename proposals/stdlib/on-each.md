@@ -2,7 +2,7 @@
 
 * **Type**: Standard Library API proposal
 * **Author**: Christian Brüggemann
-* **Status**: Discussed
+* **Status**: Implemented
 * **Prototype**: Implemented
 * **Related issues**: [KT-8220](https://youtrack.jetbrains.com/issue/KT-8220)
 * **Discussion**: [KEEP-47](https://github.com/Kotlin/KEEP/issues/47)

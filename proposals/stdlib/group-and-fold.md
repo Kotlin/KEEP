@@ -206,20 +206,20 @@ The operation returns `Map<K, R>`, where `K` is the type of the key and `R` is t
         There is a risk of confusing `groupingBy` and `groupBy`.
 
     * `count`/`sumBy` can be misinterpreted as operations on the whole collection, rather on each group.
-        * resolution: `countEach`, `sumEachBy`
+        * **resolution**: `countEach`, `sumEachBy`
         
     * `Grouping` is often referenced in docs as "grouping source", so maybe we should name it `GroupingSource`?
 
 2. Which general forms of `fold`/`reduce`/`aggregate` should we provide?
     * Method count is increased
-        * resolution: since there's a single receiver for all operations, the impact on method count is not that big.
+        * **resolution**: since there's a single receiver for all operations, the impact on method count is not that big.
     * Having them as overloads hurts completion during gradual typing.
 3. Should we provide `To`-overloads (like `groupByTo`) with a mutable map as a target parameter?
-    * resolution: there are no easy alternatives to achieve the same results without these overloads,
+    * **resolution**: there are no easy alternatives to achieve the same results without these overloads,
      so we should provide them.
      
 4. Having primitive fold accumulators stored in a map introduces a lot of boxing.
-    * resolution: provide optimized implementations of `countEach` and `sumEachBy`. 
+    * **resolution**: provide optimized implementations of `countEach` and `sumEachBy`. 
     Note that, there's no such optimization for `countEachTo` and `sumEachByTo`.
     
 5. Should we provide `sumEachByLong` and `sumEachByDouble` operations, 
