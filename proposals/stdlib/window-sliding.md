@@ -2,7 +2,7 @@
 
 * **Type**: Standard Library API proposal
 * **Author**: Sergey Mashkov
-* **Status**: Submitted
+* **Status**: Under consideration
 * **Prototype**: Implemented
 * **Target tickets**: [KT-10021](https://youtrack.jetbrains.com/issue/KT-10021), [KT-9151](https://youtrack.jetbrains.com/issue/KT-9151), [KT-11026](https://youtrack.jetbrains.com/issue/KT-11026)
 * **Discussion**: [KEEP-11](https://github.com/Kotlin/KEEP/issues/11)
@@ -115,12 +115,15 @@ See reference implementation in branch [rr/cy/window-sliding](https://github.com
 ## Unresolved questions
 
  - should we provide `slidingWindowBackward` for indexed collections? What are the use cases?
+    - **resolution**: do not provide until use cases are clear in demand
  - should we provide `slidingWindowIndices` and `slidingWindowBackwardIndices` as well?
+    - **resolution**: do not provide until use cases are clear in demand
  - Whether or not to allow window size of 0
     * neither of analogs allows
     * (con) strange corner case — makes not much of sense to obtain a series of zero-sized windows.
     * (pro) valid operation and it's possible to implement.
     * (pro) reduce possible crash cases as crash generally is more dangerous
+    - **resolution**: do not allow
  - what to do with the last window having less than the specified `size` elements:
     - keep partial window(s) — required for cases like batch processing
     - drop partial window(s) — for cases like moving average
@@ -128,9 +131,12 @@ See reference implementation in branch [rr/cy/window-sliding](https://github.com
     - pad partial windows to required size 
         * Could be achieved with `map { it.padEnd(size, paddingElement) }`, but it requires
         introducing `padStart`/`padEnd` for collections.
+    - fail when last window(s) is partial
+    - **resolution**: default to keeping partial windows, other modes could be achieved on top of that.
  - do we need `slidingWindow2` and `slidingWindow3` as described in [KT-10021](https://youtrack.jetbrains.com/issue/KT-10021) with the following signatures:
      * `slidingWindow2([step], operation: (T, T) -> Unit)`
      * `slidingWindow3([step], operation: (T, T, T) -> Unit)`
+     -  **resolution**: introduce `slidingWindow2` in form of `pairwise((T, T) -> R)` and `pairwise(): Sequence<Pair<T, T>`
 
 ## Future advancements
 
