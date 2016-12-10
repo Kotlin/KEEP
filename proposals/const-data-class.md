@@ -39,11 +39,6 @@ A `const data class` has the same limitations as a `data class` with the followi
 	- Const data class
 - Its `hashcode` and `equals` functions cannot be overridden.
 
-### Auto-detection by the compiler
-
-The compiler could detect that a data class complies with all restrictions and apply silently the optimization if it does.
-Using the `const` keyword would then force the programmer to enforce said limitations.
-
 ### Keyword
 
 The `const` keyword used in this proposal is proposed because of its semantic.
@@ -80,6 +75,13 @@ As stated in the synopsis, there would be no *guarantee* that the data class is 
 
 See [issue KT-12991](https://youtrack.jetbrains.com/issue/KT-12991).
 This would allow the programmer to achieve the same result but, again, with no strong constant guarantee, other of course than *convention*.
+
+### Auto-detection by the compiler
+
+The compiler could detect that a data class complies with all restrictions and apply silently the optimization if it does.
+An annotation would still exist to allow the programmer to force himself to enforce said limitations.
+
+However, this auto-detection would be inconsistent with the rest of Kotlin because it silently adds a field to a class. That may be critical when you optimizing for small footprint.
 
 ## Arguments against this proposal
 
