@@ -57,6 +57,8 @@ The `toString` value is generated only once and then cached. Each time the funct
 
 The `hashCode` value is generated only once and then cached. Each time the function is called, it first checks whether the hash code has already been generated and returns it if it has.
 
+Both cached values are marked `@Transient` to prevent them to be serialized or transfered along with the data.
+
 The `equals` function checks `hashcode()` equality *before* checking any other equality.
 Because the hash is most likely already cached, this enables to fail fast.
 *(Note: this assertion should be statistically checked: if most `equals` function call succeed, this will slightly slow down execution instead of speeding it up)*.
@@ -93,6 +95,7 @@ import java.util.*
 data class Person(val firstName: String, val lastName: String)
 
 data class Optimized(val id: Int, val person: Person) {
+    @Transient
     private var _hashcode = 0;
     override fun hashCode(): Int{
         if (_hashcode == 0)
