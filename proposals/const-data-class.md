@@ -59,6 +59,8 @@ The `hashCode` value is generated only once and then cached. Each time the funct
 
 Both cached values are marked `@Transient` to prevent them to be serialized or transfered along with the data.
 
+Both cached values are marked `@Volatile` to allow thread safety: at worst, the value can be computed by multiple threads at the same time, but it cannot be corrupt.
+
 The `equals` function checks `hashcode()` equality *before* checking any other equality.
 Because the hash is most likely already cached, this enables to fail fast.
 *(Note: this assertion should be statistically checked: if most `equals` function call succeed, this will slightly slow down execution instead of speeding it up)*.
@@ -95,7 +97,7 @@ import java.util.*
 data class Person(val firstName: String, val lastName: String)
 
 data class Optimized(val id: Int, val person: Person) {
-    @Transient
+    @Transient @Volatile
     private var _hashcode = 0;
     override fun hashCode(): Int{
         if (_hashcode == 0)
