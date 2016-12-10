@@ -22,11 +22,13 @@ A very simple benchmark (see appendix 1) has shown that the simple optimization 
 The [issue KT-12991](https://youtrack.jetbrains.com/issue/KT-12991) introduces the idea to access the `hashcode` function generated for the data class even if the function is overridden.
 This would allow the programmer to manually cache the `hashCode` of a data class but there would be no guarantee of the validity of such a measure other than *convention* (e.g. the programmer could cache the result of the hashcode even if the data class contains a `var`).
 
-We propose the notion of `const data class` that severely limits the possibility of such classes but enables the compiler to generate a `hashcode` function with cached result with the *guarantee* that the result will always reflect the data (e.g. the data can *never* change).
+We propose the notion of `const data class` that severely limits the possibility of such classes but enables the compiler to generate `hashcode` and `toString` functions with cached values with the *guarantee* that the output will always reflect the data (e.g. the data can *never* change).
 
 Note that this proposal does NOT substitutes itself to KT-12991 as manually caching can still be very usefull when using data classes that do not (or cannot) comply with const data classes limitations.
 
-## Const data class limitations
+## Const data classes
+
+### limitations
 
 A `const data class` has the same limitations as a `data class` with the following additions:
 
@@ -37,13 +39,23 @@ A `const data class` has the same limitations as a `data class` with the followi
 	- Const data class
 - Its `hashcode` and `equals` functions cannot be overridden.
 
+### Auto-detection by the compiler
+
+The compiler could detect that a data class complies with all restrictions and apply silently the optimization if it does.
+Using the `const` keyword would then force the programmer to enforce said limitations.
+
+### Keyword
+
+The `const` keyword used in this proposal is proposed because of its semantic.
+It can easily be replaced by a compiler annotation (such as `@CachedHashcode`).
+
 ## Compiler implementation
 
 #### Definition
 
-The `toString` method is unaffected by the `const` modifier.
+The `toString` value is generated only once and then cached. Each time the function is called, it first checks whether the value has already been generated and returns it if it has. Note that the `toString` method can be overridden.
 
-The `hashCode` is generated only once and then cached. Each time the function is called, it first checks whether the hash code has already been generated and returns it if it has.
+The `hashCode` value is generated only once and then cached. Each time the function is called, it first checks whether the hash code has already been generated and returns it if it has.
 
 The `equals` function checks `hashcode()` equality *before* checking any other equality.
 Because the hash is most likely already cached, this enables to fail fast.
