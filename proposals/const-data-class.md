@@ -81,7 +81,7 @@ This would allow the programmer to achieve the same result but, again, with no s
 The compiler could detect that a data class complies with all restrictions and apply silently the optimization if it does.
 An annotation would still exist to allow the programmer to force himself to enforce said limitations.
 
-However, this auto-detection would be inconsistent with the rest of Kotlin because it silently adds a field to a class. That may be critical when you optimizing for small footprint.
+However, this auto-detection would be inconsistent with the rest of Kotlin because it silently adds a field to a class. That may be critical when optimizing for small footprint.
 
 ## Arguments against this proposal
 
