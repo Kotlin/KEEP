@@ -162,38 +162,22 @@ fun test() {
 }
 ```
 
-Once the LHS is type-checked and its type is determined to be `T`, the type of the whole class literal expression is `KClass<erase(T)>`, where `erase(T)` represents the most accurate possible type-safe representation of the type `T` and is obtained by substituting `T`'s arguments with star projections (`*`), except when the type is an array.
-
-More formally, let `T` = `C<A1, ..., AN>`, where `C` is a class and `N`, the number of type arguments, might be zero. `erase(T)` is then defined as follows:
-- if `C` = `kotlin.Array`:
-    - if `A1` is a projection of some type (covariant, contravariant, or star), `erase(T)` = `kotlin.Array<*>`
-    - otherwise `erase(T)` = `kotlin.Array<erase(A1)>`
-- otherwise `erase(T)` = `C<*, ..., *>`
+Once the LHS is type-checked and its type is determined to be `T`, the type of the whole class literal expression is determined as follows:
+* if the LHS represents an object, the type is `KClass<T>`,
+* otherwise, the type is `KClass<out T>`.
 
 Examples:
 ```kotlin
 fun test() {
-    "a"::class                   // KClass<String>
-    listOf("a")::class           // KClass<List<*>> (not "KClass<List<String>>"!)
-    listOf(listOf("a"))::class   // KClass<List<*>> (not "KClass<List<List<String>>>"!)
-    mapOf("a" to 42)::class      // KClass<Map<*, *>>
-    arrayOf("a")::class          // KClass<Array<String>>
-    arrayOf(arrayOf("a"))::class // KClass<Array<Array<String>>>
-    arrayOf(listOf("a"))::class  // KClass<Array<List<*>>>
+    "a"::class                   // KClass<out String>
+    listOf("a")::class           // KClass<out List<String>>
+    mapOf("a" to 42)::class      // KClass<out Map<String, Int>>
+    arrayOf("a")::class          // KClass<out Array<String>>
+    arrayOf(listOf("a"))::class  // KClass<out Array<List<String>>>
+    Unit::class                  // KClass<Unit>
+    (Unit)::class                // KClass<out Unit>
 }
 ```
-
-> The reason for substitution with star projections is erasure: type arguments are not reified at runtime in Kotlin, so using class literals with seemingly full type information could result in exceptions at runtime. For example, consider the following code, where if we don't substitute arguments with `*`, an exception is thrown:
-> ```kotlin
-> fun test(): String {
->     val kClass: KClass<List<String>> = listOf("")::class
->     val strings: List<String> = kClass.cast(listOf(42))
->     return strings[0]    // ClassCastException!
-> }
-> ```
-> If we do the substitution as proposed above, the type of `kClass` is `KClass<List<*>>` and you must perform a cast to make the code compile.
-
-TODO: in JS, there seems to be no way to determine type arguments of arrays at runtime
 
 It is an error if the LHS of a bound class literal has nullable type:
 ```kotlin
