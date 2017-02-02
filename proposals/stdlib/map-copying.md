@@ -109,7 +109,7 @@ A subset of Kotlin Standard Library available on all supported platforms.
 
 ## Reference implementation
 
-See branch [rr/stdlib/map-copying](https://github.com/JetBrains/kotlin/compare/rr/stdlib/map-copying~2...rr/stdlib/map-copying).
+The final implementation has been merged into the standard library, here is the [commit set](https://github.com/JetBrains/kotlin/compare/e35a214~2...e35a214).
 
 ## Future advancements
 

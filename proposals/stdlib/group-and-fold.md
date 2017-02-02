@@ -2,7 +2,7 @@
 
 * **Type**: Standard Library API proposal
 * **Author**: Ilya Gorbunov
-* **Status**: Discussed
+* **Status**: Implemented
 * **Prototype**: Implemented
 * **Discussion**: [KEEP-23](https://github.com/Kotlin/KEEP/issues/23)
 
@@ -28,10 +28,10 @@ where `Grouping<T, K>` is an interface defined as following:
 
 ```kotlin
 // A wrapper around a source of elements which could be iterated 
-// with the `keySelector` function attached to it.
+// with the `keySelector: (T) -> K` function attached to it.
 interface Grouping<T, out K> {
-    fun elementIterator(): Iterator<T>
-    fun keySelector(element: T): K
+    fun sourceIterator(): Iterator<T>
+    fun keyOf(element: T): K
 }
 ```
 
@@ -91,17 +91,17 @@ public inline fun <S, T : S, K, M : MutableMap<in K, S>> Grouping<T, K>.reduceTo
 
 
 // Count
-public fun <T, K> Grouping<T, K>.countEach(): Map<K, Int>
+public fun <T, K> Grouping<T, K>.eachCount(): Map<K, Int>
 
-public fun <T, K, M : MutableMap<in K, Int>> Grouping<T, K>.countEachTo(destination: M): M
+public fun <T, K, M : MutableMap<in K, Int>> Grouping<T, K>.eachCountTo(destination: M): M
 
 
 // SumBy
-public inline fun <T, K> Grouping<T, K>.sumEachBy(
+public inline fun <T, K> Grouping<T, K>.eachSumOf(
     valueSelector: (T) -> Int
 ): Map<K, Int>
 
-public inline fun <T, K, M : MutableMap<in K, Int>> Grouping<T, K>.sumEachByTo(
+public inline fun <T, K, M : MutableMap<in K, Int>> Grouping<T, K>.eachSumOfTo(
     destination: M, 
     valueSelector: (T) -> Int
 ): M
@@ -115,14 +115,14 @@ The most common use case is doing some aggregation, broken down by some key:
  1. given a text, count frequencies of words/characters;
 
     ```kotlin
-    val frequencies = words.groupingBy { it }.countEach()
+    val frequencies = words.groupingBy { it }.eachCount()
     ```
 
  2. given orders in all stores, sum total value of orders by store;
     ```kotlin
     val storeTotals =
             orders.groupingBy { it.store }
-                  .sumEachBy { order -> order.total }
+                  .eachSumOf { order -> order.total }
     ```
 
  3. given orders of all clients, find an order with the maximum total for each client.
@@ -184,9 +184,9 @@ Only a subset of Kotlin Standard Library available on all supported platforms is
 
 ## Reference implementation
 
-Prototypes are implemented in the repository [kotlinx.collections.experimental](https://github.com/ilya-g/kotlinx.collections.experimental/tree/master/kotlinx-collections-experimental/src/main/kotlin/kotlinx.collections.experimental/grouping).
+The prototypes are implemented in the repository [kotlinx.collections.experimental](https://github.com/ilya-g/kotlinx.collections.experimental/tree/master/kotlinx-collections-experimental/src/main/kotlin/kotlinx.collections.experimental/grouping).
 
-Standard library implementation is in the branch [rr/stdlib/groupingBy](https://github.com/JetBrains/kotlin/compare/rr/stdlib/groupingBy).
+The final implementation has been merged into the standard library, here is the [commit set](https://github.com/JetBrains/kotlin/compare/4816474~6...4816474).
 
 ### Receivers
 
@@ -198,7 +198,7 @@ however for primitive arrays this operation does not make much sense.
 
 The operation returns `Map<K, R>`, where `K` is the type of the key and `R` is the type of the accumulator.
 
-## Unresolved questions
+## Questions
 
 1. Naming options:
     * `groupingBy` or just `grouping`
@@ -224,7 +224,9 @@ The operation returns `Map<K, R>`, where `K` is the type of the key and `R` is t
     
 5. Should we provide `sumEachByLong` and `sumEachByDouble` operations, 
 or wait until [KT-11265](https://youtrack.jetbrains.com/issue/KT-11265) is resolved, 
-so we could have them as overloads of `sumEachBy`?
+so we could have them as overloads of `eachSumOf`?
+    * **resolution**: provide them as overloads of `eachSumOf`, 
+    but do not provide `eachSumOf` itself until KT-11265 is fixed. 
 
 ## Future advancements
 

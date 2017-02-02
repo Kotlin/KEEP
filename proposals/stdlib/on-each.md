@@ -88,7 +88,7 @@ Only the stdlib.
 
 ## Reference implementation
 
-Reference implementation is provided in [rr/stdlib/oneach](https://github.com/JetBrains/kotlin/compare/rr/stdlib/oneach) branch.
+The final implementation has been merged into the standard library, here is the [commit set](https://github.com/JetBrains/kotlin/compare/dc57d69~2...dc57d69).
 
 ## Unresolved questions
 
