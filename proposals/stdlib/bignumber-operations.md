@@ -52,6 +52,7 @@ Some of the following functions are already implemented in the stdlib, but liste
 > - default rounding mode is `HALF_EVEN` ([KT-10462] (https://youtrack.jetbrains.com/issue/KT-10462))
 > - `toInt`, `toLong`, etc are already implemented on `Number`
 > (JDK) Note: For values other than float and double NaN and ±Infinity, this constructor is compatible with the values returned by Float.toString(float) and Double.toString(double). This is generally the preferred way to convert a float or double into a BigDecimal, as it doesn't suffer from the unpredictability of the BigDecimal(double) constructor.
+> (JDK) The unsigned right shift operator (>>>) [on BigIntegeer] is omitted, as this operation makes little sense in combination with the "infinite word size" abstraction provided by this class.
 
 #### BigInteger:
 
@@ -97,7 +98,6 @@ Some of the following functions are already implemented in the stdlib, but liste
     
 #### Do not have direct analogy in JDK:
 
-    BigInteger.ushr(Int)
     BigInteger.inc()
     BigInteger.dec()
 
