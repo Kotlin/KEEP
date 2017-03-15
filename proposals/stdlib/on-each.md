@@ -16,7 +16,7 @@ The goal is to introduce a function called `onEach`, which allows the user to pe
 
 When working with `Sequences` or `Iterables`, it can be useful to take a look at what items are passed through the stream. This is especially useful for debugging. Effectively, `onEach` would work like this:
 
-```
+```kotlin
 fun <T> Sequence<T>.onEach(f: (T) -> Unit): Sequence<T> = map { f(it); it }
 // the following signatures are similified, look for actual ones in the prototype
 inline fun <T> Iterable<T>.onEach(f: (T) -> Unit): Iterable<T> = apply { forEach(f) }
@@ -49,14 +49,14 @@ Overall, `onEach` was chosen to reflect similarity with `forEach`.
 
 ## Use cases
 For debugging (the strongest use case):
-```
+```kotlin
 inputDir.walk()
     .filter { it.isFile && it.name.endsWith(".txt") }
     .peek { println("Moving $it to $outputDir") }
     .forEach { moveFile(it, File(outputDir, it.toRelativeString(inputDir))) }
 ```
 For various intermediate operations, real-world example from a distributed hashtable:
-```
+```kotlin
 internalMap.entrySet().stream()
 		.filter(entryBelongsToNeighbor(newNeighbor))
 		.peek(entry -> newNeighbor.send(new AckPutMessage<>(this, entry.getKey(), entry.getValue())))
