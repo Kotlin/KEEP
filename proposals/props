@@ -1,0 +1,33 @@
+# Prop Types
+
+* **Type**: Design proposal
+* **Author**: Steve Kite
+
+Goal: allow to create `props` objects that allow to make asynchronous constructor invocation.
+
+## Motivation / use cases
+
+In several widely used frameworks there are concept of "Props". They in a nutshell just a description how we should invoke constructor of an class - class itself and it's arguments. Two well known frameworks are *React* and *Akka*.
+
+React doesn't have explicit classes for it's props as it is not usable in js world - you always should to declare two classes instead of a one for each component. Instead they have a hack that declares what props it expect to underlying framework that uses this information to validate inputs. In Kotlin we always should declare separate class for props. While it doesn't sound too hard to do it is actually hard enought that enforces our team to NOT to use classes for our components if possible. React enourages to use a separate component for almost everything and simple UI framework have 100s of such classes, average size project will have 1000s of them. Instead of using "arguments" directly you always add "props." prefix to all your arguments. Then we should some how to instantiate class with such "props" that ends in a very hacky way - creating empty js object and casting it to an expected props class and invoke builder on this object. This causes troubles in declaring various modifiers to this fields, make them private, having default values. Generics are also not possible here too. To make type-safe builder of a component in we need to declare dumb compaion object - "ReactComponentSpec" - that holds all type information that kotlin uses to resolving such type. Everything could be solved with a simple ability to make props objects.
+
+In Akka Props are much easier - it is just an object with java class in it and list of untyped arguments that also not that type-safe. Akka tries to search to valid constructor during Props object creation. In Akka it is not that important as our project doesn't have that much different actor classes as we have components in react.
+
+## Description
+
+To make it work we could introduce props keyword:
+```
+val props = props SomeReactComponent(arg1 = ..., arg2 = ...)
+```
+
+To use instantiate object with this props:
+```
+val object : SomeReactComponent = props.create()
+```
+
+In between it should be possible to edit arguments:
+```
+props.arg1 = other_value
+```
+
+Props should be generated classes with some predefined configuration. It should have ability to declare that props must implement at least empty interfaces to make it feasible to implement serialization in various frameworks. This declaration could be done by base classes by extensing special empty interface, for example ```Propsable<T : PropsDef>``` where T is a some special abstract class or empty interface for base props class with empty constructor.
