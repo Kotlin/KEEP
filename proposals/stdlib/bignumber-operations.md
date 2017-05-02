@@ -52,6 +52,7 @@ Some of the following functions are already implemented in the stdlib, but liste
 > - default rounding mode is `HALF_EVEN` ([KT-10462] (https://youtrack.jetbrains.com/issue/KT-10462))
 > - `toInt`, `toLong`, etc are already implemented on `Number`
 > (JDK) Note: For values other than float and double NaN and ±Infinity, this constructor is compatible with the values returned by Float.toString(float) and Double.toString(double). This is generally the preferred way to convert a float or double into a BigDecimal, as it doesn't suffer from the unpredictability of the BigDecimal(double) constructor.
+> (JDK) The unsigned right shift operator (>>>) [on BigIntegeer] is omitted, as this operation makes little sense in combination with the "infinite word size" abstraction provided by this class.
 
 #### BigInteger:
 
@@ -59,7 +60,7 @@ Some of the following functions are already implemented in the stdlib, but liste
     BigInteger.minus(BigInteger)  /* implemented */
     BigInteger.times(BigInteger)  /* implemented */
     BigInteger.div(BigInteger)    /* implemented */
-    //BigInteger.mod(BigInteger)  /* implemented in JDK */
+    BigInteger.rem(BigInteger) 
     BigInteger.unaryMinus()       /* implemented */
     BigInteger.unaryPlus()
     
@@ -83,7 +84,7 @@ Some of the following functions are already implemented in the stdlib, but liste
     BigDecimal.minus(BigDecimal)  /* implemented */
     BigDecimal.times(BigDecimal)  /* implemented */
     BigDecimal.div(BigDecimal)    /* implemented */  //use  BigDecimal#divide(divisor, RoundingMode.HALF_EVEN)
-    BigDecimal.mod(BigDecimal)    /* implemented */  //use `BigInteger#remainder`
+    BigDecimal.rem(BigDecimal)    /* implemented */ 
     BigDecimal.unaryMinus()       /* implemented */
     BigDecimal.unaryPlus()
 
@@ -97,26 +98,19 @@ Some of the following functions are already implemented in the stdlib, but liste
     
 #### Do not have direct analogy in JDK:
 
-    BigInteger.ushr(Int)
     BigInteger.inc()
     BigInteger.dec()
 
     BigDecimal.inc()
     BigDecimal.dec()
-    
-## Unresolved Questions
-
-- In Kotlin v1.0 operator `%` was resolved to the method `BigInteger#mod` instead of `BigInteger#reminder`. As a result `BigInteger("-5") % BigInteger("3") == BigInteger("1")` (the result is always positive). That is inconsistent with basic types: `-5 % 3 == -2` and `BigDecimal`: `BigDecimal("-5") % BigDecimal("3") == BigDecimal("-2")`, which uses `BigDecimal#reminder` and was avaliable in v1.0.
-   - Leave it as is with an inconsistency which does not exist in Java (all use `reminder`)
-   - Change the `%` operator to use `BigInteger#reminder` (a braking change)
 	
 ## Future advancements
 
-###Universal comparison
+### Universal comparison
 
 Implementing `compareTo` between `BigInteger` and `BigDecimal`. That will not affect interface  `Comparable<>`. Requires only 2 additional function.
 
-###Mixed one-sided operations
+### Mixed one-sided operations
 
 Implement mixed one-sided productive operations between "big" types and the basic ones (same logic as with `String.plus(Int)`). Encourages the usage of the "big" types, may be useful for scientific applications. The goal is to write 99% of formulas without explicit conversions. This may be a part of  `kotlinx`.
 
@@ -130,12 +124,12 @@ Reference implementation requires (at least) 40 methods:
     BigInteger.minus(<number>)
     BigInteger.times(<number>)
     BigInteger.div(<number>)
-    BigInteger.mod(<number>)
+    BigInteger.rem(<number>)
 	
     BigDecimal.plus(Number)
     BigDecimal.minus(Number)
     BigDecimal.times(Number)
     BigDecimal.div(Number)
-    BigDecimal.mod(Number)
+    BigDecimal.rem(Number)
     
     where `<number>` is one of the 6 basic types. 
