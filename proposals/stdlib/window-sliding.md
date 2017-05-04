@@ -15,14 +15,14 @@ Introduce extension functions to support:
 
 ## Similar API review
 
- - Ruby: [each_slice](http://ruby-doc.org/core-2.2.3/Enumerable.html#method-i-each_slice)
- - Scala: [sliding](http://www.scala-lang.org/api/2.11.8/index.html#scala.collection.IterableLike@sliding%28size:Int,step:Int%29:Iterator[Repr])
- - RxJava: [buffer](http://reactivex.io/documentation/operators/buffer.html)
- - F#: [windowed](https://msdn.microsoft.com/visualfsharpdocs/conceptual/seq.windowed['t]-function-[fsharp])
- - Clojure: [partition](https://clojuredocs.org/clojure.core/partition)
- - Klutter: [batch and lazyBatch](https://github.com/kohesive/klutter/blob/master/core/src/main/kotlin/uy/klutter/core/collections/CollectionsBatching.kt)
- - StreamEx: [StreamEx.ofSubLists](https://github.com/amaembo/streamex/blob/f5bd4c3ba79aa0de87ea834e87ac1040a67fa5d8/src/main/java/one/util/streamex/StreamEx.java#L2677)
- - ProtonPack: [windowed](https://github.com/poetix/protonpack/blob/master/src/main/java/com/codepoetics/protonpack/StreamUtils.java#L210)
+ - Ruby: [each_slice](http://ruby-doc.org/core-2.2.3/Enumerable.html#method-i-each_slice) (partitioning)
+ - Scala: [sliding](http://www.scala-lang.org/api/2.11.8/index.html#scala.collection.IterableLike@sliding%28size:Int,step:Int%29:Iterator[Repr]) (partitioning, windowing)
+ - RxJava: [buffer](http://reactivex.io/documentation/operators/buffer.html) (partitioning)
+ - F#: [windowed](https://msdn.microsoft.com/visualfsharpdocs/conceptual/seq.windowed['t]-function-[fsharp]) (windowing)
+ - Clojure: [partition](https://clojuredocs.org/clojure.core/partition) (partitioning, windowing)
+ - Klutter: [batch and lazyBatch](https://github.com/kohesive/klutter/blob/master/core/src/main/kotlin/uy/klutter/core/collections/CollectionsBatching.kt) (partitioning)
+ - StreamEx: [StreamEx.ofSubLists](https://github.com/amaembo/streamex/blob/f5bd4c3ba79aa0de87ea834e87ac1040a67fa5d8/src/main/java/one/util/streamex/StreamEx.java#L2677) (partitioning, windowing) 
+ - ProtonPack: [windowed](https://github.com/poetix/protonpack/blob/master/src/main/java/com/codepoetics/protonpack/StreamUtils.java#L210) (partitioning, windowing)
 
 ## Description
 
