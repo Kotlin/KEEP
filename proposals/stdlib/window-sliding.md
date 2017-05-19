@@ -2,7 +2,7 @@
 
 * **Type**: Standard Library API proposal
 * **Authors**: Sergey Mashkov, Ilya Gorbunov
-* **Status**: Under consideration
+* **Status**: Public review
 * **Prototype**: Implemented
 * **Related issues**: [KT-10021](https://youtrack.jetbrains.com/issue/KT-10021), [KT-9151](https://youtrack.jetbrains.com/issue/KT-9151), [KT-11026](https://youtrack.jetbrains.com/issue/KT-11026)
 * **Discussion**: [KEEP-11](https://github.com/Kotlin/KEEP/issues/11)
@@ -151,21 +151,11 @@ materialized, i.e. each `List/String` is a copy of some subsequence of the origi
 
 ### Implementation
 
-See reference implementation in branch [rr/stdlib/window](https://github.com/JetBrains/kotlin/compare/rr/stdlib/window)
+See reference implementation in branch [stdlib/window](https://github.com/JetBrains/kotlin/compare/stdlib/window~9...stdlib/window)
 
 ## Unresolved questions
 
- - should we provide `windowedBackward` for indexed collections? What are the use cases?
-    - **resolution**: do not provide until use cases are clear in demand
- - should we provide `windowIndices` and `windowBackwardIndices` as well?
-    - **resolution**: do not provide until use cases are clear in demand
- - Whether or not to allow window size of 0
-    * neither of analogs allows
-    * (con) strange corner case — makes not much of sense to obtain a series of zero-sized windows.
-    * (pro) valid operation and it's possible to implement.
-    * (pro) reduce possible crash cases as crash generally is more dangerous
-    - **resolution**: do not allow
- - what to do with the last window having less than the specified `size` elements:
+ 1. what to do with the last window having less than the specified `size` elements:
     - keep partial window(s) — required for cases like batch processing
     - drop partial window(s) — for cases like moving average
         * Trailing batches could be filtered out with `filterNot { it.size < windowSize }` operation.
@@ -176,11 +166,21 @@ See reference implementation in branch [rr/stdlib/window](https://github.com/Jet
     - **resolution**: 
         - default to keeping partial windows, other modes could be achieved on top of that.
         - evaluate usage feedback from eap releases.
- - do we need `slidingWindow2` and `slidingWindow3` as described in [KT-10021](https://youtrack.jetbrains.com/issue/KT-10021) with the following signatures:
+ 2. Whether or not to allow window size of 0
+    * neither of analogs allows
+    * (con) strange corner case — makes not much of sense to obtain a series of zero-sized windows.
+    * (pro) valid operation and it's possible to implement.
+    * (pro) reduce possible crash cases as crash generally is more dangerous
+    - **resolution**: do not allow
+ 3. should we provide `windowedBackward` for indexed collections? What are the use cases?
+    - **resolution**: do not provide until use cases are clear in demand
+ 4. should we provide `windowIndices` and `windowBackwardIndices` as well?
+    - **resolution**: do not provide until use cases are clear in demand
+ 5. do we need `slidingWindow2` and `slidingWindow3` as described in [KT-10021](https://youtrack.jetbrains.com/issue/KT-10021) with the following signatures:
      * `slidingWindow2([step], operation: (T, T) -> Unit)`
      * `slidingWindow3([step], operation: (T, T, T) -> Unit)`
      -  **resolution**: introduce `slidingWindow2` in form of `pairwise((T, T) -> R)` and `pairwise(): Sequence<Pair<T, T>>`
- - should operations taking a function be inlined?
+ 6. should operations taking a function be inlined?
     - for `windowed` and `chunked` this results in a big amount of bytecode inlined and prevents runtime specializations based on the type of the receiver
     - for `pairwise` this seems feasible
 
