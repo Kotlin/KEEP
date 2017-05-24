@@ -36,7 +36,7 @@ The elements to create map from here are key-value pairs `Pair<K,V>`.
 It is proposed to introduce extensions for map which make various copies of the map contents:
 - `Map<out K, V>.toMap(): Map<K, V>` - read only copy of map
 - `Map<out K, V>.toMutableMap(): MutableMap<K, V>` - mutable copy of map
-- `Map<out K, V>.toMap(M <: MutableMap<in K, in V>): M` - copy map to specified mutable map and return it
+- `Map<out K, V, M : MutableMap<in K, in V>>.toMap(destination: M): M` - copy map to specified mutable map and return it
 
 ## Use cases
 
