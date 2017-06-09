@@ -14,8 +14,7 @@ Discussion of this proposal is held in [this issue](TODO).
 
 Kotlin has classes and their members `final` by default. This has been causing debates that are summarized in [this forum post](https://discuss.kotlinlang.org/t/a-bit-about-picking-defaults/1418). While all the reasoning behind this default remains valid, there are use cases that tend to be painful, most notable are frameworks using CGLib proxies (e.g. Spring AOP, Mockito) and Gradle that decorates task classes at runtime.
 
-We propose to enable a compilation strategy that does not classes and their members `final` if they are marked with framework-specific annotations, such as `@Service`, `@Repository`, `@Bean`,  `@Configuration`.
- 
+We propose to enable a compilation strategy that does not make classes and their members `final` if they are marked with framework-specific annotations, such as `@Service`, `@Repository`, `@Bean`,  `@Configuration`. 
 
 ## References
 
@@ -27,10 +26,12 @@ We propose to enable a compilation strategy that does not classes and their memb
 - [~~KT-11098~~](https://youtrack.jetbrains.com/issue/KT-11098) Add quick fix for "Spring @Configuration/@Component annotated classes or @Bean annotated methods should be open"
 
 > There's a somewhat similar issue with default constructors and JPA: 
-- [Hibernate/JPA](http://stackoverflow.com/questions/32038177/kotlin-with-jpa-default-constructor-hell)
-- [Hibernate + Guice Persist](https://discuss.kotlinlang.org/t/jpa-guice-gotchas/425)  
-- [JPA](https://discuss.kotlinlang.org/t/feature-request-a-modifier-annotation-for-data-classes-to-provide-a-non-arg-constructor-on-jvm/1549/4)
-- [Sugar ORM](https://discuss.kotlinlang.org/t/using-sugar-orm-with-kotlin/439/4)
+>- [Hibernate/JPA](http://stackoverflow.com/questions/32038177/kotlin-with-jpa-default-constructor-hell)
+>- [Hibernate + Guice Persist](https://discuss.kotlinlang.org/t/jpa-guice-gotchas/425)  
+>- [JPA](https://discuss.kotlinlang.org/t/feature-request-a-modifier-annotation-for-data-classes-to-provide-a-non-arg-constructor-on-jvm/1549/4)
+>- [Sugar ORM](https://discuss.kotlinlang.org/t/using-sugar-orm-with-kotlin/439/4)
+>
+> And another one about [SAM conversions vs extension function types](https://youtrack.jetbrains.com/issue/KT-12848).
 
 ## Possible implementations
 
