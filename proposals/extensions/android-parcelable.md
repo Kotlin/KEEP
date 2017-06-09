@@ -136,7 +136,7 @@ TODO: Check interactions with inheritance by delegation.
   
 Some syntactic options:    
 - The names `Parcelize` and `Transient` are just placeholders for now.
-- We could allow the user to omit teh supertype `Parcelable`, to be more DRY and have only the annotation to signify that the class is Parcelable, btu this would be more challenging wrt the tooling support.
+- We could allow the user to omit the supertype `Parcelable`, to be more DRY and have only the annotation to signify that the class is Parcelable, but this would be more challenging wrt the tooling support.
 - We could annotate the supertype itself to make it more local: 
   - `class MyParcelable(val data: Int): @Auto Parcelable`  
   
@@ -198,7 +198,7 @@ Syntactic options:
 - It does not have to be a companion object, a named object, e.g. `object Parceler: Parceler<MyPercelable>` may be ok too
 - We may want to require the object to be annotated to explicitly show that the `newArray()` is auto-generated
 
-> Discussion: why not implement `newArray()` in teh `Parceler` interface itself?
+> Discussion: why not implement `newArray()` in the `Parceler` interface itself?
 First, this method can not be implemented generically (with erasure), because the runtime type of the array created is different every time.
 We could do something like `fun newArray(size: Int) = throw UnsupportedOperationException("This method must be overridden by subclasses")`, this has the benefit of making the IDE's life easier: otherwise we'd have to teach it to skip `newArray()` when generating stubs for the Override/Implement action in annotated classes. OTOH, this is error-prone in the case of non-annotated classes. A solution here could be to magically implement `newArray()` in all concrete subclasses of `Parceler` regardless of the annotation. I wonder if this can be promoted to a general feature of Kotlin...       
 
