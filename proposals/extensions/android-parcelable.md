@@ -119,6 +119,11 @@ class MyParcelable(val data: Int): Parcelable
 Note that the class is not required to be a data class.
 
 The following requirements apply here:
+- Only non-`abstract` classes are supported
+  - `@Parcelize` can't annotate an interface
+  - `sealed` and `enum` classes may be supported
+  - `object` are forbidden for now
+    - Objects can also be supported. We can serialize just the qualified name because we can't make the new instance of `object` anyway
 - The class annotated with `@Parcelize` must implement `Parcelable` (directly or through a chain of supertypes)
   - Otherwise it's a compiler error
 - All parameters of the primary constructor must be properties, otherwise they can not be (de)serialized
@@ -129,6 +134,7 @@ The following requirements apply here:
 - The user is not allowed to manually override methods of `Parcelable` or create the `CREATOR` field
    - it results in a compilation error  
    - Question: maybe overriding `describeContents()` is OK?
+     - Actually we can figure out is there any file descriptor serialized, and generate the appropriate `describeContents()` implementation
 
 The annotations for Parcelable classes, transient fields, etc. should sit in a complimentary runtime library that ships together with the compiler extension.  
 
@@ -196,6 +202,8 @@ Note: Indirect implementations (`object : Foo`, where `Foo : Parceler`) are ques
 
 Syntactic options:
 - It does not have to be a companion object, a named object, e.g. `object Parceler: Parceler<MyPercelable>` may be ok too
+  - It's rather better not to have `Parceler` as a companion object because `newArray` will be supported otherwise
+  - What about making `Parceler` a `private object`?
 - We may want to require the object to be annotated to explicitly show that the `newArray()` is auto-generated
 
 > Discussion: why not implement `newArray()` in the `Parceler` interface itself?
