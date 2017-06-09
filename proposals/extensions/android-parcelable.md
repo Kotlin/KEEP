@@ -56,6 +56,7 @@ There's a number of annotation processing libraries that mitigate this:
   - [AutoParcel](https://github.com/frankiesardo/auto-parcel)
   - [AutoValue Parcelable Extension](https://github.com/rharter/auto-value-parcel)
   - [PaperParcel](https://github.com/grandstaish/paperparcel)
+  - [Smuggler](https://github.com/nsk-mironov/smuggler)
   
   
 ### Difficulties specific to Kotlin
