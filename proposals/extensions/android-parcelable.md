@@ -131,6 +131,8 @@ The following requirements apply here:
    - Question: maybe overriding `describeContents()` is OK?
 
 The annotations for Parcelable classes, transient fields, etc. should sit in a complimentary runtime library that ships together with the compiler extension.  
+
+TODO: Check interactions with inheritance by delegation.
   
 Some syntactic options:    
 - The names `Parcelize` and `Transient` are just placeholders for now.
@@ -144,6 +146,13 @@ The generated serialization logic should take into account the following:
 - support for `IBinder`
 - support for collections and arrays
 - support for file descriptors wrt `describeContents()` 
+    
+>Discussion:    
+There is an option to generate two constructors:
+>- one ordinary primary constructor,
+>- another one that takes `Parcel` and creates an object from it.
+>
+>This has a benefit of being more convenient when it comes to hierarchies (see below). The issue here is that the second constructor will have to bypass any initializers in the class body or do sophisticated combination of that logic and the deserialization. Overall it seems easier to have only one traditional constructor and call it from the `createFromParcel` method.  
     
 ### Custom Parcelables
 
@@ -233,3 +242,13 @@ Local customization is more flexible, but will likely result in a lot of duplica
 Global customization is problematic wrt inceremental and separate compilation, but this can be addressed in the future.  
 
 ## Handling hierarchies of Parcelable classes
+
+Hierarchies of Parcelable classes are challenging from two points of view:
+- organizing constructors (see above)
+- deserializing an instance of the right class from a Parcel, when the container has only a reference to a superclass.
+
+The latter issue seems to be resolvable by "tagging" such records through writing fully-qualified names of concrete classes to parcels, but it's not clear whether it's a good idea, since
+- it involves reflection
+- it will increase the size of parcels
+
+This proposal does not support hierarchies for now.  
