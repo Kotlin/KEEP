@@ -125,6 +125,7 @@ The following requirements apply here:
   - If there is a non-property parameter, it is a compilation error
 - Properties with initializers declared in the class body are also difficult to deserialize correctly: we'd have to generate an alternative constructor that does not execute initializers (including `init` blocks) at all and only uses the serialized data, but this has all the issues that `java.io.Serializable` has wrt "magic" object creation.
   - Properties in the class body must be marked with a `@Transient` annotation, otherwise it's a compiler warning (or error?) 
+- If some properties are not parcelable (i.e. do not implement `Parcelable`, are not supported by the `Parcel` interface, and are not customized (see below)), it's a compilation error
 - The user is not allowed to manually override methods of `Parcelable` or create the `CREATOR` field
    - it results in a compilation error  
    - Question: maybe overriding `describeContents()` is OK?
@@ -193,5 +194,42 @@ First, this method can not be implemented generically (with erasure), because th
 We could do something like `fun newArray(size: Int) = throw UnsupportedOperationException("This method must be overridden by subclasses")`, this has the benefit of making the IDE's life easier: otherwise we'd have to teach it to skip `newArray()` when generating stubs for the Override/Implement action in annotated classes. OTOH, this is error-prone in the case of non-annotated classes. A solution here could be to magically implement `newArray()` in all concrete subclasses of `Parceler` regardless of the annotation. I wonder if this can be promoted to a general feature of Kotlin...       
 
 ## Per-property and per-type Parcelers
+
+Existing annotation processors allow for per-field and per-type customization of serialization logic, e.g.:
+
+```kotlin
+@Parcelize
+class MyParcelable(
+    @CustomParceler(FooParceler::class)
+    val foo: Foo,
+    @CustomParceler(Bar.Parceler::class)
+    val bar: Bar
+): Parcelable
+``` 
+
+The `@CustomParceler` annotation can be defined as follows:
+
+```kotlin
+annotation class CustomParceler(val parcelerClass: KClass<out Parceler<*>>)
+```
+
+Additional rules:
+- the class passed as a custom Parceler for a property of type `T` must implement `Parceler<T>` and be a singleton (declared as object)
+
+Question: how to handle `describeContents()` here? Should we bitwise-or all the parcelers? How do annotation processors go about it?    
+
+It would also be desirable to provide bulk customization for all properties of the same type, e.g. `java.util.Date`. This can be done globally, e.g. though a meta-annotation, or locally, e.g.:
+
+```kotlin
+@Parcelize
+@CustomParcelerForType(
+    type = Date::class,
+    parceler = DateParceler::class
+)
+class MyParcelable(val from: Date, val to: Date): Parcelable
+```
+
+Local customization is more flexible, but will likely result in a lot of duplication.
+Global customization is problematic wrt inceremental and separate compilation, but this can be addressed in the future.  
 
 ## Handling hierarchies of Parcelable classes
