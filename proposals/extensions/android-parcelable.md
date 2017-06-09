@@ -119,15 +119,78 @@ class MyParcelable(val data: Int): Parcelable
 Note that the class is not required to be a data class.
 
 The following requirements apply here:
+- The class annotated with `@Parcelize` must implement `Parcelable` (directly or through a chain of supertypes)
+  - Otherwise it's a compiler error
 - All parameters of the primary constructor must be properties, otherwise they can not be (de)serialized
   - If there is a non-property parameter, it is a compilation error
 - Properties with initializers declared in the class body are also difficult to deserialize correctly: we'd have to generate an alternative constructor that does not execute initializers (including `init` blocks) at all and only uses the serialized data, but this has all the issues that `java.io.Serializable` has wrt "magic" object creation.
-  - Properties in the class body must be marked with a `@Transient` annotation.
-    
-## Making writing custom Parcelables easy
+  - Properties in the class body must be marked with a `@Transient` annotation, otherwise it's a compiler warning (or error?) 
+- The user is not allowed to manually override methods of `Parcelable` or create the `CREATOR` field
+   - it results in a compilation error  
+   - Question: maybe overriding `describeContents()` is OK?
 
-- companion objects
-- Parceler
+The annotations for Parcelable classes, transient fields, etc. should sit in a complimentary runtime library that ships together with the compiler extension.  
+  
+Some syntactic options:    
+- The names `Parcelize` and `Transient` are just placeholders for now.
+- We could allow the user to omit teh supertype `Parcelable`, to be more DRY and have only the annotation to signify that the class is Parcelable, btu this would be more challenging wrt the tooling support.
+- We could annotate the supertype itself to make it more local: 
+  - `class MyParcelable(val data: Int): @Auto Parcelable`  
+  
+### Generated logic
+
+The generated serialization logic should take into account the following:
+- support for `IBinder`
+- support for collections and arrays
+- support for file descriptors wrt `describeContents()` 
+    
+### Custom Parcelables
+
+Sometimes users need to write their own custom serialization logic manually, but the boilerplate described above is undesirable. We can simplify this task by introducing the following convention:
+
+```kotlin
+@Parcelize
+class MyParcelable(val data: Int) : Parcelable {
+    companion object : Parceler<MyParcelable> {
+        override fun MyParcelable.writeToParcel(parcel: Parcel, flags: Int) {
+            parcel.writeInt(data)
+        }
+        
+        override fun createFromParcel(parcel: Parcel): MyParcelable {
+            return MyParcelable(parcel.readInt())
+        }
+    }
+}
+```
+
+The `Parceler` interface is defined in the same runtime library that comes with the compiler extension. It's defined as follows:
+
+```kotlin
+interface Parceler<P : Parcelable> {
+    fun describeContents() = 0
+
+    fun P.writeToParcel(parcel: Parcel, flags: Int)
+    
+    fun createFromParcel(parcel: Parcel): P    
+    
+    fun newArray(size: Int): Array<P>
+}
+```
+
+If a `@Parcelize` class has a companion object that implements `Parceler`:
+- the necessary boilerplate is generated for the `Parcelable` convention and delegated to the companion object
+- the `newArray()` method of the companion object is implemented automatically unless it's explicitly overridden
+- the type argument to `Parceler` must match the containing class, otherwise it's a compiler error
+
+Note: Indirect implementations (`object : Foo`, where `Foo : Parceler`) are questionable here, but we can allow them if there are use cases for it.
+
+Syntactic options:
+- It does not have to be a companion object, a named object, e.g. `object Parceler: Parceler<MyPercelable>` may be ok too
+- We may want to require the object to be annotated to explicitly show that the `newArray()` is auto-generated
+
+> Discussion: why not implement `newArray()` in teh `Parceler` interface itself?
+First, this method can not be implemented generically (with erasure), because the runtime type of the array created is different every time.
+We could do something like `fun newArray(size: Int) = throw UnsupportedOperationException("This method must be overridden by subclasses")`, this has the benefit of making the IDE's life easier: otherwise we'd have to teach it to skip `newArray()` when generating stubs for the Override/Implement action in annotated classes. OTOH, this is error-prone in the case of non-annotated classes. A solution here could be to magically implement `newArray()` in all concrete subclasses of `Parceler` regardless of the annotation. I wonder if this can be promoted to a general feature of Kotlin...       
 
 ## Per-property and per-type Parcelers
 
