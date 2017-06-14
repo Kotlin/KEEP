@@ -4,8 +4,8 @@
 * **Type**: Standard Library API proposal
 * **Author**: Daniil Vodopian
 * **Shepherd**: Ilya Gorbunov
-* **Status**: Submitted
-* **Prototype**: Not started
+* **Status**: Public review
+* **Prototype**: Implemented
 * **Discussion**: [KEEP-49](https://github.com/Kotlin/KEEP/issues/49)
 
 
@@ -38,7 +38,10 @@ The proposal does not include mixed operations between `BigInteger` and `BigDeci
 
 ## Placement
 
-* Standard Library, `kotlin` package, since there is already a part of the prosed API for [BigInteger](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/java.math.-big-integer/) and [BigDecimal](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/java.math.-big-decimal/)
+* Standard Library
+* [BigInteger](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/java.math.-big-integer/) and [BigDecimal](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/java.math.-big-decimal/)
+  extensions are placed into `kotlin` package, since there is already a part of the prosed API 
+* String-to-number conversions are placed into `kotlin.text` package
 
 ## Reference implementation
 
@@ -51,8 +54,10 @@ Some of the following functions are already implemented in the stdlib, but liste
 > - `Number` is an open class, so generic functions accepting `Number` may clash with something else
 > - default rounding mode is `HALF_EVEN` ([KT-10462] (https://youtrack.jetbrains.com/issue/KT-10462))
 > - `toInt`, `toLong`, etc are already implemented on `Number`
-> (JDK) Note: For values other than float and double NaN and ±Infinity, this constructor is compatible with the values returned by Float.toString(float) and Double.toString(double). This is generally the preferred way to convert a float or double into a BigDecimal, as it doesn't suffer from the unpredictability of the BigDecimal(double) constructor.
-> (JDK) The unsigned right shift operator (>>>) [on BigIntegeer] is omitted, as this operation makes little sense in combination with the "infinite word size" abstraction provided by this class.
+>
+>   (JDK) Note: For values other than float and double NaN and ±Infinity, this constructor is compatible with the values returned by `Float.toString(float)` and `Double.toString(double)`. This is generally the preferred way to convert a float or double into a BigDecimal, as it doesn't suffer from the unpredictability of the `BigDecimal(double)` constructor.
+>
+>   (JDK) The unsigned right shift operator (>>>) [on BigInteger] is omitted, as this operation makes little sense in combination with the "infinite word size" abstraction provided by this class.
 
 #### BigInteger:
 
@@ -62,9 +67,8 @@ Some of the following functions are already implemented in the stdlib, but liste
     BigInteger.div(BigInteger)    /* implemented */
     BigInteger.rem(BigInteger) 
     BigInteger.unaryMinus()       /* implemented */
-    BigInteger.unaryPlus()
     
-    BigInteger.inv()                                 //use `BigInteger#not`
+    BigInteger.inv()                                 //uses `BigInteger#not`
     BigInteger.and(BigInteger)
     BigInteger.or(BigInteger)
     BigInteger.xor(BigInteger)
@@ -72,10 +76,15 @@ Some of the following functions are already implemented in the stdlib, but liste
     BigInteger.shr(Int)
     
     String.toBigInteger()
-    BigInteger.toBigDecimal()
+    String.toBigInteger(radix: Int)
+    String.toBigIntegerOrNull()
+    String.toBigIntegerOrNull(radix: Int)
     
     Int.toBigInteger()
     Long.toBigInteger()
+    
+    BigInteger.toBigDecimal()
+    BigInteger.toBigDecimal(scale, MathContext)
     // `Float` and `Double` would lose information
     
 ####BigDecimal:
@@ -83,10 +92,9 @@ Some of the following functions are already implemented in the stdlib, but liste
     BigDecimal.plus(BigDecimal)   /* implemented */
     BigDecimal.minus(BigDecimal)  /* implemented */
     BigDecimal.times(BigDecimal)  /* implemented */
-    BigDecimal.div(BigDecimal)    /* implemented */  //use  BigDecimal#divide(divisor, RoundingMode.HALF_EVEN)
+    BigDecimal.div(BigDecimal)    /* implemented */  //uses BigDecimal#divide(divisor, RoundingMode.HALF_EVEN)
     BigDecimal.rem(BigDecimal)    /* implemented */ 
     BigDecimal.unaryMinus()       /* implemented */
-    BigDecimal.unaryPlus()
 
     Int.toBigDecimal() 
     Long.toBigDecimal() 
@@ -94,6 +102,10 @@ Some of the following functions are already implemented in the stdlib, but liste
     Double.toBigDecimal()
      
     String.toBigDecimal()
+    String.toBigDecimalOrNull()
+    String.toBigDecimal(MathContext)
+    String.toBigDecimalOrNull(MathContext)
+    
     // BigDecimal.toBigInteger()  /* implemented in JDK */
     
 #### Do not have direct analogy in JDK:
