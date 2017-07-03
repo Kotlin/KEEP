@@ -184,10 +184,15 @@ Some syntactic options:
 ### Generated logic
 
 The generated serialization logic should take into account the following:
-- support for collections (lists, maps), arrays and `SparseArray`s
+- support for collections (lists, maps), arrays and `SparseArray`s, including nested collections
 - support for `IBinder`/`IInterface`
 - support for `enum class`es and `object`s
 - support for file descriptors wrt `describeContents()`
+
+The generated code should be efficient:
+- If the property type is not-null, no nullability information is written
+- For `List<String>`, `String` elements are written directly (without `writeValue()`)
+- If the `Parcelable` property references to the `final class`, it is written directly (without `writeParcelable()`)
     
 > :warning: Discussion:
 There is an option to generate two constructors:
@@ -235,12 +240,12 @@ Note: Indirect implementations (`object : Foo`, where `Foo : Parceler`) are ques
 
 Syntactic options:
 - It does not have to be a companion object, a named object, e.g. `object Parceler: Parceler<MyPercelable>` may be ok too
-  - It's rather better not to have `Parceler` as a companion object because `newArray` will be supported otherwise
+  - :warning: It's rather better not to have `Parceler` as a companion object because `newArray` will be supported otherwise
   - But then we have to choose two different names for the supertype and for the actual object, as we can't write `object Parceler : Parceler` without qualified names
   - Also the `companion object` may be private
 - We may want to require the object to be annotated to explicitly show that the `newArray()` is auto-generated
 
-> Discussion: why not implement `newArray()` in the `Parceler` interface itself?
+> :warning: Discussion: why not implement `newArray()` in the `Parceler` interface itself?
 First, this method can not be implemented generically (with erasure), because the runtime type of the array created is different every time.
 We could do something like `fun newArray(size: Int) = throw UnsupportedOperationException("This method must be overridden by subclasses")`, this has the benefit of making the IDE's life easier: otherwise we'd have to teach it to skip `newArray()` when generating stubs for the Override/Implement action in annotated classes. OTOH, this is error-prone in the case of non-annotated classes. A solution here could be to magically implement `newArray()` in all concrete subclasses of `Parceler` regardless of the annotation. I wonder if this can be promoted to a general feature of Kotlin...       
 
@@ -267,7 +272,7 @@ annotation class CustomParceler(val parcelerClass: KClass<out Parceler<*>>)
 Additional rules:
 - the class passed as a custom Parceler for a property of type `T` must implement `Parceler<T>` and be a singleton (declared as object)
 
-Question: how to handle `describeContents()` here? Should we bitwise-or all the parcelers? How do annotation processors go about it?    
+:warning: Question: how to handle `describeContents()` here? Should we bitwise-or all the parcelers? How do annotation processors go about it?    
 
 It would also be desirable to provide bulk customization for all properties of the same type, e.g. `java.util.Date`. This can be done globally, e.g. though a meta-annotation, or locally, e.g.:
 
