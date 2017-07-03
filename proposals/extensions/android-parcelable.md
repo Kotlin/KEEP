@@ -272,6 +272,8 @@ annotation class CustomParceler(val parcelerClass: KClass<out Parceler<*>>)
 Additional rules:
 - the class passed as a custom Parceler for a property of type `T` must implement `Parceler<T>` and be a singleton (declared as object)
 
+:warning: Question: Isn't it better to put a `CustomParceler` annotation on type, not on parameter? E.g. `val foo: @CustomParceler(FooParceler::class) Foo`.
+
 :warning: Question: how to handle `describeContents()` here? Should we bitwise-or all the parcelers? How do annotation processors go about it?    
 
 It would also be desirable to provide bulk customization for all properties of the same type, e.g. `java.util.Date`. This can be done globally, e.g. though a meta-annotation, or locally, e.g.:
@@ -287,6 +289,34 @@ class MyParcelable(val from: Date, val to: Date): Parcelable
 
 Local customization is more flexible, but will likely result in a lot of duplication.
 Global customization is problematic wrt inceremental and separate compilation, but this can be addressed in the future.  
+
+### `RawValue` annotation
+
+By default, the plugin checks if all parameter types comply to the rules described above. But in some cases that would be very strict.
+
+```kotlin
+interface Holder
+
+@MagicParcel
+class ParcelHolder : Parcelable
+
+class SerializableHolder : Serializable, Holder
+
+@MagicParcel
+class Foo(val holder: Holder) : Parcelable
+```
+
+`Holder` is not a primitive, collection or `Parcelable` descendant so the error will be reported on `Holder`. We could write a custom parceler object for that (read "Per-property and per-type Parcelers" chapter above), but sometimes that's too much boilerplate. `Parcel` class has `writeValue()` (and `readValue()` as its counterpart) so the user may somehow instruct our plugin to use these two methods.
+
+Variants:
+1. Add generic parceler which utilizes `writeValue()`/`readValue()`
+  - `class Foo(@CustomParceler(Bar.Parceler::class) val holder: Holder) : Parcelable`
+  - Pros: generic approach
+  - Cons: quite much boilerplate when used frequently
+2. Add `@RawValue` type annotation (the name is random)
+  - `class Foo(val holder: @RawValue Holder) : Parcelable`
+  - Pros: simplicity, brevity
+  - Cons: an extra case to handle
 
 ## Handling hierarchies of Parcelable classes
 
