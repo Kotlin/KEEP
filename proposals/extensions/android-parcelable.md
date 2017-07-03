@@ -105,8 +105,8 @@ data class User(
 
 We can have a compiler extension to generate all the required boilerplate behind the scenes. This is similar to what (some) annotation processors do, but 
 1. Java annotation processors can't alter Kotlin code, 
-2. Normally, annotation processors can't add methods to existing classes (this is possible though a private API only),
-3. A compiler extension can be potentially more flexible in terms of suppressing errors and providing syntactic means to the user.  
+2. Normally, annotation processors can't add methods to existing classes (this is possible though a private API only, and kapt does not support such an API),
+3. A compiler extension can be potentially more flexible in terms of suppressing errors and providing syntactic means to the user.
 
 ### Simple case: completely automatic Parcelable
 
@@ -121,40 +121,75 @@ Note that the class is not required to be a data class.
 
 The following requirements apply here:
 - Only non-`abstract` classes are supported
-  - `@Parcelize` can't annotate an interface
+  - `@Parcelize` can't annotate an `interface` or `annotation class`
   - `sealed` and `enum` classes may be supported
-  - `object` are forbidden for now
+    - In case of `sealed class`es we should check if all concrete implementations have a `@Parcelize` annotation
+  - `object`s are forbidden for now
     - Objects can also be supported. We can serialize just the qualified name because we can't make the new instance of `object` anyway
 - The class annotated with `@Parcelize` must implement `Parcelable` (directly or through a chain of supertypes)
-  - Otherwise it's a compiler error
-- All parameters of the primary constructor must be properties, otherwise they can not be (de)serialized
-  - If there is a non-property parameter, it is a compilation error
+  -  Otherwise it's a compile-time error
+- The primary constructor should be accessible (non-private)
+- All parameters of the primary constructor must be properties (`val`/`var`), otherwise they can not be (de)serialized
+  - If there is a non-property parameter, it is a compile-time error
 - Properties with initializers declared in the class body are also difficult to deserialize correctly: we'd have to generate an alternative constructor that does not execute initializers (including `init` blocks) at all and only uses the serialized data, but this has all the issues that `java.io.Serializable` has wrt "magic" object creation.
-  - Properties in the class body must be marked with a `@Transient` annotation, otherwise it's a compiler warning (or error?) 
-- If some properties are not parcelable (i.e. do not implement `Parcelable`, are not supported by the `Parcel` interface, and are not customized (see below)), it's a compilation error
+  - Properties in the class body must be marked with a `@Transient` annotation, otherwise it's a compiler warning
+    - :warning: Or error?
+  - The primary constructor of the class is invoked in `createFromParcel()`
+- If some property types are not parcelable (i.e. do not implement `Parcelable`, are not supported by the `Parcel` interface, and are not customized (see below)), it's a compile-time error
 - The user is not allowed to manually override methods of `Parcelable` or create the `CREATOR` field
-   - it results in a compilation error  
-   - Question: maybe overriding `describeContents()` is OK?
-     - Actually we can figure out is there any file descriptor serialized, and generate the appropriate `describeContents()` implementation
+  - It results in a compilation error  
+  - :warning: Question: maybe overriding `describeContents()` is OK?
+    - Actually we can figure out is there any file descriptor serialized, and generate the appropriate `describeContents()` implementation.
+      - It's not possible in all cases. Example: `class Foo(val a: Parcelable /* FileDescriptor inside it */)`
+      - So we should allow user override it when needed
 
-The annotations for Parcelable classes, transient fields, etc. should sit in a complimentary runtime library that ships together with the compiler extension.  
+The annotations for `Parcelable` classes, transient fields, etc. should sit in a complimentary runtime library that ships together with the compiler extension.
 
-TODO: Check interactions with inheritance by delegation.
+Sealed class example:
+```kotlin
+sealed class Maybe<out T : Parcelable> : Parcelable {
+
+  override fun describeContents(): Int = 0
+
+  object None : Maybe<Nothing>(), Parcelable.Creator<None> {
+    override fun writeToParcel(dest: Parcel, flags: Int) {}
+    override fun newArray(size: Int) = arrayOfNulls<None>(size)
+    override fun createFromParcel(source: Parcel) = this
+    @JvmField val CREATOR = this
+  }
   
+  class Some<out T : Parcelable>(val value: T) : Maybe<T>() {
+    override fun writeToParcel(dest: Parcel, flags: Int) {
+      dest.writeParcelable(value, 0)
+    }
+    companion object {
+      @JvmField val CREATOR = // ...
+    }
+  }
+
+}
+```
+
+:cyclone: Check interactions with inheritance by delegation.
+
 Some syntactic options:    
-- The names `Parcelize` and `Transient` are just placeholders for now.
 - We could allow the user to omit the supertype `Parcelable`, to be more DRY and have only the annotation to signify that the class is Parcelable, but this would be more challenging wrt the tooling support.
 - We could annotate the supertype itself to make it more local: 
-  - `class MyParcelable(val data: Int): @Auto Parcelable`  
-  
+  - `class MyParcelable(val data: Int): @Auto Parcelable`
+  - > I think this is less desirable for readability since using this functionality (as directed by the @Auto annotation in this case) has implications for the primary constructor
+- We can have `KotlinParcelable` marker interface instead
+  - It could be a "marker" type alias
+-  The names `Parcelize`, `Transient` and `KotlinParcelable` are just placeholders for now
+
 ### Generated logic
 
 The generated serialization logic should take into account the following:
-- support for `IBinder`
-- support for collections and arrays
-- support for file descriptors wrt `describeContents()` 
+- support for collections (lists, maps), arrays and `SparseArray`s
+- support for `IBinder`/`IInterface`
+- support for `enum class`es and `object`s
+- support for file descriptors wrt `describeContents()`
     
->Discussion:    
+> :warning: Discussion:
 There is an option to generate two constructors:
 >- one ordinary primary constructor,
 >- another one that takes `Parcel` and creates an object from it.
@@ -185,11 +220,8 @@ The `Parceler` interface is defined in the same runtime library that comes with 
 ```kotlin
 interface Parceler<P : Parcelable> {
     fun describeContents() = 0
-
-    fun P.writeToParcel(parcel: Parcel, flags: Int)
-    
-    fun createFromParcel(parcel: Parcel): P    
-    
+    fun P.write(parcel: Parcel, flags: Int)
+    fun create(parcel: Parcel): P
     fun newArray(size: Int): Array<P>
 }
 ```
@@ -197,14 +229,15 @@ interface Parceler<P : Parcelable> {
 If a `@Parcelize` class has a companion object that implements `Parceler`:
 - the necessary boilerplate is generated for the `Parcelable` convention and delegated to the companion object
 - the `newArray()` method of the companion object is implemented automatically unless it's explicitly overridden
-- the type argument to `Parceler` must match the containing class, otherwise it's a compiler error
+- the type argument to `Parceler` must match the containing class, otherwise it's a compile-time error
 
 Note: Indirect implementations (`object : Foo`, where `Foo : Parceler`) are questionable here, but we can allow them if there are use cases for it.
 
 Syntactic options:
 - It does not have to be a companion object, a named object, e.g. `object Parceler: Parceler<MyPercelable>` may be ok too
   - It's rather better not to have `Parceler` as a companion object because `newArray` will be supported otherwise
-  - What about making `Parceler` a `private object`?
+  - But then we have to choose two different names for the supertype and for the actual object, as we can't write `object Parceler : Parceler` without qualified names
+  - Also the `companion object` may be private
 - We may want to require the object to be annotated to explicitly show that the `newArray()` is auto-generated
 
 > Discussion: why not implement `newArray()` in the `Parceler` interface itself?
