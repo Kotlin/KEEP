@@ -4,6 +4,8 @@ Goal: provide a way to check whether a `lateinit` property was assigned, and a w
 
 ## Motivation
 
+Original issue: https://youtrack.jetbrains.com/issue/KT-9327.
+
 A prominent use case is tests, for example JUnit. A lateinit property may or may not be initialized in `setUp`, however `tearDown` must perform the cleanup only if the property was initialized, or otherwise it would have to catch `UninitializedPropertyAccessException`.
 
 ``` kotlin
