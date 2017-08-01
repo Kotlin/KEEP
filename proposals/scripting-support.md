@@ -12,7 +12,7 @@ Discussion of this proposal is held in [this issue](https://github.com/Kotlin/KE
 
 - Define Kotlin scripting and it's applications
 - Describe intended use cases for the Kotlin scripting
-- Define scripting support tha is: 
+- Define scripting support that is: 
   - applicable to the all Kotlin platforms
   - provides sufficient control of interpretation and execution of scripts
   - simple enough to configure and customize
