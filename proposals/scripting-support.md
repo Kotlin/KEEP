@@ -134,7 +134,7 @@ of the compiled script should be supported by the compilation platform.
 #### Execution lifecycle
 
 The script is executed in the following pipeline:
-- selection - the *Selectors* takes the script and selects the set of services that will handle it
+- selection - the *Selectors* are called on the script to choose the set of services that will handle it
 - preprocessing - the *Preprocessor* takes the script and the environment and extracts the compilation configuration
 - compilation - the *Platform* takes the script, and the compilation configuration and provides the compiled class
 - instantiation - the *Executor* takes the compiled class, the environment, and the compilation configuration and
@@ -256,7 +256,7 @@ The scripting support consists of the following components:
   - predefined platform-specific preprocessors are available for standard cases, custom one could be provided by the 
     scripting host
 - **Selector** - receives the script file and/or text before further analysis to determine whether the script belongs
-  to this scripting host
+  to this scripting host and the particular set of components
   - `(scriptSource) -> Boolean`
   - required for IDE support
   - could be combined with the preprocessor, since it may require the same text analysing services 
@@ -299,7 +299,8 @@ be used for bindings mapping in JSR-223-like implementations ([KT-18917](https:/
 **Script Definition** is a configuration entity that combines platform, preprocessor, and selector in one entity 
 for simplified discovery and configuration. 
 
-The definition is a kotlin class declaration annotated with specific annotations 
+The definition is a kotlin class declaration annotated with specific annotations. The class should be defined in the SAM 
+notation, and the single abstract method will be used by the platform to compile the script body into.  
 *(avoiding usage of the word "Template", since it seems confuses people)* :
 
 ```
@@ -321,7 +322,7 @@ Alternatively, individual annotations for some elements are possible for specifi
 @ScriptByFileNameSelector("*.gradle.kts")
 ```
 
-### Platform
+### Compilation Platform
 
 ```
 interface ScriptingPlatform<CompilationConfig> {
@@ -346,6 +347,15 @@ interface ScriptPreprocessor<CompilationConfig> {
     fun preprocess(scriptSource): CompilationConfig 
 }
 ```
+
+### Selector
+
+```
+interface ScriptSelector {
+    fun isScript(scriptSource): boolean 
+}
+```
+
 
 ### Implementing Scripting Support
      
