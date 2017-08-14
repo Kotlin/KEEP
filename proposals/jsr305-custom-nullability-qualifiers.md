@@ -24,15 +24,15 @@ in a package are not nullable by default, and additionally annotate nullable
 parts where it's necessary (or vice versa)
 - The naming of default JSR 305 annotation may be rather confusing:
 `javax.annotation.Nullable` does not actually have the same meaning as nullable
-types in Kotlin, it only means that nullability is unknown unlike  the 
+types in Kotlin, it only means that nullability is unknown unlike the
 `javax.annotation.CheckForNull`. So a library maintainer may want to introduce 
-its own`Nullable` annotation as a type qualifier nickname to `CheckForNull` 
+its own `Nullable` annotation as a type qualifier nickname to `CheckForNull`
 with a more precise/clear meaning. 
 - Annotating already existing parts of a library API is a source incompatible
-change in Kotlin, thus in some cases it's worth migrating users smoothly: 
-    - Release a version of the library where there will be a warnings on 
+change in Kotlin, thus in some cases, it's worth migrating users smoothly:
+    - Release a version of the library where there will be warnings on
     incorrect usages of the newly annotated parts
-    - Turn these warnings into errors for the the next release
+    - Turn these warnings into errors for the next release
 
 ## Description
 
@@ -49,7 +49,7 @@ and instruments to control their migration status.
 
 ### Type qualifier nicknames
 [`@TypeQualifierNickname`](https://aalmiray.github.io/jsr-305/apidocs/javax/annotation/meta/TypeQualifierNickname.html) 
-annotation from the JSR 305 among others allows to introduce new nullability 
+annotation from the JSR 305 among others allows introducing new nullability
 annotations, and this proposal suggests to interpret them in Kotlin in the 
 same way as other (built-in) nullability annotations.
 
@@ -92,7 +92,7 @@ String): String?`
 
 ### Type qualifier default
 [`@TypeQualifierDefault`](https://aalmiray.github.io/jsr-305/apidocs/javax/annotation/meta/TypeQualifierDefault.html)
-allows to introduce annotations that when being applied define the default 
+allows introducing annotations that when being applied define the default
 nullability within the scope of the annotated element.
 
 To make it work new annotation class must be annotated with 
@@ -104,7 +104,7 @@ types for which the annotation may enhance a type.
 When determining immediate nullability of a type the Kotlin compiler should look
 for nullability annotation on the type itself at first.
 - If there is one, then it should use it
-- Otherwise nullability is determined by the closest annotation marked as 
+- Otherwise, nullability is determined by the closest annotation marked as
 `TypeQualifierDefault` and having appropriate applicability in the argument:
     - `ElementType.METHOD` for return type of methods
     - `ElementType.PARAMETER` for value parameters
@@ -115,7 +115,7 @@ Note, that `javax.annotation.ParametersAreNonnullByDefault` annotation should
 work automatically
 by applying the rules above.
 
-Also it's important to support reading Java package annotations, because it's 
+Also, it's important to support reading Java package annotations because it's
 supposed to be the most common way to declare a default nullability.
 
 ```java
@@ -183,10 +183,10 @@ inappropriate usages of an annotated type
 
 Inappropriate usages in Kotlin that are subjects to report errors/warnings
 include:
-- Passing nullable arguments for a parameters those types are enhanced from
+- Passing nullable arguments for parameters those types are enhanced from
 annotations to not null
 - Using enhanced nullable values as an argument for kotlin not-nullable 
-parameter or as a receiver for method call
+parameter or as a receiver for a method call
 - Overriding enhanced Java methods with incorrect signature in Kotlin
 
 ```java
@@ -216,7 +216,7 @@ to `ERROR`, then it should become an error.
 It's important that migration annotation works only for its immediate usages
 on types or through `TypeQualifierDefault` annotation.
 It means that another nickname annotation aliased to the one under migration
-doesn't inherit its migration status, thus by default it would be a 
+doesn't inherit its migration status, thus by default, it would be a
 `MigrationStatus.ERROR`
 
 ### Migration-related compiler flags
@@ -232,7 +232,7 @@ The flag `-Xjsr305-annotations` has three options: ignore, enable and warn.
 It effectively defines the migration status behavior only for nullability 
 qualifier nicknames that haven't yet been annotated with `kotlin.Migration`.
 
-This annotation is necessary since using all of the custom nullability 
+This annotation is necessary, since using all of the custom nullability
 qualifiers, and especially `TypeQualifierDefault` is already spread among many
 well-known libraries and users may need to migrate smoothly when updating to
 the Kotlin compiler version containing JSR 305 support.
@@ -249,8 +249,8 @@ postpone errors reporting for some time because they're not completed their
 migration yet.
 
 ### Overriding migration status for specific annotation
-Sometimes it might be necessary to manage a migration phase for a specific 
-library. This could be done with the flag `-Xjsr305-user-annotation`. It 
+Sometimes it might be necessary to manage a migration phase for a particular
+library. That could be done with the flag `-Xjsr305-user-annotation`. It
 accepts fully-qualified name of a nullability qualifier annotation and its 
 desired status in a format `<fq.name>:ignore/warn/error`.
 
@@ -258,7 +258,7 @@ This flag can be repeated several times in a configuration to set up a
 different behavior for different annotations.
 
 *Current limitation:* In current prototype this flag only overrides the 
-behavior for the annotations that are annotated with `@Migration`, but it 
+behavior for annotations that are annotated with `@Migration`, but it
 seems that this requirement may be weakened.
 
 Note, that this flag overrides behavior for both `Global migration status` 
