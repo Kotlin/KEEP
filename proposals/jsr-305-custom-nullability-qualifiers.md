@@ -2,8 +2,10 @@
 
 * **Type**: Design proposal
 * **Author**: Denis Zharkov
+* **Contributors**: Andrey Breslav, Leonid Stashevsky
 * **Status**: Submitted
 * **Prototype**: In progress
+* **Discussion**: [KEEP-79](https://github.com/Kotlin/KEEP/issues/79)
 
 ## Summary
 
