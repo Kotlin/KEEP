@@ -263,4 +263,27 @@ seems that this requirement may be weakened.
 
 Note, that this flag overrides behavior for both `Global migration status` 
 and for the `status` argument of `@Migration` annotation.
-    
+
+# Dependency on JSR-305 annotations in the classpath
+Because annotation classes from the JSR-305 are not actually needed at runtime
+and because of its unknown release state, many library maintainers may not want
+to ship `jsr305.jar` as a dependency to their artifacts.
+
+But once a library was successfully compiled with annotations in the 
+classpath, there's no need for the dependency as all necessary information 
+(annotation fully-qualified names, arguments, etc.) is already contained in 
+the resulting classfiles.
+
+Thus, it's worth explicitly declaring that the Kotlin compiler should be able
+to load information from nullability annotations (the built-in ones and 
+custom nullability qualifiers) without `jsr305.jar` as a dependency.
+
+# Open questions/issues
+- Should nullability default qualifiers with `TYPE_USE` applicability enhance 
+type arguments in the annotated scope? (see the [KT-19592](https://youtrack.jetbrains.com/issue/KT-19592))
+Actually, there are no obvious reasons for them not to work and it seems that
+JSR-305 doesn't specify behavior in the case
+- Should module-level default nullability qualifiers (in `module-info.java`) be
+supported in the same way as package-level?
+- Because `Migration` annotation becomes a part of a public API of kotlin 
+runtime, it's necessary to discuss related naming thoroughly
