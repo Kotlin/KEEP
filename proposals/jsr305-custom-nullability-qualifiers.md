@@ -1,4 +1,4 @@
-# JSR 305 custom nullability qualifiers
+# JSR-305 custom nullability qualifiers
 
 * **Type**: Design proposal
 * **Author**: Denis Zharkov
@@ -8,7 +8,7 @@
 ## Summary
 
 - Support loading more precise type information for Java declarations marked 
-with custom nullability annotations based on [JSR 305](https://jcp.org/en/jsr/detail?id=305)
+with custom nullability annotations based on [JSR-305](https://jcp.org/en/jsr/detail?id=305)
     - Both `@TypeQualifierNickname` and `@TypeQualifierDefault` should be 
     supported
 - Introduce `@Migration` annotation and additional compiler flags to allow a 
@@ -22,7 +22,7 @@ usages from Kotlin or just be ignored
 `TypeQualifierDefault` is the solution. One can simply declare that all types
 in a package are not nullable by default, and additionally annotate nullable 
 parts where it's necessary (or vice versa)
-- The naming of default JSR 305 annotation may be rather confusing:
+- The naming of default JSR-305 annotation may be rather confusing:
 `javax.annotation.Nullable` does not actually have the same meaning as nullable
 types in Kotlin, it only means that nullability is unknown unlike the
 `javax.annotation.CheckForNull`. So a library maintainer may want to introduce 
@@ -49,7 +49,7 @@ and instruments to control their migration status.
 
 ### Type qualifier nicknames
 [`@TypeQualifierNickname`](https://aalmiray.github.io/jsr-305/apidocs/javax/annotation/meta/TypeQualifierNickname.html) 
-annotation from the JSR 305 among others allows introducing new nullability
+annotation from the JSR-305 among others allows introducing new nullability
 annotations, and this proposal suggests to interpret them in Kotlin in the 
 same way as other (built-in) nullability annotations.
 
@@ -226,7 +226,7 @@ need a migration state different from the one offered by a library maintainer.
 
 They may be set in a build systems configuration files or in the IDE.  
 
-#### Global state of JSR 305 support
+#### Global state of JSR-305 support
 The flag `-Xjsr305-annotations` has three options: ignore, enable and warn.
 
 It effectively defines the migration status behavior only for nullability 
@@ -235,7 +235,7 @@ qualifier nicknames that haven't yet been annotated with `kotlin.Migration`.
 This annotation is necessary, since using all of the custom nullability
 qualifiers, and especially `TypeQualifierDefault` is already spread among many
 well-known libraries and users may need to migrate smoothly when updating to
-the Kotlin compiler version containing JSR 305 support.
+the Kotlin compiler version containing JSR-305 support.
 
 ### Global migration status
 The flag `-Xjsr305-annotation-migration` has the same set of options and has 
