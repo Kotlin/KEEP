@@ -89,7 +89,7 @@ Though we lose the View caching feature. The solution is to add an `LayoutContai
 
 ```kotlin
 interface LayoutContainer {
-    val entityView: View?
+    val containerView: View?
 }
 ```
 
