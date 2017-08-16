@@ -289,3 +289,33 @@ JSR-305 doesn't specify behavior in the case
 supported in the same way as package-level?
 - Because `Migration` annotation becomes a part of a public API of kotlin 
 runtime, it's necessary to discuss related naming thoroughly
+
+# Conflicts between default qualifiers and overridden
+
+```java
+// FILE: test/package-info.java
+
+@NonNullApi // declaring all types in package 'test' as non-nullable by default
+package test;
+
+
+// FILE: test/A.java
+package test;
+
+interface A<T> {
+    @Nullable
+    T foo(); // fun foo(): T?
+}
+
+interface B extends A<String> {
+    String foo(); // fun foo(): String
+}
+```
+
+The problem here is that the return type of `B::foo` is enhanced to not-nullable
+because of package-level `NonNullApi` annotation, although its overridden 
+member in `A` has `Nullable` annotation.
+
+Probably it's worth reconsidering the rule of applying default nullability 
+qualifiers and use them only in the case of absence of both explicit annotations
+and nullability info from the overridden descriptors.
