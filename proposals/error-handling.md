@@ -4,6 +4,7 @@
 * **Author:** Ben Leggiero
 * **Status:** Under consideration
 * **Revision:** 2
+* **Discussion:** [KEEP PR #81](https://github.com/Kotlin/KEEP/pull/81)
 
 # Summary #
 The purpose of Kotlin, Swift, and other such modern languages, as I see them, are **to enhance the programmer's experience of writing code** (to bring delight and joy back into the programming experience); to do more with less and produce higher-quality output (that is, bytecode, assembly, JS, or whathaveyou). If that's true, then the languages themselves should make it obvious when you're writing something dangerous that is likely to crash your app (which makes programming very frustrating). This proposal attempts to incorporate exception handling into the Kotlin language in a way that achieves that goal.
