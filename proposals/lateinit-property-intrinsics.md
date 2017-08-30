@@ -42,7 +42,7 @@ class Test {
 
 ## Description
 
-We propose to add two declarations to the standard library, an extension property `isInitialized` and an extension function `reset`. Both of them would be available _only on a property reference expression_ that references a lateinit property, accessible at the call site. Both of them are inline and intrinsic, i.e. a corresponding bytecode is generated manually by the compiler at each call site, because it's not possible to implement them in Kotlin.
+We propose to add two declarations to the standard library, an extension property `isInitialized` and an extension function `deinitialize`. Both of them would be available _only on a property reference expression_ that references a lateinit property, accessible at the call site. Both of them are inline and intrinsic, i.e. a corresponding bytecode is generated manually by the compiler at each call site, because it's not possible to implement them in Kotlin.
 
 ``` kotlin
 package kotlin
@@ -64,7 +64,7 @@ inline val @receiver:AccessibleLateinitPropertyLiteral KProperty0<*>.isInitializ
  */
 @SinceKotlin("1.2")
 @InlineOnly
-inline fun @receiver:AccessibleLateinitPropertyLiteral KProperty0<*>.reset() {
+inline fun @receiver:AccessibleLateinitPropertyLiteral KProperty0<*>.deinitialize() {
     throw NotImplementedError("Implementation is intrinsic")
 }
 ```
@@ -88,13 +88,13 @@ To call any of these two declarations, simply pass a bound reference to the prop
 
 ``` kotlin
 if (this::environment.isInitialized) {
-    this::environment.reset()
+    this::environment.deinitialize()
 }
 ```
 
 ## Resolution
 
-`isInitialized` and `reset` are two normal declarations that are resolved according to the standard Kotlin rules. To prevent them from being called on any `KProperty0` instances except symbolic references, we implement a new call checker (call checkers are run only after the resolution is complete and successful). This checker is going to check that an argument passed to a parameter annotated with `AccessibleLateinitPropertyLiteral` is indeed a property literal (after being deparenthesized) and its backing field is accessible at the call site.
+`isInitialized` and `deinitialize` are two normal declarations that are resolved according to the standard Kotlin rules. To prevent them from being called on any `KProperty0` instances except symbolic references, we implement a new call checker (call checkers are run only after the resolution is complete and successful). This checker is going to check that an argument passed to a parameter annotated with `AccessibleLateinitPropertyLiteral` is indeed a property literal (after being deparenthesized) and its backing field is accessible at the call site.
 
 ``` kotlin
 class Test(val name: String) {
@@ -124,11 +124,11 @@ class Other {
 }
 ```
 
-Note that the `AccessibleLateinitPropertyLiteral` annotation is needed mostly for the users who are looking at these declarations in standard library sources. We could hard-code the support of exactly `isInitialized` and `reset` from the standard library into the call checker, however it would be difficult for a user to understand why it's not possible to pass any `KProperty0` instance, not just a reference.
+Note that the `AccessibleLateinitPropertyLiteral` annotation is needed mostly for the users who are looking at these declarations in standard library sources. We could hard-code the support of exactly `isInitialized` and `deinitialize` from the standard library into the call checker, however it would be difficult for a user to understand why it's not possible to pass any `KProperty0` instance, not just a reference.
 
 ## Code generation
 
-Using property's getter to check `isAccessible` is not possible because it throws an `UninitializedPropertyAccessException` if the property is not initialized, and using property's setter to nullify it in `reset` is not possible because it asserts that the value parameter is non-null at the beginning. So, the compiler must generate direct read/write accesses to the backing field's property. The requirement "must be a reference to a property, the backing field of which should be accessible" is thus needed because the compiler must know _statically_ which property is referenced, check that it's a lateinit property, and ensure that it's possible to generate access to the backing field.
+Using property's getter to check `isAccessible` is not possible because it throws an `UninitializedPropertyAccessException` if the property is not initialized, and using property's setter to nullify it in `deinitialize` is not possible because it asserts that the value parameter is non-null at the beginning. So, the compiler must generate direct read/write accesses to the backing field's property. The requirement "must be a reference to a property, the backing field of which should be accessible" is thus needed because the compiler must know _statically_ which property is referenced, check that it's a lateinit property, and ensure that it's possible to generate access to the backing field.
 
 The generated bytecode itself is very simple. Because both declarations are intrinsic, we're able to avoid the generation of the anonymous class for the property reference and use `GETFIELD`/`PUTFIELD` instructions.
 
@@ -141,16 +141,16 @@ class Test {
     }
 
     fun test2() {
-        this::file.reset()         // ALOAD 0, ACONST_NULL, PUTFIELD Test.file
+        this::file.deinitialize()  // ALOAD 0, ACONST_NULL, PUTFIELD Test.file
     }
 }
 ```
 
 ### Backing field accessibility
 
-We'd like to allow calling `isInitialized` and `reset` on as many properties and from as many different contexts as possible. However, without certain limitations we would have problems with source and binary compatibility.
+We'd like to allow calling `isInitialized` and `deinitialize` on as many properties and from as many different contexts as possible. However, without certain limitations we would have problems with source and binary compatibility.
 
-The main limitation is that we do not allow calling `isInitialized` or `reset` on a lateinit property declared in another class, lexically unrelated to the class or file of the call site. It's not that we don't know what bytecode to generate. If the property (and thus its backing field) is public, we could generate `GETFIELD`/`PUTFIELD` exactly in the same way as for the property in the containing class. However, doing so would make removing the `lateinit` modifier on a property, which is today merely an implementation detail, a source-breaking and binary-breaking change. We don't want to make the fact that the property is `lateinit` a part of its API, so we disallow usages from other classes.
+The main limitation is that we do not allow calling `isInitialized` or `deinitialize` on a lateinit property declared in another class, lexically unrelated to the class or file of the call site. It's not that we don't know what bytecode to generate. If the property (and thus its backing field) is public, we could generate `GETFIELD`/`PUTFIELD` exactly in the same way as for the property in the containing class. However, doing so would make removing the `lateinit` modifier on a property, which is today merely an implementation detail, a source-breaking and binary-breaking change. We don't want to make the fact that the property is `lateinit` a part of its API, so we disallow usages from other classes.
 
 ``` kotlin
 class Test {
@@ -199,7 +199,7 @@ class Test {
 
 ## Tooling support
 
-Code completion in the IDE must only propose `isInitialized` and `reset` if the calls are going to be allowed by the compiler, i.e. on an accessible lateinit property references.
+Code completion in the IDE must only propose `isInitialized` and `deinitialize` if the calls are going to be allowed by the compiler, i.e. on an accessible lateinit property references.
 
 ## Known issues
 
@@ -230,7 +230,6 @@ Code completion in the IDE must only propose `isInitialized` and `reset` if the 
         }
     }
     ```
-* The names `isInitialized` and `reset` are somewhat asymmetric. Maybe we should rename `reset` to `uninitialize`, or rename `isInitialized` to `isSet`.
 
 ## Other approaches
 
