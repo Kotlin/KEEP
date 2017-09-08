@@ -43,7 +43,7 @@ Discussion of this proposal is held in [this issue](https://github.com/Kotlin/KE
 * Build scripts (Gradle/Kobalt)
 * Test scripts (Spek)
 * Command-line utilities
-* Routing script (ktor)
+* Routing scripts (ktor)
 * Type-safe configuration files (TeamCity)
 * In-process scripting and REPL for IDE
 * Consoles like IPython Notebook
@@ -53,25 +53,38 @@ Discussion of this proposal is held in [this issue](https://github.com/Kotlin/KE
 ## Basic definitions
 
 - **Script** - a text file written in Kotlin language but allowing top-level statements and having access to some 
-  implicit (not directly mentioned in the script text) properties and , as if the whole script body is a body of an implicit
-  function
+  implicit (not directly mentioned in the script text) properties, functions and objects, as if the whole script body 
+  is a body of an implicit function executed in an environment (see below)
 - **(Scripting) Host** - an application or a component which handles script execution   
 - **REPL statement** - a group of script text lines, executed in a single REPL eval call
 - **Compiled script** - a binary compiled code of the script, stored in memory or on disk, which could be loaded 
   and instantiated by appropriate platform
 - **Script instance** - instantiated compiled script, ready to be executed
-- **External library** - a library whose declarations are available for the script being compiled, instantiated and 
+- **Dependency** - a external library or other project whose declarations are available for the script being compiled, 
+  instantiated and executed
+- **Imported script** - another script whose declarations are available for the script being compiled, instantiated and 
   executed
-- **External script** - another script whose declarations are available for the script being compiled, instantiated and 
-  executed   
 - **Execution environment** - the environment in which the script is instantiated and executed, defining which services,
   objects, actions, etc. are accessible for the script
+
+## feedback      
+      
+!restrictions! (blacklist/whitelist)      
+!consent! - run preprocessors in restricted env
+!preprocessor extensions! -
+!discovery! = only predefined preprocessors
+selector: -> Evaluator
+executor -> runner
+external library -> dependency
+external script -> imported script
+platform -> compiler adapter
+preprocessor -> metadata extractor
 
 ## Use cases
 
 ### Embedded scripting
 
-Embedded script applications are specialized consoles like Jupyter notebook, Spark shell, embedded games scripting, 
+Embedded scripting applications are specialized consoles like Jupyter notebook, Spark shell, embedded games scripting, 
 IDE and other application-level scripting, etc. 
 
 #### Environment
@@ -149,39 +162,42 @@ of the compiled script should be supported by the compilation platform.
 #### Execution lifecycle
 
 The script is executed in the following pipeline:
-- selection - the *Selectors* are called on the script to choose the set of services that will handle it
-  - input: `scriptSource` (file, url or text with metadata for eval)
-  - output: preconfigured set of other components (*Preprocessor*, *Platform*, *Executor*, *see below*) that should be 
-    used for further processing of the given script
-- preprocessing - the *Preprocessor* takes the script and the environment and extracts the compilation configuration
+- selection - the registered *ScriptAnalyzers* are called in the registration order on the script to choose the set of 
+  services that will handle this script
+  - input: `scriptSource` (file, url or text)
+  - output: preconfigured set of other components (*ScriptAnalyzer*, *ScriptCompiler*, *ScriptRunner* and/or 
+    *ScriptingHost* *, *see below*) that should be used for further processing of the given script
+- metadata extraction - the *ScriptAnalyzer* takes the script and the environment and extracts the script metadata 
+  required for the compilation
   - input: `scriptSource` *(see selection)*
-  - output: `compilationConfig` - data needed for proper script compilation, defined by platform; may include, e.g.
+  - output: `scriptMetadata` - data needed for proper script compilation, defined by platform; may include, e.g.
     references to external libraries and scripts, compiler options, additional properties that needed to be compiled
     into the script class, etc.
-- compilation - the *Platform* takes the script, and the compilation configuration and provides the compiled class
-  - input: `scriptSource` and `compilationConfig` *(see above)*
+- compilation - the *ScriptCompiler* takes the script, and the `scriptMetadata` and provides the compiled class
+  - input: `scriptSource` and `scriptMetadata` *(see above)*
   - output: `compiledScript` - a compiled script representation, e.g. class file or binary class data for JVM
-- instantiation - the *Executor* takes the compiled class, the environment, and the compilation configuration and
+- instantiation - the *ScriptRunner* takes the compiled class, the environment, and the compilation configuration and
   instantiates the script class, passing the required parameters from the environment to the constructor
-  - input: `compiledScript` *(see above)*
+  - input: `compiledScript` *(see above)* and `scriptEnvironment`
   - output: `scriptInstance`
 - execution - the *Executor* takes the instantiated script and executes the appropriate method, passing arguments
   from the environment to it; this step could be repeated many times
-  - input: `scriptInstance`
+  - input: `scriptInstance` and `scriptEnvironment`
   - output: script return val
 
 #### Processing in an IDE
 
 The script is handled in an IDE in the following sequence (*Note that the first two steps are the same as in the 
 execution pipeline*):
-- selection - the *Selectors* takes the script and selects the set of services that will handle it
+- selection - the *ScriptAnalyzers* takes the script and selects the set of services that will handle it
   - *input and output are the same as in the execution lifecycle* 
-- preprocessing - the *Preprocessor* takes the script and the environment and extracts the compilation configuration
+- metadata extraction - the *ScriptAnalyzer* takes the script and the environment and extracts the script metadata 
+  required for the ide resolving
   - *input and output are the same as in the execution lifecycle* 
-- resolution info extraction - the *Platform* takes the script and the compilation configuration and provides the
+- resolution info extraction - the *IDE resolver* takes the script and the compilation configuration and provides the
   info required for rich editing the script
-  - input: `scriptSource` and `compilationConfig` *(see above)*
-  - output: `scriptRichEditingConfig` - the data that will enable rich editing (resolving, source highlighting, 
+  - input: `scriptSource` and `scriptMetadata` *(see above)*
+  - output: `scriptResolveData` - the data that will enable rich editing (resolving, source highlighting, 
     navigation, etc) of the script 
 
 ### Standalone scripting
@@ -279,47 +295,16 @@ From an IDE point of view, these scripts are the part of the project.
 
 ### Architecture
 
+#### Components
+
 The scripting support consists of the following components:
-- **Platform** - interface for compilation and IDE support 
+- **ScriptCompiler** - interface for compilation
   - compilation: `(scriptSource, scriptDefinition, compilationConfig) -> compiledScript`
-  - IDE resolving: `(scriptSource, scriptDefinition, compilationConfig) -> scriptRichEditingConfig`
-  - predefined platforms based on the kotlin platforms: /JVM, /JS, /Native
+  - predefined script compilers based on the kotlin platforms: /JVM, /JS, /Native
   - custom/customized implementation possible
-  - compiled scripts cashing should be implemented here
-  - the `scriptSource` is defined by the platform and determines the way to access script for other components; it 
-    consists of:
-    - the script reference pointer: path or url
-    - an accessor to the script text
-    - accessors to the syntactic script elements that could be used on the preprocessing, such as:
-      - file-level annotations
-      - "sections": top-level `name {...}` blocks (e.g. as provided by `source-sections-plugin` and used in gradle)
-      - *(maybe, in the future)* lexeme iterators
-  - the `scriptDefinition` is a script type configuration in a form of annotated class/interface; *see dedicated section
-    below for details*
-  - the `compilationConfig` is defined by the platform, and may affect code generation; typically contains:
-    - additional dependencies
-    - *required* scripts
-    - expected parameters
-  - the `scriptRichEditingConfig` is defined by the platform too but is specific for a particular IDE; it may contain:
-    - data from `compilationConfig` that references script dependencies and implicit declarations (like expected parameters)
-    - additional dependencies data, like source and javadoc jars 
-    - platform configuration data (e.g. JAVA_HOME)
+  - compiled scripts cashing belongs here
   - should not keep the state of the script execution
-- **Executor** - the component that receives compiled script instantiates it, and then evaluates it in a required 
-  environment, supplying any arguments that the script requires:
-  - instantiation: `(compiledScript, compilationConfig, environment) -> scriptInstance`
-  - evaluation: `(scriptInstance, compilationConfig, environment) -> Unit`
-  - the `environment` is an entity denoting/referencing the actual execution environment of the script
-  - uses `compilationConfig` and `environment` to compute arguments for the script
-  - predefined platform-specific executors available, but could be provided by the scripting host
-  - possible executors
-    - JSR-223
-    - IDEA REPL
-    - Jupyter
-    - Gradle
-    - with specific coroutines context
-    - ...
-- **Preprocessor** - receives the script text before compilation and extracts the `compilationConfig`
+- **ScriptAnalyzer** - recognizes the script by the locator or contents and extracts the `scriptMetadata`
   - `(scriptSource) -> compilationConfig`
   - *previously called DependenciesResolver*
   - have access to specific compiler services to:
@@ -333,12 +318,54 @@ The scripting support consists of the following components:
     - gradle's `buildScript` and `plugins` section handlers
     - `@DependsOn` resolver from the `script-util` library
     - ...
+- **ScriptRunner** - the component that receives compiled script instantiates it, and then evaluates it in a required 
+  environment, supplying any arguments that the script requires:
+  - instantiation: `(compiledScript, scriptMetadata, environment) -> scriptInstance`
+  - evaluation: `(scriptInstance, scriptMetadata, environment) -> Unit`
+  - the `environment` is an entity denoting/referencing the actual execution environment of the script
+  - uses `scriptMetadata` and `environment` to compute arguments for the script
+  - predefined platform-specific executors available, but could be provided by the scripting host
+  - possible executors
+    - JSR-223
+    - IDEA REPL
+    - Jupyter
+    - Gradle
+    - with specific coroutines context
+    - ...
 - **Selector** - receives the script file and/or text before further analysis to determine whether the script belongs
   to this scripting host and the particular set of components
   - `(scriptSource) -> Boolean`
   - required for IDE support
-  - could be combined with the preprocessor, since it may require the same text analyzing services 
   - default and simple implementations are provided
+- **IDE support** - interface similar to **ScriptCompiler** for providing IDEs with data for rich editing  
+  - IDE resolving: `(scriptSource, scriptMetadata) -> scriptResolveData`
+  
+#### Data structures  
+  
+- the `scriptSource` determines the way to access script for other components; it 
+  consists of:
+  - the script reference pointer: path or url
+  - an accessor to the script text
+- the `scriptMetadata` contains the info required for script compilation and resolving, including  
+  - accessors to the syntactic script elements that could be used on the preprocessing, such as:
+    - file-level annotations
+    - "sections": top-level `name {...}` blocks (e.g. as provided by `source-sections-plugin` and used in gradle)
+    - *(maybe, in the future)* lexeme iterators
+  - `scriptDefinition` class used as a prototype for code generation (*see below*)
+  - script dependencies
+  - implicit imports
+  - compiler options
+  - implicit receivers, e.g. previous script lines
+  - external bindings
+  - additional compiler options  
+  - imported scripts
+  - expected parameters
+  - API restrictions in the form of enable/disable rules list, each rule contains e.g. qualified name or a wildcard 
+- the `scriptDefinition` is a script type configuration in a form of annotated class/interface; *see dedicated section
+  below for details*
+- the `scriptResolveData` is specific for a particular IDE; it may contain:
+  - additional dependencies data, like source and javadoc jars 
+  - platform configuration data (e.g. JAVA_HOME)
 
 ### Script object
 
@@ -412,7 +439,7 @@ Alternatively, individual annotations for some elements are possible for specifi
 
 ### Components interfaces
 
-#### Compilation Platform
+#### Script Compiler
 
 ```
 interface ScriptingPlatform<CompilationConfig, ScriptRichEditingConfig> {
