@@ -13,7 +13,7 @@
 with custom nullability annotations based on [JSR-305](https://jcp.org/en/jsr/detail?id=305)
     - Both `@TypeQualifierNickname` and `@TypeQualifierDefault` should be 
     supported
-- Introduce `@Migration` annotation and additional compiler flags to allow a 
+- Introduce `@UnderMigration` annotation and additional compiler flags to allow a 
 library maintainer and its users to control the way how these new annotations
 affect the compiler's behavior. Namely, they may lead to errors, warnings on 
 usages from Kotlin or just be ignored
@@ -151,18 +151,18 @@ interface A {
 
 ```
 
-### `@Migration` annotation
+### `@UnderMigration` annotation
 Current proposal suggests to add the following meta-annotation in 
 the `kotlin.annotation` package:
 ```kotlin
 enum class MigrationStatus {
-    ERROR,
-    WARNING,
+    STRICT,
+    WARN,
     IGNORE
 }
 
 @Target(AnnotationTarget.ANNOTATION_CLASS)
-annotation class Migration(val status: MigrationStatus)
+annotation class UnderMigration(val status: MigrationStatus)
 ```
 
 Its aim is to define a migration status of an annotation it's been applied to.
@@ -171,12 +171,12 @@ To the moment it can be only used for custom nullability qualifier
 
 When the annotation is applied to a nullability nickname its argument specifies
 how the compiler handles the nickname:
-- `MigrationStatus.ERROR` makes annotation work just the same way as any plain
+- `MigrationStatus.STRICT` makes annotation work just the same way as any plain
 nullability annotation, i.e. reporting errors for inappropriate usages of an 
 annotated type. In other words, it's equivalent to absence of the 
-`@Migration` annotation.
-- `MigrationStatus.WARNING` should work just the same as 
-`MigrationStatus.ERROR`, but compilation warnings must be reported instead of 
+`@UnderMigration` annotation.
+- `MigrationStatus.WARN` should work just the same as 
+`MigrationStatus.STRICT`, but compilation warnings must be reported instead of 
 errors 
 for 
 inappropriate usages of an annotated type 
@@ -194,7 +194,7 @@ parameter or as a receiver for a method call
 ```java
 @TypeQualifierNickname
 @Nonnull(when = When.ALWAYS)
-@Migration(status = MigrationStatus.WARNING)
+@UnderMigration(status = MigrationStatus.WARN)
 @Retention(RetentionPolicy.RUNTIME)
 public @interface MyNonnull {
 }
@@ -213,13 +213,13 @@ fun bar(a: A) {
 ```
 
 In the example the warning will be reported until status argument is changed
-to `ERROR`, then it should become an error.
+to `STRICT`, then it should become an error.
 
 It's important that migration annotation works only for its immediate usages
 on types or through `TypeQualifierDefault` annotation.
 It means that another nickname annotation aliased to the one under migration
 doesn't inherit its migration status, thus by default, it would be a
-`MigrationStatus.ERROR`
+`MigrationStatus.STRICT`
 
 ### Migration-related compiler flags
 
@@ -232,7 +232,7 @@ They may be set in a build systems configuration files or in the IDE.
 The flag `-Xjsr305-annotations` has three options: ignore, enable and warn.
 
 It effectively defines the migration status behavior only for nullability 
-qualifier nicknames that haven't yet been annotated with `kotlin.Migration`.
+qualifier nicknames that haven't yet been annotated with `kotlin.UnderMigration`.
 
 This annotation is necessary, since using all of the custom nullability
 qualifiers, and especially `TypeQualifierDefault` is already spread among many
@@ -242,11 +242,11 @@ the Kotlin compiler version containing JSR-305 support.
 ### Global migration status
 The flag `-Xjsr305-annotation-migration` has the same set of options and has 
 the similar meaning, but overrides the behavior defined by the `status` argument
-for all of the `@Migration` annotated qualifiers.
+for all of the `@UnderMigration` annotated qualifiers.
 
 It might be needed in case when library users have different view on a 
 migration status for the library: both they may want to have errors while the
-official migration status is `WARNING`, and vice versa, they may wish to 
+official migration status is `WARN`, and vice versa, they may wish to 
 postpone errors reporting for some time because they're not completed their 
 migration yet.
 
@@ -260,11 +260,11 @@ This flag can be repeated several times in a configuration to set up a
 different behavior for different annotations.
 
 *Current limitation:* In current prototype this flag only overrides the 
-behavior for annotations that are annotated with `@Migration`, but it
+behavior for annotations that are annotated with `@UnderMigration`, but it
 seems that this requirement may be weakened.
 
 Note, that this flag overrides behavior for both `Global migration status` 
-and for the `status` argument of `@Migration` annotation.
+and for the `status` argument of `@UnderMigration` annotation.
 
 # Dependency on JSR-305 annotations in the classpath
 Because annotation classes from the JSR-305 are not actually needed at runtime
