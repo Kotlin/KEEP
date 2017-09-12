@@ -73,7 +73,7 @@ val example2: List<String!> = bar()
 ``` 
 
 Other options:
-* Use some soft modifier, e.g., `flexible`, which is more explicitly obvious then `!`.
+* Use some soft modifier, e.g., `flexible`, which is more explicitly obvious than `!`.
 * Use special type constructor defined in Kotlin built-ins, e.g., `Flexible<T>`. This doesn't require additional soft 
 keyword. However, syntax noise of additional angular brackets may make code harder to read.
 
