@@ -51,9 +51,16 @@ and instruments to control their migration status.
 
 ### Type qualifier nicknames<a name="type-qualifier-nickname"></a>
 [`@TypeQualifierNickname`](https://aalmiray.github.io/jsr-305/apidocs/javax/annotation/meta/TypeQualifierNickname.html) 
-annotation from the JSR-305 among others allows introducing new nullability
-annotations, and this proposal suggests to interpret them in Kotlin in the 
-same way as other (built-in) nullability annotations.
+annotation from the JSR-305 allows to define nicknames to a 
+[type qualifier](https://aalmiray.github.io/jsr-305/apidocs/javax/annotation/meta/TypeQualifier.html)
+that may be considered as a kind of extensions for type system of Java 
+programming language.
+
+Among others, JSR-305 defines nullability type qualifier [`Nonnull`](https://aalmiray.github.io/jsr-305/apidocs/javax/annotation/Nonnull.html) 
+that allows to specify nullability of Java types.
+And while `Nonnull` itself is already supported by Kotlin compiler, this proposal 
+suggests to interpret qualifier nicknames to it in Kotlin in the same way as other 
+(built-in) nullability annotations.
 
 The rules are following: an annotation class must be annotated both with 
 `@javax.annotation.meta.TypeQualifierNickname` and `@javax.annotation.NonNull` 
@@ -66,8 +73,8 @@ declaration (a value parameter, field or method) must enhance related type
 in the same way it would be done if it was annotated as `@NonNull` with
 corresponding `when` argument. Namely:
 - `When.ALWAYS` makes the type not-nullable
-- `When.MAYBE` makes the type nullable
-- `When.NEVER/When.UNKNOWN` doesn't affect type's nullability
+- `When.MAYBE/When.NEVER`, make the type nullable
+- `When.UNKNOWN` forces the type to remain flexible
 
 ```java
 @TypeQualifierNickname
@@ -106,16 +113,23 @@ types for which the annotation may enhance a type.
 When determining immediate nullability of a type the Kotlin compiler should look
 for nullability annotation on the type itself at first.
 - If there is one, then it should use it
-- Otherwise, nullability is determined by the closest annotation marked as
-`TypeQualifierDefault` and having appropriate applicability in the argument:
+- Otherwise, nullability is determined by the innermost enclosing element 
+annotated with `TypeQualifierDefault` and having appropriate applicability 
+in the argument:
     - `ElementType.METHOD` for return type of methods
     - `ElementType.PARAMETER` for value parameters
     - `ElementType.FIELD` for fields
-    - `ElementType.TYPE_USE` for any top-level type
+    - `ElementType.TYPE_USE` for any type including type arguments, upper bounds 
+    of type parameters and wildcard types
     
-Note, that `javax.annotation.ParametersAreNonnullByDefault` annotation should 
-work automatically
-by applying the rules above.
+Note, that [`javax.annotation.ParametersAreNonnullByDefault`](https://aalmiray.github.io/jsr-305/apidocs/javax/annotation/ParametersAreNonnullByDefault.html) 
+annotation should work automatically by applying the rules above:
+```java
+@Nonnull
+@TypeQualifierDefault(value=PARAMETER)
+@Retention(value=RUNTIME)
+public @interface ParametersAreNonnullByDefault {}
+```
 
 Also, it's important to support reading Java package annotations because it's
 supposed to be the most common way to declare a default nullability.
@@ -131,13 +145,14 @@ public @interface NonNullApi {
 public @interface NullableApi {
 }
 ```
+
 ```java
 // FILE: test/package-info.java
-
 @NonNullApi // declaring all types in package 'test' as non-nullable by default
 package test;
+```
 
-
+```java
 // FILE: test/A.java
 package test;
 
@@ -147,14 +162,20 @@ interface A {
  
     @NotNullApi // overriding default from the class
     String bar(String x, @Nullable String y); // fun bar(x: String, y: String?): String 
+    
+    // The type of `x` parameter remains flexible because there's explicit UNKNOWN-marked
+    // nullability annotation
+    String baz(@Nonnull(when = When.UNKNOWN) String x); // fun baz(x: String!): String?
 }
 
 ```
 
 ### `@UnderMigration` annotation
 Current proposal suggests to add the following meta-annotation in 
-the `kotlin.annotation` package:
+the `kotlin.annotations.jvm` package:
 ```kotlin
+package kotlin.annotations.jvm
+
 enum class MigrationStatus {
     STRICT,
     WARN,
@@ -173,14 +194,16 @@ When it is applied to a nullability annotation its argument specifies
 how the compiler handles the annotation:
 - `MigrationStatus.STRICT` makes annotation work just the same way as any plain
 nullability annotation, i.e. reporting errors for inappropriate usages of an 
-annotated type. In other words, it's equivalent to absence of the 
-`@UnderMigration` annotation.
+annotated type. In other words, it's almost equivalent to the absence of the 
+`@UnderMigration` annotation. The only difference is how the annotation is handled
+by the compiler when [migration status flag](#migration-status) is set.
+
 - `MigrationStatus.WARN` should work just the same as 
 `MigrationStatus.STRICT`, but compilation warnings must be reported instead of 
 errors 
 for 
 inappropriate usages of an annotated type 
-- `MigrationStatus.IGNORE` makes compiler to ignore the annotation completely
+- `MigrationStatus.IGNORE` makes compiler to ignore the nullability annotation completely
 
 
 Inappropriate usages in Kotlin that are subjects to report errors/warnings
@@ -199,16 +222,27 @@ parameter or as a receiver for a method call
 public @interface MyNonnull {
 }
 
+@TypeQualifierNickname
+@Nonnull(when = When.ALWAYS)
+@UnderMigration(status = MigrationStatus.IGNORE)
+@Retention(RetentionPolicy.RUNTIME)
+public @interface IgnoredNonnull {
+}
+
 
 interface A {
     void foo(@MyNonnull String x);
+    void bar(@IgnoredNonnull String x);
 }
 
 ```
 
 ```kotlin
 fun bar(a: A) {
-    a.foo(null) // a warning will be reported on 'null' argument
+    // a warning will be reported on 'null' argument
+    a.foo(null) 
+    // no warning or error will be reported because `IgnoredNonnull` has IGNORE migration status
+    a.bar(null) 
 }
 ```
 
@@ -321,7 +355,7 @@ in the next Kotlin version.
 It's very likely that there will be more strict checks in 1.3
 - There are plans to turn the default behavior into `strict` in 1.3
 
-#### Global migration status
+#### Global migration status<a name="migration-status"></a>
 The flag when used with argument in the format `-Xjsr305=under-migration:{ignore|warn|strict}` 
 overrides the behavior defined by the `status` argument
 for all of the `@UnderMigration` annotated qualifiers.
