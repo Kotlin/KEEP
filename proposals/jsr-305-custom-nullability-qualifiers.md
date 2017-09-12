@@ -49,7 +49,7 @@ when used from Kotlin. Let's call this kind of annotating as types enhancement.
 Current proposal is supposed to introduce additional ways of types enhancement
 and instruments to control their migration status.
 
-### Type qualifier nicknames
+### Type qualifier nicknames<a name="type-qualifier-nickname"></a>
 [`@TypeQualifierNickname`](https://aalmiray.github.io/jsr-305/apidocs/javax/annotation/meta/TypeQualifierNickname.html) 
 annotation from the JSR-305 among others allows introducing new nullability
 annotations, and this proposal suggests to interpret them in Kotlin in the 
@@ -92,7 +92,7 @@ interface A {
 String): String?`
 
 
-### Type qualifier default
+### Type qualifier default<a name="type-qualifier-default"></a>
 [`@TypeQualifierDefault`](https://aalmiray.github.io/jsr-305/apidocs/javax/annotation/meta/TypeQualifierDefault.html)
 allows introducing annotations that when being applied define the default
 nullability within the scope of the annotated element.
@@ -166,11 +166,11 @@ annotation class UnderMigration(val status: MigrationStatus)
 ```
 
 Its aim is to define a migration status of an annotation it's been applied to.
-To the moment it can be only used for custom nullability qualifier 
-[nicknames](#Type qualifier nicknames) introduced in this proposal as well.
+`@UnderMigration` can be used both for [nicknames](#type-qualifier-nickname) and
+[default qualifiers](#type-qualifier-default)
 
-When the annotation is applied to a nullability nickname its argument specifies
-how the compiler handles the nickname:
+When it is applied to a nullability annotation its argument specifies
+how the compiler handles the annotation:
 - `MigrationStatus.STRICT` makes annotation work just the same way as any plain
 nullability annotation, i.e. reporting errors for inappropriate usages of an 
 annotated type. In other words, it's equivalent to absence of the 
@@ -220,6 +220,72 @@ on types or through `TypeQualifierDefault` annotation.
 It means that another nickname annotation aliased to the one under migration
 doesn't inherit its migration status, thus by default, it would be a
 `MigrationStatus.STRICT`
+
+Examples:
+```java
+@TypeQualifierNickname
+@Nonnull(when = When.ALWAYS)
+@UnderMigration(status = MigrationStatus.WARN)
+public @interface MyNonnull {
+}
+
+@MyNonnull
+@TypeQualifierDefault({ElementType.METHOD, ElementType.PARAMETER})
+public @interface NonNullApi {
+}
+
+// Everything in the class is non-null, but only warnings would be reported
+// because `MyNonnull` annotation is annotated as @UnderMigration(status = MigrationStatus.WARN)
+@NonNullApi 
+public class Test {} 
+```
+
+```java
+@TypeQualifierNickname
+@Nonnull(when = When.ALWAYS)
+@UnderMigration(status = MigrationStatus.WARN)
+public @interface MyNonnull {
+}
+
+@TypeQualifierNickname
+@MyNonnull
+public @interface MyNonnullNickname {
+}
+
+public class A {
+    public void foo(@MyNonnullNickname String x) {}
+}
+```
+
+```kotlin
+fun bar(a: A) {
+    // an error must be reported, because `MyNonnullNickname` is not annotated as `@UnderMigration` even though
+    // the nicknamed `MyNonnull` is `@UnderMigration(status = MigrationStatus.WARN)`
+    a.foo(null) 
+}
+```
+
+If both nickname and default qualifier have non-trivial migration status the one
+from default qualifier must be chosen:
+```java
+@TypeQualifierNickname
+@Nonnull(when = When.ALWAYS)
+@UnderMigration(status = MigrationStatus.ERROR)
+public @interface MyNonnull {
+}
+
+@MyNonnull
+@TypeQualifierDefault({ElementType.METHOD, ElementType.PARAMETER})
+@UnderMigration(status = MigrationStatus.WARN)
+public @interface NonNullApi {
+}
+
+// Everything in the class is non-null, but only warnings would be reported
+// because `NonNullApi` annotation is annotated as @UnderMigration(status = MigrationStatus.WARN),
+// even though `MyNonnull` has ERROR migration status
+@NonNullApi 
+public class Test {} 
+```
 
 ### Compiler configuration for JSR-305 support
 Custom compiler configuration for JSR-305 support might be useful mostly 
