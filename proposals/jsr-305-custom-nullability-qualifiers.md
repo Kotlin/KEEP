@@ -221,27 +221,43 @@ It means that another nickname annotation aliased to the one under migration
 doesn't inherit its migration status, thus by default, it would be a
 `MigrationStatus.STRICT`
 
-### Migration-related compiler flags
+### Compiler configuration for JSR-305 support
+Custom compiler configuration for JSR-305 support might be useful mostly 
+for library users who for some reasons need a migration state different 
+from the one offered by a library maintainer.
 
-Compiler flags might be useful mostly for library users who for some reasons 
-need a migration state different from the one offered by a library maintainer.
+The state of JSR-305 is defined by the single compiler flag called `-Xjsr305`.
+It may be set in a build systems configuration files or in the IDE.  
 
-They may be set in a build systems configuration files or in the IDE.  
+Basically, it has three kinds of arguments that allow to control the behavior
+for different sets of annotations.
 
 #### Global state of JSR-305 support
-The flag `-Xjsr305-annotations` has three options: ignore, enable and warn.
+To define the state for all annotations that haven't been annotated with 
+`kotlin.UnderMigration` the flag must be used in format: `-Xjsr305={ignore|warn|strict}`
 
-It effectively defines the migration status behavior only for nullability 
-qualifier nicknames that haven't yet been annotated with `kotlin.UnderMigration`.
+Each of the options has the same meaning as the fields of `MigrationStatus`:
+- `ignore` effectively disables `UnderMigration`-unaware annotations
+- `warn` leads to warnings being reported on the nullability-unsafe usages in Kotlin
+- `strict` makes nullability-unsafe usages in Kotlin to be errors
 
-This annotation is necessary, since using all of the custom nullability
+Changing the global state of JSR-305 might be needed since custom nullability
 qualifiers, and especially `TypeQualifierDefault` is already spread among many
 well-known libraries and users may need to migrate smoothly when updating to
 the Kotlin compiler version containing JSR-305 support.
 
-### Global migration status
-The flag `-Xjsr305-annotation-migration` has the same set of options and has 
-the similar meaning, but overrides the behavior defined by the `status` argument
+*Notes*
+- For kotlin compiler versions 1.1.50+/1.2 the default behavior is the same as 
+the flag is set to `-Xjsr305=warn`. 
+- The `strict` option must be considered as experimental in a sense that there are no
+guarantees that code compiled with this option enabled in 1.2 will still be correct 
+in the next Kotlin version.
+It's very likely that there will be more strict checks in 1.3
+- There are plans to turn the default behavior into `strict` in 1.3
+
+#### Global migration status
+The flag when used with argument in the format `-Xjsr305=under-migration:{ignore|warn|strict}` 
+overrides the behavior defined by the `status` argument
 for all of the `@UnderMigration` annotated qualifiers.
 
 It might be needed in case when library users have different view on a 
@@ -250,18 +266,31 @@ official migration status is `WARN`, and vice versa, they may wish to
 postpone errors reporting for some time because they're not completed their 
 migration yet.
 
-### Overriding migration status for specific annotation
+This kind of argument can be used together to the one described in the previous
+section. 
+For example, to ignore all JSR-305 annotations (both `UnderMigration` aware and ones that aren't)
+the compiler configuration should contain among other flags
+`-Xjsr305=ignore -Xjsr305=under-migration:ignore`
+
+#### Overriding migration status for specific annotation
 Sometimes it might be necessary to manage a migration phase for a particular
-library. That could be done with the flag `-Xjsr305-user-annotation`. It
-accepts fully-qualified name of a nullability qualifier annotation and its 
-desired status in a format `<fq.name>:ignore/warn/error`.
+library. 
+That could be done with the flag argument in the format
+`-Xjsr305=@<fq.name>:{ignore|warn|strict}`. 
+`<fq.name>` here is a fully-qualified name of a JSR-305 annotation
 
-This flag can be repeated several times in a configuration to set up a 
-different behavior for different annotations.
+For example, if a library defines its own `MyNullable` annotation in a package 
+`org.library` to disable it one can add `-Xjsr305=@org.library.MyNullable:ignore`
+to the set of compiler flags.
 
-*Current limitation:* In current prototype this flag only overrides the 
-behavior for annotations that are annotated with `@UnderMigration`, but it
-seems that this requirement may be weakened.
+Again, this kind of argument can be repeated several times in a configuration 
+to set up a different behavior for different annotations and can be used together
+with the previous ones.
+
+Example:
+- `-Xjsr305=ignore -Xjsr305=under-migration:ignore -Xjsr305=@org.library.MyNullable:warn`
+makes compiler ignore all the annotations but the `org.library.MyNullable` and report
+warnings on unsafe usages related to the latter
 
 Note, that this flag overrides behavior for both `Global migration status` 
 and for the `status` argument of `@UnderMigration` annotation.
