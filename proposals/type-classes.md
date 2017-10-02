@@ -25,8 +25,8 @@ We propose to introduce a new top level declaration `typeclass` that allows for 
 
 ```kotlin
 typeclass Monoid {
-    fun combine(b: Self): Self
-    fun Self.Companion.empty(): Self
+    fun Self.combine(b: Self): Self
+    fun empty(): Self
 }
 ```
 
@@ -35,8 +35,8 @@ In the implementation below we provide evidence that there is an `Int: Monoid` i
 
 ```kotlin
 extension Int : Monoid {
-    fun combine(b: Int): Int = this + b
-    fun Int.Companion.empty(): Int = 0
+    fun Int.combine(b: Int): Int = this + b
+    fun empty(): Int = 0
 }
 
 1.combine(2) // 3
@@ -55,7 +55,7 @@ On top of the value this brings to typed FP in Kotlin it also helps in OOP conte
 
 ```kotlin
 typeclass Context {
-  fun config(): Config
+  fun Self.config(): Config
 }
 ```
 
@@ -63,7 +63,7 @@ typeclass Context {
 package prod
 
 extension Service: Context {
-  fun config(): Config = ProdConfig
+  fun Service.config(): Config = ProdConfig
 }
 ```
 
@@ -71,7 +71,7 @@ extension Service: Context {
 package test
 
 extension Service: Context {
-  fun config(): Config = TestConfig
+  fun Service.config(): Config = TestConfig
 }
 ```
 
@@ -92,9 +92,9 @@ Type class instances and declarations can encode further constrains in their gen
 ```kotlin
 extension Option<A: Monoid> : Monoid {
 
-  fun Option.Companion.empty(): Option<A> = None
+  fun empty(): Option<A> = None
 
-  fun combine(ob: Option<A>): Option<A> =
+  fun Option.combine(ob: Option<A>): Option<A> =
     when (this) {
       is Some<A> -> when (ob) {
                       is Some<A> -> Some(this.value.combine(b.value))
@@ -136,7 +136,7 @@ If Higher Kinds where added along with typeclasses to the lang an alternate defi
 
 ```kotlin
 typeclass Functor {
-    fun map(b: Self): Self
+    fun Self.map(b: Self): Self
 }
 ```
 
@@ -174,8 +174,8 @@ typeclass F<_> : Functor {
 }
 
 extension Option: Functor {
-    fun <A, B> map(fa: Option<A>, f: (A) -> B): Option<B> = ... //does not enable `Option(1).map(Option(1)) becase `Option#map` already exists with the same signature as an instance method
-    fun <A, B> Option.Companion.lift(f: (A) -> B): (Option<A>) -> Option<B> = ... //enables Option.lift({n: Int -> n.toString() }) because the Option companion does not define `lift` // Option<Int> -> Option<String>
+    fun <A, B> Self.map(fa: Option<A>, f: (A) -> B): Option<B> = ... //does not enable `Option(1).map(Option(1)) becase `Option#map` already exists with the same signature as an instance method
+    fun <A, B> lift(f: (A) -> B): (Option<A>) -> Option<B> = ... //enables Option.lift({n: Int -> n.toString() }) because the Option companion does not define `lift` // Option<Int> -> Option<String>
 }
 ```
 
