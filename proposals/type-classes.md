@@ -174,7 +174,7 @@ typeclass F<_> : Functor {
 }
 
 extension Option: Functor {
-    fun <A, B> Self.map(fa: Option<A>, f: (A) -> B): Option<B> = ... //does not enable `Option(1).map(Option(1)) becase `Option#map` already exists with the same signature as an instance method
+    fun <A, B> Self.map(fa: Option<A>, f: (A) -> B): Option<B> = ... //does not enable `Option(1).map(Option(1)) because `Option#map` already exists with the same signature as an instance method
     fun <A, B> lift(f: (A) -> B): (Option<A>) -> Option<B> = ... //enables Option.lift({n: Int -> n.toString() }) because the Option companion does not define `lift` // Option<Int> -> Option<String>
 }
 ```
