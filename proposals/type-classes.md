@@ -11,6 +11,7 @@ The goal of this proposal is to enable `typeclasses` and lightweight `Higher Kin
 Type classes is the most important feature that Kotlin lacks in order to support a broader range of FP idioms.
 Kotlin already has an excellent extension mechanism where this proposal fits nicely. As a side effect `Type classes as extensions` also allows for compile time
 dependency injection which will improve the current landscape where trivial applications rely on heavy frameworks based on runtime Dependency Injection.
+Furthermore introduction of typeclasses usages for `reified` generic functions with a more robust approach that does not require those to be `inline` or `reified`.
 
 ## Motivation
 
@@ -18,6 +19,7 @@ dependency injection which will improve the current landscape where trivial appl
 * Support a broader range of Typed FP patterns
 * Enable multiple extension functions groups for type declarations
 * Enable compile time DI through the use of the Typeclass pattern
+* Enable alternative for inline reified generics
 
 ## Description
 
@@ -50,6 +52,8 @@ fun <A : Monoid> add(a: A, b: A): A = a.combine(b)
 add(1, 1) // compiles
 add("a", "b") // does not compile: No `String: Monoid` instance defined in scope
 ```
+
+## Compile Time Dependency Injection
 
 On top of the value this brings to typed FP in Kotlin it also helps in OOP contexts where dependencies can be provided at compile time:
 
@@ -87,6 +91,48 @@ package test
 service.config() // TestConfig
 ```
 
+## Overcoming `inline` + `reified` limitations
+
+Typeclasses allow us to workaround `inline` `reified` generics and their limitations and express those as typeclasses instead it:
+
+```kotlin
+typeclass Reified {
+    val selfClass: KClass<Self>
+}
+```
+
+Now a function that was doing something like:
+
+```kotlin
+inline fun <reified T> foo() { .... T::class ... }
+```
+
+can be replaced with:
+
+```kotlin
+fun <T : Reified> fooTC() { .... T.selfClass ... }
+```
+
+This allows us to obtain generics info without the need to declare the functions `inline` or `reified` overcoming the current limitations of inline reified functions.
+
+Currently `inline fun <reified T> foo()` can't be called in non reified context such as:
+
+```kotlin
+class MyClass<T> {
+  fun doFoo() = foo<T>() //fails to compile because T is not reified.
+}
+```
+
+because `T` is not reified the compiler won't allow this position. With type classes this will be possible:
+
+```kotlin
+class MyClass<T: Reified> {
+  fun doFoo() = fooTC<T>() // Compiles because there is evidence that there is an instance of `Reified` for `T`
+}
+```
+
+## Composition and chain of evidences
+
 Type class instances and declarations can encode further constrains in their generic args so they can be composed nicely:
 
 ```kotlin
@@ -115,7 +161,7 @@ Option("a").combine(Option("b")) // does not compile. Found `Option<A>: Monoid` 
 
 We believe the above proposed encoding fits nicely with Kotlin's philosophy of extensions and will reduce the boilerplate compared to other langs that also support typeclasses such as Scala where this is done via implicits.
 
-# Typeclasses over type constructors
+## Typeclasses over type constructors
 
 We recommend if this proposal is accepted that a lightweight version of higher kinds support is included to unveil the true power of typeclasses through the extensions mechanisms
 
@@ -162,21 +208,6 @@ fun <F<_> : Functor, A, B> transform(fa: F<A>, f: (A) -> B): F<B> = F.map(fa, f)
 transform(Option(1), { it + 1 }) // Option(2)
 transform("", { it + "b" }) // Does not compile: `String` is not type constructor with shape F<_>
 transform(listOf(1), { it + 1 }) // does not compile: No `List<_>: Functor` instance defined in scope.
-```
-
-Once typeclasses extensions are defined over datatypes the compiler could automatically
-add extensions to the target datatypes unless the target datatype already defines a method with the same signature:
-
-```kotlin
-typeclass F<_> : Functor {
-    fun <A, B> map(fa: F<A>, f: (A) -> B): F<B>
-    fun <A, B> Self.Companion.lift(f: (A) -> B): (F<A>) -> F<B>
-}
-
-extension Option: Functor {
-    fun <A, B> Self.map(fa: Option<A>, f: (A) -> B): Option<B> = ... //does not enable `Option(1).map(Option(1)) because `Option#map` already exists with the same signature as an instance method
-    fun <A, B> lift(f: (A) -> B): (Option<A>) -> Option<B> = ... //enables Option.lift({n: Int -> n.toString() }) because the Option companion does not define `lift` // Option<Int> -> Option<String>
-}
 ```
 
 Some of this examples where originally proposed by Roman Elizarov and the Kategory contributors where these features where originally discussed https://kotlinlang.slack.com/archives/C1JMF6UDV/p1506897887000023 
