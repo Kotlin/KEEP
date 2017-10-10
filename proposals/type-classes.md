@@ -36,10 +36,16 @@ The above declaration can serve as target for implementations for any arbitrary 
 In the implementation below we provide evidence that there is a `Monoid<Int>` instance that enables `combine` and `empty` on `Int`
 
 ```kotlin
+package intext
+
 extension object IntMonoid : Monoid<Int> {
     fun Int.combine(b: Int): Int = this + b
     fun empty(): Int = 0
 }
+```
+
+```
+import intext.IntMonoid
 
 1.combine(2) // 3
 Int.empty() // 0
@@ -48,6 +54,8 @@ Int.empty() // 0
 Because of this constrain where we are stating that there is a `Monoid` constrain for a given type `A` we can also encode polymorphic definitions based on those constrains:
 
 ```kotlin
+import intext.IntMonoid
+
 fun <A> add(a: A, b: A): A given Monoid<A> = a.combine(b)
 add(1, 1) // compiles
 add("a", "b") // does not compile: No `String: Monoid` instance defined in scope
@@ -132,6 +140,8 @@ class Foo<A> {
 Type class instances and declarations can encode further constrains in their generic args so they can be composed nicely:
 
 ```kotlin
+package optionext
+
 extension class OptionMonoid<A> : Monoid<Option<A>> given Monoid<A> {
 
   fun empty(): Option<A> = None
@@ -151,6 +161,9 @@ extension class OptionMonoid<A> : Monoid<Option<A>> given Monoid<A> {
 The above instance declares a `Monoid<Option<A>>` as long as there is a `Monoid<A>` in scope.
 
 ```kotlin
+import optionext.OptionMonoid
+import intext.IntMonoid
+
 Option(1).combine(Option(1)) // Option(2)
 Option("a").combine(Option("b")) // does not compile. Found `Monoid<Option<A>>` instance providing `combine` but no `Monoid<String>` instance was in scope
 ```
