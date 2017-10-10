@@ -111,22 +111,22 @@ fun fib(i: Int) = if (i <= 2) 1 else fib(i - 1) + fib(i - 1)
 Without buffering it is very unefficient. Using function delegation we might add buffering this way:
 
 ```
-fun <V, T> memorise(f: (V) -> T): (V) -> T {
+fun <V, T> memoize(f: (V) -> T): (V) -> T {
     val map = mutableMapOf<V, T>()
     return { map.getOrPut(it) { f(it) } }
 }
 
-fun fib(i: Int): Int by memorise { i -> if (i <= 2) 1 else fib(i - 1) + fib(i - 1) }
+fun fib(i: Int): Int by memoize { i -> if (i <= 2) 1 else fib(i - 1) + fib(i - 1) }
 ```
 
 Similarly synchronization for single function could be added.
 
 ## Implementation details
 
-Function delegate could be compiled to delegate holden in seperate property and its invocation in function body. Invocation should include all the paramters defined by function. For example, above `fib` function with `memorise` should be compiled to:
+Function delegate could be compiled to delegate holden in seperate property and its invocation in function body. Invocation should include all the paramters defined by function. For example, above `fib` function with `memoize` should be compiled to:
 
 ```
-private val fib$delegate: (Int) -> Int = memorise { i -> if (i <= 2) 1 else fib(i - 1) + fib(i - 1) }
+private val fib$delegate: (Int) -> Int = memoize { i -> if (i <= 2) 1 else fib(i - 1) + fib(i - 1) }
 fun fib(i: Int) = fib$delegate(i)
 ```
 
@@ -145,7 +145,7 @@ class MainActivity: MainView {
 If we are using property instead of function when we can get all the functionalities. For example:
 
 ```
-val fib: (Int) -> Int = memorise<Int, Int> { a ->
+val fib: (Int) -> Int = memoize<Int, Int> { a ->
     if (a <= 2) 1
     else (::fib).get()(a - 1) + (::fib).get()(a - 2)
 }
@@ -174,7 +174,7 @@ class MainActivity : MainView {
 Instead of `as` keyword, we could use simpler notation:
 
 ```
-fun fib = memorise<Int, Int> { a -> if (a <= 2) 1 else fib(a - 1) + fib(a - 2) }
+fun fib = memoize<Int, Int> { a -> if (a <= 2) 1 else fib(a - 1) + fib(a - 2) }
 ```
 
 Type of arguments would be inferred from delegate. Argument types would be inferred from delegate.
