@@ -36,7 +36,7 @@ The above declaration can serve as target for implementations for any arbitrary 
 In the implementation below we provide evidence that there is a `Monoid<Int>` instance that enables `combine` and `empty` on `Int`
 
 ```kotlin
-extension class IntMonoid : Monoid<Int> {
+extension object IntMonoid : Monoid<Int> {
     fun Int.combine(b: Int): Int = this + b
     fun empty(): Int = 0
 }
@@ -66,7 +66,7 @@ interface Context<A> {
 ```kotlin
 package prod
 
-extension class ProdContext: Context<Service> {
+extension object ProdContext: Context<Service> {
   fun Service.config(): Config = ProdConfig
 }
 ```
@@ -74,7 +74,7 @@ extension class ProdContext: Context<Service> {
 ```kotlin
 package test
 
-extension class TestContext: Context<Service> {
+extension object TestContext: Context<Service> {
   fun Service.config(): Config = TestConfig
 }
 ```
@@ -132,7 +132,7 @@ class Foo<A> {
 Type class instances and declarations can encode further constrains in their generic args so they can be composed nicely:
 
 ```kotlin
-extension class OptionMonoid : Monoid<Option<A>> given Monoid<A> {
+extension class OptionMonoid<A> : Monoid<Option<A>> given Monoid<A> {
 
   fun empty(): Option<A> = None
 
@@ -168,7 +168,7 @@ interface FunctionK<F<_>, G<_>> {
   fun <A> invoke(fa: F<A>): G<A>
 }
 
-extension class Option2List : FunctionK<Option, List> {
+object Option2List : FunctionK<Option, List> {
   fun <A> invoke(fa: Option<A>): List<A> =
     fa.fold({ emptyList() }, { listOf(it) })
 }
