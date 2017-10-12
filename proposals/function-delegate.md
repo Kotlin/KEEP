@@ -57,9 +57,7 @@ class ListAdapter {
 class MainActivity : MainView {
     val adapter = ListAdapter()
     
-    override fun deleteListElementAt(position: Int) {
-        adapter.deleteAt(position)
-    }
+    override fun deleteListElementAt(position: Int) = adapter.deleteAt(position)
 }
 ```
 
@@ -83,9 +81,7 @@ interface MainView {
 
 class MainActivity: MainView {
 
-    override fun setTitle(text: String) {
-        titleView.setText(text)
-    }
+    override fun setTitle(text: String) = titleView.setText(text)
 }
 ```
 
