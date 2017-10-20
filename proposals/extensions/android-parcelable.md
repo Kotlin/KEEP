@@ -239,7 +239,7 @@ If a `@Parcelize` class has a companion object that implements `Parceler`:
 Note: Indirect implementations (`object : Foo`, where `Foo : Parceler`) are questionable here, but we can allow them if there are use cases for it.
 
 Syntactic options:
-- It does not have to be a companion object, a named object, e.g. `object Parceler: Parceler<MyPercelable>` may be ok too
+- It does not have to be a companion object, a named object, e.g. `object Parceler: Parceler<MyParcelable>` may be ok too
   - :warning: It's rather better not to have `Parceler` as a companion object because `newArray` will be supported otherwise
   - But then we have to choose two different names for the supertype and for the actual object, as we can't write `object Parceler : Parceler` without qualified names
   - Also the `companion object` may be private
