@@ -119,7 +119,7 @@ inline fun <reified A> foo() { .... A::class ... }
 can be replaced with:
 
 ```kotlin
-fun <A> fooTC(): Klass<A> given Reified<A> { .... T.selfClass ... }
+fun <A> fooTC(): Klass<A> given Reified<A> { .... A.selfClass ... }
 ```
 
 This allows us to obtain generics info without the need to declare the functions `inline` or `reified` overcoming the current limitations of inline reified functions that can't be invoked unless made concrete from non reified contexts.
