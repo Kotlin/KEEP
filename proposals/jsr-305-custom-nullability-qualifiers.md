@@ -304,7 +304,7 @@ from default qualifier must be chosen:
 ```java
 @TypeQualifierNickname
 @Nonnull(when = When.ALWAYS)
-@UnderMigration(status = MigrationStatus.ERROR)
+@UnderMigration(status = MigrationStatus.STRICT)
 public @interface MyNonnull {
 }
 
@@ -316,7 +316,7 @@ public @interface NonNullApi {
 
 // Everything in the class is non-null, but only warnings would be reported
 // because `NonNullApi` annotation is annotated as @UnderMigration(status = MigrationStatus.WARN),
-// even though `MyNonnull` has ERROR migration status
+// even though `MyNonnull` has STRICT migration status
 @NonNullApi 
 public class Test {} 
 ```
