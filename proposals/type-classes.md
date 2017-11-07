@@ -267,7 +267,7 @@ class AddingInts {
 }
 ```
 
-2. Look in the most outher class/interface scope for declarations of `given Monoid<Int>` in this case the class `AddingInts`:
+2. Look in the immediately outher class/interface scope for declarations of `given Monoid<Int>` in this case the class `AddingInts`:
 ```kotlin
 class AddingInts given Monoid<Int> {
   fun addInts(): Int = add(1, 2)
