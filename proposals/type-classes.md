@@ -27,7 +27,7 @@ Furthermore introduction of type classes improves usages for `reified` generic f
 We propose to use the existing `interface` semantics allowing for generic definition of type classes and their instances with the same style interfaces are defined
 
 ```kotlin
-interface Monoid<A> {
+typeclass Monoid<A> {
     fun A.combine(b: A): A
     fun empty(): A
 }
@@ -39,7 +39,7 @@ In the implementation below we provide evidence that there is a `Monoid<Int>` in
 ```kotlin
 package intext
 
-object IntMonoid : Monoid<Int> {
+instance object IntMonoid : Monoid<Int> {
     fun Int.combine(b: Int): Int = this + b
     fun empty(): Int = 0
 }
@@ -67,7 +67,7 @@ add("a", "b") // does not compile: No `String: Monoid` instance defined in scope
 On top of the value this brings to typed FP in Kotlin it also helps in OOP contexts where dependencies can be provided at compile time:
 
 ```kotlin
-interface Context<A> {
+typeclass Context<A> {
   fun A.config(): Config
 }
 ```
@@ -75,7 +75,7 @@ interface Context<A> {
 ```kotlin
 package prod
 
-object ProdContext: Context<Service> {
+instance object ProdContext: Context<Service> {
   fun Service.config(): Config = ProdConfig
 }
 ```
@@ -83,7 +83,7 @@ object ProdContext: Context<Service> {
 ```kotlin
 package test
 
-object TestContext: Context<Service> {
+instance object TestContext: Context<Service> {
   fun Service.config(): Config = TestConfig
 }
 ```
@@ -105,7 +105,7 @@ service.config() // TestConfig
 Type classes allow us to workaround `inline` `reified` generics and their limitations and express those as type classes instead:
 
 ```kotlin
-interface Reified<A> {
+typeclass Reified<A> {
     val selfClass: KClass<A>
 }
 ```
@@ -125,13 +125,13 @@ fun <A> fooTC(): Klass<A> given Reified<A> { .... A.selfClass ... }
 This allows us to obtain generics info without the need to declare the functions `inline` or `reified` overcoming the current limitations of inline reified functions that can't be invoked unless made concrete from non reified contexts.
 
 ```kotlin
-class Foo<A> {
+instance class Foo<A> {
    val someKlazz = foo<A>() //won't compile because class disallow reified type args.
 }
 ```
 
 ```kotlin
-class Foo<A> {
+instance class Foo<A> {
    val someKlazz = fooTC<A>() //works anddoes not requires to be inside an `inline reified` context.
 }
 ```
@@ -143,7 +143,7 @@ Type class instances and declarations can encode further constrains in their gen
 ```kotlin
 package optionext
 
-class OptionMonoid<A> : Monoid<Option<A>> given Monoid<A> {
+instance class OptionMonoid<A> : Monoid<Option<A>> given Monoid<A> {
 
   fun empty(): Option<A> = None
 
@@ -178,11 +178,11 @@ We recommend if this proposal is accepted that a lightweight version of higher k
 A syntax that would allow for higher kinds in these definitions may look like this:
 
 ```kotlin
-interface FunctionK<F<_>, G<_>> {
+typeclass FunctionK<F<_>, G<_>> {
   fun <A> invoke(fa: F<A>): G<A>
 }
 
-object Option2List : FunctionK<Option, List> {
+instance object Option2List : FunctionK<Option, List> {
   fun <A> invoke(fa: Option<A>): List<A> =
     fa.fold({ emptyList() }, { listOf(it) })
 }
@@ -204,7 +204,7 @@ transform(listOf(1), { it + 1 }) // does not compile: No `Functor<List>` instanc
 
 - Add `given` to require instances evidences in both function and interface/class declarations as demonstrated by previous and below examples:
 ```kotlin
-class OptionMonoid<A> : Monoid<Option<A>> given Monoid<A> //class position
+instance class OptionMonoid<A> : Monoid<Option<A>> given Monoid<A> //class position
 
 fun <A> add(a: A, b: A): A given Monoid<A> = a.combine(b) //function position
 ```
@@ -213,7 +213,7 @@ The below alternative approach to `given` using parameters and the special keywo
 was more inline with other similar usages such as `where` that users are already used to and did not require to name the instances to activate extension syntax.
 
 ```kotlin
-class OptionMonoid<A>(instance MA: Monoid<A>) : Monoid<Option<A>> //class position
+instance class OptionMonoid<A>(instance MA: Monoid<A>) : Monoid<Option<A>> //class position
 
 fun <A> add(a: A, b: A, instance MA: Monoid<A>): A = a.combine(b) //function position
 ```
@@ -252,7 +252,7 @@ fun <A> add(a: A, b: A): A given Monoid<A> = a.combine(b)
 ```
 Call site:
 ```kotlin
-class AddingInts {
+instance class AddingInts {
   fun addInts(): Int = add(1, 2)
 }
 ```
@@ -262,14 +262,14 @@ The compiler may choose the following order for resolving the evidence that a `M
 
 This will compile because the responsibility of providing `Monoid<Int>` is passed unto the callers of `addInts()`:
 ```kotlin
-class AddingInts {
+instance class AddingInts {
   fun addInts(): Int given Monoid<Int> = add(1, 2)
 }
 ```
 
 2. Look in the immediately outher class/interface scope for declarations of `given Monoid<Int>` in this case the class `AddingInts`:
 ```kotlin
-class AddingInts given Monoid<Int> {
+instance class AddingInts given Monoid<Int> {
   fun addInts(): Int = add(1, 2)
 }
 ```
@@ -278,7 +278,7 @@ This will compile because the responsibility of providing `Monoid<Int>` is passe
 3. Look in the import declarations for an explicitly imported instance that satisfies the constrain `Monoid<Int>`:
 ```kotlin
 import intext.IntMonoid
-class AddingInts {
+instance class AddingInts {
   fun addInts(): Int = add(1, 2)
 }
 ```
@@ -287,7 +287,7 @@ This will compile because the responsibility of providing `Monoid<Int>` is satis
 4. Fail to compile if neither outer scopes nor explicit imports fail to provide evidence that there is a constrain satisfied by an instance in scope.
 ```kotlin
 import intext.IntMonoid
-class AddingInts {
+instance class AddingInts {
   fun addInts(): Int = add(1, 2)
 }
 ```
