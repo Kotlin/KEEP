@@ -124,6 +124,8 @@ fun <A> fooTC(): Klass<A> given Reified<A> { .... A.selfClass ... }
 
 This allows us to obtain generics info without the need to declare the functions `inline` or `reified` overcoming the current limitations of inline reified functions that can't be invoked unless made concrete from non reified contexts.
 
+Not this does not remove the need to use `inline reified` where one tries to instrospect generic type information at runtime with reflection. This particular case is only relevant for those cases where you know the types you want `Reified` ahead of time and you need to access to their class value.
+
 ```kotlin
 instance class Foo<A> {
    val someKlazz = foo<A>() //won't compile because class disallow reified type args.
