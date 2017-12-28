@@ -30,7 +30,7 @@ This proposal describes a mechanism that will allow library authors to provide e
 
 We propose to add the following declarations to the standard Kotlin library:
 
-```
+```kotlin
 package kotlin
 
 @Target(ANNOTATION_CLASS)
@@ -48,7 +48,7 @@ The `Experimental` annotation is applied to an annotation class and it makes tha
 
 Example:
 
-```
+```kotlin
 // Library code:
 
 @Experimental
@@ -81,7 +81,7 @@ It's important to distinguish two types of usages of experimental API, which pro
 
 Examples:
 
-```
+```kotlin
 @ShinyNewAPI
 open class Foo { ... }
 
@@ -111,7 +111,7 @@ More specifically, a body usage is one of these (and signature usages are all ex
 
 There's a notable exception from the requirement on experimental API to poison all its indirect usages: **a body usage in the same module does not require propagation**. Example:
 
-```
+```kotlin
 // Library code:
 
 @ShinyNewAPI
@@ -127,7 +127,7 @@ The rationale is that since the usage is compiled by the same author as the decl
 
 If `foo` is used *outside* the module, its body usages will require propagation. However, note that indirect body usages of `foo` also satisfy the “same module” rule, but now it's the usage module that is the same:
 
-```
+```kotlin
 // Usage:
 
 @ShinyNewAPI
@@ -145,7 +145,7 @@ fun useIndirectly() {
 
 There's an exception for this rule: a usage in the same module **requires propagation, if it's inside an inline function body**:
 
-```
+```kotlin
 // Library code:
 
 @ShinyNewAPI
@@ -170,7 +170,7 @@ There are certain declarations which must not require propagation across the ent
 
 Example:
 
-```
+```kotlin
 // Library code:
 
 @Experimental
@@ -193,7 +193,7 @@ Here, `useNonEmpty` calls `getList`, which is using the experimental `NonEmpty` 
 
 To mitigate this, we allow to make the scope of the experimental API marker to be `COMPILE_TIME`, making it a **compile-time experimental API**. Body usages of compile-time experimental API do not require propagation of the experimental marker up the call chain. However, they still require an explicit consent from the user. To express that consent, we introduce another annotation, `UseExperimental`:
 
-```
+```kotlin
 // Library code:
 
 // EnhancedCollections now marks a compile-time experimental API
@@ -212,7 +212,7 @@ fun useNonEmpty() {
 
 `UseExperimental` allows to use the API for the selected markers anywhere lexically below the parse tree. Here's the proposed declaration of `UseExperimental` in the standard Kotlin library:
 
-```
+```kotlin
 package kotlin
 
 @Target(CLASS, PROPERTY, LOCAL_VARIABLE, VALUE_PARAMETER, CONSTRUCTOR, FUNCTION,
