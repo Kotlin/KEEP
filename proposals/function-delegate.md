@@ -8,7 +8,7 @@
 
 ## Feedback 
 
-Discussion of this proposal is held in [this issue](https://github.com/Kotlin/KEEP/issues/25).
+Discussion of this proposal is held in [pull request](https://github.com/Kotlin/KEEP/pull/89/commits).
 
 ## Summary
 
