@@ -196,7 +196,7 @@ fun fib(i: Int) = fib$delegate.functionDelegate(i)
 
 If we are using property instead of function and use property delegation. Also when we use property then it can hold state so we can use functions like memorize:
 
-```
+```kotlin
 val fib: (Int) -> Int = memoize<Int, Int> { a ->
     if (a <= 2) 1
     else (::fib).get()(a - 1) + (::fib).get()(a - 2)
@@ -205,7 +205,7 @@ val fib: (Int) -> Int = memoize<Int, Int> { a ->
 
 The problem with this alternative is when we are using recurrence (because property is not defined yet). Also there is problem with interfaces, because we would have to replace functions with properties with function types:
 
-```
+```kotlin
 interface MainView {
     val clearList: ()->Unit
 }
