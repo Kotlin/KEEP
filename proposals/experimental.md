@@ -125,7 +125,7 @@ fun bar() {
 
 The rationale is that since the usage is compiled by the same author as the declaration, and even as a part of the same build, the author can make sure that any changes to `foo` that may break its clients will be handled properly in `foo`'s module. The fact that `bar` uses `foo` internally is its implementation detail, and whether `bar` is experimental itself is completely independent of the fact that `foo` is experimental.
 
-If `foo` is used *outside* the module, its body usages will require propagation. However, note that indirect body usages of `foo` also satisfy the “same module” rule, but now it's the usage module that is the same:
+If `foo` is used *outside* the module where the experimental API is declared, its body usages will require propagation:
 
 ```kotlin
 // Usage:
@@ -137,8 +137,11 @@ fun useFoo() {
     foo()
 }
 
+@ShinyNewAPI
 fun useIndirectly() {
-    // Body usage in the same module: no propagation required
+    // Even though "useFoo" is declared in the same module,
+    // its experimental aspect comes with ShinyNewAPI from another module
+    // and therefore "useIndirectly" must also be annotated with @ShinyNewAPI
     useFoo()
 }
 ```
