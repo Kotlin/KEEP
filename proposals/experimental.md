@@ -37,10 +37,10 @@ package kotlin
 @Target(BINARY)
 annotation class Experimental(
     val level: Level = Level.ERROR,
-    val mayBreakAt: Scope = Scope.RUNTIME
+    val changesMayBreak: Array<Impact> = [Impact.COMPILATION, Impact.LINKAGE, Impact.RUNTIME]
 ) {
     enum class Level { WARNING, ERROR }
-    enum class Scope { COMPILE_TIME, RUNTIME }
+    enum class Impact { COMPILATION, LINKAGE, RUNTIME }
 }
 ```
 
@@ -68,13 +68,13 @@ fun useFoo(foo: Foo) {
 }
 ```
 
-Here `useFoo` uses experimental API (marked with `@ShinyNewAPI`) and thus must explicitly opt-in to that usage, allowing the author of that API to change it bypassing the standard deprecation cycle. Because `ShinyNewAPI` may break at runtime (`mayBreakAt` is `RUNTIME`), `useFoo` must **propagate** the requirement to opt-in further to its clients. Therefore `useFoo` is annotated with `@ShinyNewAPI` itself.
+Here `useFoo` uses experimental API (marked with `@ShinyNewAPI`) and thus must explicitly opt-in to that usage, allowing the author of that API to change it bypassing the standard deprecation cycle. Because `ShinyNewAPI` may break at runtime (`changesMayBreak` contains `RUNTIME`), `useFoo` must **propagate** the requirement to opt-in further to its clients. Therefore `useFoo` is annotated with `@ShinyNewAPI` itself.
 
 Note that by using the “poisoned” experimental API, `useFoo` effectively becomes experimental API itself (with the same marker). In theory, we could distinguish initial introduction of the experimental API and its propagating usages, but it would complicate the proposal a bit and there doesn't seem to be much value in doing that.
 
 ## Signature and body usages
 
-It's important to distinguish two types of usages of experimental API, which propagate differently according to the scope of the marker annotation.
+It's important to distinguish two types of usages of experimental API, which propagate differently according to the impact of the marker annotation.
 
 * A **signature usage** is a usage in the publicly accessible declaration signature: parameter types, return types, supertypes, type parameter bounds, annotations on any of those elements, etc.
 * A **body usage** is a usage in the executable code, i.e. in the function/constructor body or in the property initializer
@@ -194,13 +194,13 @@ fun useNonEmpty() {
 
 Here, `useNonEmpty` calls `getList`, which is using the experimental `NonEmpty` annotation, marked by `@EnhancedCollections`. Therefore, `useNonEmpty` must opt-in to use that experimental API. However, if `NonEmpty` is always used as an annotation, any incompatible changes in it can only affect the compile time, and not the runtime. Thus, it wouldn't be wise to require to propagate the requirement to opt-in to using this API to clients of `useNonEmpty`, who wouldn't want to have anything to do with the fact that `useNonEmpty`'s implementation uses a declaration which may break its compilation (but not the behavior!) in the future.
 
-To mitigate this, we allow to make the scope of the experimental API marker to be `COMPILE_TIME`, making it a **compile-time experimental API**. Body usages of compile-time experimental API do not require propagation of the experimental marker up the call chain. However, they still require an explicit consent from the user. To express that consent, we introduce another annotation, `UseExperimental`:
+To mitigate this, we allow to declare the impact of the experimental API marker to be `COMPILATION`, making it a **compile-time experimental API**. Body usages of compile-time experimental API do not require propagation of the experimental marker up the call chain. However, they still require an explicit consent from the user. To express that consent, we introduce another annotation, `UseExperimental`:
 
 ```kotlin
 // Library code:
 
 // EnhancedCollections now marks a compile-time experimental API
-@Experimental(mayBreakAt = Experimental.Scope.COMPILE_TIME)
+@Experimental(changesMayBreak = [Experimental.Impact.COMPILATION])
 annotation class EnhancedCollections
 
 ...
@@ -229,6 +229,15 @@ annotation class UseExperimental(
 Using `UseExperimental` with annotations that are *not* experimental API markers has no effect and yields a compilation warning. Using `UseExperimental` with no arguments has no effect and yields a warning as well.
 
 If one of the markers used in `UseExperimental` does not denote a compile-time experimental API, this is a compilation error.
+
+## Linkage and runtime impact
+
+Besides `COMPILATION`, changes to the experimental API can impact `LINKAGE` and `RUNTIME`. These two mean different things in general:
+
+* `LINKAGE` means that changes may cause exceptions related to the fact that the client code was not recompiled after the changes. Note that `LINKAGE` does not imply `COMPILATION` in general: for example, adding a function parameter with a default value will not (mostly) break compilation, but will break with linkage error at runtime if the code is not recompiled on JVM.
+* `RUNTIME` means that the contract or the observed runtime behavior of the experimental API may change, including the possibility of throwing exceptions.
+
+In the prototype, these two impacts are checked exactly in the same way in the compiler, i.e. they require propagation according to the rules specified in this proposal. We may provide additional diagnostics in the future for these two different cases.
 
 ## Propagation and opt-in for whole modules
 
