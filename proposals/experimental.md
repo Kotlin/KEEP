@@ -146,7 +146,7 @@ fun useIndirectly() {
 }
 ```
 
-There's an exception for this rule: a usage in the same module **requires propagation, if it's inside an inline function body**:
+There's an exception for this rule: a usage in the same module **requires propagation, if it's inside an effectively public inline function body**:
 
 ```kotlin
 // Library code:
