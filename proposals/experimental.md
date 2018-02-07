@@ -42,9 +42,18 @@ annotation class Experimental(
     enum class Level { WARNING, ERROR }
     enum class Impact { COMPILATION, LINKAGE, RUNTIME }
 }
+
+@Target(CLASS, PROPERTY, LOCAL_VARIABLE, VALUE_PARAMETER, CONSTRUCTOR, FUNCTION,
+        PROPERTY_GETTER, PROPERTY_SETTER, EXPRESSION, FILE)
+@Retention(SOURCE)
+annotation class UseExperimental(
+    vararg val annotationClass: KClass<out Annotation>
+)
 ```
 
-The `Experimental` annotation is applied to an annotation class and it makes that class an **experimental API marker**. That marker can be further applied to the relevant API to make it experimental, i.e. invoke the corresponding checks in the compiler at the call site.
+The `Experimental` annotation is applied to an annotation class and it makes that class an **experimental API marker**. That marker can be further applied to the relevant API to make it experimental, i.e. to require the user to opt-in to the experimental behavior at the call site, and propagate that requirement further.
+
+The `UseExperimental` annotation allows the user to **opt-in** to the experimental API **without propagating** it to its call sites. `UseExperimental` can only be used in limited circumstances and is discussed later in this proposal.
 
 Example:
 
@@ -194,7 +203,7 @@ fun useNonEmpty() {
 
 Here, `useNonEmpty` calls `getList`, which is using the experimental `NonEmpty` annotation, marked by `@EnhancedCollections`. Therefore, `useNonEmpty` must opt-in to use that experimental API. However, if `NonEmpty` is always used as an annotation, any incompatible changes in it can only affect the compile time, and not the runtime. Thus, it wouldn't be wise to require to propagate the requirement to opt-in to using this API to clients of `useNonEmpty`, who wouldn't want to have anything to do with the fact that `useNonEmpty`'s implementation uses a declaration which may break its compilation (but not the behavior!) in the future.
 
-To mitigate this, we allow to declare the impact of the experimental API marker to be `COMPILATION`, making it a **compile-time experimental API**. Body usages of compile-time experimental API do not require propagation of the experimental marker up the call chain. However, they still require an explicit consent from the user. To express that consent, we introduce another annotation, `UseExperimental`:
+To mitigate this, we allow to declare the impact of the experimental API marker to be `COMPILATION`, making it a **compile-time experimental API**. Body usages of compile-time experimental API do not require propagation of the experimental marker up the call chain. However, they still require an explicit consent from the user. To express that consent, we use `UseExperimental`, passing the related marker classes as `::class` literals:
 
 ```kotlin
 // Library code:
@@ -213,18 +222,7 @@ fun useNonEmpty() {
 }
 ```
 
-`UseExperimental` allows to use the API for the selected markers anywhere lexically below the parse tree. Here's the proposed declaration of `UseExperimental` in the standard Kotlin library:
-
-```kotlin
-package kotlin
-
-@Target(CLASS, PROPERTY, LOCAL_VARIABLE, VALUE_PARAMETER, CONSTRUCTOR, FUNCTION,
-        PROPERTY_GETTER, PROPERTY_SETTER, EXPRESSION, FILE)
-@Retention(SOURCE)
-annotation class UseExperimental(
-        vararg val annotationClass: KClass<out Annotation>
-)
-```
+`UseExperimental` allows to use the API for the selected markers anywhere lexically below the parse tree.
 
 Using `UseExperimental` with annotations that are *not* experimental API markers has no effect and yields a compilation warning. Using `UseExperimental` with no arguments has no effect and yields a warning as well.
 
@@ -266,6 +264,7 @@ The compiler will check the value of `-Xuse-experimental` in the same way it che
 * ... (TODO)
 
 ## Other observations
+
 
 Certain limitations for marker annotations arise:
 
