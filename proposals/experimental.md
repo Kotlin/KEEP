@@ -47,7 +47,7 @@ annotation class Experimental(
         PROPERTY_GETTER, PROPERTY_SETTER, EXPRESSION, FILE)
 @Retention(SOURCE)
 annotation class UseExperimental(
-    vararg val annotationClass: KClass<out Annotation>
+    vararg val markerClass: KClass<out Annotation>
 )
 ```
 
