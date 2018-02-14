@@ -4,7 +4,7 @@
 * **Author**: Denis Zharkov
 * **Contributors**: Andrey Breslav, Leonid Stashevsky
 * **Status**: Submitted
-* **Prototype**: In progress
+* **Prototype**: Implemented in 1.2
 * **Discussion**: [KEEP-79](https://github.com/Kotlin/KEEP/issues/79)
 
 ## Summary
@@ -172,7 +172,7 @@ interface A {
 
 ### `@UnderMigration` annotation
 Current proposal suggests to add the following meta-annotation in 
-the `kotlin.annotations.jvm` package:
+the `kotlin.annotations.jvm` package in a separate library named `kotlin-annotations-jvm`:
 ```kotlin
 package kotlin.annotations.jvm
 
@@ -334,7 +334,7 @@ for different sets of annotations.
 
 #### Global state of JSR-305 support
 To define the state for all annotations that haven't been annotated with 
-`kotlin.UnderMigration` the flag must be used in format: `-Xjsr305={ignore|warn|strict}`
+`kotlin.annotations.jvm.UnderMigration` the flag must be used in format: `-Xjsr305={ignore|warn|strict}`
 
 Each of the options has the same meaning as the fields of `MigrationStatus`:
 - `ignore` effectively disables `UnderMigration`-unaware annotations
@@ -410,14 +410,8 @@ to load information from nullability annotations (the built-in ones and
 custom nullability qualifiers) without `jsr305.jar` as a dependency.
 
 # Open questions/issues
-- Should nullability default qualifiers with `TYPE_USE` applicability enhance 
-type arguments in the annotated scope? (see the [KT-19592](https://youtrack.jetbrains.com/issue/KT-19592))
-Actually, there are no obvious reasons for them not to work and it seems that
-JSR-305 doesn't specify behavior in the case
 - Should module-level default nullability qualifiers (in `module-info.java`) be
 supported in the same way as package-level?
-- Because `Migration` annotation becomes a part of a public API of kotlin 
-runtime, it's necessary to discuss related naming thoroughly
 
 # Conflicts between default qualifiers and overridden
 
