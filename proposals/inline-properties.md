@@ -2,8 +2,8 @@
 
 * **Type**: Design proposal
 * **Author**: Andrey Breslav
-* **Status**: Under consideration
-* **Prototype**: In progress
+* **Status**: Accepted
+* **Prototype**: Implemented
 
 ## Feedback 
 

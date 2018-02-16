@@ -2,8 +2,8 @@
 
 * **Type**: Design proposal
 * **Author**: Alexander Udalov
-* **Status**: Under consideration
-* **Prototype**: In progress
+* **Status**: Accepted
+* **Prototype**: Implemented in Kotlin 1.1
 
 Goal: allow `data` classes to inherit from other (non-final) classes.
 

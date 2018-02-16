@@ -3,8 +3,8 @@
 * **Type**: Design proposal
 * **Author**: Dmitry Petrov
 * **Contributors**: Andrey Breslav, Stanislav Erokhin, Vladimir Reshetnikov
-* **Status**: Under consideration
-* **Prototype**: In progress
+* **Status**: Accepted
+* **Prototype**: Implemented in Kotlin 1.1
 
 Discussion of this proposal is held in [this issue](https://github.com/Kotlin/KEEP/issues/4).
 

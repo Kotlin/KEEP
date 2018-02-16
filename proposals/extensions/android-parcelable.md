@@ -1,8 +1,8 @@
 # Compiler Extension to Support `android.os.Parcelable`
 
 * **Type**: Design proposal
-* **Status**: Under consideration
-* **Prototype**: In progress
+* **Status**: Accepted
+* **Prototype**: Implemented in Kotlin 1.1
 
 ## Overview
 

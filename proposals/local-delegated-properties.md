@@ -3,8 +3,8 @@
 * **Type**: Design proposal
 * **Author**: Michael Bogdanov
 * **Contributors**: Dotlin, Michael Bogdanov
-* **Status**: Under consideration
-* **Prototype**: In progress
+* **Status**: Accepted
+* **Prototype**: Implemented in Kotlin 1.1
 
 ## Feedback 
 

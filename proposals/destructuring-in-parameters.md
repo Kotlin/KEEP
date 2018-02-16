@@ -2,7 +2,7 @@
 
 * **Type**: Design proposal
 * **Author**: Andrey Breslav
-* **Status**: In progress
+* **Status**: Implemented in Kotlin 1.1
 * **Discussion**: [KEEP-32](https://github.com/Kotlin/KEEP/issues/32)
 
 ## Goal
