@@ -29,7 +29,7 @@ We propose to use the existing `interface` semantics allowing for generic defini
 ```kotlin
 typeclass Monoid<A> {
     fun A.combine(b: A): A
-    fun empty(): A
+    val empty: A
 }
 ```
 
@@ -41,7 +41,7 @@ package intext
 
 instance object IntMonoid : Monoid<Int> {
     fun Int.combine(b: Int): Int = this + b
-    fun empty(): Int = 0
+    val empty: Int = 0
 }
 ```
 
@@ -49,7 +49,7 @@ instance object IntMonoid : Monoid<Int> {
 import intext.IntMonoid
 
 1.combine(2) // 3
-Int.empty() // 0
+Int.empty // 0
 ```
 
 Because of this constrain where we are stating that there is a `Monoid` constrain for a given type `A` we can also encode polymorphic definitions based on those constrains:
@@ -147,7 +147,7 @@ package optionext
 
 instance class OptionMonoid<A> : Monoid<Option<A>> given Monoid<A> {
 
-  fun empty(): Option<A> = None
+  val empty: Option<A> = None
 
   fun Option.combine(ob: Option<A>): Option<A> =
     when (this) {
