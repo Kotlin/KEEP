@@ -288,7 +288,6 @@ This will compile because the responsibility of providing `Monoid<Int>` is satis
 
 4. Fail to compile if neither outer scopes nor explicit imports fail to provide evidence that there is a constrain satisfied by an instance in scope.
 ```kotlin
-import intext.IntMonoid
 instance class AddingInts {
   fun addInts(): Int = add(1, 2)
 }
