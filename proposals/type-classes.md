@@ -241,7 +241,7 @@ fun addInts(a: Int, b: Int): Int given Monoid<Int> = add(a, b)
 ```
 - The type checker will declare the below definition as valid since there is a `with` block around the concrete `IntMonoid` in scope.
 ```kotlin
-fun addInts(a: Int, b: Int): Int = with(IntMonoid) { add(a, b) }
+fun addInts(a: Int, b: Int): Int = with(intext.IntMonoid) { add(a, b) }
 ```
 
 ## Compile resolution rules
