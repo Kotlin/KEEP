@@ -4,7 +4,7 @@
 * **Author**: Marcin Moskała
 * **Status**: Under consideration
 
-Discussion of this proposal is held in [this issue](https://github.com/Kotlin/KEEP/issues/XXX).
+Discussion of this proposal is held in [this issue](https://github.com/Kotlin/KEEP/pull/102).
 
 ## Proposition
 
