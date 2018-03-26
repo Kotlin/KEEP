@@ -21,7 +21,7 @@ interface MyTrait {
 }
 ```
 
-Under the hood it can work just as default bodies for methods - compiler can use default property if property is not overriten. 
+Under the hood it can work just as default bodies for methods - the compiler can use default property if the property is not overridden.
 
 ## Use cases
 
