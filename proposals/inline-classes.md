@@ -6,7 +6,7 @@
 * **Status**: Under consideration
 * **Prototype**: Implemented in Kotlin 1.2.30
 
-Discussion of this proposal is held in [this issue](https://github.com/Kotlin/KEEP/issues/no).
+Discussion of this proposal is held in [this issue](https://github.com/Kotlin/KEEP/issues/104).
 
 ## Summary
 
