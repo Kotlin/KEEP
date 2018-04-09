@@ -49,7 +49,7 @@ instance object IntMonoid : Monoid<Int> {
 import intext.IntMonoid
 
 1.combine(2) // 3
-Int.empty // 0
+IntMonoid.empty() // 0
 ```
 
 Because of this constrain where we are stating that there is a `Monoid` constrain for a given type `A` we can also encode polymorphic definitions based on those constrains:
