@@ -10,7 +10,7 @@
 
 ## Summary
 
-Add a separate artifact containing meta-annotations similar to ones from [JSR-305](https://jcp.org/en/jsr/detail?id=305).
+Add a separate artifact containing meta-annotations covering use cases of ones from [JSR-305](https://jcp.org/en/jsr/detail?id=305).
 
 ## Motivation
 
@@ -92,7 +92,7 @@ and the set of applicability kinds contain `TYPE_ARGUMENT` then this qualifier s
 to all of it's type arguments (recursively).
 
 #### Parameter in @Alias (Option 1)
-The first option is adding `propagateTo: Array<DefaultApplicabilityType>` parameter to `meta.Alias` annotation.
+The first option is adding `propagateTo: Array<ApplicabilityKind>` parameter to `meta.Alias` annotation.
 
 Thus, declaration of `AllParametersAreNullableByDefault` would look like this:
 ```kotlin
@@ -119,7 +119,7 @@ references another alias with non-trivial `propagateTo` argument
 
 #### Separate annotation (Option 2)
 Another option would be a separate annotation `meta.ApplyByDefault` with vararg-parameter
-of type `DefaultApplicabilityType`:
+of type `ApplicabilityKind`:
 ```kotlin
 @Target(AnnotationTarget.ANNOTATION_CLASS)
 annotation class ApplyByDefault(val qualifier: KClass<*>, vararg val elements: ApplicabilityKind)
@@ -127,8 +127,21 @@ annotation class ApplyByDefault(val qualifier: KClass<*>, vararg val elements: A
 
 Basically, it should work just the same as `@TypeQualifierDefault`, e.g. it might be used like:
 ```kotlin
-@ApplyByDefault(MyNullable::class)
+@ApplyByDefault(MyNullable::class, ApplicabilityKind.PARAMETER)
 annotation class MyAllParametersAreNullableByDefault
+
+@ApplyByDefault(MyNonnull::class, ApplicabilityKind.PARAMETER)
+annotation class MyAllParametersAreNonNullByDefault
+
+@ApplyByDefault(MyNullable::class, ApplicabilityKind.PARAMETER)
+annotation class MyAllParametersAreNullableByDefault
+
+@ApplyByDefault(
+    MyNonnull::class,
+    ApplicabilityKind.RETURN_TYPE, ApplicabilityKind.VALUE_PARAMETER,
+    ApplicabilityKind.FIELD, ApplicabilityKind.TYPE_ARGUMENT
+)
+annotation class MyApiNonNullByDefault
 ```
 
 ### Avoidance of @UnderMigration annotation
@@ -148,7 +161,7 @@ that might be the best candidate where the new meta annotations may be placed.
 
 Probably, the annotations that are already there should be moved to a different packages:
 
-- `kotlin.annotations.jvm.MigrationStatus` -> `kotlin.annotations.jvm.meta`
+- `kotlin.annotations.jvm.UnderMigration`, `kotlin.annotations.jvm.MigrationStatus` -> `kotlin.annotations.jvm.meta`
 - `kotlin.annotations.jvm.Mutable`, `kotlin.annotations.jvm.ReadOnly` -> `kotlin.annotations.jvm.collections`
 
 ## Remaining questions
