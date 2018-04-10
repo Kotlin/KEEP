@@ -16,23 +16,23 @@ Add a separate artifact containing meta-annotations similar to ones from [JSR-30
 
 - We need to put somewhere `@ApplyToTypeArgumentsAnnotation` meta-annotation (see the [discussion](https://github.com/Kotlin/KEEP/issues/79#issuecomment-336905480)).
 - There is a [modules-related issue](https://blog.codefx.org/java/jsr-305-java-9/) with JSR-305 and Java 9.
-- It's worth simplifying the way how JSR-305 nullability meta-annotations are being used 
+- It's worth simplifying the way how JSR-305 nullability meta-annotations are being used
 and integrating them with Kotlin-specific meta annotations. Namely, `@UnderMigration` and `@ApplyToTypeArguments`.
 
 ## Description
 
 This section describes proposed semantics of the new annotations and partly the layout of resulting artifact.
 
-### Root package 
-Root package for this artifact will be `kotlin.annotations.jvm`. 
-All classes/packages names are assumed to be placed in the package and only their 
+### Root package
+Root package for this artifact will be `kotlin.annotations.jvm`.
+All classes/packages names are assumed to be placed in the package and only their
 relative names are mentioned below.
 
-### Built-in qualifiers 
-In JSR-305, there is [`@TypeQualifier`](https://aalmiray.github.io/jsr-305/apidocs/javax/annotation/meta/TypeQualifier.html) 
+### Built-in qualifiers
+In JSR-305, there is [`@TypeQualifier`](https://aalmiray.github.io/jsr-305/apidocs/javax/annotation/meta/TypeQualifier.html)
 annotation that allows to introduce custom qualifiers (like `@Nonnull`).
-But that kind of meta-meta level seems to be unnecessary to our needs (at least for now), 
-the Kotlin compiler supports only nullability qualifier 
+But that kind of meta-meta level seems to be unnecessary to our needs (at least for now),
+the Kotlin compiler supports only nullability qualifier
 (and in the nearest future mutability might be supported as well).
 
 So, there will only be fixed number of built-in qualifier annotations:
@@ -42,10 +42,10 @@ So, there will only be fixed number of built-in qualifier annotations:
 - `mutability.ReadOnly`
 
 Their target set would be the following:
-ElementType.METHOD, ElementType.FIELD, 
+ElementType.METHOD, ElementType.FIELD,
 ElementType.PARAMETER, ElementType.LOCAL_VARIABLE
 
-And semantics when being applied to types is just the same as for analogue 
+And semantics when being applied to types is just the same as for analogue
 from `org.jetbrains.annotations` (see [more](https://github.com/JetBrains/kotlin/blob/master/spec-docs/flexible-java-types.md#more-precise-type-information-from-annotations) about types enhancement)
 
 ### Alias annotation
@@ -67,15 +67,15 @@ annotation class MyNullable
 ```
 
 Thus, applying `@MyNullable` should have the same effect as `@Nullable` itself has.
-Beside it, `@MyNullable` may have `@UnderMigration` annotation on it that would change its 
+Beside it, `@MyNullable` may have `@UnderMigration` annotation on it that would change its
 [migration status](https://github.com/Kotlin/KEEP/blob/master/proposals/jsr-305-custom-nullability-qualifiers.md#undermigration-annotation).
 
 ### Default qualifiers options<a name="default-qualifiers"></a>
 This proposal has two options how
-[default qualifiers](https://github.com/Kotlin/KEEP/blob/master/proposals/jsr-305-custom-nullability-qualifiers.md#type-qualifier-default) 
+[default qualifiers](https://github.com/Kotlin/KEEP/blob/master/proposals/jsr-305-custom-nullability-qualifiers.md#type-qualifier-default)
 semantics can be introduced.
 
-And both of them are assume using special enum class instead of `ElementType` 
+And both of them are assume using special enum class instead of `ElementType`
 that is used as a parameter type for JSR-305 `@TypeQualifierDefault`.
 It might look like:
 ```kotlin
@@ -100,7 +100,7 @@ Thus, declaration of `AllParametersAreNullableByDefault` would look like this:
 annotation class AllParametersAreNullableByDefault
 ```
 
-*Known pros:* 
+*Known pros:*
 - It's nice to have one annotation for all issues.
 - Probably, for someone such form of default qualifiers would look nicer than one suggested by JSR-305.
 
@@ -135,10 +135,10 @@ annotation class MyAllParametersAreNullableByDefault
 After revisiting design for meta-annotations it looks like a natural thing to set up
 a migration status for an annotation with its argument instead of another meta-annotation.
 
-Thus, the idea is to add `migrationStatus` parameter to `meta.Alias` 
+Thus, the idea is to add `migrationStatus` parameter to `meta.Alias`
 (and to `meta.ApplyByDefault` if we decide to introduce the latter) with default value to be `STRICT`.
 
-This argument should be processed by the compiler in the same way as for [`@UnderMigration`](https://github.com/Kotlin/KEEP/blob/master/proposals/jsr-305-custom-nullability-qualifiers.md#undermigration-annotation) annotation 
+This argument should be processed by the compiler in the same way as for [`@UnderMigration`](https://github.com/Kotlin/KEEP/blob/master/proposals/jsr-305-custom-nullability-qualifiers.md#undermigration-annotation) annotation
 having the same argument value.
 
 ### Details on artifact
@@ -156,5 +156,5 @@ Probably, the annotations that are already there should be moved to a different 
 - What option is the best to choose for supporting [default qualifiers](#default-qualifiers)?
 - Should there be a `migrationStatus` parameter in `@Alias` or migration status
 should be tracked through `@UnderMigration` annotation?
-- What is the best name for `ApplicabilityKind` enum class? 
+- What is the best name for `ApplicabilityKind` enum class?
 Would it be better to place it inside the `ApplyByDefault` annotation class (if it will be there)
