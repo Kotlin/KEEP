@@ -27,7 +27,7 @@ Furthermore introduction of type classes improves usages for `reified` generic f
 We propose to use the existing `interface` semantics allowing for generic definition of type classes and their instances with the same style interfaces are defined
 
 ```kotlin
-typeclass Monoid<A> {
+extension interface Monoid<A> {
     fun A.combine(b: A): A
     val empty: A
 }
@@ -39,7 +39,7 @@ In the implementation below we provide evidence that there is a `Monoid<Int>` in
 ```kotlin
 package intext
 
-instance object IntMonoid : Monoid<Int> {
+extension object IntMonoid : Monoid<Int> {
     fun Int.combine(b: Int): Int = this + b
     val empty: Int = 0
 }
@@ -57,7 +57,7 @@ Because of this constrain where we are stating that there is a `Monoid` constrai
 ```kotlin
 import intext.IntMonoid
 
-fun <A> add(a: A, b: A): A given Monoid<A> = a.combine(b)
+fun <A> add(a: A, b: A, with Monoid<A>): A = a.combine(b)
 add(1, 1) // compiles
 add("a", "b") // does not compile: No `String: Monoid` instance defined in scope
 ```
@@ -67,7 +67,7 @@ add("a", "b") // does not compile: No `String: Monoid` instance defined in scope
 On top of the value this brings to typed FP in Kotlin it also helps in OOP contexts where dependencies can be provided at compile time:
 
 ```kotlin
-typeclass Context<A> {
+extension interface Context<A> {
   fun A.config(): Config
 }
 ```
@@ -75,7 +75,7 @@ typeclass Context<A> {
 ```kotlin
 package prod
 
-instance object ProdContext: Context<Service> {
+extension object ProdContext: Context<Service> {
   fun Service.config(): Config = ProdConfig
 }
 ```
@@ -83,7 +83,7 @@ instance object ProdContext: Context<Service> {
 ```kotlin
 package test
 
-instance object TestContext: Context<Service> {
+extension object TestContext: Context<Service> {
   fun Service.config(): Config = TestConfig
 }
 ```
@@ -105,8 +105,8 @@ service.config() // TestConfig
 Type classes allow us to workaround `inline` `reified` generics and their limitations and express those as type classes instead:
 
 ```kotlin
-typeclass Reified<A> {
-    val selfClass: KClass<A>
+extension interface Reified<A> {
+    val A.selfClass: KClass<A>
 }
 ```
 
@@ -119,7 +119,7 @@ inline fun <reified A> foo() { .... A::class ... }
 can be replaced with:
 
 ```kotlin
-fun <A> fooTC(): Klass<A> given Reified<A> { .... A.selfClass ... }
+fun <A> fooTC(with Reified<A>): Klass<A> { .... A.selfClass ... }
 ```
 
 This allows us to obtain generics info without the need to declare the functions `inline` or `reified` overcoming the current limitations of inline reified functions that can't be invoked unless made concrete from non reified contexts.
@@ -127,14 +127,14 @@ This allows us to obtain generics info without the need to declare the functions
 Not this does not remove the need to use `inline reified` where one tries to instrospect generic type information at runtime with reflection. This particular case is only relevant for those cases where you know the types you want `Reified` ahead of time and you need to access to their class value.
 
 ```kotlin
-instance class Foo<A> {
+extension class Foo<A> {
    val someKlazz = foo<A>() //won't compile because class disallow reified type args.
 }
 ```
 
 ```kotlin
-instance class Foo<A> {
-   val someKlazz = fooTC<A>() //works anddoes not requires to be inside an `inline reified` context.
+extension class Foo<A> {
+   val someKlazz = fooTC<A>() //works and does not requires to be inside an `inline reified` context.
 }
 ```
 
@@ -145,7 +145,7 @@ Type class instances and declarations can encode further constrains in their gen
 ```kotlin
 package optionext
 
-instance class OptionMonoid<A> : Monoid<Option<A>> given Monoid<A> {
+extension class OptionMonoid<A>(with Monoid<A>): Monoid<Option<A>> {
 
   val empty: Option<A> = None
 
@@ -180,11 +180,11 @@ We recommend if this proposal is accepted that a lightweight version of higher k
 A syntax that would allow for higher kinds in these definitions may look like this:
 
 ```kotlin
-typeclass FunctionK<F<_>, G<_>> {
+extension interface FunctionK<F<_>, G<_>> {
   fun <A> invoke(fa: F<A>): G<A>
 }
 
-instance object Option2List : FunctionK<Option, List> {
+extension object Option2List : FunctionK<Option, List> {
   fun <A> invoke(fa: Option<A>): List<A> =
     fa.fold({ emptyList() }, { listOf(it) })
 }
@@ -195,7 +195,7 @@ Here `F<_>` refers to a type constructor meaning a type that has a hole on it su
 A use of this declaration in a polymorphic function would look like:
 
 ```kotlin
-fun <F<_>, A, B> transform(fa: F<A>, f: (A) -> B): F<B> given Functor<F> = F.map(fa, f)
+fun <F<_>, A, B> transform(fa: F<A>, f: (A) -> B, with Functor<F>): F<B> = F.map(fa, f)
 
 transform(Option(1), { it + 1 }) // Option(2)
 transform("", { it + "b" }) // Does not compile: `String` is not type constructor with shape F<_>
@@ -204,27 +204,20 @@ transform(listOf(1), { it + 1 }) // does not compile: No `Functor<List>` instanc
 
 ## Language Changes
 
-- Add `given` to require instances evidences in both function and interface/class declarations as demonstrated by previous and below examples:
+- Add `with` to require instances evidences in both function and class/object declarations as demonstrated by previous and below examples:
 ```kotlin
-instance class OptionMonoid<A> : Monoid<Option<A>> given Monoid<A> //class position
+extension class OptionMonoid<A>(with Monoid<A>) : Monoid<Option<A>> //class position using argument "Monoid"
+extension class OptionMonoid<A>(with M: Monoid<A>) : Monoid<Option<A>> //class position using argument "M"
 
-fun <A> add(a: A, b: A): A given Monoid<A> = a.combine(b) //function position
-```
-
-The below alternative approach to `given` using parameters and the special keyword `instance` was also proposed but discarded since `given`
-was more inline with other similar usages such as `where` that users are already used to and did not require to name the instances to activate extension syntax.
-
-```kotlin
-instance class OptionMonoid<A>(instance MA: Monoid<A>) : Monoid<Option<A>> //class position
-
-fun <A> add(a: A, b: A, instance MA: Monoid<A>): A = a.combine(b) //function position
+fun <A> add(a: A, b: A, with Monoid<A>): A = a.combine(b) //function position using argument "Monoid"
+fun <A> add(a: A, b: A, with M: Monoid<A>): A = a.combine(b) //function position argument "M"
 ```
 
 ## Compiler Changes
 
-- The type checker will declare the below definition as valid since the `given` clause provides evidence that call sites won't be able to compile calls to this function unless a `Monoid<A>` is in scope.
+- The type checker will declare the below definition as valid since the `with` clause provides evidence that call sites won't be able to compile calls to this function unless a `Monoid<A>` is in scope.
 ```kotlin
-fun <A> add(a: A, b: A): A given Monoid<A> = a.combine(b) //compiles
+fun <A> add(a: A, b: A, with Monoid<A>): A = a.combine(b) //compiles
 ```
 - The type checker will declare the below definition as invalid since there is no `Monoid<Int>` in scope.
 ```kotlin
@@ -237,7 +230,7 @@ add(1, 2)
 ```
 - The type checker will declare the below definition as valid since there is a `Monoid<Int>` in scope.
 ```kotlin
-fun addInts(a: Int, b: Int): Int given Monoid<Int> = add(a, b)
+fun addInts(a: Int, b: Int, with Monoid<Int>): Int = add(a, b)
 ```
 - The type checker will declare the below definition as valid since there is a `with` block around the concrete `IntMonoid` in scope.
 ```kotlin
@@ -246,32 +239,32 @@ fun addInts(a: Int, b: Int): Int = with(intext.IntMonoid) { add(a, b) }
 
 ## Compile resolution rules
 
-When the compiler finds a call site invoking a function that has type class instances constrains declared with `given` as in the example below:
+When the compiler finds a call site invoking a function that has type class instances constrains declared with `with` as in the example below:
 
 Declaration: 
 ```kotlin
-fun <A> add(a: A, b: A): A given Monoid<A> = a.combine(b) 
+fun <A> add(a: A, b: A, with Monoid<A>): A = a.combine(b)
 ```
 Call site:
 ```kotlin
-instance class AddingInts {
+extension class AddingInts {
   fun addInts(): Int = add(1, 2)
 }
 ```
 The compiler may choose the following order for resolving the evidence that a `Monoid<Int>` exists in scope.
 
-1. Look in the most immediate scope for declarations of `given Monoid<Int>` in this case the function `addInts`
+1. Look in the most immediate scope for declarations of `with Monoid<Int>` in this case the function `addInts`
 
-This will compile because the responsibility of providing `Monoid<Int>` is passed unto the callers of `addInts()`:
+This will compile because the responsibility of providing `Monoid<Int>` is passed into the callers of `addInts()`:
 ```kotlin
-instance class AddingInts {
-  fun addInts(): Int given Monoid<Int> = add(1, 2)
+extension object AddingInts {
+  fun addInts(with Monoid<Int>): Int = add(1, 2)
 }
 ```
 
-2. Look in the immediately outher class/interface scope for declarations of `given Monoid<Int>` in this case the class `AddingInts`:
+2. Look in the immediately outher class/interface scope for declarations of `with Monoid<Int>` in this case the class `AddingInts`:
 ```kotlin
-instance class AddingInts given Monoid<Int> {
+extension class AddingInts(with Monoid<Int>) {
   fun addInts(): Int = add(1, 2)
 }
 ```
@@ -280,7 +273,7 @@ This will compile because the responsibility of providing `Monoid<Int>` is passe
 3. Look in the import declarations for an explicitly imported instance that satisfies the constrain `Monoid<Int>`:
 ```kotlin
 import intext.IntMonoid
-instance class AddingInts {
+extension object AddingInts {
   fun addInts(): Int = add(1, 2)
 }
 ```
@@ -288,12 +281,16 @@ This will compile because the responsibility of providing `Monoid<Int>` is satis
 
 4. Fail to compile if neither outer scopes nor explicit imports fail to provide evidence that there is a constrain satisfied by an instance in scope.
 ```kotlin
-instance class AddingInts {
+extension object AddingInts {
   fun addInts(): Int = add(1, 2)
 }
 ```
-Fails to compile lacking evidence that you can invoke `add(1,2)` since `add` is a polymorphic function that requires a `Monoid<Int>` inferred by `1` and `2` being of type `Int`.:
-
-
+Fails to compile lacking evidence that you can invoke `add(1,2)` since `add` is a polymorphic function that requires a `Monoid<Int>` inferred by `1` and `2` being of type `Int`.
+In such case the extension instance have to be explicitly defined.
+```kotlin
+extension object AddingInts {
+  fun addInts(): Int = with(intext.IntMonoid) { add(1, 2) }
+}
+```
 
 Some of these examples where originally proposed by Roman Elizarov and the Kategory contributors where these features where originally discussed https://github.com/Kotlin/KEEP/pull/87
