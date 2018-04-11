@@ -195,7 +195,7 @@ Here `F<_>` refers to a type constructor meaning a type that has a hole on it su
 A use of this declaration in a polymorphic function would look like:
 
 ```kotlin
-fun <F<_>, A, B> transform(fa: F<A>, f: (A): B, with Functor<F>): F<B> = F.map(fa, f)
+fun <F<_>, A, B> transform(fa: F<A>, f: (A) -> B, with Functor<F>): F<B> = F.map(fa, f)
 
 transform(Option(1), { it + 1 }) // Option(2)
 transform("", { it + "b" }) // Does not compile: `String` is not type constructor with shape F<_>
