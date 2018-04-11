@@ -257,7 +257,7 @@ The compiler may choose the following order for resolving the evidence that a `M
 
 This will compile because the responsibility of providing `Monoid<Int>` is passed into the callers of `addInts()`:
 ```kotlin
-extension class AddingInts {
+extension object AddingInts {
   fun addInts(with Monoid<Int>): Int = add(1, 2)
 }
 ```
@@ -273,7 +273,7 @@ This will compile because the responsibility of providing `Monoid<Int>` is passe
 3. Look in the import declarations for an explicitly imported instance that satisfies the constrain `Monoid<Int>`:
 ```kotlin
 import intext.IntMonoid
-extension class AddingInts {
+extension object AddingInts {
   fun addInts(): Int = add(1, 2)
 }
 ```
@@ -281,10 +281,16 @@ This will compile because the responsibility of providing `Monoid<Int>` is satis
 
 4. Fail to compile if neither outer scopes nor explicit imports fail to provide evidence that there is a constrain satisfied by an instance in scope.
 ```kotlin
-extension class AddingInts {
+extension object AddingInts {
   fun addInts(): Int = add(1, 2)
 }
 ```
-Fails to compile lacking evidence that you can invoke `add(1,2)` since `add` is a polymorphic function that requires a `Monoid<Int>` inferred by `1` and `2` being of type `Int`. In such case the parameter value have to be explicitly defined.
+Fails to compile lacking evidence that you can invoke `add(1,2)` since `add` is a polymorphic function that requires a `Monoid<Int>` inferred by `1` and `2` being of type `Int`.
+In such case the extension instance have to be explicitly defined.
+```kotlin
+extension object AddingInts {
+  fun addInts(): Int = with(intext.IntMonoid) { add(1, 2) }
+}
+```
 
 Some of these examples where originally proposed by Roman Elizarov and the Kategory contributors where these features where originally discussed https://github.com/Kotlin/KEEP/pull/87
