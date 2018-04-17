@@ -45,6 +45,9 @@ Their target set would be the following:
 ElementType.METHOD, ElementType.FIELD,
 ElementType.PARAMETER, ElementType.LOCAL_VARIABLE
 
+*NB:* Having ElementType.TYPE_USE among their target is questionable since it's unknown how that would work with bytecode
+version 50.0 (JDK 1.6).
+
 And semantics when being applied to types is just the same as for analogue
 from `org.jetbrains.annotations` (see [more](https://github.com/JetBrains/kotlin/blob/master/spec-docs/flexible-java-types.md#more-precise-type-information-from-annotations) about types enhancement)
 
@@ -70,12 +73,13 @@ Thus, applying `@MyNullable` should have the same effect as `@Nullable` itself h
 Beside it, `@MyNullable` may have `@UnderMigration` annotation on it that would change its
 [migration status](https://github.com/Kotlin/KEEP/blob/master/proposals/jsr-305-custom-nullability-qualifiers.md#undermigration-annotation).
 
-### Default qualifiers options<a name="default-qualifiers"></a>
-This proposal has two options how
-[default qualifiers](https://github.com/Kotlin/KEEP/blob/master/proposals/jsr-305-custom-nullability-qualifiers.md#type-qualifier-default)
+### Default qualifiers<a name="default-qualifiers"></a>
+This section describes the way how the concept similar to
+[JSR-305 default qualifiers](https://github.com/Kotlin/KEEP/blob/master/proposals/jsr-305-custom-nullability-qualifiers.md#type-qualifier-default)
 semantics can be introduced.
 
-And both of them are assume using special enum class instead of `ElementType`
+#### Using ApplicabilityKind instead of ElementType
+We suggest to use a special enum class instead of `ElementType`
 that is used as a parameter type for JSR-305 `@TypeQualifierDefault`.
 It might look like:
 ```kotlin
@@ -91,34 +95,8 @@ to be applied to some top-level type (using the same logic as for `@TypeQualifie
 and the set of applicability kinds contain `TYPE_ARGUMENT` then this qualifier should also be applied
 to all of it's type arguments (recursively).
 
-#### Parameter in @Alias (Option 1)
-The first option is adding `propagateTo: Array<ApplicabilityKind>` parameter to `meta.Alias` annotation.
-
-Thus, declaration of `AllParametersAreNullableByDefault` would look like this:
-```kotlin
-@Alias(Nullable::class, propagateTo=[ApplicabilityKind.VALUE_PARAMETER])
-annotation class AllParametersAreNullableByDefault
-```
-
-*Known pros:*
-- It's nice to have one annotation for all issues.
-- Probably, for someone such form of default qualifiers would look nicer than one suggested by JSR-305.
-
-*Known cons:*
-- It would look a little weird when it's used in cases like the one below:
-```kotlin
-@Alias(Nullable::class)
-@UnderMigration(...)
-annotation class MyNullable
-
-@Alias(MyNullable::class, propagateTo=[ApplicabilityKind.PARAMETER])
-annotation class MyAllParametersAreNullableByDefault
-```
-- Also it might be confusing when one alias (probably with non-empty `propagateTo`)
-references another alias with non-trivial `propagateTo` argument
-
-#### Separate annotation (Option 2)
-Another option would be a separate annotation `meta.ApplyByDefault` with vararg-parameter
+#### @ApplyByDefault
+We suggest to introduce a separate annotation `meta.ApplyByDefault` with vararg-parameter
 of type `ApplicabilityKind`:
 ```kotlin
 @Target(AnnotationTarget.ANNOTATION_CLASS)
@@ -144,15 +122,15 @@ annotation class MyAllParametersAreNullableByDefault
 annotation class MyApiNonNullByDefault
 ```
 
-### Avoidance of @UnderMigration annotation
-After revisiting design for meta-annotations it looks like a natural thing to set up
-a migration status for an annotation with its argument instead of another meta-annotation.
+*NB:* When `module-info` classes are annotated with a default qualifiers it should work just like being applied to all
+classes in the modules.
 
-Thus, the idea is to add `migrationStatus` parameter to `meta.Alias`
-(and to `meta.ApplyByDefault` if we decide to introduce the latter) with default value to be `STRICT`.
+### @UnderMigration applicability
 
-This argument should be processed by the compiler in the same way as for [`@UnderMigration`](https://github.com/Kotlin/KEEP/blob/master/proposals/jsr-305-custom-nullability-qualifiers.md#undermigration-annotation) annotation
-having the same argument value.
+To simplify its semantics, we suggest to restrict applicability of [`@UnderMigration`](https://github.com/Kotlin/KEEP/blob/master/proposals/jsr-305-custom-nullability-qualifiers.md#undermigration-annotation)
+only to qualifier aliases (i.e. to annotations that are meta-annotated with `meta.Alias`).
+
+Thus, when being applied to a default qualifier `@UnderMigration` should be effectively ignored.
 
 ### Details on artifact
 
@@ -166,8 +144,8 @@ Probably, the annotations that are already there should be moved to a different 
 
 ## Remaining questions
 - Should aliasing JSR-305 qualifiers like `javax.annotation.Nonnull` be allowed?
-- What option is the best to choose for supporting [default qualifiers](#default-qualifiers)?
-- Should there be a `migrationStatus` parameter in `@Alias` or migration status
-should be tracked through `@UnderMigration` annotation?
 - What is the best name for `ApplicabilityKind` enum class?
 Would it be better to place it inside the `ApplyByDefault` annotation class (if it will be there)
+- What bytecode version should all those annotations have?
+On one side, we'd like to have compatibility with 1.6, on the other, we'd like them to have `ElementType.TYPE_USE` among their targets
+- Do we need to add built-in default qualifiers (like `@AllParametersAreNotNullByDefault` or `@NotNullAPI`)?
