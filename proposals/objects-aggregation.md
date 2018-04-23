@@ -7,12 +7,14 @@
 * **Prototype**: Not started
 
 ## Synopsis
-Aggregation is one of mostly used patterns in OOP that helps to create more complex logic using combination of other projects with respect to encapsulation. Kotlin offers several ways to do that:
+Aggregation is one of mostly used patterns in OOP that helps to create more complex logic using combination of other projects with respect to encapsulation. Kotlin offers several ways to simplify aggregation in some cases:
 
-* [Implementation by Delegation](https://kotlinlang.org/docs/reference/delegation.html#implementation-by-delegation) which under the hood aggregates original implementation of interface and delegates method calls for top-level class to aggregates object.
-* 
+* [Implementation by Delegation](https://kotlinlang.org/docs/reference/delegation.html#implementation-by-delegation) under the hood aggregates original implementation of interface and delegates method calls of top-level class to aggregated implementation
+* [Companion object](https://kotlinlang.org/docs/reference/object-declarations.html#companion-objects) allows to aggregate singleton object at class-level (not instance level) and make their members to be accessible without instantiation of outer class.
 
-The main idea is to give implicit access to members of aggregated object.
+But there is no way to achieve the same convenience as provided by **companion** objects at instance-level rather than class-level.
+
+The main idea of this proposal is to give implicit access to members of aggregated object rather than existing **val**/**var** declarations with dot notation for accessing their members.
 
 ## Language implementation
 
