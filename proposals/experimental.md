@@ -116,6 +116,14 @@ If any of the annotations mentioned in the `-Xexperimental`/`-Xuse-experimental`
 
 The compiler will check the value of `-Xuse-experimental` in the same way it checks the argument of the `@UseExperimental` annotation.
 
+## Experimentality of Experimental/UseExperimental itself
+
+Annotations `Experimental` and `UseExperimental` are proposed to be added to the standard library in Kotlin 1.3. Since we're not yet sure that this design is optimal, we would like to test it first, and see if we can finalize it. Therefore, we would like to keep this whole feature experimental itself, in the sense that we may change something incompatibly, and the client code must be aware of it.
+
+Therefore, we will **require** each user of `Experimental` to provide the following magic compiler argument: `-Xuse-experimental=kotlin.Experimental`. Unless this argument is provided, the compiler will report a warning on each usage of `Experimental` (but not on usages of the markers!).
+
+TODO: should we require this argument for usages of `UseExperimental`?
+
 ## Other observations
 
 
@@ -124,7 +132,6 @@ The compiler will check the value of `-Xuse-experimental` in the same way it che
     * Targets `EXPRESSION` and `FILE` are not possible for marker annotations, because these annotations operate on the declaration level, and neither expressions nor files are declarations in Kotlin. The compiler will report an error on the marker annotation if it declares one of these targets.
     * Marker annotations must have `BINARY` retention, otherwise the compiler will report an error. `SOURCE` retention is not enough because it wouldn't allow the compiler to read annotations from compiled code, and `RUNTIME` retention is not necessary because the fact that a declaration is experimental should not have any effect on how that declaration is visible at runtime through reflection.
     * As mentioned earlier, marker annotations must have no parameters, otherwise the compiler will report an error.
-* Annotations `Experimental` and `UseExperimental` and related enums are proposed to be added to the standard library in Kotlin 1.3. Since we're not yet sure that this design is optimal, we would like to test it first, and see if we can finalize it. Therefore, we would like to keep this whole feature experimental itself, in the sense that we may change something incompatibly, and the client code must be aware of it. We've tried to think of the possibility to annotate the new declarations with `@Experimental` themselves, but, however entertaining that is, it suffers from an endless recursion, the ways of breaking which are not very elegant. Thus, all new declarations are simply going to be annotated with `@SinceKotlin(“1.3”)`. To accept their instability, a library author should switch to an unstable language version. If we're not sure that the design is optimal at the time of release of 1.3, we're going to simply advance the version to `@SinceKotlin(“1.4”)`, and come back to it in the 1.4 timeframe.
 * We've experimented with making experimental declarations “poisonous” in the sense that the requirement of the consent to use them propagates up the call chain, so that even indirect users of an experimental API would be aware of the fact that they're using something that may break at any moment, and would be required to opt-in by annotating their code or providing a command line argument. However, we found out that non-poisonous, or rather “poisonous to a certain degree” declarations are also required to fulfill our use cases, and their existence naturally leads to some sort of a classification of usages of experimental API into “signature usages” (those that have effect on the public API) and “body usages” (those that are used internally in function bodies). This leads to many other non-trivial questions, and overall complicates the design quite a bit, so we've decided simply to avoid mandatory propagation of experimental opt-in for now.
 
 ## Known issues
