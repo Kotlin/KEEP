@@ -87,7 +87,7 @@ class Derived(a: Int, b: Int): Base2(a), Serializable{
   fun bar() = base2.baz() //the same but with explicit receiver
 }
 ```
-or shortly,
+or shorter,
 ```kotlin
 class Derived(a: Int, b: Int): Base2(a), Serializable{
   private companion val: Base1(a + b) //like companion object without explicit name
