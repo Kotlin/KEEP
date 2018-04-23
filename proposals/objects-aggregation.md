@@ -137,7 +137,7 @@ Cons:
 | | `}` |
 
 ## Compiler implementation
-Compiler implementation is trivial: every privately inherited class transformed into `private val` declaration:
+Compiler implementation is trivial: every aggregated object should be transformed into `private val` (or `protected val`, according with aggregation visibility modifier) declaration:
 
 Given:
 ```kotlin
@@ -156,7 +156,7 @@ class Derived(a: Int, b: Int): Base2(a), Serializable {
 }
 ```
 
-The complexity hides in lexical scope resolution for the specified name. To solve this issue, the following resolution order can be applied:
+The complexity of compilation lies in the field of lexical scope resolution for the specified name. To solve this issue, the following resolution order can be applied:
 1. Looking for own member in the top-level class
 1. Looking for member in the inherited class
 1. Looking for member in companion object (if declared)
