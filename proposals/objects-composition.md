@@ -28,7 +28,7 @@ class Derived(a: Int, b: Int): private Base1(a + b), Base2(a), Serializable{
 }
 ```
 
-It is possible to specify more than one composed objects:
+It is possible to specify more than one composed object:
 ```kotlin
 class Derived(a: Int, b: Int): private Base1(a), private Base2(b), Base3()
 ```
