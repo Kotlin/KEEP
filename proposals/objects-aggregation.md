@@ -30,7 +30,7 @@ class Derived(a: Int, b: Int): private Base1(a + b), Base2(a), Serializable{
 
 It is possible to specify more than one aggregated object:
 ```kotlin
-class Derived(a: Int, b: Int): private Base1(a), private Base2(b), Base(3)
+class Derived(a: Int, b: Int): private Base1(a), private Base2(b), Base3()
 ```
 
 Even public members of aggregated object are not visible outside of top-level class. The only allowed visibility modifiers are **protected** and **private**. If aggregated class is declared with **protected** modifier then its members are implicitly accessible from derived class.
