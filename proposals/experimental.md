@@ -33,7 +33,7 @@ We propose to add the following declarations to the standard Kotlin library:
 package kotlin
 
 @Target(ANNOTATION_CLASS)
-@Target(BINARY)
+@Retention(BINARY)
 annotation class Experimental(val level: Level = Level.ERROR) {
     enum class Level { WARNING, ERROR }
 }
