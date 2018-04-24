@@ -68,28 +68,30 @@ Lambda expression syntax is applicable to annotation argument if the following c
 
 The second extension to language grammar allows to use functional type in annotation class parameters:
 ```kotlin
-annotation class Validation(val validator: noinline (Any) -> Bool)
+annotation class Validation(val validator: (Any) -> Bool)
 ```
-Functional type can have **noinline** modifier which instructs compiler to generate **Class** actual type instead of Kotlin intrinsic, which means that lambda cannot be inlined. This keyword is needed to separate two types of lambda expression support for annotation arguments:
-1. **noinline** lambda has actual type **Class&lt;out F&gt;** which allows to be compatible and interoperable with Java code easily.
-1. If **noinline** lambda is not used then annotation argument will have special annotation type *MethodReference* from Kotlin runtime (should be also added).
+Also, **reified** keyword can be applied to functional type:
+```kotlin
+annotation class Validation(val validator: reified (Any) -> Bool)
+```
 
-In simple word, ability to call annotation argument depends on this modifier. If annotation argument has **noinline** functional type then it can't be called as regular lambda. If annotation argument has functional type without **noinline** then this member can be called as follows:
-
+This keyword significantly changes generated code and **reified** declaration is not compatible with Java annotation parameters typed as *Class*. It means that lambda expression signature can be reified at compile time:
 ```kotlin
 val validation = method.findAnnotation<Validation>()
-validation?.validator(Person())
+validation?.validator(Person()) //because validator has actual type (Any) -> Bool, not Class<?>
 ```
+
+Details will be explained in the next section.
 
 ## Compiler implementation
 There are two different implementations of this proposal depending on **noinline** modifier.
 
-### noinline functional type
+### Regular functional type
 Compiler translates lambda expression into separated class with implementation of appropriate method so Java code still can work with such annotation value.
 
 Given:
 ```kotlin
-annotation class Validation(val validator: noinline (Any) -> Bool)
+annotation class Validation(val validator: (Any) -> Bool)
 
 class Company{
   @Validation({it is Person && it.phoneNumber != null})
@@ -112,7 +114,7 @@ class Company{
 
 Invocation of annotation member _validator_ declared by _Validation_ annotation is not supported by compiler as stated above.
 
-### Regular functional type
+### Reified functional type
 For this type of declaration Kotlin runtime must have two special annotations: *MethodReference* and *MethodSignature*. Description of these annotation demonstrated in Java as a low-level language in comparison to Kotlin to be more clean:
 ```java
 public @interface MethodSignature{ //describes method signature for compiler control
@@ -133,7 +135,7 @@ fun MethodReference.resolveMethod(): java.lang.reflect.Method = declaringClass.g
 
 Now, annotation parameter declaration can be translated easily:
 ```kotlin
-annotation class Validation(val validator: (Any) -> Bool)
+annotation class Validation(val validator: reified (Any) -> Bool)
 
 class Company{
   @Validation({it is Person && it.phoneNumber != null})
@@ -153,7 +155,7 @@ class Company{
   fun owner: Person? = null
 }
 ```
-That's why in this version of declaration (without **noinline**) calling of annotation member *validator* is applicable because compiler has enough guarantees about accessibility of lambda implementation:
+That's why reified declaration gives enough guarantees about signature of lambda implementation:
 ```kotlin
 val validation = method.findAnnotation<Validation>()
 val isValid = validation?.validator(Person())
@@ -162,9 +164,17 @@ will be translated into
 ```kotlin
 val validation = method.findAnnotation<Validation>()
 val method = validation?.validator?.resolveMethod() //resolveMethod() is an extension in runtime library described above
-val isValid = method.invoke(Person()) as Bool
+val lambda = //do invokedynamic magic in conjunction with LambdaMetafactory to translate Method into functional interface instance
+val isValid = lambda(Person())
 ```
-Call safety is guaranteed because compiler recognizes *MethodSignature* annotation and can infer proper parameter types.
+Call safety is guaranteed because compiler recognizes *MethodSignature* annotation and can infer proper parameter types. It is possible to pass *validator* as a lambda function to another function:
+```kotlin
+fun bar(action: (Any?) -> Bool){
+}
+
+val validation = method.findAnnotation<Validation>()
+bar(validation?.validator!!)
+```
 
 #### Optimization of call site
 If reflection is too slow we can always replace this code and turn it into **invokedynamic** invocation with *MutableCallSite*. Such optimization gives JVM a chance to recognize it as monomorphic or polymorphic call and inline referenced method.
