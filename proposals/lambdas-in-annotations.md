@@ -130,7 +130,7 @@ public @interface MethodReference{ //describes method reference to the actual la
 ```
 Also, we need additional extension method that can be used to resolve a method:
 ```kotlin
-fun MethodReference.resolveMethod(): java.lang.reflect.Method = declaringClass.getDeclaredMethod(methodName, signature)
+fun MethodReference.resolveMethod(): java.lang.reflect.Method = declaringClass.getDeclaredMethod(methodName, *signature)
 ```
 
 Now, annotation parameter declaration can be translated easily:
