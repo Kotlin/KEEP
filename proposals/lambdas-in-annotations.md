@@ -84,7 +84,7 @@ validation?.validator(Person()) //because validator has actual type (Any) -> Boo
 Details will be explained in the next section.
 
 ## Compiler implementation
-There are two different implementations of this proposal depending on **noinline** modifier.
+There are two different implementations of this proposal depending on **reified** modifier.
 
 ### Regular functional type
 Compiler translates lambda expression into separated class with implementation of appropriate method so Java code still can work with such annotation value.
