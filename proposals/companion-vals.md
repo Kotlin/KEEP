@@ -136,6 +136,27 @@ class Derived(a: Int, b: Int): Base2(a), Serializable {
 }
 ```
 
+For companion values without explicitly defined name compiler should emit **synthetic** modifier.
+
+Given:
+```kotlin
+open class Derived(a: Int, b: Int): Base2(a), Serializable{
+  protected companion val: Base1(a + b)
+
+  fun foo() = baz() //baz() from Base1
+}
+```
+
+Transformation result:
+```kotlin
+open class Derived(a: Int, b: Int): Base2(a), Serializable {
+  @JvmSynthetic
+  protected val $Base1_companion$ = Base1(a + b)
+
+  fun foo() = $Base1_companion$.baz()
+}
+```
+
 The complexity of compilation lies in the field of lexical scope resolution for the specified name. To solve this issue, the following resolution order can be applied:
 1. Looking for own member in the top-level class
 1. Looking for member in the inherited class
