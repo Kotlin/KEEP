@@ -124,6 +124,52 @@ Therefore, we will **require** each user of `Experimental` to provide the follow
 
 TODO: should we require this argument for usages of `UseExperimental`?
 
+## Experimental and SinceKotlin in the standard library
+
+For declarations in the standard library, as soon as a declaration is released, it'll have to be annotated with `@SinceKotlin(X)`, where X is the earliest version, since which there have been no incompatible changes to the declaration. However, the `-api-version` compatibility argument will have no knowledge of how that declaration looked before it was released, i.e. the declaration will not be visible with `-api-version Y` for `Y < X`, even if it was present in the version Y and the opt-in was given by the user.
+
+We don't intend to solve this problem completely because this would require us to know how the declaration looked in each release before it finally graduated (remember that experimental declarations can undergo binary-incompatible changes). To fix this at least partially, we'll add an **internal** standard library annotation `WasExperimental`:
+
+```kotlin
+package kotlin
+
+@Target(CLASS, PROPERTY, CONSTRUCTOR, FUNCTION)
+@Retention(BINARY)
+internal annotation class WasExperimental(
+    vararg val markerClass: KClass<out Annotation>
+)
+```
+
+Usages of declarations annotated with `WasExperimental` are allowed even if the API version requirement is not satisfied, provided that the opt-in to all mentioned markers is given.
+
+This feature allows us to release new standard library API in patch releases, further graduating it in a minor release. For example, suppose a function `foo` appears in the standard library as experimental in Kotlin 1.4.30. Since it's not yet graduated, it's **not** annotated with `SinceKotlin`:
+
+```kotlin
+// kotlin-stdlib 1.4.30
+@Experimental
+annotation class ExperimentalFooAPI
+
+@ExperimentalFooAPI
+fun foo(s: String) {}
+```
+
+In Kotlin 1.5, the function is graduated (hence `SinceKotlin(“1.5”)`) and therefore is no longer annotated with `ExperimentalFooAPI`. To allow it to be used as experimental on 1.4.30 however, we also annotate it with `WasExperimental` so that for example the non-propagating opt-in `-Xuse-experimental=ExperimentalFooAPI` would work. (Of course, it also makes it possible to use it on 1.4.0...1.4.29, where there was no such function and linkage errors would arise, but we explicitly decide not to solve this problem.)
+
+```kotlin
+// kotlin-stdlib 1.5
+@Experimental
+@Deprecated("This experimental API has been released.")
+annotation class ExperimentalFooAPI
+
+@WasExperimental(ExperimentalFooAPI::class)
+@SinceKotlin("1.5")
+fun foo(s: String) {}
+```
+
+Also note that upon graduation of the API, the experimental marker has been deprecated.
+
+TODO: it's unclear at what point should the marker itself be annotated with `SinceKotlin` and with what value.
+
 ## Other observations
 
 
@@ -137,7 +183,6 @@ TODO: should we require this argument for usages of `UseExperimental`?
 ## Known issues
 
 * Once the API has been released, its call sites are still using the marker annotation, which means that the annotation class will need to go through the deprecation cycle, which is somewhat inconvenient.
-* For declarations in the standard library, as soon as a declaration is released, it'll have to be annotated with `@SinceKotlin(X)`, where X is the earliest version, since which there have been no incompatible changes to the declaration. However, the `-api-version` compatibility argument will have no knowledge of how that declaration looked before it was released, i.e. the declaration will not be visible with `-api-version Y` for `Y < X`, even if it was present in the version Y. This is the first case when the `-api-version` option cannot provide perfect compatibility with the selected library version.
 
 
 
