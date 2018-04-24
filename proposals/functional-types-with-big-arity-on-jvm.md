@@ -6,7 +6,7 @@ This proposal describes a way to support functional types and lambdas that take 
 
 ## Motivation
 
-In Kotlin, functional types are represented as generic classes taking different number of parameters: Function0<R>, Function1<P0, R>, Function2<P0, P1, R>, ... This approach has a problem in that this list is finite, and it currently ends with Function22. Ideally, we'd like to support functions of arbitrary arity in Kotlin. In practice, a JVM method cannot have more that 255 parameters, so this is the limit for us as well.
+In Kotlin, functional types are represented as generic classes taking different number of parameters: `Function0<R>`, `Function1<P0, R>`, `Function2<P0, P1, R>`, ... This approach has a problem in that this list is finite, and it currently ends with `Function22`. Ideally, we'd like to support functions of arbitrary arity in Kotlin. In practice, a JVM method cannot have more that 255 parameters, so this is the limit for us as well.
 
 Related issue: [KT-13764](https://youtrack.jetbrains.com/issue/KT-13764) Support lambdas and function references for arities bigger than 22
 
