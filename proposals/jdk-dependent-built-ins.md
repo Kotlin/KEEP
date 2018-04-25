@@ -90,7 +90,7 @@ Some methods in JDK classes are undesirable in Kotlin built-ins (e.g. a lot of S
 Also for Kotlin containers with mutable analogues it's unknown whether given additional method should belong to a mutable or read-only version of the interface.
 
 Thus, to provide some level of control it's proposed to maintain predefined lists in the compiler describing what to do with listed members:
-* *While list* defines the set of methods that are allowed to be visible at Kotlin call-sites,
+* *White list* defines the set of methods that are allowed to be visible at Kotlin call-sites,
 * *Black list* defines the set of method that are prohibited from being visible at Kotlin call-sites. At the same time such methods are still available for overriding and `super`-qualified calls
 * *Mutable methods list* defines the set of methods that should be added to a mutable interface. By default, such methods go to the read-only interface.
 
