@@ -124,6 +124,18 @@ Therefore, we will **require** each user of `Experimental` to provide the follow
 
 TODO: should we require this argument for usages of `UseExperimental`?
 
+Besides, we will also prohibit any usages of `Experimental`, `UseExperimental` and markers that do not aim to make use of the functionality declared in this proposal. The goal is to minimize the number of binary compatibility problems of user-compiled code if we decide to change something incompatibly. For example, you won't be able to use these classes as types:
+
+```kotlin
+// Error! Experimental cannot be used as a type
+fun get(e: Experimental) = ...
+```
+
+In particular, this means that:
+
+1. `Experimental` and `UseExperimental` may only be used as annotations (but not as arguments to other annotations), as references in the import statement, or as qualifiers (to be able to access nested classes, e.g. `Experimental.Level`)
+2. Markers may only be used as annotations, as references in the import statement, or as a left-hand side to `::class` literal in `UseExperimental` or `WasExperimental` (see below) arguments
+
 ## Experimental and SinceKotlin in the standard library
 
 For declarations in the standard library, as soon as a declaration is released, it'll have to be annotated with `@SinceKotlin(X)`, where X is the earliest version, since which there have been no incompatible changes to the declaration. However, the `-api-version` compatibility argument will have no knowledge of how that declaration looked before it was released, i.e. the declaration will not be visible with `-api-version Y` for `Y < X`, even if it was present in the version Y and the opt-in was given by the user.
