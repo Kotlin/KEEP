@@ -39,7 +39,7 @@ annotation class Experimental(val level: Level = Level.ERROR) {
 }
 
 @Target(CLASS, PROPERTY, LOCAL_VARIABLE, VALUE_PARAMETER, CONSTRUCTOR, FUNCTION,
-        PROPERTY_GETTER, PROPERTY_SETTER, EXPRESSION, FILE)
+        PROPERTY_GETTER, PROPERTY_SETTER, EXPRESSION, FILE, TYPEALIAS)
 @Retention(SOURCE)
 annotation class UseExperimental(
     vararg val markerClass: KClass<out Annotation>
@@ -133,7 +133,7 @@ We don't intend to solve this problem completely because this would require us t
 ```kotlin
 package kotlin
 
-@Target(CLASS, PROPERTY, CONSTRUCTOR, FUNCTION)
+@Target(CLASS, PROPERTY, CONSTRUCTOR, FUNCTION, TYPEALIAS)
 @Retention(BINARY)
 internal annotation class WasExperimental(
     vararg val markerClass: KClass<out Annotation>
