@@ -190,7 +190,7 @@ have access to.
 A Java library can do one of two things to go farther with its support:
 
  1. Publish Kotlin extensions inside their library or as a sibling artifact.
- 2. Rewrite their public API (or the entire library in Kotlin).
+ 2. Rewrite their public API (or the entire library) in Kotlin.
 
 Since rewriting in Kotlin would obviously solve all of the interoperability
 problems, option #1 is the only real comparison. [JUnit 5][junit5] and
