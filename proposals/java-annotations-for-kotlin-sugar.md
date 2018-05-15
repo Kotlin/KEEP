@@ -20,9 +20,8 @@ property names for Java code.
 
  * `@ExtensionFunction` / `@ExtensionProperty` - Turn a static method with at
    least one argument into an extension function or an extension property.
+ * `@ParameterName` - An explicit name for parameters.
  * `@DefaultValue` - Default parameter values.
- * `@KtName` - An alternate name for methods, fields, and parameters for use
-   by Kotlin code.
 
 
 ## Motivation / use cases
@@ -63,8 +62,7 @@ val source = file.asByteSource()
 To complete the calling convention parity with the standard library,
 the function name can be adjusted solely on the Kotlin side:
 ```java
-@ExtensionFunction
-@KtName("byteSource")
+@ExtensionFunction("byteSource")
 public static ByteSource asByteSource(File file) { .. }
 ```
 to enable:
@@ -86,10 +84,10 @@ val list = listOf("a", "b", "c")
 val immutableSet = list.copyOf()
 ```
 
-With `@KtName` we can again create parity with the calling convention of Kotlin:
+By supplying a name we can again create parity with the calling convention of
+Kotlin:
 ```java
-@ExtensionFunction
-@KtName("toImmutableSet")
+@ExtensionFunction("toImmutableSet")
 public static <T> ImmutableSet<T> copyOf(Collection<T> list) { .. }
 ```
 ```kotlin
@@ -120,24 +118,26 @@ public static Throwable getRootCause(Throwable t) { .. }
 
 `@ExtensionProperty` methods with names that match the ["Getters and Setters"
 Java-to-Kotlin interop rules][getters] will have the same renaming behavior as
-members. Using `@KtName` allows overriding this behavior, if desired.
+members. Supplying an alternate name allows overriding this behavior, if
+desired.
 
 While the Java class file format does allow parameter names as of version 52
 (corresponding to Java 8), they are opt-in and almost never included. Once
 enabled, they also require committing to stable parameter names for the
-entirety of the API surface. `@KtName` can also be used to define stable
+entirety of the API surface. `@ParameterName` can be used to define stable
 parameter names. For example, [Android's `View.setPadding`][android-padding]
 has four parameters in an order that can be difficult to remember:
 ```java
 public void setPadding(int left, int top, int right, int bottom) { .. }
 ```
-By adding `@KtName`, Kotlin callers can specify the parameters in any order:
+By adding `@ParameterName`, Kotlin callers can specify the parameters in any
+order:
 ```java
 public void setPadding(
-    @KtName("left") int left,
-    @KtName("top") int top,
-    @KtName("right") int right,
-    @KtName("bottom") int bottom) { .. }
+    @ParameterName("left") int left,
+    @ParameterName("top") int top,
+    @ParameterName("right") int right,
+    @ParameterName("bottom") int bottom) { .. }
 ```
 ```kotlin
 val view = View(context)
@@ -150,10 +150,10 @@ keeping with Android's `View.setPadding` example, we can now add defaults that
 look up the current value allowing a subset of values to be passed:
 ```java
 public void setPadding(
-    @KtName("left") @DefaultValue("paddingLeft") int left,
-    @KtName("top") @DefaultValue("paddingTop") int top,
-    @KtName("right") @DefaultValue("paddingRight") int right,
-    @KtName("bottom") @DefaultValue("paddingBottom") int bottom) { .. }
+    @ParameterName("left") @DefaultValue("paddingLeft") int left,
+    @ParameterName("top") @DefaultValue("paddingTop") int top,
+    @ParameterName("right") @DefaultValue("paddingRight") int right,
+    @ParameterName("bottom") @DefaultValue("paddingBottom") int bottom) { .. }
 ```
 ```kotlin
 val view = View(context)
@@ -163,12 +163,11 @@ view.setPadding(left = 10, right = 10)
 These annotations can all combine together to adapt a Java API which is
 otherwise unidiomatic to something which feels very natural.
 ```java
-@ExtensionFunction
-@KtName("toByteString")
+@ExtensionFunction("toByteString")
 public static ByteString of(
     byte[] bytes,
-    @KtName("offset") @DefaultValue("0") int offset,
-    @KtName("count") @DefaultValue("bytes.size - offset") int count) { .. }
+    @ParameterName("offset") @DefaultValue("0") int offset,
+    @ParameterName("count") @DefaultValue("bytes.size - offset") int count) { .. }
 ```
 ```kotlin
 val bytes = byteArrayOf(1, 2, 3)
@@ -272,12 +271,11 @@ allowed.
 
 The previous example:
 ```java
-@ExtensionFunction
-@KtName("toByteString")
+@ExtensionFunction("toByteString")
 public static ByteString of(
     byte[] bytes,
-    @KtName("offset") @DefaultValue("0") int offset,
-    @KtName("count") @DefaultValue("bytes.length") int count) { .. }
+    @ParameterName("offset") @DefaultValue("0") int offset,
+    @ParameterName("count") @DefaultValue("bytes.length") int count) { .. }
 ```
 ```kotlin
 val bytes = byteArrayOf(1, 2, 3)
@@ -305,16 +303,15 @@ The compiler would not emit these as actual warnings.
 If a library author chooses to ignore validation of any kind and creates an
 invalid configuration the Kotlin consumer shouldn't be punished.
 
-For example, the use of `@KtName` opens up the possibility to create name
-collisions:
+For example, the ability to supply an alternate name for extensions and
+parameters opens up the possibility to create name collisions:
 ```java
-public static String one() { .. }
-
-@KtName("one")
-public static String uno() { .. }
+public static String one(
+    @ParameterName("one") int one,
+    @ParameterName("one") int uno) { .. }
 ```
 
-In this case the **entire** `uno` method would be rejected from any annotation
+In this case the **entire** `one` method would be rejected from any annotation
 enhancement. This is important as the intent can be ambiguous in certain
 configurations. For example, both `@ExtensionFunction` and `@ExtensionProperty`
 may be present on a single method.
@@ -362,9 +359,9 @@ the annotations to show errors.
 ## Scope
 
 This proposal focuses on only 4 annotations: `@ExtensionFunction`,
-`@ExtensionProperty`, `@DefaultValue`, and `@KtName`. These were chosen because
-a sampling of Java libraries showed them to have the most impact to Kotlin
-consumers if implemented.
+`@ExtensionProperty`, `@DefaultValue`, and `@ParameterName`. These were chosen
+because a sampling of Java libraries showed them to have the most impact to
+Kotlin consumers if implemented.
 
 There are certainly other annotations which could be proposed and implemented
 to further interop. Ones that come to mind are denoting top-level functions,
