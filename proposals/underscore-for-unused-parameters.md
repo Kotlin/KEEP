@@ -87,6 +87,7 @@ Also an IDE quickfix is expected that turns unused declaration's name to `_`.
  without special treatment in the language
 - It seems that the same semantic may be applied in future versions of Java.
 See [related message](http://mail.openjdk.java.net/pipermail/lambda-dev/2013-July/010670.html).
+- Go uses `_` as the [blank identifier](https://golang.org/ref/spec#Blank_identifier), ignoring all declarations of and assignments to `_`.
 
 ## To be done in the future
 The same trick could also be applied to the named functions.
