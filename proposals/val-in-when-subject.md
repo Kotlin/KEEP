@@ -15,7 +15,7 @@ that can be used to reference the subject value.
 Also, it enables smart casts on the subject value in corresponding branches.
 
 In Kotlin 1.2, explicit value declaration for when subject would be:
-```
+```kotlin
     val x = foo()
     when (x) {
         is String -> println(x.length)
@@ -28,20 +28,20 @@ This, however, places `x` in the outer scope, and makes code somewhat harder to 
 ## Design details
 
 The following restrictions apply to local variable declarations in `when` subject:
-* Should be a `val`
-* Should have an initializer
+* Must be a `val`
+* Must have an initializer
 * Custom accessors are not allowed
 * Local delegated properties are not allowed
 
 Examples:
-```
+```kotlin
     when (val x = foo()) { ... }            // Ok
 
     when (val x: Number = foo()) { ... }    // Ok, explicit type annotation can be provided
 
-    when (val x: Number) { ... }            // Error, should have an initializer
+    when (var x = foo() { ... }             // Error, must be a val
 
-    when (var x = foo() { ... }             // Error, should be a val
+    when (val x: Number) { ... }            // Error, must have an initializer
 
     when (val x get() = ...) { ... }        // Error, custom accessors are not allowed
                                             //  (this code actually doesn't parse in Kotlin 1.2, which is ok)
@@ -51,7 +51,7 @@ Examples:
 
 Destructuring declaration in `when` subject is well-formed if the aforementioned restrictions are satisfied,
 and it's well-formed as a standalone destructuring declaration. E.g.:
-```
+```kotlin
     val p: Pair<Int, Int> = ...
 
     when (val (p1, p2) = p) { ... }         // Ok
@@ -61,7 +61,7 @@ and it's well-formed as a standalone destructuring declaration. E.g.:
 ```
 
 Note that smart casts on destructured value currently have no effect on the corresponding components. E.g.:
-```
+```kotlin
 interface NumPair {
     operator fun component1(): Number
     operator fun component2(): Number
