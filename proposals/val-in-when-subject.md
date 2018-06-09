@@ -49,6 +49,54 @@ Examples:
     when (val x by bar()) { ... }           // Error, local delegated properties are not allowed in 'when' subject
 ```
 
+## Open questions
+
+### No 'val' keyword
+
+Option suggested during discussions: omit `val` keyword for subject variable in `when` (which would be similar to loop
+variable in `for`):
+```kotlin
+    when (x = foo()) { ... }
+    when (y: String = bar()) { ... }
+```
+
+This might make code somewhat harder to read, because `x = foo()` in the example above looks like an expression (or even
+like an assignment statement).
+
+### Explicit type annotations & exhaustiveness
+
+Consider the following code:
+```kotlin
+enum class Color { RED, GREEN, BLUE }
+
+fun foo(x: Color) =
+    when (val xx: Color? = x) {
+        Color.RED -> "Roses are red"
+        Color.GREEN -> "Grass is green"
+        Color.BLUE -> "Violets are blue"
+    }
+```
+
+Equivalent code without subject variable is currently considered ill-formed, even though we statically know that `xx` is
+not null:
+```kotlin
+fun foo(x: Color): String {
+    val xx: Color? = x
+    return when (xx) {                      // Error: 'when' expression must be exhaustive
+        Color.RED -> "Roses are red"
+        Color.GREEN -> "Grass is green"
+        Color.BLUE -> "Violets are blue"
+    }
+}
+```
+
+So, in the current prototype, for the sake of consistency, the code in example above is also considered ill-formed.
+
+
+### Destructuring declarations
+
+It's possible to introduce destructuring declarations in `when` subject as follows:
+
 Destructuring declaration in `when` subject is well-formed if the aforementioned restrictions are satisfied,
 and it's well-formed as a standalone destructuring declaration. E.g.:
 ```kotlin
@@ -59,6 +107,15 @@ and it's well-formed as a standalone destructuring declaration. E.g.:
     when (val (p1, p2, p3) = p) { ... }     // Error: missing 'component3()' function
 }
 ```
+
+Here `when (val (p1, p2) = p) { ... }` is equivalent to (modulo scopes):
+```kotlin
+    val (p1, p2) = p
+    when (p) { ... }
+```
+
+However, this code looks somewhat confusing, and this feature can be introduced later without breaking changes, if it's
+considered valuable.
 
 Note that smart casts on destructured value currently have no effect on the corresponding components. E.g.:
 ```kotlin
@@ -81,3 +138,4 @@ fun test(p: NumPair) {
     }
 }
 ```
+
