@@ -113,7 +113,7 @@ Obviously just appending the type to the default setter would not work, since yo
 ```kotlin
 var items = mutableListOf<Item>()
         get(): List<Item>
-		set(value : List<Item>) {
-			field = value.toMutableList()
-		}
+	set(value : List<Item>) {
+		field = value.toMutableList()
+	}
 ```
