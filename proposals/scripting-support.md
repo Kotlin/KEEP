@@ -10,7 +10,7 @@ Discussion of this proposal is held in [this issue](https://github.com/Kotlin/KE
 
 ## Motivation
 
-- Define Kotlin scripting and it's applications
+- Define Kotlin scripting and its applications
 - Describe intended use cases for the Kotlin scripting
 - Define scripting support that is: 
   - applicable to all Kotlin platforms
