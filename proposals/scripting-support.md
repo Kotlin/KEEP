@@ -645,7 +645,7 @@ The experimental implementation of the described scripting infrastructure on the
 starting from the 1.2.50 release. The following API and helper libraries are generally needed for the implementation:
 - `kotlin-scripting-common` - API, interfaces, data structures and properties
 - `kotlin-scripting-jvm` - JVM-specific properties and default implementations
-- `kotlin-scripting-jv-host` - JVM-specific host helpers
+- `kotlin-scripting-jvm-host` - JVM-specific host helpers
 - `kotlin-scripting-common` - an experimental DSL for properties
 
 The basic examples could be found in the `libraries/samples/scripting` folder in the Kotlin source code repository.
@@ -671,7 +671,8 @@ plugin. But the following limitations are known:
     class) should be compiled to class files in order to be recognized by the discovery mechanism
   - the scripts in the new infrastructure can be only compiled directly by command-line compiler or by gradle plugin,
     so they will not work in the maven project or when imported into idea without delegating build tasks to gradle
-  - the mechanisms for managing script definitions and resolving clashes are not implemented   
+  - the mechanisms for managing script definitions and resolving clashes are not implemented
+  - script compilation caching is not implemented yet
     
 In general, the new scripting support is experimental and work in progress, so the stability of the interfaces and 
 implementation is not guaranteed.         
