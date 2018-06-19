@@ -683,7 +683,7 @@ starting from the 1.3.0 release. The following API and helper libraries are gene
 - `kotlin-scripting-jvm` - JVM-specific properties and default implementations
 - `kotlin-scripting-jvm-host` - JVM-specific host helpers
 
-The basic examples could be found in the `libraries/samples/scripting` folder in the Kotlin source code repository.
+The basic examples could be found in the `libraries/examples/scripting` folder in the Kotlin source code repository.
 
 The implementation is functional for many use cases, but there are many gaps, in particular:
 - the following compilation configuration properties are not supported yet:
