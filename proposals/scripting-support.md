@@ -646,7 +646,7 @@ starting from the 1.2.50 release. The following API and helper libraries are gen
 - `kotlin-scripting-common` - API, interfaces, data structures and properties
 - `kotlin-scripting-jvm` - JVM-specific properties and default implementations
 - `kotlin-scripting-jvm-host` - JVM-specific host helpers
-- `kotlin-scripting-common` - an experimental DSL for properties
+- `kotlin-scripting-misc` - an experimental DSL for properties
 
 The basic examples could be found in the `libraries/samples/scripting` folder in the Kotlin source code repository.
 
