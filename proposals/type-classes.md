@@ -1,4 +1,4 @@
-# Type classes
+# Type Classes
 
 * **Type**: Design proposal
 * **Author**: Raul Raja
@@ -8,19 +8,18 @@
 ## Summary
 
 The goal of this proposal is to enable `type classes` and lightweight `Higher Kinded Types` in Kotlin to enable ad-hoc polymorphism and better extension syntax.
-Type classes is the most important feature that Kotlin lacks in order to support a broader range of FP idioms.
-Kotlin already has an excellent extension mechanism where this proposal fits nicely. As a side effect `Type classes as extensions` also allows for compile time
-dependency injection which will improve the current landscape where trivial applications rely on heavy frameworks based on runtime Dependency Injection.
-Furthermore introduction of type classes improves usages for `reified` generic functions with a more robust approach that does not require those to be `inline` or `reified`.
+
+Type classes are a form of interface that provide a greater degree of polymorphism than classical interfaces. Typeclasses can also improve code-reuse in contrast to classical interfaces if done correctly.
+
+Introduction of type classes improves usages for `reified` generic functions with a more robust approach that does not require those to be `inline` or `reified`.
 
 ## Motivation
 
-* Support Type class evidence compile time verification.
+* Support type class evidence compile time verification.
 * Support a broader range of Typed FP patterns.
 * Enable multiple extension functions groups for type declarations.
-* Enable compile time DI through the use of the Type class pattern.
 * Enable better compile reified generics without the need for explicit inlining.
-* Enable definition of polymorphic functions whose constrains can be verified at compile time in call sites.
+* Enable definition of polymorphic functions whose constraints can be verified at compile time in call sites.
 
 ## Description
 
@@ -39,65 +38,34 @@ In the implementation below we provide evidence that there is a `Monoid<Int>` in
 ```kotlin
 package intext
 
+extension object : Monoid<Int> {
+    fun Int.combine(b: Int): Int = this + b
+    val empty: Int = 0
+}
+```
+
+Type class implementations can be given a name for Java interop.
+```kotlin
+package intext
+
 extension object IntMonoid : Monoid<Int> {
     fun Int.combine(b: Int): Int = this + b
     val empty: Int = 0
 }
 ```
 
-```
-import intext.IntMonoid
+```kotlin
 
 1.combine(2) // 3
-IntMonoid.empty() // 0
+Monoid<Int>.empty() // 0
 ```
 
-Because of this constrain where we are stating that there is a `Monoid` constrain for a given type `A` we can also encode polymorphic definitions based on those constrains:
+Because of this constraint where we are stating that there is a `Monoid` constraint for a given type `A` we can also encode polymorphic definitions based on those constraints:
 
 ```kotlin
-import intext.IntMonoid
-
 fun <A> add(a: A, b: A, with Monoid<A>): A = a.combine(b)
 add(1, 1) // compiles
 add("a", "b") // does not compile: No `String: Monoid` instance defined in scope
-```
-
-## Compile Time Dependency Injection
-
-On top of the value this brings to typed FP in Kotlin it also helps in OOP contexts where dependencies can be provided at compile time:
-
-```kotlin
-extension interface Context<A> {
-  fun A.config(): Config
-}
-```
-
-```kotlin
-package prod
-
-extension object ProdContext: Context<Service> {
-  fun Service.config(): Config = ProdConfig
-}
-```
-
-```kotlin
-package test
-
-extension object TestContext: Context<Service> {
-  fun Service.config(): Config = TestConfig
-}
-```
-
-```kotlin
-package prod
-
-service.config() // ProdConfig
-```
-
-```kotlin
-package test
-
-service.config() // TestConfig
 ```
 
 ## Overcoming `inline` + `reified` limitations
@@ -140,7 +108,7 @@ extension class Foo<A> {
 
 ## Composition and chain of evidences
 
-Type class instances and declarations can encode further constrains in their generic args so they can be composed nicely:
+Type class instances and declarations can encode further constraints in their generic args so they can be composed nicely:
 
 ```kotlin
 package optionext
@@ -164,9 +132,6 @@ extension class OptionMonoid<A>(with Monoid<A>): Monoid<Option<A>> {
 The above instance declares a `Monoid<Option<A>>` as long as there is a `Monoid<A>` in scope.
 
 ```kotlin
-import optionext.OptionMonoid
-import intext.IntMonoid
-
 Option(1).combine(Option(1)) // Option(2)
 Option("a").combine(Option("b")) // does not compile. Found `Monoid<Option<A>>` instance providing `combine` but no `Monoid<String>` instance was in scope
 ```
@@ -184,7 +149,7 @@ extension interface FunctionK<F<_>, G<_>> {
   fun <A> invoke(fa: F<A>): G<A>
 }
 
-extension object Option2List : FunctionK<Option, List> {
+extension object : FunctionK<Option, List> {
   fun <A> invoke(fa: Option<A>): List<A> =
     fa.fold({ emptyList() }, { listOf(it) })
 }
@@ -237,9 +202,84 @@ fun addInts(a: Int, b: Int, with Monoid<Int>): Int = add(a, b)
 fun addInts(a: Int, b: Int): Int = with(intext.IntMonoid) { add(a, b) }
 ```
 
-## Compile resolution rules
+## Type Class Instance Rules
 
-When the compiler finds a call site invoking a function that has type class instances constrains declared with `with` as in the example below:
+Classical interfaces only allow the implementation of interfaces to occur when a type is defined. Type classes typically relax this rule and allow implementations outside of the type definition. When relaxinng this rule it is important to preserve the coherency we take for granted with classical interfaces.
+
+For those reasons type class instances must be declared in one of two places:
+
+1. In the same file as the type class definition (interface-side implementation)
+2. In the same file as the type being implemented (type-side implementation)
+
+All other instances are orphan instances and are not allowed. See [Appendix A](#Appendix-A) for a modification to this proposal that allows for orphan instances.
+
+Additionally a type class implementation must not conflict with any other already defined type class implementations; for the purposes of checking this we use the normal resolution rules.
+
+### Interface-Side Implementations
+
+This definition site is simple to implement and requires to rules except that the instances occurs in the same package. E.g. the following implementation is allowed
+```kotlin
+package foo.collections
+
+extension interface Monoid<A> {
+   ...
+}
+```
+
+```kotlin
+package foo.collections
+
+extension object : Monoid<String> {
+   ...
+}
+```
+
+### Type-Side Implementations
+
+This definition site poses additional complications when you consider multi-parameter typeclasses.
+
+```kotlin
+package foo.collections
+
+extension interface Isomorphism<A, B> {
+   ...
+}
+```
+
+```kotlin
+package data.foo
+
+data class Foo(...)
+extension class<A> : Isomorphism<Foo, A> {
+   ...
+}
+```
+
+```kotlin
+package data.bar
+
+data class Bar(...)
+extension class<A> : Isomorphism<A, Bar> {
+   ...
+}
+```
+
+The above instances are each defined alongside their respective type definitions and yet they clearly conflict with each other. We will also run into quandaries once we consider generic types. We can crib some prior art from Rust<sup>1</sup> to help us out here.
+
+To determine whether a typeclass definition is a valid type-side implementation we perform the following check:
+
+1. A "local type" is any type (but not typealias) defined in the current file (e.g. everything defined in `data.bar` if we're evaluating `data.bar`).
+2. A generic type parameter is "covered" by a type if it occurs within that type, e.g. `MyType` covers `T` in `MyType<T>` but not `Pair<T, MyType>`.
+3. Write out the parameters to the type class in order.
+4. The parameters must include a type defined in this file.
+5. Any generic type parameters must occur after the first instance of a local type or be covered by a local type.
+
+If a type class implementation meets these rules it is a valid type-side implementation.
+ 
+
+## Compile Resolution Rules
+
+When the compiler finds a call site invoking a function that has type class instances constraints declared with `with` as in the example below:
 
 Declaration: 
 ```kotlin
@@ -247,50 +287,70 @@ fun <A> add(a: A, b: A, with Monoid<A>): A = a.combine(b)
 ```
 Call site:
 ```kotlin
-extension class AddingInts {
-  fun addInts(): Int = add(1, 2)
-}
-```
-The compiler may choose the following order for resolving the evidence that a `Monoid<Int>` exists in scope.
-
-1. Look in the most immediate scope for declarations of `with Monoid<Int>` in this case the function `addInts`
-
-This will compile because the responsibility of providing `Monoid<Int>` is passed into the callers of `addInts()`:
-```kotlin
-extension object AddingInts {
-  fun addInts(with Monoid<Int>): Int = add(1, 2)
-}
+fun addInts(): Int = add(1, 2)
 ```
 
-2. Look in the immediately outher class/interface scope for declarations of `with Monoid<Int>` in this case the class `AddingInts`:
-```kotlin
-extension class AddingInts(with Monoid<Int>) {
-  fun addInts(): Int = add(1, 2)
-}
-```
-This will compile because the responsibility of providing `Monoid<Int>` is passed unto the callers of `AddingInts()`
-
-3. Look in the import declarations for an explicitly imported instance that satisfies the constrain `Monoid<Int>`:
-```kotlin
-import intext.IntMonoid
-extension object AddingInts {
-  fun addInts(): Int = add(1, 2)
-}
-```
-This will compile because the responsibility of providing `Monoid<Int>` is satisfied by `import intext.IntMonoid`
-
-4. Fail to compile if neither outer scopes nor explicit imports fail to provide evidence that there is a constrain satisfied by an instance in scope.
-```kotlin
-extension object AddingInts {
-  fun addInts(): Int = add(1, 2)
-}
-```
-Fails to compile lacking evidence that you can invoke `add(1,2)` since `add` is a polymorphic function that requires a `Monoid<Int>` inferred by `1` and `2` being of type `Int`.
-In such case the extension instance have to be explicitly defined.
-```kotlin
-extension object AddingInts {
-  fun addInts(): Int = with(intext.IntMonoid) { add(1, 2) }
-}
-```
+1. The compiler first looks at the file the interface is defined in. If it finds exactly one implementation it uses that instance.
+2. If it fails to find an implementation in the interface's file, it then looks at the files of the implemented types. For each type class parameter check the file it was defined in. If exactly one implementation is found use that instance.
+3. If no matching implementation is found in either of these places fail to compile.
+4. If more than one matching implementation is found, fail to compile and indicate that there or conflicting instances.
 
 Some of these examples where originally proposed by Roman Elizarov and the Kategory contributors where these features where originally discussed https://github.com/Kotlin/KEEP/pull/87
+
+## Appendix A: Orphan Implementations
+
+Orphan implementations are a subject of controversy. Combining two libraries, one defining a data type, the other defining an interface, is a feature that many programmers have longed for. However, implementing this feature in a way that doesn't break other features of interfaces is difficult and drastically complicates how the compiler works with those interfaces.
+
+Orphan implementations are the reason that type classes have often been described as "anti-modular" as the most common way of dealing with them is through global coherency checks. This is necessary to ensure that two libraries have not defined incompatible implementations of a type class interface.
+
+Relaxing the orphan rules is a backwards-compatible change. If this proposal is accepted without permitting orphans it is useful to consider how they could be added in the future.
+
+Ideally we want to ban orphan implementations in libraries but not in executables; this allows a programmer to manually deal with coherence in their own code but prevents situations where adding a new library breaks code.
+
+### Package-based Approach to Orphans
+
+A simple way to allow orphan implementations is to replace the file-based restrictions with package-based restrictions. Because there are no restrictions on packages it is posible to do the following.
+
+```kotlin
+// In some library foo
+package foo.collections
+
+extension class Monoid<A> {
+   ...
+}
+```
+
+```kotlin
+// In some application that uses the foo library
+package foo.collections
+
+extension object : Monoid<Int> {
+   ...
+}
+```
+
+This approach would not forbid orphan implementations in libraries but it would highly discourage them from providing them since it would involve writing code in the package namespace of another library.
+
+### Internal Modifier-based Approach to Orphans
+
+An alternate approach is to require that orphan implementations be marked `internal`. The full rules would be as follows:
+
+1. All orphan implementations must be marked `internal`
+2. All code which closes over an internal implementations must be marked internal. Code closes over a type class instance if it contains a static reference to such an implementation.
+3. Internal implementations defined in the same module are in scope for the current module.
+4. Internal implementations defined in other modules are not valid for type class resolution.
+
+This approach works well but it has a few problems.
+
+1. It forces applications that use orphan implementations to mark all their code as internal, which is a lot of syntactic noise.
+2. It complicates the compiler's resolution mechanism since it's not as easy to enumerate definition sites.
+
+The first  problem can actually leads us to a better solution.
+
+### Java 9 Module-based Approach to Orphans
+
+Currently Kotlin does not make use of Java 9 modules but it is easy to see how they could eventually replace Kotlin's `internal` modifier. The rules for this approach would be the same as the `internal`-based approach; code which uses orphans is not allowed to be exported.
+
+## Footnotes
+
+1. [Little Orphan Impls](http://smallcultfollowing.com/babysteps/blog/2015/01/14/little-orphan-impls/)
