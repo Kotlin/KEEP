@@ -658,7 +658,6 @@ The implementation is functional for many use cases, but there are many gaps, in
   - `restrictions` - not implemented yet
   - `importedScripts` - not implemented yet
   - `generatedMethodAnnotations` and `generatedClassAnnotations` - are not implemented yet
-  - `compilerOptions` - not implemented yet
 - some properties are required by the current implementation are not part of this proposal, because they exist only 
   due to some implementation issues, and could soon disappear or change significantly, for example:
   - `getScriptingClass` in the environment - is used for kotlin types instantiation; currently the instance of
