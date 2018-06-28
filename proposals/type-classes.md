@@ -179,30 +179,6 @@ fun <A> add(a: A, b: A, with Monoid<A>): A = a.combine(b) //function position us
 fun <A> add(a: A, b: A, with M: Monoid<A>): A = a.combine(b) //function position argument "M"
 ```
 
-## Compiler Changes
-
-- The type checker will declare the below definition as valid since the `with` clause provides evidence that call sites won't be able to compile calls to this function unless a `Monoid<A>` is in scope.
-```kotlin
-fun <A> add(a: A, b: A, with Monoid<A>): A = a.combine(b) //compiles
-```
-- The type checker will declare the below definition as invalid since there is no `Monoid<Int>` in scope.
-```kotlin
-add(1, 2)
-```
-- The type checker will declare the below definition as valid since there is a `Monoid<Int>` in scope.
-```kotlin
-import intext.IntMonoid
-add(1, 2)
-```
-- The type checker will declare the below definition as valid since there is a `Monoid<Int>` in scope.
-```kotlin
-fun addInts(a: Int, b: Int, with Monoid<Int>): Int = add(a, b)
-```
-- The type checker will declare the below definition as valid since there is a `with` block around the concrete `IntMonoid` in scope.
-```kotlin
-fun addInts(a: Int, b: Int): Int = with(intext.IntMonoid) { add(a, b) }
-```
-
 ## Type Class Instance Rules
 
 Classical interfaces only allow the implementation of interfaces to occur when a type is defined. Type classes typically relax this rule and allow implementations outside of the type definition. When relaxinng this rule it is important to preserve the coherency we take for granted with classical interfaces.
