@@ -2,6 +2,7 @@
 
 * **Type**: Design proposal
 * **Author**: Raul Raja
+* **Contributors**: Francesco Vasco, Claire Neveu
 * **Status**: New
 * **Prototype**: -
 
