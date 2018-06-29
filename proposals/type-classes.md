@@ -172,11 +172,11 @@ transform(listOf(1), { it + 1 }) // does not compile: No `Functor<List>` instanc
 
 - Add `with` to require instances evidences in both function and class/object declarations as demonstrated by previous and below examples:
 ```kotlin
-extension class OptionMonoid<A>(with Monoid<A>) : Monoid<Option<A>> //class position using argument "Monoid"
-extension class OptionMonoid<A>(with M: Monoid<A>) : Monoid<Option<A>> //class position using argument "M"
+extension class OptionMonoid<A>(with M: Monoid<A>) : Monoid<Option<A>> // class position using parameter "M"
+extension class OptionMonoid<A>(with Monoid<A>) : Monoid<Option<A>> // class position using anonymous `Monoid` parameter
 
-fun <A> add(a: A, b: A, with Monoid<A>): A = a.combine(b) //function position using argument "Monoid"
-fun <A> add(a: A, b: A, with M: Monoid<A>): A = a.combine(b) //function position argument "M"
+fun <A> add(a: A, b: A, with M: Monoid<A>): A = a.combine(b) // function position using parameter "M"
+fun <A> add(a: A, b: A, with Monoid<A>): A = a.combine(b) // function position using anonymous `Monoid` parameter
 ```
 
 ## Type Class Instance Rules
