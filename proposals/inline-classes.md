@@ -2,7 +2,7 @@
 
 * **Type**: Design proposal
 * **Author**: Mikhail Zarechenskiy
-* **Contributors**: Andrey Breslav, Denis Zharkov, Roman Elizarov, Stanislav Erokhin
+* **Contributors**: Andrey Breslav, Denis Zharkov, Ilya Gorbunov, Roman Elizarov, Stanislav Erokhin
 * **Status**: Under consideration
 * **Prototype**: Implemented in Kotlin 1.2.30
 
@@ -35,6 +35,19 @@ inline class ULong(private val value: Long) { ... }
 - Inline enum classes 
     - Int enum for [Android IntDef](https://developer.android.com/reference/android/support/annotation/IntDef.html)
     - String enum for Kotlin/JS (see [WebIDL enums](https://www.w3.org/TR/WebIDL-1/#idl-enums))
+    
+    Example:
+    ```kotlin
+    inline enum class Foo(val x: Int) {
+        A(0), B(1);
+        
+        fun example() { ... }
+    }
+    ```
+    
+    The constructor's arguments should be constant values and the values should be different for different entries.
+
+
 - Units of measurement
 - Result type (aka Try monad) [KT-18608](https://youtrack.jetbrains.com/issue/KT-18608)
 - Inline property delegates
@@ -294,3 +307,91 @@ inline class Foo(val s: String) {
 Compiler will generate original `equals` method that is delegated to the typed version.  
 
 By default, compiler will automatically generate `equals`, `hashCode` and `toString` same as for data classes.
+
+## Arrays of inline class values
+
+Consider the following inline class:
+```kotlin
+inline class Foo(val x: Int)
+``` 
+
+To represent array of unboxed values of `Foo` we propose to use new inline class `FooArray`:
+```kotlin
+inline class FooArray(private val storage: IntArray): Collection<Foo> {
+    operator fun get(index: Int): UInt = Foo(storage[index])
+    ...
+}
+```
+While `Array<Foo>` will represent array of **boxed** values:
+```
+// jvm signature: test([I[LFoo;)V
+fun test(a: FooArray, b: Array<Foo>) {} 
+``` 
+
+This is similar how we work with arrays of primitive types such as `IntArray`/`ByteArray` and allows to explicitly differ array of 
+unboxed values from array of boxed values.
+
+This decision doesn't allow to declare `vararg` parameter that will represent array of unboxed inline class values, because we can't
+associate vararg of inline class type with the corresponding array type. For example, without additional information it's impossible to match
+`vararg v: Foo` with `FooArray`. Therefore, we are going to prohibit `vararg` parameters for now.
+
+#### Other possible options:
+
+- Treat `Array<Foo>` as array of unboxed values by default
+
+    Pros:
+    - There is no need to define separate class to introduce array of inline class type
+    - It's possible to allow `vararg` parameters
+    
+    Cons:
+    - `Array<Foo>` can implicitly represent array of unboxed and array of boxed values:
+    ```java
+    // Java
+    class JClass {
+        public static void bar(Foo[] f) {}
+    }
+    ```
+    From Kotlin point of view, function `bar` can take only `Array<Foo>`
+    - Not clear semantics for generic arrays:
+    ```kotlin
+    fun <T> genericArray(a: Array<T>) {}
+
+    fun test(foos: Array<Foo>) {
+      genericArray(foos) // conversion for each element? 
+    }
+    ```
+
+ 
+- Treat `Array<Foo>` as array of boxed values and introduce specialized `VArray` class with the following rules:
+    - `VArray<Foo>` represents array of unboxed values
+    - `VArray<Foo?>` or `VArray<T>` for type paramter `T` is an error
+    - (optionally) `VArray<Int>` represents array of primitives
+    
+    Pros:
+    - There is no need to define separate class to introduce array of inline class type
+    - It's possible to allow `vararg` parameters
+    - Explicit representation for arrays of boxed/unboxed values
+    
+    Cons:
+    - Complicated implementation and overall design
+
+
+## Expect/Actual inline classes
+
+To declare expect inline class one can use `expect` modifier:
+```kotlin
+expect inline class Foo(val prop: String)
+```
+
+Note that we allow to declare property with backing field (`prop` here) for expect inline class, which is different for usual classes.
+Also, since each inline class must have exactly one value parameter we can relax rules for actual inline classes:
+```kotlin
+// common module
+expect inline class Foo(val prop: String)
+
+// platform-specific module
+actual inline class Foo(val prop: String)
+```
+For actual inline classes we don't require to write `actual` modifier on primary constructor and value parameter.
+
+Currently, expect inline class requires actual inline and vice versa. 
