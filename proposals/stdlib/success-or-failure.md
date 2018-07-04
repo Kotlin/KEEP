@@ -92,7 +92,7 @@ fun readFilesCatching(files: List<File>): List<SuccessOrFailure<Data>> =
 ```
 
 > This function is named `readFileCatching` to make it explicit to the caller that all encountered failures
-were _caught_ and encapsulated in `SuccessOrFailure` and it is caller responsibility to process those failures.
+were _caught_ and encapsulated in `SuccessOrFailure` and it is caller responsibility to process these failures.
 
 Now, consider making some transformation of `readFilesCatching` results that we'd like to express functionally, 
 while preserving accumulated failures:
@@ -390,7 +390,7 @@ Existing Kotlin libraries that provide similar functionality:
 * [`Try<T>`](https://arrow-kt.io/docs/datatypes/try/) in Arrow library.
 
 For comparison of Scala's `Try` and its Kotlin analogue in Arrow library with this `SuccessOrFailure` class
-see [Appendix](#appendix:-why-flatmap-is-missing). 
+see [Appendix](#appendix-why-flatmap-is-missing). 
 
 ## Placement
 
