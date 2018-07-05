@@ -265,8 +265,8 @@ inline fun <R, T: R> SuccessOrFailure<T>.recover(transform: (Throwable) -> R): S
 inline fun <R, T> SuccessOrFailure<T>.mapCatching(transform: (T) -> R): SuccessOrFailure<R>
 inline fun <R, T: R> SuccessOrFailure<T>.recoverCatching(transform: (Throwable) -> R): SuccessOrFailure<R>
 
-inline fun <T> SuccessOrFailure<T>.onFailure(block: (Throwable) -> Unit): SuccessOrFailure<T>
-inline fun <T> SuccessOrFailure<T>.onSuccess(block: (T) -> Unit): SuccessOrFailure<T>
+inline fun <T> SuccessOrFailure<T>.onFailure(action: (Throwable) -> Unit): SuccessOrFailure<T>
+inline fun <T> SuccessOrFailure<T>.onSuccess(action: (T) -> Unit): SuccessOrFailure<T>
 ```
 
 All of the functions have self-explanatory consistent names that follow established tradition in Kotlin Standard library
