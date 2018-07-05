@@ -422,12 +422,15 @@ following problems:
 * It leads to abuse in cases where a user-provided API-specific sealed class would work better.   
 
 It is possible to define a separate class that is parametrized by `<T, E>` and then define
-`SuccessOrFailure<T>` and a `typealias` to that class with `E = Throwable`. However, it complicates the naming
-and IDE support with respect to typealiases. Moreover, we cannot succinctly define `runCatching` function 
-and other `Catching` functions to make them usable both with and without explicit caught type specification.
-We'll have to have two different names for a function with an additional `E: Throwable` type parameter
-that must be specified and without it. Moreover, specifying `E` on call site requires specifying return type, too,
-since partial type parameter specification is not possible in Kotlin.  
+`SuccessOrFailure<T>` and a `typealias` to that class with `E = Throwable`. This creates 
+its own problems:
+
+* It complicates the naming and IDE support with respect to typealiases. 
+* We cannot succinctly define `runCatching` function 
+  and other `Catching` functions to make them usable both with and without explicit caught type specification.
+  We'll have to have two different names for such a function: one for a function with an additional `E: Throwable` 
+  type parameter that must be specified and another one without it. Moreover, specifying `E` on call site requires 
+  specifying return type, too, since partial type parameter specification is not currently possible in Kotlin.  
 
 All in all, it does not seem that the costs outweigh whatever benefits it might bring.
 
@@ -437,14 +440,14 @@ We need to clearly mark functions that return `SuccessOrFailure` and this KEEP s
 like in `runCatching`. Alternatives:
 
 * `OrCatch` suffix as in `runOrCatch` (inspired by `OrNull` suffix).
-* `OrFailure` suffix as in `runOrFailure` (same).
+* `OrFailure` suffix as in `runOrFailure` (same inspiration).
 
 **Success or failure must be used**:
 
 Using `SuccessOrFailure` as the return type poses a problem that it might accidentally get lost, thus loosing
-unhandled exception in case the invocation was a failure. The problem is somewhat alleviated by naming 
-all such function with `Catching` suffix, but finding lost exception in the code that uses `SuccessOrFailure` 
-is still non trivial challenge.  
+unhandled exception. The problem is somewhat alleviated by naming 
+all such functions with `Catching` suffix, but finding potential lost exception in the code that uses `SuccessOrFailure` 
+is still non a trivial challenge.  
 
 Consider this code from [Functional bulk manipulation of failures](#functional-bulk-manipulation-of-failures):
 
@@ -454,7 +457,7 @@ readFilesCatching(files).map { result ->
 }
 ```
 
-If `doSomething` throws an exception, then all exceptions that were returned in a list by `readFilesCatching` are lost.
+If `doSomething` here throws an exception, then all exceptions that were returned in a list by `readFilesCatching` are lost.
 
 Some IDE inspections can be designed to detect these kinds problems. It is an open question how exactly they should
 work and and whether it is really a big problem after all.
@@ -465,7 +468,7 @@ work and and whether it is really a big problem after all.
 
 Kotlin `inline` classes cannot be currently used with `sealed class` construct. 
 If that is somehow supported in the future, then we could change implementation of 
-`SuccessOrFailure` like this without affecting its public APIs and binary interfaces:
+`SuccessOrFailure` without affecting its public APIs and binary interfaces in the following way:
 
 ```kotlin
 sealed inline class SuccessOrFailure<T> {
@@ -474,14 +477,14 @@ sealed inline class SuccessOrFailure<T> {
 }
 ``` 
 
-These would make it possible to use `result is Success` and `result is Failure` checks and get advantage of
+These changes would make it possible to use `result is Success` and `result is Failure` expressions and get advantage of
 smart casts instead of `result.isSuccess` and `result.isFailure` that are currently provided and which do not work 
 with smart casts.
 
 **Parametrizing by the base error type**:
 
 If `Kotlin` adds some form of support for type parameter default values and partial type inference,
-then we can consider extending `SuccessOrFailure` class with an addition type parameter `E: Throwable` that represents
+then we can consider extending `SuccessOrFailure` class with an additional type parameter `E: Throwable` that represents
 the base class for caught exceptions. For example, in input/output code there may be a desire to catch only 
 `IOException` and its subclasses, while aborting on any other exception using something like
 `runCatching<_, IOException> { code }` assuming that return type can be still inferred
@@ -489,8 +492,8 @@ the base class for caught exceptions. For example, in input/output code there ma
 
 **Integration into the language**:
 
-Kotlin nullable types have extensive support in Kotlin via operators `?.`, `?:`, and `!!` and `T?` type constructor
-syntax. We can envision a better integration of `SuccessOrFailure` into the Kotlin language in the future.
+Kotlin nullable types have extensive support in Kotlin via operators `?.`, `?:`, `!!`, and `T?` type constructor
+syntax. We can envision better integration of `SuccessOrFailure` into the Kotlin language in the future.
 However, unlike nullable types, that are often used to represent _non signalling_ failure that does not cary
 additional information, `SuccessOrFailure` instances also carry additional information and, in general, shall be
 always handled in some way. Making `SuccessOrFailure` an integral part of the language also requires a 
@@ -501,27 +504,29 @@ considerable effort on improving type system to ensure proper handling of encaps
 You can skip this appendix is you are not familiar with Scala's or Arrow's `Try` monad that provides very 
 similar functionality to this `SuccessOrFailure` class. 
 
-If you familiar with `Try` monad, then you might ask why there is no `flatMap` 
-function on the `SuccessOrFailure` class with the following natural signature:
+If you are familiar with `Try` monad, then you might ask why there is no `flatMap` 
+function on the `SuccessOrFailure` class with the following signature:
 
 ```kotlin
 inline fun <R, T> SuccessOrFailure<T>.flatMap(transform: (T) -> SuccessOrFailure<R>): SuccessOrFailure<R>
 ```  
 
-The usual reason to have `flatMap` is to avoid "nesting" of `SuccessOrFailure` types when combining multiple
-functions that return `SuccessOrFailure`:
+The usual reason to have `flatMap` is to avoid "nesting" of monadic types when combining multiple
+functions that return them, like in the following example:
 
 ```kotlin
 d.awaitCatching().map { it.doSomethingCatching() } // : SuccessOrFailure<SuccessOrFailure<Data>> -- oops!
 ``` 
  
 Functional code that uses `Try` monad gets quickly polluted
-with `flatMap` invocations and in order to make such code manageable a language has to be extended 
-with some kind of special monad comprehension syntax to hide those `flatMap` invocations.  
+with `flatMap` invocations. To make such code manageable, a functional programming language is usually extended 
+with monad comprehension syntax to hide those `flatMap` invocations.  
 
 However, we discourage writing functions that return `SuccessOrFailure` as 
-a [matter of style](#error-handling-style-and-exceptions) and if those function are written, they should
-only be present in addition to regular ones. It means that instead of this kind of code that
+a [matter of style](#error-handling-style-and-exceptions). If those functions are written, they should
+only be present in addition to regular ones. 
+
+Take a look at the following example code that
 uses monad comprehension over `Try` monad 
 (which is adapted from a guide 
 [here](https://danielwestheide.com/blog/2012/12/26/the-neophytes-guide-to-scala-part-6-error-handling-with-try.html)):
@@ -529,18 +534,19 @@ uses monad comprehension over `Try` monad
 ```scala
 def getURLContent(url: String): Try[Iterator[String]] =
   for {
-    url <- parseURL(url)
+    url <- parseURL(url) // here parseURL returns Try[URL], encapsulates failure
     connection <- Try(url.openConnection())
     input <- Try(connection.getInputStream)
     source = Source.fromInputStream(input)
   } yield source.getLines()
 ```
 
-one can write a natural Kotlin code that have the same semantics of aborting further progress on the first failure:
+Adapting functions used here to Kotlin style, one can write this code in Kotlin 
+with the same semantics of aborting further progress on the first failure in the following way:
 
 ```kotlin
 fun getURLContent(url: String): List<String> {
-    val url = parseURL(url)
+    val url = parseURL(url) // here parseURL returns URL, throws on failure
     val connection = url.openConnection()
     val input = connection.getInputStream()
     val source = Source.fromInputStream(input)
@@ -548,8 +554,9 @@ fun getURLContent(url: String): List<String> {
 }
 ```
 
-Notice, that monad comprehension over a `Try` monad is basically built into the Kotlin langauge.
+Notice, that monad comprehension over `Try` monad is basically built into the Kotlin language.
 That is how imperative control flow works in Kotlin out of the box and there is no need to emulate it
-via monad comprehensions.
+via monad comprehensions. If a caller of this function needs an encapsulated failure
+it can always use `runCatching { getURLContent(url) }` expression.
 
 
