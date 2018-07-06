@@ -474,6 +474,15 @@ If `doSomething` here throws an exception, then all exceptions that were returne
 Some IDE inspections can be designed to detect these kinds of problems. It is an open question how exactly they should
 work and and whether it is really a big problem after all.
 
+**Additional APIs for collections**:
+
+API for `SuccessOrFailure` class is designed to be quite bare-bones, because we'd like to discourage its
+wide-spread use in the return types of the functions. In general, functions should not use `SuccessOrFailure` as their
+result. However, according to [Functional bulk manipulation of failures](#functional-bulk-manipulation-of-failures) use-case,
+one might occasionally encounter `List<SuccessOrFailure<T>>` or another collection of `SuccessOrFailure` instances. 
+It is open question whether we should provide additional extensions in the Standard Library to represent common
+operations on such collections and what those operations might be. 
+
 ## Future advancements
 
 **Representing as a sealed class**:
