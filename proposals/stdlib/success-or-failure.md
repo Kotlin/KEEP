@@ -577,3 +577,32 @@ Notice, that monad comprehension over `Try` monad is basically built into the Ko
 That is how imperative control flow works in Kotlin out of the box and there is no need to emulate it
 via monad comprehensions. If callers of this function need an encapsulated failure,
 they can always use `runCatching { getURLContent(url) }` expression.
+
+However, the Kotlin is not exactly equivalent to the initial code with `Try`.
+Let us see what are the differences. The original `parseURL` have been returning an encapsulated exception
+and it could be making a _fine grained_ decision on which kinds of exceptions shall be encapsulated into the result
+and which kinds of exceptions shall be thrown. Rewritten code propagates any failure in `parseURL` up to the caller 
+without this fine grained distinction between different kinds of failures. There is also a subtle difference on
+the `fromInputStream` invocation. Original code would fail with exception if this invocation fails, while any failure
+in `openConnection` and `getInputStream` is encapsulated into the result of the function via `Try`. Rewritten code 
+does not make distinctions between different kinds of failures anymore.
+
+All in all, the differences can be summarized as follows. `SuccessOrFailure` is a blunt tool designed to catch
+any failure in the function invocation for the processing later on. That is why, as a matter of 
+[style](#error-handling-style-and-exceptions), we don't recommend writing functions that return `SuccessOrFailure`.
+On the other hand, libraries like [Arrow](https://arrow-kt.io) provide utility classes like `Try` and the 
+corresponding extension functions that enable more fine-grained control. When a function is declared with `Try<T>`
+as its result type, it means that this function can make a fine-grained decision on which failures are encapsulated
+and which failures are thrown up the call stack.       
+
+If your code needs fine-grained exception handling policy, we'd recommend to design your code in such a way, that
+exceptions are not used at all for any kinds of locally-handled failures 
+(see section on [style](#error-handling-style-and-exceptions) for example code
+with nullable types and sealed data classes). In the context of this appendix, `parseURL` could return a nullable
+result (of type `URL?`) to indicate parsing failure or return its own purpose-designed sealed class that would provide 
+all the additional details about failure (like the exact failure position in input string) 
+if that is needed for some business function 
+(like setting cursor to the place of failure in the user interface).
+In cases when you need to distinguish between different kinds of failures and these approaches do not work for you, 
+you are welcome to write your own utility libraries or use libraries like [Arrow](https://arrow-kt.io) 
+that provide the corresponding utilities.    
