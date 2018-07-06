@@ -404,7 +404,9 @@ clearly belong to any larger group of APIs, it should be placed directly into `k
 
 ## Unresolved questions
 
-**Name of the class**:
+This section lists unresolved (open) or contentious questions about this design.
+
+### Name of the class
 
 The proposed name is `SuccessOrFailure` was chosen because it clearly express that this class is a union of
 successful and failed outcomes. Some alternative names like `Result` and `Try` ware discussed and the 
@@ -417,7 +419,7 @@ following objections were raised:
   an exception and letting a caller decide works better
   (see [Error-handling style and exceptions](#error-handling-style-and-exceptions)).
   
-**Parametrization by the base error type**:
+### Parametrization by the base error type
 
 Parametrizing this class by the type of exception like `SuccessOrFailure<T, E>` is possible, but raises the
 following problems:
@@ -446,7 +448,7 @@ an additional burden of designing functions for `Either` that would not needless
 of functions applicable to `SuccessOrFailure`. We don't have sufficient motivating use-cases for having
 `Either` in the Kotlin Standard Library beyond theoretical desire to base `SuccessOrFailure` upon it. 
 
-**Name for the Catching suffix**:
+### Name for the Catching suffix
 
 We need to clearly mark functions that return `SuccessOrFailure` and this KEEP suggests `Catching` suffix
 like in `runCatching`. Alternatives:
@@ -454,7 +456,7 @@ like in `runCatching`. Alternatives:
 * `OrCatch` suffix as in `runOrCatch` (inspired by `OrNull` suffix).
 * `OrFailure` suffix as in `runOrFailure` (same inspiration).
 
-**Success or failure must be used**:
+### Success or failure must be used
 
 Using `SuccessOrFailure` as the return type poses a problem that it might accidentally get lost, thus loosing
 unhandled exception. The problem is somewhat alleviated by naming 
@@ -474,7 +476,7 @@ If `doSomething` here throws an exception, then all exceptions that were returne
 Some IDE inspections can be designed to detect these kinds of problems. It is an open question how exactly they should
 work and and whether it is really a big problem after all.
 
-**Additional APIs for collections**:
+### Additional APIs for collections
 
 API for `SuccessOrFailure` class is designed to be quite bare-bones, because we'd like to discourage its
 wide-spread use in the return types of the functions. In general, functions should not use `SuccessOrFailure` as their
@@ -485,7 +487,10 @@ operations on such collections and what those operations might be.
 
 ## Future advancements
 
-**Representing as a sealed class**:
+This section lists potential directions for future enhancement. None of them are worked out at the moment
+and all of them are purely tentative.
+
+### Representing as a sealed class
 
 Kotlin `inline` classes cannot be currently used with `sealed class` construct. 
 If that is supported in the future, then we could change implementation of 
@@ -509,7 +514,7 @@ These changes would make it possible to use `result is Success` and `result is F
 smart casts instead of `result.isSuccess` and `result.isFailure` that are currently provided and which do not work 
 with smart casts.
 
-**Parametrizing by the base error type**:
+### Parametrizing by the base error type
 
 If `Kotlin` adds some form of support for type parameter default values and partial type inference,
 then we can consider extending `SuccessOrFailure` class with an additional type parameter `E: Throwable` that represents
@@ -518,7 +523,7 @@ the base class for caught exceptions. For example, in input/output code there ma
 `runCatching<_, IOException> { code }` assuming that return type can be still inferred
 (potential partial type inference syntax here is used for illustration only).
 
-**Integration into the language**:
+### Integration into the language
 
 Kotlin nullable types have extensive support in Kotlin via operators `?.`, `?:`, `!!`, and `T?` type constructor
 syntax. We can envision better integration of `SuccessOrFailure` into the Kotlin language in the future.
