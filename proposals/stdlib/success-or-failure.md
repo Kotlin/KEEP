@@ -315,7 +315,7 @@ The `SuccessOrFailure` class is not designed to be used as the result type of ge
 to explicitly discourage using it like this:
 
 ```kotlin
-fun findUserByName(name: String): SuccessOrFailure<User>
+fun findUserByName(name: String): SuccessOrFailure<User> // !!! DON'T DO THIS !!! 
 ```
 
 In general, if some API requires its callers to handle failures locally (immediately around or next to the invocation), 
@@ -531,6 +531,49 @@ However, unlike nullable types, that are often used to represent _non signalling
 additional information, `SuccessOrFailure` instances also carry additional information and, in general, shall be
 always handled in some way. Making `SuccessOrFailure` an integral part of the language also requires a 
 considerable effort on improving Kotlin type system to ensure proper handling of encapsulated exceptions.
+
+One potential direction is to design a special syntax for `SuccessOrFailure<T>`. For example, it might be
+represented as `T throws Throwable` (note, all of the following is a pure speculation), 
+with natural support for a more specific list of exceptions that can 
+be encapsulated inside the given `SuccessOrFailure<T>` instance, 
+so one can write `T throws IOException` type, for example.
+
+Using this hypothetical syntax we can declare the function from 
+[Error-handling style](#error-handling-style-and-exceptions) section in the following way:
+
+```kotlin
+fun findUserByName(name: String): User throws NotFoundException, MalformedNameException
+``` 
+
+However, unlike `throws` annotation in Java, `User throws NotFoundException, MalformedNameException` is going to 
+be considered a _return type_ of this function that explicitly lists exceptions that must be handled locally.
+There will be no silent propagation of these _listed_ exception types up to the caller. The caller will be 
+required to handle them just like with nullable types. When one writes:
+
+```kotlin
+val result = findUserByName(name)
+```  
+
+Then inferred type of `result` will be `User throws NotFoundException, MalformedNameException` and it will be 
+stored in `SuccessOrFailure<User>` behind the scenes. Direct access to the `User` methods and extensions on 
+`User throws` type will be forbidden, but all the `?.`, `?:`, and `!!` operators can be extended to work with those `throws`
+types in a similar way as it happens with nullable types today. Some additional operators might be required, too.
+
+Unlike checked exception in Java, these are going to be full-blown types, so they play nicely with collections
+(`List<Data throws IOException>` is going to be a valid type represented as `List<SuccessOrFailure<Data>>` behind 
+the scenes) and all the higher-order functions in Kotlin will work properly with those types without all the problems
+that made it impossible to properly integrate checked exceptions with Java generics. 
+
+Moreover, it can be very efficiently implemented on JVM in the return type position by actually throwing the corresponding
+exceptions inside and catching them outside, on the caller side, so no boxing will be required even for primitive
+results. All in all, it could provide a safe replacement for checked exceptions on JVM and open a path to a better
+integration with JVM APIs that rely on checked exceptions. However, details of this interoperability will have to 
+be worked out as there are lots of problems down this path. We cannot just lift all Java functions with `throws` into
+Kotlin functions with such `throws` type not only because of backwards compatibility, but also due to the way checked 
+exceptions are (ab)used in the JVM ecosystem, so are more fine-grained control for interoperability will have to 
+be designed.   
+
+It is all beyond the scope of this KEEP.
 
 ## Appendix: Why flatMap is missing
 
