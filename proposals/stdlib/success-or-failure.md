@@ -23,7 +23,12 @@ and failed outcome of execution of Kotlin function &mdash; `Success T | Failure 
 where `Success T` represents a successful result of some type `T` 
 and `Failure Throwable` represents a failure with any `Throwable` exception. 
 For the purpose of efficiency, we would model it as a generic `inline class SuccessOrFailure<T>` 
-in the standard library.  
+in the standard library. 
+
+**NOTE: This `SuccessOrFailure` class SHOULD NOT be used directly as a return type of Kotlin functions with a few 
+exceptions that are explained in more detail in the section on 
+[style and exceptions](#error-handling-style-and-exceptions). 
+See [use cases](#use-cases) below on how `SuccessOrFailure` is designed be used.** 
 
 ## Use cases
 
@@ -170,7 +175,7 @@ interface Continuation<in T> {
 }
 ```  
 
-This solution was tried in experimental version of coroutine and the following problems were identified:
+This solution was tried in experimental version of coroutines and the following problems were identified:
 
 * All implementations have to implement both methods and there is no easy shortcut to provide a builder with
   a lambda like `Continuation { ... body ... }`.
@@ -311,7 +316,7 @@ inline class SuccessOrFailure<out T> @PublishedApi internal constructor(
 
 ## Error-handling style and exceptions
 
-The `SuccessOrFailure` class is not designed to be used as the result type of general functions and we'd like 
+The `SuccessOrFailure` class is not designed to be used directly as the result type of general functions and we'd like 
 to explicitly discourage using it like this:
 
 ```kotlin
@@ -319,14 +324,15 @@ fun findUserByName(name: String): SuccessOrFailure<User> // !!! DON'T DO THIS !!
 ```
 
 In general, if some API requires its callers to handle failures locally (immediately around or next to the invocation), 
-then it should use nullable types (if failures do not carry additional business meaning) 
-or domain-specific data types to represent its successful results and failures.  
+then it should use nullable types, when these failures do not carry additional business meaning, 
+or domain-specific data types to represent its successful results and failures with any additional business-related
+data that is needed to process these failures.  
 
 In the above example, if the only kind of failure we might be interested in handling is the failure to find 
 the user with the given name, then the following signature shall be used:
 
 ```kotlin
-fun findUserByName(name: String): User?
+fun findUserByName(name: String): User? // Much better
 ```   
    
 If there is a business need to distinguish different failures and process these different failures in distinct ways
@@ -337,7 +343,7 @@ sealed class FindUserResult {
     data class Found(val user: User) : FindUserResult()
     data class NotFound(val name: String) : FindUserResult()
     data class MalformedName(val name: String) : FindUserResult()
-    // other cases that need different handling
+    // other cases that need different business-specific handling code
 }
 
 fun findUserByName(name: String): UserResult
@@ -347,7 +353,7 @@ fun findUserByName(name: String): UserResult
   as a "universal result class" and to encourage declaration of more domain-specific and more explanatory 
   result classes.
  
-Exceptions in Kotlin are designed for the failures that usually do not require local handling at each call site.
+_Exceptions_ in Kotlin are designed for the failures that usually do not require local handling at each call site.
 This includes several broad areas &mdash; logic and programming errors like index bounds problems and various checks
 for internal invariants and preconditions, environment problems, out of memory conditions, etc. 
 These failures are usually non-recoverable (or are not supposed to be recovered from) and are handled in some 
@@ -361,12 +367,20 @@ logic by obscuring it with code to handle IO errors, so it is idiomatic in Kotli
 for these. However, they are often handled at a more granular level than some global error-handling code. 
 These errors often require some specific user-interaction and can require domain-specific retry or recovery code.
 
+> Exceptions are also very expensive _to create_, but relatively cheap to _throw_, because they carry a lot of 
+additional metadata, like stack trace and message to aid in debugging. They are extremely valuable when this 
+metadata is written to the log for developers to aid in troubleshooting, but all that metadata is useless if
+exception is to be consumed by some business-logic to make some business-decision based simple on the presence of 
+exception. Use nullable types or domain-specific classes to represent failures that need specific handling.
+
 So, in case when `findUserByName` failure does not require local handling by the caller, then its failure 
 should be represented by exception and its signature should look like this:
 
 ```kotlin
 fun findUserByName(name: String): User
 ```
+
+> This signature is fine if we always sure that user shall be found, unless we have bugs, environment or IO issues.
 
 If invoker of this function wants to perform multiple operations and process their failures afterwards
 (without aborting on the first failure), it can always use `runCatching { findUserByName(name) }` 
@@ -375,6 +389,14 @@ encapsulated into `SuccessOrFailure` instance. If the need to do so happen often
 a function named `findUserByNameCatching` that returns `SuccessOrFailure<User>`
 in _addition_ to `findUserByName`, following the convention of `Catching` suffix in the name of the function
 that encapsulates failures.
+
+> That is the only case when having a function that directly returns `SuccessOrFailure<T>` is appropriate. To recap:
+it shall have `Catching` suffix in its name and it shall be written _in addition to_ the function without 
+`Catching` suffix. 
+
+> A function that returns `List<SuccessOrFailure<T>>` should also have `Catching` suffix in its name, but it is 
+not required to have a kin without this suffix, since this 
+[bulk error-handling use-case](#functional-bulk-manipulation-of-failures) cannot be represented otherwise.  
 
 ## Similar API review
 
