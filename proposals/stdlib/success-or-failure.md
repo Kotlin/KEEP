@@ -441,9 +441,9 @@ following objections were raised:
   an exception and letting a caller decide works better
   (see [Error-handling style and exceptions](#error-handling-style-and-exceptions)).
   
-### Parametrization by the base error type
+### Parameterization by the base error type
 
-Parametrizing this class by the type of exception like `SuccessOrFailure<T, E>` is possible, but raises the
+Parameterizing this class by the type of exception like `SuccessOrFailure<T, E>` is possible, but raises the
 following problems:
     
 * It increases verboseness without providing improvement for any of the outlined [Use cases](#use-cases).
@@ -536,7 +536,7 @@ These changes would make it possible to use `result is Success` and `result is F
 smart casts instead of `result.isSuccess` and `result.isFailure` that are currently provided and which do not work 
 with smart casts.
 
-### Parametrizing by the base error type
+### Parameterizing by the base error type
 
 If `Kotlin` adds some form of support for type parameter default values and partial type inference,
 then we can consider extending `SuccessOrFailure` class with an additional type parameter `E: Throwable` that represents
