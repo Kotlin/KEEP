@@ -431,7 +431,7 @@ This section lists unresolved (open) or contentious questions about this design.
 ### Name of the class
 
 The proposed name is `SuccessOrFailure` was chosen because it clearly express that this class is a union of
-successful and failed outcomes. Some alternative names like `Result` and `Try` ware discussed and the 
+successful and failed outcomes. Some alternative names like `Result` and `Try` were discussed and the 
 following objections were raised:
 
 * A shorter name does not clearly indicate what this wrapper class actually represents. 
