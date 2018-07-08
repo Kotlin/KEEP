@@ -414,9 +414,18 @@ library with the following names:
 
 Existing Kotlin libraries that provide similar functionality:
 
-* [`Try<T>`](https://arrow-kt.io/docs/datatypes/try/) in Arrow library.
+* [`Try<T>`](https://arrow-kt.io/docs/datatypes/try/) from [Arrow](https://github.com/arrow-kt/arrow) library.
+* [`Result<T, E>`](https://github.com/kittinunf/Result) from @kittinunf. 
 
-For comparison of Scala's `Try` and its Kotlin analogue in Arrow library with this `SuccessOrFailure` class
+> Note, that both of the libraries above promote "Railway Oriented Programming" 
+style with monads and their transformations, which heavily relies on functions returning `Try`, `Result`, etc.
+This programming style can be implemented and used in Kotlin via libraries as the above examples demonstrate.
+However, core Kotlin language and its Standard Library are designed around a _direct_ programming 
+[style](#error-handling-style-and-exceptions) in mind and so returning `SuccessOrFailure` 
+as function result is discouraged. The general approach in Kotlin is that alternative programming styles
+should be provided as 3rd party libraries and DSLs. 
+
+For a more detailed comparison of Scala's `Try` and its Kotlin analogue in Arrow library with this `SuccessOrFailure` class
 see [Appendix](#appendix-why-flatmap-is-missing). 
 
 ## Placement
