@@ -4,13 +4,13 @@
 * **Authors**: Ilya Gorbunov, Mikhail Zarechenskiy
 * **Contributors**: Andrey Breslav, Roman Elizarov
 * **Status**: Under consideration
-* **Prototype**: Implemented in Kotlin 1.2.50
+* **Prototype**: Implemented in Kotlin 1.3-M1
 
 Discussion of this proposal is held in [this issue](TODO).
 
 ## Summary
 
-Provide support in the compiler and standard library in order to introduce types for unsigned integers and make them first-class citizen in the language.
+Provide support in the compiler and the standard library in order to introduce types for unsigned integers and make them first-class citizen in the language.
 
 ## Use cases
 
@@ -49,9 +49,9 @@ Each unsigned class has its own wrapper class,
 which is used for autoboxing operations, see [this section](https://github.com/zarechenskiy/KEEP/blob/master/proposals/inline-classes.md#java-interoperability) for more details.
 Basically, rules for boxing are the same as for primitives. Example:
 ```kotlin
-val a: UInt? = UInt(3) // Boxing
-val b: Comparable<*> = ULong(0) // Boxing
-val c: List<UInt> = listOf(UInt(1), UInt(2)) // Boxing
+val a: UInt? = 3.toUInt() // Boxing
+val b: Comparable<*> = 0.toULong() // Boxing
+val c: List<UInt> = listOf(1.toUInt(), 2.toUInt()) // Boxing
 ```   
 
 ### Constant evaluation
@@ -71,7 +71,7 @@ annotation class Anno(val s: UByte)
 Note that `vararg` parameters of inline class types are forbidden, because it's not clear how to associate type from `vararg` parameter 
 with the array type, see [this section](https://github.com/zarechenskiy/KEEP/blob/master/proposals/inline-classes.md#arrays-of-inline-class-values) for the details.
 
-However, for unsigned types it is definitely known which array type denotes an array of corresponding unsigned values. Therefore, we can associate
+However, for the unsigned integers it is definitely known which array type denotes an array of corresponding unsigned values. Therefore, we can associate
 types from `vararg` with array types:
 ```kotlin
 fun uints(vararg u: UInt): UIntArray = u
