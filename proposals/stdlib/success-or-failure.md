@@ -125,15 +125,39 @@ readFilesCatching(files).map { result: SuccessOrFailure<Data> ->
 In mostly functional code `try { ... } catch(e: Throwable) { ... }` construct looks
 out of style. For example, consider this piece of code that uses [RxKotlin](https://github.com/ReactiveX/RxKotlin) 
 for asynchronous processing.
-It invokes `doSomethingAsync` that returns `Single<Data>` and processes potential error in a functional style:
+It invokes `doSomethingAsync` that returns 
+[`Single`](http://reactivex.io/RxJava/javadoc/io/reactivex/Single.html) and processes potential error in a functional style:
 
 ```kotlin
 doSomethingAsync()
-    .doOnError { showErrorDialog(it) }
-    .doOnSuccess { processData(it) }
+    .subscribe(
+        { processData(it) },
+        { showErrorDialog(it) }
+    )
 ```
 
-Now, if `doSomethingSync` is a synchronous function, then handling its errors looks quite visually different,
+> Note, that the above code is written in a style that is very different from direct programming style. `doSomethingAsync()`
+that returns `Single` does not actually do anything until `subscribe` is invoked 
+(its result is typically _cold_). This distinction is not important for the purposes of this section.
+We are interested here in a visual fact that error and result handling are chained to the initial invocation.
+
+Working with function that returns Java's [`CompletableFuture`](https://docs.oracle.com/javase/8/docs/api/java/util/concurrent/CompletableFuture.html)
+is visually similar:
+
+```kotlin
+doSomethingAsync()
+    .whenComplete { data, exception ->
+        if (exception != null) 
+            showErrorDialog(exception)
+        else 
+            processData(data)
+    }
+```
+
+> It is closer to direct style, since this `doSomethingAsync` invocation actually starts performing operation, but 
+we also see that ultimate processing of success or failure is performed via chaining.  
+
+Now, if `doSomethingSync` is a synchronous function, then handling its success or failure looks quite visually different,
 which is problematic for the code that mixes both approaches:
 
 ```kotlin
