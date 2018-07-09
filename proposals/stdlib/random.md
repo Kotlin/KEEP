@@ -227,6 +227,11 @@ The existing `shuffle()` and `shuffled()` can be reimplemented by delegating to 
 What are the guarantees about the implementation of the seeded generator?
 Should we fix its implementation and never change it in the future?
 
+**`Random` identifier overloading**
+
+In the current naming scheme `Random` name is used to denote the abstract class, its companion, and two constructor-like functions. 
+This makes it problematic to refer a correct overload of the name in the documentation. 
+
 **Do we need `nextBits` method?**
 
 Instead of `nextBits(n)` one can use `nextInt()` shifting the result right by `32 - n` bits.
