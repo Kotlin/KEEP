@@ -204,6 +204,17 @@ it can override them too, since they all are open.
 
 On JVM there's an extension function `asKotlinRandom()` to wrap any `java.util.Random` implementation into `kotlin.random.Random`.
 
+### Collection shuffling
+
+It becomes possible to provide extensions for collection shuffling with the specified source of randomness in the common standard library:
+
+```kotlin
+fun <T> MutableList<T>.shuffle(random: Random): Unit
+fun <T> Iterable<T>.shuffled(random: Random): List<T>
+```
+
+The existing `shuffle()` and `shuffled()` can be reimplemented by delegating to `shuffle(Random)` and `shuffled(Random)` respectively.
+
 ## What has to be done
 
 - [ ] Make the implementations serializable
