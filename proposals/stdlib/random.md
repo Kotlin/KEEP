@@ -238,6 +238,8 @@ Instead of `nextBits(n)` one can use `nextInt()` shifting the result right by `3
 
 ## Future advancements
 
+* Extension on `List`/`Array`/`CharSequence` to select a random element from the collection.
+
 * Extensions or members to generate sequences, like `ints()`, `ints(bound)`, `ints(range)` etc.
     
     We haven't found the use cases justifying introduction of these functions yet. 
