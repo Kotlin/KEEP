@@ -288,16 +288,17 @@ class SuccessOrFailure<out T> /* internal constructor */ {
 inline fun <R> runCatching(block: () -> R): SuccessOrFailure<R>
 inline fun <T, R> T.runCatching(block: T.() -> R): SuccessOrFailure<R>
 
-inline fun <R, T : R> SuccessOrFailure<T>.getOrElse(defaultValue: () -> R): R
+inline fun <R, T : R> SuccessOrFailure<T>.getOrElse(onFailure: (exception: Throwable) -> R): R
+inline fun <R, T> SuccessOrFailure<T>.fold(onSuccess: (value: T) -> R, onFailure: (exception: Throwable) -> R): R
 
-inline fun <R, T> SuccessOrFailure<T>.map(transform: (T) -> R): SuccessOrFailure<R>
-inline fun <R, T: R> SuccessOrFailure<T>.recover(transform: (Throwable) -> R): SuccessOrFailure<R>
+inline fun <R, T> SuccessOrFailure<T>.map(transform: (value: T) -> R): SuccessOrFailure<R>
+inline fun <R, T: R> SuccessOrFailure<T>.recover(transform: (exception: Throwable) -> R): SuccessOrFailure<R>
 
-inline fun <R, T> SuccessOrFailure<T>.mapCatching(transform: (T) -> R): SuccessOrFailure<R>
-inline fun <R, T: R> SuccessOrFailure<T>.recoverCatching(transform: (Throwable) -> R): SuccessOrFailure<R>
+inline fun <R, T> SuccessOrFailure<T>.mapCatching(transform: (value: T) -> R): SuccessOrFailure<R>
+inline fun <R, T: R> SuccessOrFailure<T>.recoverCatching(transform: (exception: Throwable) -> R): SuccessOrFailure<R>
 
-inline fun <T> SuccessOrFailure<T>.onFailure(action: (Throwable) -> Unit): SuccessOrFailure<T>
-inline fun <T> SuccessOrFailure<T>.onSuccess(action: (T) -> Unit): SuccessOrFailure<T>
+inline fun <T> SuccessOrFailure<T>.onSuccess(action: (value: T) -> Unit): SuccessOrFailure<T>
+inline fun <T> SuccessOrFailure<T>.onFailure(action: (exception: Throwable) -> Unit): SuccessOrFailure<T>
 ```
 
 All of the functions have self-explanatory consistent names that follow established tradition in Kotlin Standard library
