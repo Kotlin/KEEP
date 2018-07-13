@@ -120,9 +120,7 @@ The compiler will check the value of `-Xuse-experimental` in the same way it che
 
 Annotations `Experimental` and `UseExperimental` are proposed to be added to the standard library in Kotlin 1.3. Since we're not yet sure that this design is optimal, we would like to test it first, and see if we can finalize it. Therefore, we would like to keep this whole feature experimental itself, in the sense that we may change something incompatibly, and the client code must be aware of it.
 
-Therefore, we will **require** each user of `Experimental` to provide the following magic compiler argument: `-Xuse-experimental=kotlin.Experimental`. Unless this argument is provided, the compiler will report a warning on each usage of `Experimental` (but not on usages of the markers!).
-
-TODO: should we require this argument for usages of `UseExperimental`?
+Therefore, we will **require** each user of `Experimental` to provide at least one unstable (`-X...`) compiler argument, which would mean that the user is understanding the risks of using the experimental functionality. It can be either `-Xexperimental=...` or `-Xuse-experimental=...` with a specific marker, or the magic predefined argument `-Xuse-experimental=kotlin.Experimental` which doesn't allow using any experimental API by itself, yet merely allows using `Experimental` and `UseExperimental` in the source code. Unless one of these arguments is provided, the compiler will report a warning on each usage of `Experimental` or `UseExperimental` (but not on usages of the markers!).
 
 Besides, we will also prohibit any usages of `Experimental`, `UseExperimental` and markers that do not aim to make use of the functionality declared in this proposal. The goal is to minimize the number of binary compatibility problems of user-compiled code if we decide to change something incompatibly. For example, you won't be able to use these classes as types:
 
