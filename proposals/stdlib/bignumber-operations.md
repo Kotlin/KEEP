@@ -4,7 +4,7 @@
 * **Type**: Standard Library API proposal
 * **Author**: Daniil Vodopian
 * **Shepherd**: Ilya Gorbunov
-* **Status**: Public review
+* **Status**: Implemented in Kotlin 1.2
 * **Prototype**: Implemented
 * **Discussion**: [KEEP-49](https://github.com/Kotlin/KEEP/issues/49)
 

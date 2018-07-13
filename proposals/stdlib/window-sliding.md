@@ -2,7 +2,7 @@
 
 * **Type**: Standard Library API proposal
 * **Authors**: Sergey Mashkov, Ilya Gorbunov
-* **Status**: Public review
+* **Status**: Implemented in Kotlin 1.2
 * **Prototype**: Implemented
 * **Related issues**: [KT-10021](https://youtrack.jetbrains.com/issue/KT-10021), [KT-9151](https://youtrack.jetbrains.com/issue/KT-9151), [KT-11026](https://youtrack.jetbrains.com/issue/KT-11026)
 * **Discussion**: [KEEP-11](https://github.com/Kotlin/KEEP/issues/11)

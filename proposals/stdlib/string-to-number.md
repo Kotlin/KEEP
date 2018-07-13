@@ -3,7 +3,7 @@
 * **Type**: Standard Library API proposal
 * **Author**: Daniil Vodopian
 * **Contributors**: Ilya Gorbunov
-* **Status**: Implemented
+* **Status**: Implemented in Kotlin 1.1
 * **Prototype**: Implemented
 * **Related issues**: [KT-7930](https://youtrack.jetbrains.com/issue/KT-7930)
 * **Indirectly related issues**: [KT-8286](https://youtrack.jetbrains.com/issue/KT-8286), [KT-9374](https://youtrack.jetbrains.com/issue/KT-9374)

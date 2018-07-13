@@ -2,7 +2,7 @@
 
 * **Type**: Standard Library API proposal
 * **Author**: Ilya Gorbunov
-* **Status**: Implemented
+* **Status**: Implemented in Kotlin 1.1
 * **Prototype**: Implemented
 * **Target tickets**: [KT-9108](https://youtrack.jetbrains.com/issue/KT-9108)
 * **Discussion**: [KEEP-13](https://github.com/Kotlin/KEEP/issues/13)
