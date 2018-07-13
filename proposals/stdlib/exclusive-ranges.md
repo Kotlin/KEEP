@@ -121,3 +121,127 @@ It is helpful to determine what are the collection requirements:
 * Does the operation preserve the shape of the receiver?
 I.e. returning `Sequence` for sequences and `List` for iterables.
 
+
+
+
+
+```kotlin
+infix fun Float.openRange(that: Float): OpenFloatingPointRange<Float>  = OpenFloatRange(this, that)
+infix fun Double.openRange(that: Double): OpenFloatingPointRange<Double>  = OpenDoubleRange(this, that)
+
+fun ClosedRange<Double>.toOpenRange() = OpenDoubleRange(start,endInclusive)
+fun ClosedRange<Float>.toOpenRange() = OpenFloatRange(start,endInclusive)
+
+
+fun main(args: Array<String>) {
+
+
+    val histogram = listOf(
+            (0.0..0.2).toOpenRange(),
+            (0.2..0.4).toOpenRange(),
+            (0.4..0.6).toOpenRange(),
+            (0.6..0.9).toOpenRange(),
+            (0.9..1.0)  // uh oh 
+    )
+}
+
+
+public interface OpenRange<T: Comparable<T>> {
+    /**
+     * The minimum value in the range.
+     */
+    public val start: T
+
+    /**
+     * The maximum value in the range (inclusive).
+     */
+    public val endExclusive: T
+
+    /**
+     * Checks whether the specified [value] belongs to the range.
+     */
+    public operator fun contains(value: T): Boolean = value >= start && value < endExclusive
+
+    /**
+     * Checks whether the range is empty.
+     */
+    public fun isEmpty(): Boolean = start > endExclusive
+}
+
+
+public interface OpenFloatingPointRange<T : Comparable<T>> : OpenRange<T> {
+    override fun contains(value: T): Boolean = lessThan(start, value) && lessThan(value, endExclusive)
+    override fun isEmpty(): Boolean = !lessThan(start, endExclusive)
+
+    /**
+     * Compares two values of range domain type and returns true if first is less than the second.
+     */
+    fun lessThan(a: T, b: T): Boolean
+}
+
+
+/**
+ * An open range of values of type `Float`.
+ *
+ * Numbers are compared with the ends of this range according to IEEE-754.
+ */
+class OpenFloatRange(
+        start: Float,
+        endInclusive: Float
+) : OpenFloatingPointRange<Float> {
+    private val _start = start
+    private val _endExclusive = endInclusive
+    override val start: Float get() = _start
+    override val endExclusive: Float get() = _endExclusive
+
+    override fun lessThan(a: Float, b: Float): Boolean = a <= b
+
+    override fun contains(value: Float): Boolean = value >= _start && value < _endExclusive
+    override fun isEmpty(): Boolean = !(_start <= _endExclusive)
+
+    override fun equals(other: Any?): Boolean {
+        return other is OpenFloatRange && (isEmpty() && other.isEmpty() ||
+                _start == other._start && _endExclusive == other._endExclusive)
+    }
+
+    override fun hashCode(): Int {
+        return if (isEmpty()) -1 else 31 * _start.hashCode() + _endExclusive.hashCode()
+    }
+
+    override fun toString(): String = "$_start..<$_endExclusive"
+}
+
+/**
+ * An open range of values of type `Float`.
+ *
+ * Numbers are compared with the ends of this range according to IEEE-754.
+ */
+class OpenDoubleRange(
+        start: Double,
+        endInclusive: Double
+) : OpenFloatingPointRange<Double> {
+    private val _start = start
+    private val _endExclusive = endInclusive
+    override val start: Double get() = _start
+    override val endExclusive: Double get() = _endExclusive
+
+    override fun lessThan(a: Double, b: Double): Boolean = a <= b
+
+    override fun contains(value: Double): Boolean = value >= _start && value < _endExclusive
+    override fun isEmpty(): Boolean = !(_start <= _endExclusive)
+
+    override fun equals(other: Any?): Boolean {
+        return other is OpenDoubleRange && (isEmpty() && other.isEmpty() ||
+                _start == other._start && _endExclusive == other._endExclusive)
+    }
+
+    override fun hashCode(): Int {
+        return if (isEmpty()) -1 else 31 * _start.hashCode() + _endExclusive.hashCode()
+    }
+
+    override fun toString(): String = "$_start..<$_endExclusive"
+}
+
+```
+
+
