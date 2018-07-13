@@ -16,18 +16,30 @@ Provide support in the compiler and the standard library in order to introduce t
 
 ### Hexadecimal constants that do not fit in signed types
 
+Currently it's hard or even impossible to use hexadecimal literal constants that result in overflow of the corresponding 
+signed types. That overflow causes the constant to become more wider than expected (e.g. `0xFFFF_FFFE` is `Long`) 
+or even impossible to express in Kotlin: `0x8000_0000_0000_0000`
+
+**Colors**
+
+An example is specifying color as 32-bit AARRGGBB value:
+
 ```kotlin
-const val backgroundColor: Int = 0xFFCC00CC // doesn't compile, requires explicit .toInt() conversion
+fun takesColor(color: Int)  
+
+takesColor(0xFFCC00CC) // doesn't compile, requires explicit .toInt() conversion
 ```
 
-Though it does not address fully the pain of [KT-4749](https://youtrack.jetbrains.com/issue/KT-4749), this feature
-allows providing API in Kotlin 
+This proposal doesn't ease the usage of such API, but at least it becomes possible to author Kotlin API with unsigned types
+as following:
 
 ```kotlin
-const val backgroundColor: UInt = 0xFFCC00CCu
+fun takesColor(color: UInt) = takesColor(color.toInt()) 
+
+takesColor(0xFFCC00CCu)
 ```
 
-### Byte arrays filled in code
+**Byte arrays initialized in code**
 
 Currently creating a byte array with content specified in code looks extremely verbose in Kotlin:
 
@@ -40,6 +52,7 @@ With the introduction of unsigned bytes and byte arrays this can be rewritten mo
 ```kotlin
 val byteOrderMarkUtf8 = ubyteArrayOf(0xEFu, 0xBBu, 0xBFu)
 ```
+
 ### Algorithms involving unsigned integers
 
 There are tricks that make it possible to implement algorithms based on 
