@@ -6,7 +6,7 @@
 * **Status**: Under consideration
 * **Prototype**: Implemented in Kotlin 1.3-M1
 * **Related issues**: [KT-191](https://youtrack.jetbrains.com/issue/KT-191)
-* **Discussion**: [KEEP-NNN](https://github.com/Kotlin/KEEP/issues/NNN)
+* **Discussion**: [KEEP-135](https://github.com/Kotlin/KEEP/issues/135)
 
 ## Summary
 
@@ -92,7 +92,7 @@ To iterate through a range of unsigned values there will be range and progressio
 
 ## Experimental status 
 
-The unsigned types are to be released in Kotlin 1.3 as an [experimental feature](TODO: Link to experimental KEEP).
+The unsigned types are to be released in Kotlin 1.3 as an [experimental feature](experimental.md).
 This means we do not give compatibility guaranties for the API and language features related to unsigned types.
 
 Their usage without an opt-in will produce a compiler warning about their experimentality.
@@ -257,7 +257,7 @@ A range is a special case of a progression with the step 1.
 
 ## Implementation
 
-Implementation of unsigned types heavily depends on [inline classes](https://github.com/zarechenskiy/KEEP/blob/master/proposals/inline-classes.md) feature.
+Implementation of unsigned types heavily depends on [inline classes](inline-classes.md) feature.
 Namely, each unsigned class is actually an inline class, which uses the signed counterpart value as a storage.
 
 ### Inheritance from `Number`
@@ -270,7 +270,7 @@ We haven't found compelling use cases to circumvent this limitation specially fo
 ### Boxing on JVM
 
 Each unsigned class has its own wrapper class, 
-which is used for autoboxing operations, see [this section](https://github.com/zarechenskiy/KEEP/blob/master/proposals/inline-classes.md#java-interoperability) for more details.
+which is used for autoboxing operations, see [this section](inline-classes.md#java-interoperability) for more details.
 Basically, rules for boxing are the same as for primitives. Example:
 ```kotlin
 val a: UInt? = 3.toUInt() // Boxing
