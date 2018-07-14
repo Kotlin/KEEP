@@ -151,14 +151,12 @@ _None_
 
 ## Placement
 
-* Standard Library or one of kotlinx extension libraries
-* package(s): should it be placed in one of packages imported by default?
+package kotlin.ranges
 
 ## Reference implementation
 
-* Provide the reference implementation and test cases.
-In case if the API should be specialized for each primitive, only one reference implementation is enough.
-* Provide the answers for the questions from the [Appendix](#appendix-questions-to-consider) in case they are not trivial.
+You can find an `OpenRange` implementation [here in Kotlin-Statistics](https://github.com/thomasnield/kotlin-statistics/blob/master/src/main/kotlin/org/nield/kotlinstatistics/Ranges.kt). There is no `Range` parent however. 
+
 
 ## Unresolved questions
 
