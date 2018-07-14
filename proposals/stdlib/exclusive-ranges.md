@@ -1,4 +1,4 @@
-# Closed Ranges and Range Interface
+# Exclusive Ranges and Range Interface
 
 
 * **Type**: Standard Library API proposal
