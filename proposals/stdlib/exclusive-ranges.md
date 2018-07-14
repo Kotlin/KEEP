@@ -20,7 +20,7 @@ The `ClosedRange` and `OpenRange` should also share a common `Range` parent, so 
 ## Similar API review
 
 
-Kotlin's stdlib already contains `ClosedRange` implementations that can be invoked with a `..`, as in `0..10`. 
+Kotlin's stdlib already contains `ClosedRange` implementations that can be invoked with a `..` as in `0..10`. 
 
 Kotlin also indirectly supports an end-exclusive discrete range using a `ClosedRange`, and can be invoked with `until`, such as `0 until 10`. 
 
@@ -31,7 +31,7 @@ I believe that having an end-exclusive `until` implemented for `Double` and `Flo
 
 ### Binning and Bucketing Continuous Ranges
 
-[Discretization of continuous features](https://en.wikipedia.org/wiki/Discretization_of_continuous_features) is a common mathematical operation. This task comes up in mathematical modeling, statistics, probability, and machine learning. 
+[Discretization of continuous features](https://en.wikipedia.org/wiki/Discretization_of_continuous_features) is a common mathematical operation. This task comes up in mathematical modeling, basic statistics, probability, and machine learning. 
 
 
 For instance, I may bin `Sale` objects on their `price` into interval buckets of size `20.0`. 
@@ -61,7 +61,7 @@ fun main(args: Array<String>) {
             rangeStart = 100.0
     )
 	
-	val ranges = binned.ranges // should return endExclusive ranges
+val ranges = binned.ranges // should return endExclusive ranges
 
     ranges.forEach(::println) 
 	
@@ -76,7 +76,7 @@ fun main(args: Array<String>) {
 }
 ```
 
-I can also define my own ranges for a continuous histogram of values. I should also have the option of putting in a `ClosedRange` so the last bin can capture the final end boundary. 
+I can also define my own ranges for a continuous histogram of values. I should have the option of putting in a `ClosedRange` so the last bin can capture the final end boundary. 
 
 ```kotlin 
 val histogramBins = listOf(
@@ -88,17 +88,14 @@ val histogramBins = listOf(
 )
 ```
 
-To support a collection having both `ClosedRange` and `OpenRange` types, extracting a common `Range` interface might be necessary (with `contains()`, `isEmpty()`, `lowerBound` and `upperBound` functions and properties). 
+To support a collection having both `ClosedRange` and `OpenRange` types, extracting a common `Range` interface might be necessary (with `contains()`, `isEmpty()`, `lowerBound`, and `upperBound` functions and properties). 
 
 
 ### Probability and Weighted Sampling
 
 Another use case is random sampling with a probability density function in some form. While it is unlikely the end/start of each continuous range will be selected in a random sampling, it is still not kosher for those points to be inclusive and overlap on each other. 
 
-
-Below is an implementation of a `WeightedDice` that takes `T` sides with an associated probability. It uses an `OpenDoubleRange` with an `endExclusive`. While it is unlikely to happen with a `ClosedRange`, there is no chance a random `Double` will belong to two ranges because it falls on a border. 
-
-Even if a `ClosedRange` was probabilistically acceptable, it is still misleading especially if those ranges are exposed via the API. 
+Below is an implementation of a `WeightedDice` that takes `T` sides with an associated probability. It uses an `OpenDoubleRange` with an `endExclusive`. While it might be probabilistically negligible, there is no chance a random `Double` will belong to two ranges because it falls on a border. Also, even if a `ClosedRange` is not doing damage to fair sampling, it is still misleading especially if those ranges are exposed via the API. 
 
 ```kotlin 
 /**
@@ -137,7 +134,7 @@ class WeightedDice<T>(val probabilities: Map<T,Double>) {
 
 ## Alternatives
 
-The alternative would be for the Kotlin-Statistics library to continue making [its own `Range` implementations](https://github.com/thomasnield/kotlin-statistics/blob/master/src/main/kotlin/org/nield/kotlinstatistics/Ranges.kt). This is not desirable because this would make its ranges incompatible with stdlib's, and it does not get the language support with operators like `..` and `until`. 
+The alternative would be for the [Kotlin-Statistics](https://github.com/thomasnield/kotlin-statistics) library to continue making [its own `Range` implementations](https://github.com/thomasnield/kotlin-statistics/blob/master/src/main/kotlin/org/nield/kotlinstatistics/Ranges.kt). This is not desirable because this would make its ranges incompatible with stdlib's, and it does not get the language support with operators like `..` and `until`. 
 
 
 ## Dependencies
@@ -257,11 +254,11 @@ Introducing `ExclusiveRange` might raise the concern the `start` property of `Cl
 
 ## Naming
 
-Considering there is a `ClosedRange` already with an `endInclusive`, it makes sense to call a property with an `endExclusive` to oppositely be called an `OpenRange`. 
+Considering there is a `ClosedRange` already with an `endInclusive`, it makes sense to call a range with an `endExclusive` to oppositely be called an `OpenRange`. 
 
 ## Contracts
 
-For the `OpenRange` implementations, the `lowerBound`/`start` must be less than the `upperBound`/`endExclusive`. Otherwise the range should be empty. 
+For the `OpenRange` implementations, the `lowerBound`/`start` must be *less than* the `upperBound`/`endExclusive`. Otherwise the range should be empty. 
 
 ## Compatibility impact
 
