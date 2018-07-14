@@ -1,40 +1,153 @@
-# Proposal template for new API in the Standard Library
+# Closed Ranges and Range Interface
 
-This document provides a template that can be used to compose a proposal about new API in the Standard Library.
+
 
 # Title
 
 * **Type**: Standard Library API proposal
-* **Author**: Thomas nield
-* **Contributors**: (optional) contributor names, if any
+* **Author**: Thomas Nield
+* **Contributors**: Thomas Nield
 * **Status**: Submitted
-* **Prototype**: Not started / In progress / Implemented
+* **Prototype**: Not started
 
 
 ## Summary
 
-Provide a brief description of the API proposed.
+After doing some substantial exploration using Kotlin for [statistics](https://github.com/thomasnield/kotlin-statistics) and [stochastic optimization](https://github.com/thomasnield/traveling_salesman_demo), I think there are opportunties to take advantage of a better implementation for ranges, and be able to support an `until` infix operator implementation for `Double` and `Float`. 
+
+Kotlin's stdlib has an implementation for `ClosedRange`, but not `OpenRange`. I believe that the latter needs to be implemented at least for continuous `Double` and `Float` ranges, where the exclusive end point cannot be achieved discretely with a `ClosedRange`.
+
+The `ClosedRange` and `OpenRange` should also share a common `Range` parent, so the two can be mixed together in a `List<Range>` (i.e. [histograms](https://en.wikipedia.org/wiki/Histogram) or [probability density functions](https://en.wikipedia.org/wiki/Probability_density_function))
+
 
 ## Similar API review
 
-* Is there a similar functionality in the standard library?
-* How the same/similar concept is implemented in other languages/frameworks?
+
+Kotlin's stdlib already contains `ClosedRange` implementations that can be invoked with a `..`, as in `0..10`. 
+
+Kotlin also indirectly supports an end-exclusive discrete range using a `ClosedRange`, and can be invoked with `until`, such as `0 until 10`. 
+
+I believe that having an end-exclusive `until` implemented for `Double` and `Float` makes sense. However, an `OpenRange` will be needed to support the continuous nature of `Double` and `Float`. 
 
 ## Use cases
 
-* Provide several *real-life* use cases (either links to public repositories or ad-hoc examples).
+
+### Binning and Bucketing Continuous Ranges
+
+[Discretization of continuous features](https://en.wikipedia.org/wiki/Discretization_of_continuous_features) is a common mathematical operation. This task comes up in mathematical modeling, statistics, probability, and machine learning. 
+
+
+For instance, I may bin `Sale` objects on their `price` into interval buckets of size `20.0`. 
+
+```kotlin 
+import java.time.LocalDate
+
+fun main(args: Array<String>) {
+
+    data class Sale(val accountId: Int, val date: LocalDate, val price: Double)
+
+    val sales = listOf(
+            Sale(1, LocalDate.of(2016,12,3), 180.0),
+            Sale(2, LocalDate.of(2016, 7, 4), 140.2),
+            Sale(3, LocalDate.of(2016, 6, 3), 111.4),
+            Sale(4, LocalDate.of(2016, 1, 5), 192.7),
+            Sale(5, LocalDate.of(2016, 5, 4), 137.9),
+            Sale(6, LocalDate.of(2016, 3, 6), 125.6),
+            Sale(7, LocalDate.of(2016, 12,4), 164.3),
+            Sale(8, LocalDate.of(2016, 7,11), 144.2)
+            )
+
+    //bin by double ranges
+    val binned = sales.binByDouble(
+            valueSelector = { it.price },
+            binSize = 20.0,
+            rangeStart = 100.0
+    )
+	
+	val ranges = binned.ranges // should return endExclusive ranges
+
+    ranges.forEach(::println) 
+	
+	/*
+	OUTPUT:
+	100..<120
+	120..<140
+	140..<160
+	160..<180
+	180..<200
+	*/
+}
+```
+
+I can also define my own ranges for a continuous histogram of values. I should also have the option of putting in a `ClosedRange` so the last bin can capture the final end boundary. 
+
+```kotlin 
+val histogramBins = listOf(
+		0.0 until 0.2,
+		0.2 until 0.4,
+		0.4 until 0.6,
+		0.6 until 0.9,
+		0.9..1.0 
+)
+```
+
+To support a collection having both `ClosedRange` and `OpenRange` types, extracting a common `Range` interface might be necessary (with `contains()`, `isEmpty()`, `lowerBound` and `upperBound` functions and properties). 
+
+
+### Probability and Weighted Sampling
+
+Another use case is random sampling with a probability density function in some form. While it is unlikely the end/start of each continuous range will be selected in a random sampling, it is still not kosher for those points to be inclusive and overlap on each other. 
+
+
+Below is an implementation of a `WeightedDice` that takes `T` sides with an associated probability. It uses an `OpenDoubleRange` with an `endExclusive`. While it is unlikely to happen with a `ClosedRange`, there is no chance a random `Double` will belong to two ranges because it falls on a border. 
+
+Even if a `ClosedRange` was probabilistically acceptable, it is still misleading especially if those ranges are exposed via the API. 
+
+```kotlin 
+/**
+ *  Assigns a probabilty to each distinct `T` item, and randomly selects `T` values given those probabilities.
+ *  
+ *  In other words, this is a Probability Density Function (PDF) for discrete `T` values
+ */
+class WeightedDice<T>(val probabilities: Map<T,Double>) {
+
+    constructor(vararg values: Pair<T, Double>): this(
+            values.toMap()
+    )
+
+    private val sum = probabilities.values.sum()
+
+    val rangedDistribution = probabilities.let {
+
+        var binStart = 0.0
+
+        it.asSequence().sortedBy { it.value }
+                .map { it.key to OpenDoubleRange(binStart, it.value + binStart) }
+                .onEach { binStart = it.second.endExclusive }
+                .toMap()
+    }
+
+    /**
+     * Randomly selects a `T` value with probability
+     */
+    fun roll() = ThreadLocalRandom.current().nextDouble(0.0, sum).let {
+        rangedDistribution.asIterable().first { rng -> it in rng.value }.key
+    }
+}
+```
+
+
 
 ## Alternatives
 
-* How verbose would be these use cases without the API proposed?
+The alternative would be for the Kotlin-Statistics library to continue making [its own `Range` implementations](https://github.com/thomasnield/kotlin-statistics/blob/master/src/main/kotlin/org/nield/kotlinstatistics/Ranges.kt). This is not desirable because this would make its ranges incompatible with stdlib's, and it does not get the language support with operators like `..` and `until`. 
+
 
 ## Dependencies
 
 What are the dependencies of the proposed API:
 
-* a subset of Kotlin Standard Library available on all supported platforms.
-* JDK-specific dependencies, specify minimum JDK version.
-* JS-specific dependencies.
+_None_
 
 ## Placement
 
@@ -49,199 +162,112 @@ In case if the API should be specialized for each primitive, only one reference 
 
 ## Unresolved questions
 
-* List unresolved questions if any.
-* Provide options to solve them.
+If we were to extract a `Range` parent for `ClosedRange` and `OpenRange`, what should it contain? 
 
-## Future advancements
+Here is one proposed implementation: a `lowerBound` and `upperBound` should be defined to generalize the `start` and `end`, but not indicate whether they are inclusive or exclusive. This allows a `List<Range>` to still have access to the start and end values, regardless if they are inclusive or exclusive. 
 
-* What are the possible and most likely extension points?
-
-
--------
-
-# Appendix: Questions to consider
-These questions are not a part of the proposal,
-but be prepared to provide the answers if they aren't trivial.
-
-## Naming
-
-* Is it clear from name what API is for?
-* Is it named consistently with other API with the similar purpose?
-* Consider explorability of API via completion.
-    Generally we discourage introducing extensions imported by default for unconstrained generic type or `Any` type, as it pollutes the completion.
-
-Inspiring article on naming: http://blog.stephenwolfram.com/2010/10/the-poetry-of-function-naming/
-
-## Contracts
-
-* What are the failure conditions and how are they handled?
-* Whether the contracts (preconditions, invariants, exception handling) are consistent and are what they may be expected from the similar features.
-
-## Compatibility impact
-
-* How the proposal affects:
-    - source compatibility,
-    - binary compatibility (JVM),
-    - serialization compatibility (JVM)?
-* Does it obsolete some other API? What deprecations and migrations are required?
-
-## Shape
-
-For new functions consider alternatives:
-
-* top-level or extension or member function
-* function or property
-
-## Additional considerations for collection operations
-
-### Receiver types
-
-Consider if the operation could be provided not only for collections,
-but for other collection-like receivers such as:
-
-* arrays
-* sequences
-* strings and char sequences
-* maps
-* ranges
-
-It is helpful to determine what are the collection requirements:
-
-* any iterable or sequence
-* has size
-* has fast indexed access
-* has fast `contains` operation
-* allows to mutate its elements
-* allows to add/remove elements
-
-### Return type
-
-* Is the operation lazy or eager? Choose between `Sequence` and `List`
-* What is the return type for each receiver type?
-* Does the operation preserve the shape of the receiver?
-I.e. returning `Sequence` for sequences and `List` for iterables.
-
-
-
-
-
-```kotlin
-infix fun Float.openRange(that: Float): OpenFloatingPointRange<Float>  = OpenFloatRange(this, that)
-infix fun Double.openRange(that: Double): OpenFloatingPointRange<Double>  = OpenDoubleRange(this, that)
-
-fun ClosedRange<Double>.toOpenRange() = OpenDoubleRange(start,endInclusive)
-fun ClosedRange<Float>.toOpenRange() = OpenFloatRange(start,endInclusive)
-
-
-fun main(args: Array<String>) {
-
-
-    val histogram = listOf(
-            (0.0..0.2).toOpenRange(),
-            (0.2..0.4).toOpenRange(),
-            (0.4..0.6).toOpenRange(),
-            (0.6..0.9).toOpenRange(),
-            (0.9..1.0)  // uh oh 
-    )
-}
-
-
-public interface OpenRange<T: Comparable<T>> {
-    /**
-     * The minimum value in the range.
-     */
-    public val start: T
+```kotlin 
+/**
+ * A `Range` is an abstract interface common to all ranges, regardless of their inclusive or exclusive nature
+ */
+public interface Range<T: Comparable<T>> {
 
     /**
-     * The maximum value in the range (inclusive).
+     * The minimum value in the range, regardless if it is inclusive or exclusive
      */
-    public val endExclusive: T
+    public val lowerBound: T
+    /**
+     * The maximum value in the range, regardless if it is inclusive or exclusive
+     */
+    public val upperBound: T
 
     /**
      * Checks whether the specified [value] belongs to the range.
      */
-    public operator fun contains(value: T): Boolean = value >= start && value < endExclusive
+    public operator fun contains(value: T): Boolean
 
     /**
      * Checks whether the range is empty.
      */
-    public fun isEmpty(): Boolean = start > endExclusive
+    public fun isEmpty(): Boolean
 }
-
-
-public interface OpenFloatingPointRange<T : Comparable<T>> : OpenRange<T> {
-    override fun contains(value: T): Boolean = lessThan(start, value) && lessThan(value, endExclusive)
-    override fun isEmpty(): Boolean = !lessThan(start, endExclusive)
-
-    /**
-     * Compares two values of range domain type and returns true if first is less than the second.
-     */
-    fun lessThan(a: T, b: T): Boolean
-}
-
-
-/**
- * An open range of values of type `Float`.
- *
- * Numbers are compared with the ends of this range according to IEEE-754.
- */
-class OpenFloatRange(
-        start: Float,
-        endInclusive: Float
-) : OpenFloatingPointRange<Float> {
-    private val _start = start
-    private val _endExclusive = endInclusive
-    override val start: Float get() = _start
-    override val endExclusive: Float get() = _endExclusive
-
-    override fun lessThan(a: Float, b: Float): Boolean = a <= b
-
-    override fun contains(value: Float): Boolean = value >= _start && value < _endExclusive
-    override fun isEmpty(): Boolean = !(_start <= _endExclusive)
-
-    override fun equals(other: Any?): Boolean {
-        return other is OpenFloatRange && (isEmpty() && other.isEmpty() ||
-                _start == other._start && _endExclusive == other._endExclusive)
-    }
-
-    override fun hashCode(): Int {
-        return if (isEmpty()) -1 else 31 * _start.hashCode() + _endExclusive.hashCode()
-    }
-
-    override fun toString(): String = "$_start..<$_endExclusive"
-}
-
-/**
- * An open range of values of type `Float`.
- *
- * Numbers are compared with the ends of this range according to IEEE-754.
- */
-class OpenDoubleRange(
-        start: Double,
-        endInclusive: Double
-) : OpenFloatingPointRange<Double> {
-    private val _start = start
-    private val _endExclusive = endInclusive
-    override val start: Double get() = _start
-    override val endExclusive: Double get() = _endExclusive
-
-    override fun lessThan(a: Double, b: Double): Boolean = a <= b
-
-    override fun contains(value: Double): Boolean = value >= _start && value < _endExclusive
-    override fun isEmpty(): Boolean = !(_start <= _endExclusive)
-
-    override fun equals(other: Any?): Boolean {
-        return other is OpenDoubleRange && (isEmpty() && other.isEmpty() ||
-                _start == other._start && _endExclusive == other._endExclusive)
-    }
-
-    override fun hashCode(): Int {
-        return if (isEmpty()) -1 else 31 * _start.hashCode() + _endExclusive.hashCode()
-    }
-
-    override fun toString(): String = "$_start..<$_endExclusive"
-}
-
 ```
 
 
+The child implementations can still have their own properties such as `start`, `endInclusive`, `endExclusive` (and later `startExclusive`) but they should have the same values as their respective `lowerBound` and `upperBound` properties. 
+
+
+```kotlin 
+public interface OpenRange<T: Comparable<T>>: Range<T> {
+    /**
+     * The minimum value in the range.
+     */
+    public val start: T get() = lowerBound
+
+    /**
+     * The maximum value in the range (inclusive).
+     */
+    public val endExclusive: T get() = upperBound
+
+    /**
+     * Checks whether the specified [value] belongs to the range.
+     */
+    override operator fun contains(value: T): Boolean = value >= start && value < endExclusive
+
+    /**
+     * Checks whether the range is empty.
+     */
+    override fun isEmpty(): Boolean = start > endExclusive
+}
+
+
+
+public interface ClosedRange<T: Comparable<T>>: Range<T> {
+    /**
+     * The minimum value in the range.
+     */
+    public val start: T get() = lowerBound
+
+    /**
+     * The maximum value in the range (inclusive).
+     */
+    public val endInclusive: T get() = upperBound
+
+    /**
+     * Checks whether the specified [value] belongs to the range.
+     */
+    override operator fun contains(value: T): Boolean = value >= start && value <= endInclusive
+
+    /**
+     * Checks whether the range is empty.
+     */
+    override fun isEmpty(): Boolean = start > endInclusive
+}
+
+
+
+
+
+```
+
+## Future advancements
+
+This should leave an open opportunity to create an `ExclusiveRange` later, with `startExclusive` and `endExclusive` properties. 
+
+Introducing `ExclusiveRange` might raise the concern the `start` property of `ClosedRange` and `OpenRange` implies inclusivity, and perhaps should explicitly be named `startInclusive`. 
+
+
+-------
+
+
+## Naming
+
+Considering there is a `ClosedRange` already with an `endInclusive`, it makes sense to call a property with an `endExclusive` to oppositely be called an `OpenRange`. 
+
+## Contracts
+
+For the `OpenRange` implementations, the `lowerBound`/`start` must be less than the `upperBound`/`endExclusive`. Otherwise the range should be empty. 
+
+## Compatibility impact
+
+This might cause a large (but hopefully non-breaking) change of all `ClosedRange` implementations, as the new parent to `ClosedRange` and all its children will be `Range`.
