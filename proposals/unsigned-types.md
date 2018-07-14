@@ -59,7 +59,7 @@ There are tricks that make it possible to implement algorithms based on
 unsigned arithmetic with signed integers (see [Unsigned int considered harmful for Java](https://www.nayuki.io/page/unsigned-int-considered-harmful-for-java)), 
 but one has to be extremely careful when dealing with such tricks and remember which variable represents which type actually in code.
 
-For an unsigned value represented by a singed integer special functions like 
+For an unsigned value represented by a signed integer special functions like 
 `divideUnsigned`, `remainderUnsigned`, `toUnsignedString` has to be called instead of the standard ones. 
 It is very fragile and error prone especially when signed and unsigned values both are used.
 
@@ -68,7 +68,7 @@ It is very fragile and error prone especially when signed and unsigned values bo
 
 When one provides an external declaration for some native platform API (either C API or JS IDL declarations [KT-13541](https://youtrack.jetbrains.com/issue/KT-13541))
 that declaration can contain unsigned types natively. Unsigned types in Kotlin would allow to represent such declarations
-without unwittingly altering their semantics by substituting unsigned integers with singed ones.
+without unwittingly altering their semantics by substituting unsigned integers with signed ones.
 
 ## Description
 
@@ -113,7 +113,7 @@ fun upTo(limit: UInt): UInt {
 // a function that uses unsigned types in its body
 @ExperimentalUnsignedTypes
 fun usesUnsignedUnderTheCover(): Boolean {
-    return upTo(10L) < 5L
+    return upTo(10u) < 5u
 }
 ```
 
@@ -148,12 +148,12 @@ val bytes: UByteArray = ...
 bytes[i] += 0x80u  // doesn't compile because the return type `UInt` doesn't fit back into `UByte`
 ```
 
-We've decided to favor the consistency with the signed types and not try to solve this problem individually for the unsinged types.
+We've decided to favor the consistency with the signed types and not try to solve this problem individually for the unsigned types.
 We hope to approach the problem later uniformly both for the signed and unsigned types.
 
 ### Mixed width operations
 
-Comparison and arithmetic operations are overloaded for each combination of unsinged type operands.
+Comparison and arithmetic operations are overloaded for each combination of unsigned type operands.
 The narrower operand is extended to the width of the other one and that type is the type of the result.
 
 ### Mixed signedness operations
@@ -162,8 +162,8 @@ Arithmetic and comparison operations that mix signed and unsigned operands are n
 
 ### Unary plus and minus operators
 
-In some languages there is unary minus operator on unsigned types which extends them to a wider singed type and then negates.
-We're going to omit this operator, requiring an explicit conversion to a singed type before negating.
+In some languages there is unary minus operator on unsigned types which extends them to a wider signed type and then negates.
+We're going to omit this operator, requiring an explicit conversion to a signed type before negating.
 
 Unary plus operator is not provided for the lack of use cases.
 
@@ -186,21 +186,21 @@ There's an open question how to call the operation that shifts an unsigned integ
 
 **Narrowing conversion** to a narrower unsigned type like `UInt.toUByte()` is just a bit pattern truncation.
 
-### Singed/unsigned reinterpretation
+### signed/unsigned reinterpretation
 
-A conversion between singed and unsigned types of the same with to each other is done by reinterpreting the bit pattern of
-a number as singed or unsigned. Therefore `UInt.MAX_VALUE.toInt()` will turn into `-1`.
+A conversion between signed and unsigned types of the same with to each other is done by reinterpreting the bit pattern of
+a number as signed or unsigned. Therefore `UInt.MAX_VALUE.toInt()` will turn into `-1`.
 
-### Singed/unsigned narrowing conversion
+### signed/unsigned narrowing conversion
 
 **Narrowing conversion** between signed and unsigned types is done by reinterpreting
-the bit pattern of a number truncated to the given width as singed or unsigned.
+the bit pattern of a number truncated to the given width as signed or unsigned.
 For example `511u.toByte()` will turn into `-1` signed byte value.
 
-### Singed/unsigned widening conversion
+### signed/unsigned widening conversion
 
-**Widening conversion** of unsigned type to a wider singed type, for example `UInt.toLong()` is done by extending it with zero bits,
-so the resulting singed value is always non-negative.
+**Widening conversion** of unsigned type to a wider signed type, for example `UInt.toLong()` is done by extending it with zero bits,
+so the resulting signed value is always non-negative.
 
 **Widening conversion** of signed type to a wider unsigned type is done by first reinterpreting it as unsigned type of the same width
 and widening that unsigned value to the wider one.
@@ -231,14 +231,14 @@ infeasible due to conflicting equality contract of the `List`.
 
 **Conversions between signed and unsigned arrays**
 
-It should be possible to convert an array of signed integers to an array of unsinged ones of the same width and vice versa
+It should be possible to convert an array of signed integers to an array of unsigned ones of the same width and vice versa
 by copying values to a new array and reinterpreting them as the desired type:
 ```
 fun UByteArray.toByteArray(): ByteArray
 fun ByteArray.toUByteArray(): UByteArray
 ```
 
-Also it might be advantageous to provide functions that reinterpret an entire array as singed or unsigned one:
+Also it might be advantageous to provide functions that reinterpret an entire array as signed or unsigned one:
 ```
 fun UByteArray.asByteArray(): ByteArray
 fun ByteArray.asUByteArray(): UByteArray
@@ -368,7 +368,7 @@ fun takeUByte(b: UByte) {}
 takeUByte(0xFF)
 ```
 
-If yes, then how singed and unsigned types are related to each other?
+If yes, then how signed and unsigned types are related to each other?
 
 ### Enhancing Java integer types as seen in Kotlin 
 
@@ -385,7 +385,7 @@ public class Foo {
 How to call the operation that shifts an unsigned integer right:
 - `shr`, because it's clear that the shift is always unsigned and we don't need `u` prefix to distinguish it.
 - `ushr`, because the shift is always unsigned and we want to emphasize that.
-- both of above, because they do the same and having both of them will ease the migration from singed types.
+- both of above, because they do the same and having both of them will ease the migration from signed types.
 
 ### Bitwise operations for `UByte` and `UShort`
 
