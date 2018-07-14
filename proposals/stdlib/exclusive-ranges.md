@@ -1,9 +1,6 @@
 # Closed Ranges and Range Interface
 
 
-
-# Title
-
 * **Type**: Standard Library API proposal
 * **Author**: Thomas Nield
 * **Contributors**: Thomas Nield
