@@ -264,4 +264,4 @@ For the `OpenStartRange`  implementations, the `lowerBound` must be *less than o
 
 ## Compatibility impact
 
-This might cause a large (but hopefully non-breaking) change of all `ClosedRange` implementations, as the new parent to `ClosedRange` and all its children will be `Range`.
+The usage of `start` in `ClosedRange` may need to be deprecated in favor of explicit `startInclusive` and `startExclusive`. 
