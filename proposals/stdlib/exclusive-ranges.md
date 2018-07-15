@@ -12,7 +12,7 @@
 
 After doing some substantial exploration using Kotlin for [statistics](https://github.com/thomasnield/kotlin-statistics) and [stochastic optimization](https://github.com/thomasnield/traveling_salesman_demo), I think there are opportunties to take advantage of a better implementation for ranges, and be able to support an `until` infix operator implementation for `Double` and `Float`. 
 
-Kotlin's stdlib has an implementation for `ClosedRange`, but not `OpenRange`, `OpenStartRange`, and `OpenEndRange`. I believe that latter items need to be implemented at least for continuous `Double` and `Float` ranges, where the exclusive start/end point cannot be achieved discretely with a `ClosedRange`.
+Kotlin's stdlib has an implementation for `ClosedRange`, but not `OpenRange`, `OpenStartRange`, and `OpenEndRange`. I believe the latter items need to be implemented at least for continuous `Double` and `Float` ranges, where the exclusive start/end point cannot be achieved discretely with a `ClosedRange`.
 
 The `ClosedRange`, `OpenRange`, `OpenStartRange`, and `OpenEndRange` should also share a common `Range` parent, so they all can be mixed together in a `List<Range>` (i.e. [histograms](https://en.wikipedia.org/wiki/Histogram) or [probability density functions](https://en.wikipedia.org/wiki/Probability_density_function)).
 
@@ -158,7 +158,7 @@ You can find an `OpenEndRange` implementation [here in Kotlin-Statistics](https:
 
 If we were to extract a `Range` parent for `ClosedRange`, `OpenRange`, `OpenStartRange`, and `OpenEndRange`, what should it contain? 
 
-Here is one proposed implementation: a `lowerBound` and `upperBound` should be defined to generalize the `start` and `end`, but not indicate whether they are inclusive or exclusive. This allows a `List<Range>` to still have access to the start and end values, regardless if they are inclusive or exclusive. 
+Here is one proposed implementation: a `lowerBound` and `upperBound` should be defined to generalize the start and end, but not indicate whether they are inclusive or exclusive. This allows a `List<Range>` to still have access to the start and end values, regardless if they are inclusive or exclusive. 
 
 ```kotlin 
 /**
@@ -188,7 +188,7 @@ public interface Range<T: Comparable<T>> {
 ```
 
 
-The child implementations can still have their own properties such as `startInclusive` `endExclusive`, `endInclusive`, `endExclusive` (and later `startExclusive`) but they should have the same values as their respective `lowerBound` and `upperBound` properties. This also begs the question if `start` should be deprecated and explicitly be labeled `startInclusive` or `startExclusive`. 
+The child implementations can still have their own properties such as `startInclusive` `endExclusive`, `endInclusive`, `endExclusive`, and `startExclusive`, but they should have the same values as their respective `lowerBound` and `upperBound` counterparts. This also begs the question if `start` should be deprecated and explicitly be labeled `startInclusive` or `startExclusive`. 
 
 
 ```kotlin 
