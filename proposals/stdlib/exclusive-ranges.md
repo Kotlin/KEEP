@@ -36,7 +36,7 @@ I believe that having an end-exclusive `until` implemented for `Double` and `Flo
 [Discretization of continuous features](https://en.wikipedia.org/wiki/Discretization_of_continuous_features) is a common mathematical operation. This task comes up in mathematical modeling, basic statistics, probability, and machine learning. 
 
 
-For instance, I may bin `Sale` objects on their `price` into interval buckets of size `20.0`. Putting an `until` between two `Double` or `Float` values will return an `OpenEndRange`. 
+For instance, I may bin `Sale` objects on their `price` into interval buckets of size `20.0`. 
 
 ```kotlin 
 import java.time.LocalDate
@@ -78,7 +78,7 @@ val ranges = binned.ranges // should return endExclusive ranges
 }
 ```
 
-I can also define my own ranges for a continuous histogram of values. I should have the option of putting in a `ClosedRange` so the last bin can capture the final end boundary. 
+I can also define my own ranges for a continuous histogram of values, and putting an `until` between two `Double` or `Float` values will conveniently return an `OpenEndRange`. I should have the option of putting in a `ClosedRange` so the last bin can capture the final end boundary. 
 
 ```kotlin 
 val histogramBins = listOf(
@@ -118,7 +118,7 @@ class WeightedDice<T>(val probabilities: Map<T,Double>) {
         var binStart = 0.0
 
         it.asSequence().sortedBy { it.value }
-                .map { it.key to OpenDoubleRange(binStart, it.value + binStart) }
+                .map { it.key to (binStart until (it.value + binStart)) }
                 .onEach { binStart = it.second.endExclusive }
                 .toMap()
     }
