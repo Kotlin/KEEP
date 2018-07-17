@@ -4,7 +4,7 @@
 * Author: Dmitry Savvinov
 * Contributors: Stanislav Erokhin, Andrey Breslav, Mikhail Glukhih, Roman Elizarov, Ilya Ryzhenkov, Alexander Udalov
 * Status: submitted
-* Prototype: implemented in 1.3, see Timeline section for details
+* Prototype: implemented
 * Discussion: [KEEP-139](https://github.com/Kotlin/KEEP/issues/139)
 
 
@@ -236,7 +236,7 @@ fun run(block: () -> Unit) {
 We may annotate it with the following contract:
 
 ```kotlin
-[CallsInPlace(block, EXACTLY_ONCE)
+[CallsInPlace(block, EXACTLY_ONCE)]
 fun run(block: () -> Unit)
 ```
 
@@ -263,7 +263,7 @@ fun foo() {
 
 ### Declaration Syntax
 
-> Please note that syntax described in this section is experimental and may be changed in future (see "Compatibility Notice And Release Timeline" for details)
+> Please note that syntax described in this section is experimental and may be changed in future (see "Compatibility Notice" for details)
 
 
 `kotlin-stdlib` provides DSL for a fluent and flexible declaration of effects.
@@ -279,10 +279,14 @@ Each line of the lambda passed to `contract`, describes one *effect* of the func
 
 ```kotlin
 class ContractBuilder {
-    fun returns(value: ConstantValue): Effect
+    fun returns(): Effect
+    fun returns(value: Any?): Effect 
+    fun returnsNotNull(): Effect
     inline fun <R> callsInPlace(lambda: Function<R>, kind: InvocationKind = InvocationKind.UNKNOWN): Effect
 }
 ```
+
+**Note**. `returns(value: Any?)` accepts only `true`, `false` and `null` literals
 
 Additionally, infix member function `implies` of `Effect` is provided, to denote conditional effect:
 
@@ -388,7 +392,7 @@ _Cons:_
 
 _Conclusion:_ considered at some point, but required too much work without clear benefit over DSL-approach
 
-### Compatibility notice and release timeline
+### Compatibility notice
 
 Kotlin Contracts is an experimental feature. However, it has several components, which have different stability and compatibility guarantees.
 
@@ -398,14 +402,6 @@ Kotlin Contracts is an experimental feature. However, it has several components,
     * It means that you can depend on binary artifacts with contracts (e.g. stdlib) with all usual compatibility guarantees
 * *Semantics*, as usual, may be changed only in exceptional circumstances and only after graceful migration cycle
     * It means that you can rely on the analysis made with the help of contracts, as it won't get broken suddenly
-
-Timeline:
-
-* 1.2: both custom contracts and contracts from libraries are disabled
-* 1.3: Kotlin compiler will use contracts from libraries, but writing custom contracts is still possible only in the unstable mode. `kotlin-stdlib` is released with contracts on some functions
-    * In the stable mode, users benefit from improved analysis while using `kotlin-stdlib`
-    * It is possible to write custom contracts in experimental mode
-* \>= 1.4: allow annotating user libraries with contracts
 
 ### Limitations and capabilities of the prototype
 
@@ -431,10 +427,15 @@ Capabilities of the prototype:
     * `assertFalse`: finishes iff passed boolean argument is `false`
     * `assertNotNull`, `checkNotNull`, `requireNotNull`: finishes iff passed argument is not null
 
+### Similar API
+
+* [Contracts API in C++](http://www.open-std.org/JTC1/SC22/WG21/docs/papers/2015/n4415.pdf)
+
 ### Open questions
 
 * Inheritance of the contracts: how contracts should be inherited?
 * Verification of the contracts: how compiler should check if written contract contradicts function's actual semantics?
+  * This is crucial for release of contracts-annotations
 * Inference of the contracts: how compiler could infer contracts for user?
 * Pluggable contracts: how user can extend Kotlin Contracts with some new constructions? In particular, how semantics of new constructions should be communicated to the compiler?
 * Interop with `org.jetbrains.annotations.Contract`
