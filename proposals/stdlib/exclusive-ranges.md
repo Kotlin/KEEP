@@ -27,7 +27,7 @@ Here are some other comparable API's on other platforms:
 
 [Python](https://www.pythoncentral.io/pythons-range-function-explained/) - Surprisingly, Python does not support float ranges but makes it easy to implement yourself via generators. 
 
-[R](http://www.endmemo.com/program/R/seq.php) - R supports ranges as sequencies in a similiar manner as Kotlin progressions, but with float/double support. 
+[R](http://www.endmemo.com/program/R/seq.php) - Supports ranges as sequencies in a similiar manner as Kotlin progressions, but with float/double support. 
 
 ## Use cases
 
