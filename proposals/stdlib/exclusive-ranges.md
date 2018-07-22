@@ -21,18 +21,13 @@ Also proposed is deprecating the `start` property in `ClosedRange` for `startInc
 
 ## Similar API review
 
-
-Kotlin's stdlib already contains `ClosedRange` implementations that can be invoked with a `..` as in `0..10`. 
-
-Kotlin also indirectly supports an end-exclusive discrete range using a `ClosedRange`, and can be invoked with `until`, such as `0 until 10`. 
-
-I believe that having an end-exclusive `until` implemented for `Double` and `Float` makes sense. However,  `OpenRange`, `OpenStartRange`, and `OpenEndRange` will be needed to support the continuous nature of `Double` and `Float`. 
-
 Here are some other comparable API's on other platforms: 
 
 [Google Guava](https://github.com/google/guava/wiki/RangesExplained)- This is probably the best source for inspiration, and has several interesting ideas for further range functionalities down the road.
 
 [Python](https://www.pythoncentral.io/pythons-range-function-explained/) - Surprisingly, Python does not support float ranges but makes it easy to implement yourself via generators. 
+
+[R](http://www.endmemo.com/program/R/seq.php) - R supports ranges as sequencies in a similiar manner as Kotlin progressions, but with float/double support. 
 
 ## Use cases
 
