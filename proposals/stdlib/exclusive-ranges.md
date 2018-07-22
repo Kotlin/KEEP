@@ -28,6 +28,12 @@ Kotlin also indirectly supports an end-exclusive discrete range using a `ClosedR
 
 I believe that having an end-exclusive `until` implemented for `Double` and `Float` makes sense. However,  `OpenRange`, `OpenStartRange`, and `OpenEndRange` will be needed to support the continuous nature of `Double` and `Float`. 
 
+Here are some other comparable API's on other platforms: 
+
+[Google Guava](https://github.com/google/guava/wiki/RangesExplained)- This is probably the best source for inspiration, and has several interesting ideas for further range functionalities down the road.
+
+[Python](https://www.pythoncentral.io/pythons-range-function-explained/) - Surprisingly, Python does not support float ranges but makes it easy to implement yourself via generators. 
+
 ## Use cases
 
 
