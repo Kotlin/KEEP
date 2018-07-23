@@ -63,7 +63,7 @@ It should be investigated whether we could make that package imported by default
 
 ## Reference implementation
 
-The implementation will be available for preview in 1.3-M1.
+The initial implementation is [available](https://github.com/JetBrains/kotlin/compare/4d51d13~1...f7337cc) in 1.3-M1 branch.
 
 ## Dependencies
 
