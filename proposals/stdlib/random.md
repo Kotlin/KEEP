@@ -227,6 +227,12 @@ The existing `shuffle()` and `shuffled()` can be reimplemented by delegating to 
 What are the guarantees about the implementation of the seeded generator?
 Should we fix its implementation and never change it in the future?
 
+- An option here is to state that `Random(seed)` returns an unspecified repeatable RNG implementation
+that can be changed later, for example in some 1.M Kotlin release, and one can obtain a fixed repeatable RNG with
+an additional enum parameter:
+    
+        Random(seed, RandomImplementation.XORWOW)
+
 **`Random` identifier overloading**
 
 In the current naming scheme `Random` name is used to denote the abstract class, its companion, and two constructor-like functions. 
