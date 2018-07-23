@@ -202,7 +202,13 @@ which is the abstract one, so to implement a custom random number generator only
 However if a custom generator can provide a more effective implementation for the other methods,
 it can override them too, since they all are open.
 
-On JVM there's an extension function `asKotlinRandom()` to wrap any `java.util.Random` implementation into `kotlin.random.Random`.
+### Bridging JVM Random API
+
+On JVM there's an extension function `asKotlinRandom()` to wrap any `java.util.Random` implementation into `kotlin.random.Random`
+and `asJavaRandom` to wrap Kotlin `Random` into `java.util.Random`.
+
+This can be helpful when you have some JVM `Random` implementation, e.g. `SecureRandom`, and want to
+pass it in a function taking `kotlin.random.Random`.  
 
 ### Collection shuffling
 
