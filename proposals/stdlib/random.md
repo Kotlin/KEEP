@@ -242,6 +242,11 @@ This makes it problematic to refer a correct overload of the name in the documen
 
 Instead of `nextBits(n)` one can use `nextInt()` shifting the result right by `32 - n` bits.
 
+**Unclear names of `origin` and `bound` parameters**
+
+It was noted that it's unclear that these parameters specify an half-open range, 
+where `origin` is inclusive start and `bound` is exclusive end.
+
 ## Future advancements
 
 * Extension on `List`/`Array`/`CharSequence` to select a random element from the collection.
