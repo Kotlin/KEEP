@@ -288,6 +288,8 @@ class SuccessOrFailure<out T> /* internal constructor */ {
 inline fun <R> runCatching(block: () -> R): SuccessOrFailure<R>
 inline fun <T, R> T.runCatching(block: T.() -> R): SuccessOrFailure<R>
 
+fun <R, T : R> SuccessOrFailure<T>.getOrDefault(defaultValue: R): R
+
 inline fun <R, T : R> SuccessOrFailure<T>.getOrElse(onFailure: (exception: Throwable) -> R): R
 inline fun <R, T> SuccessOrFailure<T>.fold(onSuccess: (value: T) -> R, onFailure: (exception: Throwable) -> R): R
 
