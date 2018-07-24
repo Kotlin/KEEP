@@ -1,12 +1,12 @@
 # Encapsulate successful or failed function execution 
 
-Discussion of this proposal is held in [this issue](https://github.com/Kotlin/KEEP/issues/127).
-
 * **Type**: Standard Library API proposal
 * **Author**: Roman Elizarov
 * **Contributors**: Andrey Breslav, Ilya Gorbunov
-* **Status**: Submitted
-* **Prototype**: In progress
+* **Status**: Public review
+* **Prototype**: Implemented in 1.3-M1
+* **Related issues**: [KT-18608](https://youtrack.jetbrains.com/issue/KT-18608) 
+* **Discussion**: [KEEP-127](https://github.com/Kotlin/KEEP/issues/127)
 
 ## Summary
 
