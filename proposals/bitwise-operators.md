@@ -3,6 +3,9 @@
 * **Type**: Design proposal
 * **Author**: Rhys Kenwell
 * **Contributor**: Solomon Greenberg
+* **Status**: Submitted
+* **Prototype**: Implemented
+* **Discussion**: [KEEP-142](https://github.com/Kotlin/KEEP/issues/142)
 
 ## Summary
 Provide new overloadable operators corresponding to bitwise AND (&), bitwise OR (|), bitwise XOR (^), left and right shifts (<<, >>, >>>), and corresponding assignment operators)
