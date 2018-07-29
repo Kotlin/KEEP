@@ -34,21 +34,22 @@ Due to several factors, this method of providing this functionality is severely 
 
 This KEEP proposes to add 12 new operators to Kotlin.
 
-* bitOr (|), orAssign (|=)
-* bitXor (^), xorAssign (^=)
-* bitAnd (&), andAssign (&=)
-* shiftLeft (<<), shlAssign (<<=)
-* shiftRight (>>), shrAssign (>>=)
-* ushiftRight (>>>), ushrAssign (>>>=)
+* or (|), orAssign (|=)
+* xor (^), xorAssign (^=)
+* and (&), andAssign (&=)
+* shl (<<), shlAssign (<<=)
+* shr (>>), shrAssign (>>=)
+* ushr (>>>), ushrAssign (>>>=)
 
-These functions will have implementations on primitive numeric types that currently have the infix functions.
+These functions will have implementations on primitive numeric types that currently have the infix functions.<sup>1</sup>
 * Int
 * Long
 * Byte
 * Short
 
-The infix functions that are currently used for bitwise operations will be deprecated with a notice to switch to the new operators. They can be phased out of use and removed from the standard library in a future release.
 
-## Language Impact
+## Unresolved Questions
+* Should the functions be marked non-`infix` in the future?
+  * How would a deprecation notice be shown to notify users of the deprecated status of calling the functions in `infix` notation
 
-**Non-breaking**: The infix functions will be preserved with a deprecation notice, giving users time to adopt the operators. 
+<sup>1</sup>In cases where there are name conflicts, the function will be marked as both `infix` and `operator`
