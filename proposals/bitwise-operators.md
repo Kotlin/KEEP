@@ -32,7 +32,7 @@ Due to several factors, this method of providing this functionality is severely 
 
 ## Implementation Details
 
-This KEEP proposes to add 12 new operators to Kotlin.
+This KEEP proposes to add 13 new operators to Kotlin.
 
 * or (|), orAssign (|=)
 * xor (^), xorAssign (^=)
@@ -40,6 +40,7 @@ This KEEP proposes to add 12 new operators to Kotlin.
 * shl (<<), shlAssign (<<=)
 * shr (>>), shrAssign (>>=)
 * ushr (>>>), ushrAssign (>>>=)
+* inv (~)
 
 These functions will have implementations on primitive numeric types that currently have the infix functions.<sup>1</sup>
 * Int
