@@ -373,7 +373,7 @@ sealed class FindUserResult {
     // other cases that need different business-specific handling code
 }
 
-fun findUserByName(name: String): UserResult
+fun findUserByName(name: String): FindUserResult
 ```
 
 > This is one of the reasons that `SuccessOrFailure` was not named `Result`. That is, to prevent its abuse
