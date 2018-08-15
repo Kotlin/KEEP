@@ -200,7 +200,7 @@ public interface OpenEndRange<T: Comparable<T>>: Range<T> {
     public val startInclusive: T get() = lowerBound
 
     /**
-     * The maximum value in the range (inclusive).
+     * The maximum value in the range (exclusive).
      */
     public val endExclusive: T get() = upperBound
 
