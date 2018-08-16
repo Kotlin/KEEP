@@ -246,7 +246,7 @@ public interface ClosedRange<T: Comparable<T>>: Range<T> {
 
 The `Range` interface maybe can have additional properties describing inclusivity/exclusivity, such as `isStartInclusive`. This may add clutter so we should consider this augmentation carefully. 
 
-It might also be beneficial to explore progressions with continuous numeric types, so expressions like `10.0 until 2.0 step 0.5` can be used. This can have a broad range of use cases, including [temperature schedules for simulated annealing](https://github.com/thomasnield/traveling_salesman_demo/blob/master/src/main/kotlin/Model.kt#L290-L292). 
+It might also be beneficial to explore progressions with continuous numeric types, so expressions like `10.0 downTo 2.0 step 0.5` can be used. This can have a broad range of use cases, including [temperature schedules for simulated annealing](https://github.com/thomasnield/traveling_salesman_demo/blob/master/src/main/kotlin/Model.kt#L290-L292). 
 
 
 -------
