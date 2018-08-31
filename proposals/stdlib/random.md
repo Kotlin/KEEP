@@ -224,11 +224,11 @@ The existing `shuffle()` and `shuffled()` can be reimplemented by delegating to 
 ## What has to be done
 
 - [ ] Make the implementations serializable
-- [ ] Provide unsigned counterparts like `nextUInt`, `nextULong`, `nextUBytes` as extensions
+- [x] Provide unsigned counterparts like `nextUInt`, `nextULong`, `nextUBytes` as extensions
 
 ## Unresolved questions
 
-**Fixed implementation of seeded generator**
+#### Fixed implementation of seeded generator
 
 What are the guarantees about the implementation of the seeded generator?
 Should we fix its implementation and never change it in the future?
@@ -238,20 +238,24 @@ that can be changed later, for example in some 1.M Kotlin release, and one can o
 an additional enum parameter:
     
         Random(seed, RandomImplementation.XORWOW)
+        
+**Resolution:** Avoid giving strict reproducibility guarantees for a while, document it in the `Random()` function docs.
 
-**`Random` identifier overloading**
+#### `Random` identifier overloading
 
 In the current naming scheme `Random` name is used to denote the abstract class, its companion, and two constructor-like functions. 
 This makes it problematic to refer a correct overload of the name in the documentation. 
 
-**Do we need `nextBits` method?**
+#### Do we need `nextBits` method?
 
 Instead of `nextBits(n)` one can use `nextInt()` shifting the result right by `32 - n` bits.
 
-**Unclear names of `origin` and `bound` parameters**
+#### Unclear names of `origin` and `bound` parameters
 
 It was noted that it's unclear that these parameters specify an half-open range, 
 where `origin` is inclusive start and `bound` is exclusive end.
+
+**Resolution:** rename parameters to `from` and `until`. This way it is clear that the end is not included.
 
 ## Future advancements
 
