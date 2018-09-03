@@ -4,11 +4,11 @@
 * **Author**: Rhys Kenwell
 * **Contributor**: Solomon Greenberg
 * **Status**: Submitted
-* **Prototype**: Implemented
+* **Prototype**: Implemented (https://github.com/Redrield/Kotlin/tree/bitwise-operators)
 * **Discussion**: [KEEP-142](https://github.com/Kotlin/KEEP/issues/142)
 
 ## Summary
-Provide new overloadable operators corresponding to bitwise AND (&), bitwise OR (|), bitwise XOR (^), left and right shifts (<<, >>, >>>), and corresponding assignment operators)
+Provide new overloadable operators corresponding to bitwise AND (&), bitwise OR (|), bitwise XOR (^), left and right shifts (<<, >>, >>>), and corresponding assignment operators
 
 ## Motivation
 Bitwise operatations are currently supported on numeric types in Kotlin through several `infix` functions.
@@ -48,6 +48,11 @@ These functions will have implementations on primitive numeric types that curren
 * Byte
 * Short
 
+## Use Cases
+* Serialization code
+  * Code to serialize values to ByteArrays makes use of bitwise operators extensively. Examples include LEB128 variable-length integers, where serialization and deserialization have to make use of bitwise operators to interpret the correct value from the byte sequence.
+* Flags
+  * Android has many operations involving bitwise flags (e.g. Intent, Gravity flags). Operations regarding them would be simplified when using bitwise operators, rather than infix functions.
 
 ## Unresolved Questions
 * Should the functions be marked non-`infix` in the future?
