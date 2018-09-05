@@ -39,7 +39,10 @@ What are the dependencies of the proposed API:
 
 ## Placement
 
+Some discussed possibilities are
+
 * Standard Library, in `kotlin.time` package (package to be created)
+* KotlinX, making it opt-in
 
 ## Reference implementation
 
