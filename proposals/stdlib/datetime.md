@@ -3,7 +3,7 @@
 * **Type**: Standard Library API proposal
 * **Author**: Leonardo "Kerooker" Lopes
 * **Contributors**: Currently none
-* **Status**: Submitted
+* **Status**: Under Discussion
 * **Prototype**: Not started
 
 
