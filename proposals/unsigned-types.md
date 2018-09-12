@@ -202,8 +202,8 @@ For example `511u.toByte()` will turn into `-1` signed byte value.
 **Widening conversion** of unsigned type to a wider signed type, for example `UInt.toLong()` is done by extending it with zero bits,
 so the resulting signed value is always non-negative.
 
-**Widening conversion** of signed type to a wider unsigned type is done by first reinterpreting it as unsigned type of the same width
-and widening that unsigned value to the wider one.
+**Widening conversion** of signed type to a wider unsigned type is done by signed extension to a wider signed type first 
+and then reinterpreting it as unsigned type of the same width.
 
 ### Arrays
 
