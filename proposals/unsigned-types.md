@@ -358,7 +358,7 @@ fun ulongs(vararg u: ULong): ULongArray = u
 
 ## Unresolved questions
 
-### Signed literals assignable to unsigned types
+#### Signed literals assignable to unsigned types
     
 Should we allow assignment of usual signed literals to unsigned types?
 
@@ -370,7 +370,7 @@ takeUByte(0xFF)
 
 If yes, then how signed and unsigned types are related to each other?
 
-### Enhancing Java integer types as seen in Kotlin 
+#### Enhancing Java integer types as seen in Kotlin 
 
 Should we support some kind of `@Unsigned` annotation to load types from Java as unsigned ones?
 
@@ -380,13 +380,13 @@ public class Foo {
 }
 ```
 
-### Shift right: `shr` or `ushr`
+#### Shift right: `shr` or `ushr`
 
 How to call the operation that shifts an unsigned integer right:
 - `shr`, because it's clear that the shift is always unsigned and we don't need `u` prefix to distinguish it.
 - `ushr`, because the shift is always unsigned and we want to emphasize that.
 - both of above, because they do the same and having both of them will ease the migration from signed types.
 
-### Bitwise operations for `UByte` and `UShort`
+#### Bitwise operations for `UByte` and `UShort`
 
 These operations are experimental for `Byte` and `Short`: we haven't decided yet on their contract.
