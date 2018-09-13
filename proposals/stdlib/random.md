@@ -225,6 +225,7 @@ The existing `shuffle()` and `shuffled()` can be reimplemented by delegating to 
 
 - [ ] Make the implementations serializable
 - [x] Provide unsigned counterparts like `nextUInt`, `nextULong`, `nextUBytes` as extensions
+- [x] Extension on `List`/`Array`/`CharSequence` to select a random element from the collection.
 
 ## Unresolved questions
 
@@ -258,8 +259,6 @@ where `origin` is inclusive start and `bound` is exclusive end.
 **Resolution:** rename parameters to `from` and `until`. This way it is clear that the end is not included.
 
 ## Future advancements
-
-* Extension on `List`/`Array`/`CharSequence` to select a random element from the collection.
 
 * Extensions or members to generate sequences, like `ints()`, `ints(bound)`, `ints(range)` etc.
     
