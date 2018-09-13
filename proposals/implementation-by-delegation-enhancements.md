@@ -6,7 +6,7 @@
 * **Status**: Submitted
 * **Prototype**: Not implemented, but I would be happy to do so
 
-Discussion of this proposal is held in [this issue](https://github.com/Kotlin/KEEP/issues/153).  
+Discussion of this proposal is held in [this issue](https://github.com/Kotlin/KEEP/issues/155).  
 Prior progress of this proposal is held in [this gist](https://gist.github.com/Dico200/0065293bcd9a19c50e371cde047a9f22).
 
 ##### Links
