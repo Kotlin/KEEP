@@ -267,12 +267,19 @@ Consider the following sample:
 ```kotlin
 inline class Generic<T>(val x: T)
 
-fun foo(g: Generic<String>) {}
+fun foo(g: Generic<Int>) {}
 ```
 
-Now, type `Generic<String>` can be mapped either to `java.lang.String` or to `java.lang.Object`. 
-To make the whole rule more consistent, currently we propose to map `Generic<SomeType>` always to `java.lang.Object`, 
-i.e. we'll map upper bound of type parameter.
+Now, type `Generic<Int>` can be mapped either to `java.lang.Integer`, `java.lang.Object` or to primitive `int`.
+
+Same question arises with arrays:
+```kotlin
+inline class GenericArray<T>(val y: Array<T>)
+
+fun foo(g: GenericArray<Int>) {} // `g` has type `Integer[]` or `Object[]`?
+``` 
+
+Therefore, because of this ambiguity, such cases are going to be forbidden in the first version of inline classes.
 
 * Sidenote: maybe it's worth to consider inline classes with reified generics:
     ```kotlin
@@ -281,7 +288,7 @@ i.e. we'll map upper bound of type parameter.
     fun foo(a: Reified<Int>, b: Reified<String>) // a has type `Int`, b has type `String`
     ``` 
 
-Generic inline classes with underlying value not of type that defined by type parameter are mapped as usual generics:
+Generic inline classes with underlying value not of type that defined by type parameter or generic array are mapped as usual generics:
 ```kotlin
 inline class AsList<T>(val ls: List<T>)
 
