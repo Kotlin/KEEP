@@ -34,8 +34,7 @@ The new behaviour will:
 
 ### Proposal 2
 
-Add a compiler-intrinsic way to access the delegate used for a given interface:  
-`inline fun <reified T> Any.delegate(): T`  
+Add a compiler-intrinsic way to access the delegate identity used by a given object for a given interface which does not violate encapsulation constraints.
 
 ## Glossary
 
@@ -48,6 +47,8 @@ Add a compiler-intrinsic way to access the delegate used for a given interface:
 | New behaviour | The behaviour of Implementation By Delegation as proposed and defined at the bottom of *Approach* section 
 
 ## Motivation
+
+### Motivation for proposal 1
 
 Kotlin provides Implementation By Delegation as a no-boilerplate way of implementing the Delegation/Decorator pattern,
 which is a flexible alternative to implementation inheritance ([see doc](https://kotlinlang.org/docs/reference/delegation.html)).
@@ -63,7 +64,7 @@ such as `ForwardingObject` and subclasses from guava, do not suffer from these l
 In the case of `ForwardingObject`, it declares a method `protected abstract Object delegate();` which
 gives full control to the programmer. The returned Delegate Identity can be anything, cached or not, and it can refer to `this`.
 
-### Use cases
+#### Use cases
 
 Any case where the programmer would want to:
 * Access the Delegate Identity (proposal 2)
@@ -95,32 +96,28 @@ This means that:
 * Code that wants to instantiate the class needs to pass the delegate itself to the constructor.
 This is frequently the intended, but not always. Workarounds include: Secondary constructor, companion object invoke() overload.
 
+There should be a language construct to get the delegate identity for a given delegated interface.  
+It is accessible to the generated delegating interface methods, it should also be accessible in the source code as a solution to these problems.
+
 I want to stress that this is NOT a problem for existing binaries.  
 The delegate instance should NOT be made accessible outside the class scope through whichever solution, as it would break encapsulation,
 and code that uses existing binaries is implicitly outside the class scope. 
 
-A way to fix this issue would be to expose the invisible fields, making them accessible as properties. This poses problems:
-* How to name the delegate properties? Their names might clash with existing properties.
-* Do we want invisible fields to be a part of the language? The invisible fields emitted by the old behaviour aren't officially documented (correct me if I'm wrong).
-
-This is why I propose a special `inline fun <reified T> Any.delegate()` function. 
-It should be accessible as an extension function of `this` object only, i.e. its behaviour is as if it were a `protected final` class member.
-Its implementation should be intrinsic. Different code should be emitted depending on the type parameter.  
-The compiler should emit an error if the given type isn't being delegated.
-
 ## Approach
+
+### Approach for proposal 1
 
 Now that you're aware of all the problems with the old behaviour, let's discuss how they can be fixed with the new behaviour.
 There has been a number of discussions about this as seen in the Links section.
 
 Obviously, we require backward compatibility with the old behaviour. Any existing sources using it must not have their behaviour changed.
 
-There are 2 approaches:
+We found 2 sensible approaches:
 * Different syntax
 * Contextual indication  
 A contextual indication could be an annotation or compiler argument, indicating that the new behaviour is desired.
 
-### First approach: Different syntax
+#### First approach: Different syntax
 A number of different syntaxes have been mentioned (`A` is an interface and `b` is a property of type `A`):
 * `class B : A by val b`, `class B : A by volatile b`, `class B : A to b`
 * `class B : A by ::b`, `class B : A by { b }` (this would clash with existing delegations of functional types!)
@@ -150,13 +147,14 @@ The `class B : A to b` syntax has been argued by @voddan:
 > ##### Cons
 > * If implemented would allow two syntax constructs to express the same thing (even if one is deprecated):
 > 
-> ```
+> ```kotlin
 > class X(val a: A): A by a
 > class X(val a: A): A to a
 > ```
 > * Syntax differs from the property delegation syntax and doesn't highlight that those are similar concepts
 
-### Second approach: Contextual indication
+#### Second approach: Contextual indication
+
 The second approach allows the programmer to indicate to the compiler that the class should have its interface delegates implemented using the new behaviour.
 To indicate this, an annotation should be used. For example, the following declaration can be added to the standard library (name TBD):
 
@@ -182,9 +180,34 @@ The *new behaviour* would be defined as such:
 * No invisible fields are generated
 * The Delegate Expression cannot refer to constructor parameters, use class members instead (programmer should store the delegate if it should be stored)
 
+### Approach for proposal 2
+
+A way to grant access to delegate identities would be to expose the invisible fields, making them accessible as properties. However, this solution is not ideal:
+* How to name the delegate properties? Their names might clash with existing properties.
+* Do we want invisible fields to be a part of the language? The invisible fields emitted by the old behaviour aren't officially documented (correct me if I'm wrong).
+* If proposal 1 is accepted, this is irrelevant as there are no invisible fields in the new behaviour
+
+This is why we propose an intrinsic accessor function that can be used to access delegate objects, whose declarion can be seen below:
+
+```kotlin
+@kotlin.internal.InlineOnly
+/**
+ * @param R Receiver type that uses Implementation By Delegation for interface I
+ * @param I The interface type that is delegated to the desired delegate
+ * @return The delegate of the receiver for interface I
+ */
+inline fun <reified R : Any, reified I : Any> R.delegate(): I =
+    throw NotImplementedError("Implementation of delegate function is intrinsic")
+```
+
+See doc comment for some specifics.
+The compiler will emit bytecode specific to the type parameters, and that bytecode should be used to determine if the function is accessible or not.  
+As a general rule of thumb, it should only be accessible within the class scope, but rules for accessing `protected` members are slightly more lenient than that.   
+The compiler should emit an error if the given type isn't being delegated.
+
 ## JVM Codegen
 
-The below only applies for classes where the new behaviour is enabled by the programmer.
+### Class members for classes with new behaviour
 
 For each delegated interface, the compiler should emit bytecode for a function to access its Delegate Identity.  
 It will contain the bytecode for the Delegate Expression.
@@ -198,14 +221,18 @@ because the methods are going to be visible, unlike in Kotlin (if I didn't menti
 If the `$` character makes a method invisible in Java, then we can just have the same name for all accessors as long as it has a `$` in it.  
 If not, we just need an algorithm that prevents name collisions in the method name, for example by replacing `.` with `$` and any `$` with `$$` in the `className` part.
 
-Then, for every invocation of `(protected) inline fun <reified T> Any.delegate()`, the compiler should:
-* check that the type `T` is being delegated, emitting an error if this is not the case
+### Invocations of delegate accessor
+
+For every invocation of the delegate accessor function, whose declaration is described in detail under *Approach*, the compiler should:
+* Check that the type `T` is being delegated by the type of the receiver, emitting an error if this is not the case.
 * If the enclosing class uses the old behaviour, emit a `getfield` instruction, referring to the field keeping the delegate of the given type.
 * Else, emit a `invokevirtual` instruction, referring to the delegate accessor function of the given type.
+* Check that the emitted bytecode does not violate access restrictions.
 
 As for the actual method delegation, each interface method should be delegated to the Delegate Identity as returned by a call to the accessor function for that interface.
 
 ## Reflection
+
 Generated delegate accessor functions should not be returned as part of `KClass.members`, etc,
 which is the same policy used for the generated, invisible, fields as generated by the old behaviour (On the JVM)
 
@@ -220,6 +247,13 @@ I don't know.
 Something to consider is to allow overriding the Delegate Expression. 
 If it's allowed, delegate functions should not be marked final unless the declaring class is final. 
 It should also be considered that, if it's allowed, the `override` keyword would not be present with the syntax.
+
+### Class Construction
+
+This note may be trivial, but there may be times before construction of an instance was completed, 
+during which invocations of the interface methods produce undefined behaviour. This is already the case currently as the
+invisible fields cannot be initialized before the superclass constructor has been called. When the restrictions are removed,
+the programmer will gain control of the exact order in which things are initialized with respect to delegated interfaces.
 
 ### Deprecation
 
