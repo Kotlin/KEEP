@@ -41,56 +41,56 @@ Add a compiler-intrinsic way to access the delegate used for a given interface:
 
 | Term | Meaning |
 | ---- | ------- |
-| IBD  | Implementation by delegation, kotlin feature, subject of this KEEP |
-| DI   | Delegate identity, delegate instance, the reference to the delegate object |
-| DE   | Delegate expression, following `by` keyword, with the DI as its result |
-| Current/Old behaviour | The current behaviour of IBD, at the time of creating the proposal |
-| New behaviour | The behaviour of IBD as proposed and defined at the bottom of *Approach* section 
+| Implementation By Delegation | kotlin feature, subject of this KEEP |
+| Delegate Identity | delegate instance, the reference to the delegate object |
+| Delegate Expression | Delegate expression, following `by` keyword, with the Delegate Identity as its result |
+| Current/Old behaviour | The current behaviour of Implementation By Delegation, at the time of creating the proposal |
+| New behaviour | The behaviour of Implementation By Delegation as proposed and defined at the bottom of *Approach* section 
 
 ## Motivation
 
-Kotlin provides IBD as a no-boilerplate way of implementing the Delegation/Decorator pattern,
+Kotlin provides Implementation By Delegation as a no-boilerplate way of implementing the Delegation/Decorator pattern,
 which is a flexible alternative to implementation inheritance ([see doc](https://kotlinlang.org/docs/reference/delegation.html)).
 
-Currently, IBD is unnecessarily limited in a number of ways:
-* DEs are evaluated once, on construction, no exceptions.
-* On the JVM, the result of the DE is kept in an invisible field, it cannot be accessed. 
+Currently, Implementation By Delegation is unnecessarily limited in a number of ways:
+* Delegate Expressions are evaluated once, on construction, no exceptions.
+* On the JVM, the result of the Delegate Expression is kept in an invisible field, it cannot be accessed. 
 * Changing the behaviour of individual methods requires delegation to a constructor parameter property to access the delegated instance.
-* DEs cannot refer to `this` instance at all.
+* Delegate Expressions cannot refer to `this` instance at all.
 
 Other constructs that aim to simplify the implementation of the Delegation/Decorator pattern,  
 such as `ForwardingObject` and subclasses from guava, do not suffer from these limitations.
 In the case of `ForwardingObject`, it declares a method `protected abstract Object delegate();` which
-gives full control to the programmer. The returned DI can be anything, cached or not, and it can refer to `this`.
+gives full control to the programmer. The returned Delegate Identity can be anything, cached or not, and it can refer to `this`.
 
 ### Use cases
 
 Any case where the programmer would want to:
-* Access the DI (proposal 2)
-* Implement how to store the DI
-* Change the DI
-* Compute the DI on every invocation
-* Refer to `this` instance in the DE
-* Use IBD in inline classes  
+* Access the Delegate Identity (proposal 2)
+* Implement how to store the Delegate Identity
+* Change the Delegate Identity
+* Compute the Delegate Identity on every invocation
+* Refer to `this` instance in the Delegate Expression
+* Use Implementation By Delegation in inline classes  
 This doesn't work in the old behaviour because it implicitly adds an (invisible) field, making the class exceed the one property constraint.
 
 ### Motivation for proposal 2
 
-With the old behaviour of IBD, the DI is stored in an invisible field.
-This invisible field cannot be accessed normally by the programmer, however, there are many cases where the programmer would need the DI:
+With the old behaviour of Implementation By Delegation, the Delegate Identity is stored in an invisible field.
+This invisible field cannot be accessed normally by the programmer, however, there are many cases where the programmer would need the Delegate Identity:
 * When overriding the behaviour of a delegated method, but still delegating to the same object.  
-Especially if the delegate is a stateful object, it is absolutely necessary to have the DI.
+Especially if the delegate is a stateful object, it is absolutely necessary to have the Delegate Identity.
 * Numerous other reasons...
 
-In order to access the DI, with the old behaviour:
-* The DI must be passed to the primary constructor as a parameter, as only primary constructor parameters are accessible within the scope of DEs.
-* The parameter holding the DI must be stored in an explicitly declared property (by declaring the parameter as a property or storing it elsewhere explicitly).
+In order to access the Delegate Identity, with the old behaviour:
+* The Delegate Identity must be passed to the primary constructor as a parameter, as only primary constructor parameters are accessible within the scope of Delegate Expressions.
+* The parameter holding the Delegate Identity must be stored in an explicitly declared property (by declaring the parameter as a property or storing it elsewhere explicitly).
 
 This means that:
 * The class itself does not have any control over how the delegate is instantiated, unless the constructor parameter uses a default value.
 * **It requires a primary constructor parameter!!**.
 * 2 distinct fields are used to store the delegate.
-* If the property storing a delegate reference is mutable, mutating it does not change the DI, but the programmer might think it does.
+* If the property storing a delegate reference is mutable, mutating it does not change the Delegate Identity, but the programmer might think it does.
 * The delegate can never have a reference to `this`, the delegating object, on instantiation.
 * Code that wants to instantiate the class needs to pass the delegate itself to the constructor.
 This is frequently the intended, but not always. Workarounds include: Secondary constructor, companion object invoke() overload.
@@ -133,7 +133,7 @@ An example of where this could be a problem is discussed in the *Deprecation* se
 
 Cons of having a separate syntax:
 * We add a distinct, new, feature to the language
-* It will be confusing because it seemingly performs the same task as the old behaviour/existing IBD
+* It will be confusing because it seemingly performs the same task as the old behaviour/existing Implementation By Delegation
 * Allows for a given class to use a mix of the two behaviours, which would be more confusing and bad design (in my personal opinion)
 
 The `class B : A to b` syntax has been argued by @voddan:
@@ -177,17 +177,17 @@ Possible arguments against this idea:
 * There are cases where the reuse of the same syntax is a problem (again, see *Deprecation* section)
 
 The *new behaviour* would be defined as such:
-* The DE, following the `by` keyword, is evaluated on every invocation of a delegated method.
-* The DE has `this` in its scope
+* The Delegate Expression, following the `by` keyword, is evaluated on every invocation of a delegated method.
+* The Delegate Expression has `this` in its scope
 * No invisible fields are generated
-* The DE cannot refer to constructor parameters, use class members instead (programmer should store the delegate if it should be stored)
+* The Delegate Expression cannot refer to constructor parameters, use class members instead (programmer should store the delegate if it should be stored)
 
 ## JVM Codegen
 
 The below only applies for classes where the new behaviour is enabled by the programmer.
 
-For each delegated interface, the compiler should emit bytecode for a function to access its DI.  
-It will contain the bytecode for the DE.
+For each delegated interface, the compiler should emit bytecode for a function to access its Delegate Identity.  
+It will contain the bytecode for the Delegate Expression.
 A template for its signature could be as follows: `protected final fun delegate$className(): T`  
 For example: `protected final fun delegate$java$util$List(): java.util.List`
 It is `protected` to allow access by subclasses. It is `final` to hint to the JVM that it can be inlined (optimization).
@@ -203,7 +203,7 @@ Then, for every invocation of `(protected) inline fun <reified T> Any.delegate()
 * If the enclosing class uses the old behaviour, emit a `getfield` instruction, referring to the field keeping the delegate of the given type.
 * Else, emit a `invokevirtual` instruction, referring to the delegate accessor function of the given type.
 
-As for the actual method delegation, each interface method should be delegated to the DI as returned by a call to the accessor function for that interface.
+As for the actual method delegation, each interface method should be delegated to the Delegate Identity as returned by a call to the accessor function for that interface.
 
 ## Reflection
 Generated delegate accessor functions should not be returned as part of `KClass.members`, etc,
@@ -215,9 +215,9 @@ I don't know.
 
 ## Additional notes
 
-### Overriding the DE
+### Overriding the Delegate Expression
 
-Something to consider is to allow overriding the DE. 
+Something to consider is to allow overriding the Delegate Expression. 
 If it's allowed, delegate functions should not be marked final unless the declaring class is final. 
 It should also be considered that, if it's allowed, the `override` keyword would not be present with the syntax.
 
