@@ -45,7 +45,7 @@ Add a compiler-intrinsic way to access the delegate used for a given interface:
 | DI   | Delegate identity, delegate instance, the reference to the delegate object |
 | DE   | Delegate expression, following `by` keyword, with the DI as its result |
 | Current/Old behaviour | The current behaviour of IBD, at the time of creating the proposal |
-| New behaviour | The behaviour of IBD as proposed and defined at the bottom of *Implementation* section 
+| New behaviour | The behaviour of IBD as proposed and defined at the bottom of *Approach* section 
 
 ## Motivation
 
@@ -108,7 +108,7 @@ It should be accessible as an extension function of `this` object only, i.e. its
 Its implementation should be intrinsic. Different code should be emitted depending on the type parameter.  
 The compiler should emit an error if the given type isn't being delegated.
 
-## Implementation
+## Approach
 
 Now that you're aware of all the problems with the old behaviour, let's discuss how they can be fixed with the new behaviour.
 There has been a number of discussions about this as seen in the Links section.
@@ -119,8 +119,6 @@ There are 2 approaches:
 * Using a different syntax
 * Indicating that the class wishes for the compiler to use the new (or proposed) behaviour by using a class annotation
 
-I do not recommend the different syntax approach. I think the other approach is a much better one. Here's why the addition of a different syntax is a bad idea:
-
 A number of different syntaxes have been mentioned (`A` is an interface and `b` is a property of type `A`):
 * `class B : A by val b`, `class B : A by volatile b`, `class B : A to b`
 * `class B : A by ::b`, `class B : A by { b }` (this would clash with existing delegations of functional types!)
@@ -130,11 +128,11 @@ A number of different syntaxes have been mentioned (`A` is an interface and `b` 
 There has not yet been a really nice idea for a different syntax (in my opinion).  
 I think the problem is that a different syntax means we add a distinct, new, feature to the language.  
 It will be a confusing feature, too, as it seemingly performs the same task as the existing IBD.  
-It also allows for a given class to use a mix of the two behaviours, something which would definitely be very confusing and just bad design.
+It also allows for a given class to use a mix of the two behaviours, something which would definitely be very confusing and just bad design (in my opinion).  
+A reason in favor of having a different syntax is that it's clearer to the compiler and programmer which behaviour is expected.  
+An example of where this could be a problem is discussed in the *Deprecation* section at the bottom.
 
-So let's talk about the second approach - using a class annotation - which is what this KEEP is proposing
-
-This approach allows the programmer to indicate to the compiler that the class should have its interface delegates implemented using the new behaviour.
+The second approach allows the programmer to indicate to the compiler that the class should have its interface delegates implemented using the new behaviour.
 To indicate this, an annotation should be used. For example, the following declaration can be added to the standard library (name TBD):
 
 ```kotlin
@@ -151,6 +149,7 @@ Reasons why this is a good idea:
 
 Possible arguments against this idea:
 * An annotation is used to change compiler output in a significant way (though annotations that affect compiler output already exist)
+* There are cases where the reuse of the same syntax is a problem (again, see *Deprecation* section)
 
 The *new behaviour* would be defined as such:
 * The DE, following the `by` keyword, is evaluated on every invocation of a delegated method.
@@ -217,3 +216,4 @@ Because of this, I think it would be acceptable to support both behaviours indef
 
 * Should we prefer a separate syntax over an annotation and/or compiler argument?
 * How to deprecate and phase out the old behaviour, if at all? (See Deprecation above)
+* Lexer/Parser implications when a new syntax is to be introduced remain undiscussed
