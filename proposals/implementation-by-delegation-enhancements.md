@@ -221,15 +221,15 @@ because the methods are going to be visible, unlike in Kotlin (if I didn't menti
 If the `$` character makes a method invisible in Java, then we can just have the same name for all accessors as long as it has a `$` in it.  
 If not, we just need an algorithm that prevents name collisions in the method name, for example by replacing `.` with `$` and any `$` with `$$` in the `className` part.
 
+As for the actual method delegation, each interface method should be delegated to the Delegate Identity as returned by a call to the accessor function for that interface.
+
 ### Invocations of delegate accessor
 
 For every invocation of the delegate accessor function, whose declaration is described in detail under *Approach*, the compiler should:
-* Check that the type `T` is being delegated by the type of the receiver, emitting an error if this is not the case.
-* If the enclosing class uses the old behaviour, emit a `getfield` instruction, referring to the field keeping the delegate of the given type.
-* Else, emit a `invokevirtual` instruction, referring to the delegate accessor function of the given type.
+* Check that the interface type `<I>` is being delegated by the receiver type `<R>`, emitting an error if this is not the case.
+* If the enclosing class uses the old behaviour, emit a `getfield` instruction, referring to the field used to store the delegate for type `<I>`.
+* Else, emit a `invokevirtual` instruction, referring to the delegate accessor function for the type `<I>` as detailed above.
 * Check that the emitted bytecode does not violate access restrictions.
-
-As for the actual method delegation, each interface method should be delegated to the Delegate Identity as returned by a call to the accessor function for that interface.
 
 ## Reflection
 
