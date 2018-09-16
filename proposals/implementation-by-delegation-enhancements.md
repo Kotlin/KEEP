@@ -116,22 +116,47 @@ There has been a number of discussions about this as seen in the Links section.
 Obviously, we require backward compatibility with the old behaviour. Any existing sources using it must not have their behaviour changed.
 
 There are 2 approaches:
-* Using a different syntax
-* Indicating that the class wishes for the compiler to use the new (or proposed) behaviour by using a class annotation
+* Different syntax
+* Contextual indication  
+A contextual indication could be an annotation or compiler argument, indicating that the new behaviour is desired.
 
+### First approach: Different syntax
 A number of different syntaxes have been mentioned (`A` is an interface and `b` is a property of type `A`):
 * `class B : A by val b`, `class B : A by volatile b`, `class B : A to b`
 * `class B : A by ::b`, `class B : A by { b }` (this would clash with existing delegations of functional types!)
 * Declaring delegation inside the class body using some keyword: `delegate A to b` or `implement A by b`
 * Declaring an annotation on the class member providing the delegate
 
-There has not yet been a really nice idea for a different syntax (in my opinion).  
-I think the problem is that a different syntax means we add a distinct, new, feature to the language.  
-It will be a confusing feature, too, as it seemingly performs the same task as the existing IBD.  
-It also allows for a given class to use a mix of the two behaviours, something which would definitely be very confusing and just bad design (in my opinion).  
-A reason in favor of having a different syntax is that it's clearer to the compiler and programmer which behaviour is expected.  
+Pros of having a separate syntax:
+* It's clearer to the compiler and programmer which behaviour is expected.  
 An example of where this could be a problem is discussed in the *Deprecation* section at the bottom.
 
+Cons of having a separate syntax:
+* We add a distinct, new, feature to the language
+* It will be confusing because it seemingly performs the same task as the old behaviour/existing IBD
+* Allows for a given class to use a mix of the two behaviours, which would be more confusing and bad design (in my personal opinion)
+
+The `class B : A to b` syntax has been argued by @voddan:
+> #### Syntactical proposal
+> * Deprecate `X() : A by a` and introduce a _new keyword_ for class delegation with improved behaviour
+> * Use `to` as a contextual keyword for class delegation: `X(): A to a`
+> 
+> ##### Pros
+> * Syntactically backward compatible: since no expression was allowed in the position after the type a class is implementing `X(): A >here<`, anything can be a soft keyword without clashing with old code
+> * `to` is short: just 2 characters
+> * Has some meaning in English: "`X` delegates `A` _to_ `a`"
+> * Syntax differs from the property delegation syntax and stops confusing newcomers with a concept of delegation having two totally different use cases
+> 
+> ##### Cons
+> * If implemented would allow two syntax constructs to express the same thing (even if one is deprecated):
+> 
+> ```
+> class X(val a: A): A by a
+> class X(val a: A): A to a
+> ```
+> * Syntax differs from the property delegation syntax and doesn't highlight that those are similar concepts
+
+### Second approach: Contextual indication
 The second approach allows the programmer to indicate to the compiler that the class should have its interface delegates implemented using the new behaviour.
 To indicate this, an annotation should be used. For example, the following declaration can be added to the standard library (name TBD):
 
