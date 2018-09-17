@@ -48,9 +48,10 @@ which is a flexible alternative to implementation inheritance ([see doc](https:/
 
 At the time when that feature was added, it was implemented such that:
 * Delegate Expressions are evaluated once, on construction, no exceptions.
-* On the JVM, the result of the Delegate Expression is kept in an invisible field, it cannot be accessed. 
-* Changing the behaviour of individual methods requires delegation to a constructor parameter property to access the delegated instance.
-* Delegate Expressions cannot refer to `this` instance at all.
+* On the JVM, the Delegate Identity is stored in an invisible field, where it cannot be accessed by the programmer. 
+* Overriding individual delegated methods requires using a constructor parameter property to access the Delegate Identity.
+* Delegate Expressions cannot refer to `this` instance at all. Instead, they can only access constructor parameters on top of outer scope.
+
 These are considerable limitations which are not necessary, with the side effect of making certain things very difficult or obnoxious to do.
 
 There are other constructs that aim to simplify implementation of the Delegation/Decorator pattern:
@@ -97,6 +98,8 @@ I want to stress that this is NOT a problem for existing binaries.
 The delegate instance should NOT be made accessible outside the class scope through whichever solution, as it would break encapsulation,
 and code that uses existing binaries is implicitly outside the class scope. 
 
+If an approach for proposal 1 is chosen that exposes the Delegate Identity (such as approach II), it shouldn't be necessary to add this (proposal 2).
+
 ## Approach
 This proposal aims at preserving source backward compatibility. 
 Any existing sources should keep working and not have their behaviour changed.
@@ -123,7 +126,7 @@ In the examples below, `target` refers to a property of class `A`
 * Old syntax can be deprecated, if that's desired
 
 ##### Cons
-* We add a new language feature, different than the old one
+* We add a new language feature, instead of reusing old syntax
 * Allows for a given class to use a mix of the two behaviours (even if one is deprecated)
 
 #### II. Moving declaration inside class body
@@ -134,9 +137,6 @@ class Proxy(target: List<Int>): List<Int> {
     delegate val listDelegate: List<Int> = target
 }
 ```
-
-In this example, `listDelegate` could also have an explicit getter, allowing the programmer make the expression evaluated on every access as we would expect.  
-This is a lot like `@Delegate` from project lombok, without the more complex selection of members to delegate.  
 
 ##### Pros 
 * **Delegation is declared inside the class body**, a much more sensible place because:
@@ -151,14 +151,26 @@ overriding the delegate expression is simple, intuitive and explicit.
 * Old syntax can be deprecated, if that's desired
 
 ##### Cons
-* We add a new language feature, different than the old one
+* We add a new language feature, instead of reusing old syntax
 * Allows for a given class to use a mix of the two behaviours (even if one is deprecated)
 * Confusing with property delegates? They are still a completely different concept...
 * Repeats a type instead of referring to an identifier
 
-Some options for the policy with regards to the type of a `delegate val`:
+The `delegate` contextual keyword:
+* Does not interfere with the property declaration at all, with the exception that it might introduce a type restriction.
+* In other words, the property can still be `inline`, `abstract`, `private`, mutable, be volatile, use a property delegate, and/or declare a getter/setter. You get the point.
+* Is a lot like [`@Delegate`](https://projectlombok.org/features/Delegate.html) annotation from project lombok,  
+with slightly different semantics and less complexity 
+
+Possible type policies of a `delegate` property include:
 1. the type is restricted to the interface types implemented by the class (mimicking old behaviour's effective policy)
 2. the type is not restricted, and all its public members, except for those declared in `Any`, are delegated
+
+The policy for delegated interface member collisions should probably be as follows:
+* If the colliding member is from the supertype, and it is final, the delegation is illegal
+* Otherwise, it should be overridden.
+* Else (if the member is declared in the same class), that member takes priority
+* And the programmer can use `super` call to prevent the delegate overriding the behavior of a member from the supertype.
 
 #### III. Adding Contextual Indication
 This approach allows the programmer to indicate to the compiler that the class should have its interface delegates implemented using the new behaviour.
