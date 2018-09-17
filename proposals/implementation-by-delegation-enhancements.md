@@ -1,7 +1,7 @@
 # Implementation by delegation enhancements
 * **Type**: Design proposal
 * **Author**: Dico Karssiens
-* **Contributors**: []
+* **Contributors**: Daniil Vodopian
 * **Status**: Submitted
 * **Prototype**: Not implemented, but I would be happy to do so
 
