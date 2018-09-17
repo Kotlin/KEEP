@@ -120,11 +120,11 @@ In the examples bellow `A` is an interface and `b` is a property of type `A`.
 
 #### I. Modifying Existing Syntax
 1. Adding a modificator to indicate new behaviour 
-  - `class B : A by val b`
-  - `class B : A by volatile b`
+    - `class B : A by val b`
+    - `class B : A by volatile b`
 1. Modifying the form of the delegation expression
-  - `class B : A by ::b`
-  - `class B : A by { b }`
+    - `class B : A by ::b`
+    - `class B : A by { b }`
    (this would clash with existing delegations of functional types!)
 
 ##### Pros
@@ -139,10 +139,10 @@ In the examples bellow `A` is an interface and `b` is a property of type `A`.
 
 #### II. Using Different Syntax
 1. Using a different keyword for class delegation
-  - `class B : A to b`
+    - `class B : A to b`
 1. Declaring delegation inside the class body 
-  - `A { ... delegate A to b ... }`
-  - `A { ... implement A by b ... }`
+    - `A { ... delegate A to b ... }`
+    - `A { ... implement A by b ... }`
 
 ##### Pros
 * Syntactically backward compatible
