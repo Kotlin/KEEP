@@ -21,7 +21,7 @@ Prior progress of this proposal is held in [this gist](https://gist.github.com/D
 ## Summary
 
 The current behaviour of Implementation by delegation has a number of limitations.  
-There are also situations where behaviour might be unexpected.
+There are also situations where behaviour might be unexpected.  
 To rectify this, we propose the following:
 
 ### Proposal 1
@@ -53,16 +53,18 @@ Add a compiler-intrinsic way to access the delegate identity used by a given obj
 Kotlin provides Implementation By Delegation as a no-boilerplate way of implementing the Delegation/Decorator pattern,
 which is a flexible alternative to implementation inheritance ([see doc](https://kotlinlang.org/docs/reference/delegation.html)).
 
-Currently, Implementation By Delegation is limited in a number of ways:
+At the time when that feature was added, it was implemented such that:
 * Delegate Expressions are evaluated once, on construction, no exceptions.
 * On the JVM, the result of the Delegate Expression is kept in an invisible field, it cannot be accessed. 
 * Changing the behaviour of individual methods requires delegation to a constructor parameter property to access the delegated instance.
 * Delegate Expressions cannot refer to `this` instance at all.
+These are considerable limitations which are not necessary, with the side effect of making certain things very difficult or obnoxious to do.
 
-Other constructs that aim to simplify the implementation of the Delegation/Decorator pattern,  
-such as `ForwardingObject` and subclasses from guava, do not suffer from these limitations.
-In the case of `ForwardingObject`, it declares a method `protected abstract Object delegate();` which
-gives full control to the programmer. The returned Delegate Identity can be anything, cached or not, and it can refer to `this`.
+There are other constructs that aim to simplify implementation of the Delegation/Decorator pattern:
+* [`ForwardingObject`](https://google.github.io/guava/releases/19.0/api/docs/com/google/common/collect/ForwardingObject.html) and subclasses from guava;  
+it does not suffer from these limitations as it declares a method `protected abstract Object delegate();` which grants full control with respect to if and how it's cached.
+* [`@Delegate`](https://projectlombok.org/features/Delegate.html) annotation from project lombok;  
+which declares the delegation inside of the class scope, on a JVM field, and grants the same control, except that it can't run code upon access.
 
 #### Use cases
 
@@ -81,9 +83,10 @@ With the old behaviour of Implementation By Delegation, the Delegate Identity is
 This invisible field cannot be accessed normally by the programmer, however, there are many cases where the programmer would need the Delegate Identity:
 * When overriding the behaviour of a delegated method, but still delegating to the same object.  
 * When controlling the state of the delegate if it is a stateful object.
-
+* Using the delegate identity in a context where it's just an object with a type.
 
 #### Current Workaround
+
 In order to access the Delegate Identity, with the old behaviour:
 * The Delegate Identity must be passed to the primary constructor as a parameter, as only primary constructor parameters are accessible within the scope of Delegate Expressions.
 * The parameter holding the Delegate Identity must be stored in an explicitly declared property (by declaring the parameter as a property or storing it elsewhere explicitly).
@@ -112,51 +115,30 @@ Any existing sources should keep working and not have their behaviour changed.
 ### Approach for proposal 1
 
 We found 3 approaches:
-* Modifying existing syntax
 * Using different syntax
 * Adding contextual indication  
 
-In the examples bellow `A` is an interface and `b` is a property of type `A`.
+In the examples below `A` is an interface and `b` is a property of type `B`.
 
-#### I. Modifying Existing Syntax
-1. Adding a modificator to indicate new behaviour 
-    - `class B : A by val b`
-    - `class B : A by volatile b`
-1. Modifying the form of the delegation expression
-    - `class B : A by ::b`
-    - `class B : A by { b }`
-   (this would clash with existing delegations of functional types!)
-
-##### Pros
-* Compliments the existing feature
-* May be done without requiring deprecation of the old syntax 
-
-##### Cons
-* We add a distinct, new, feature to the language
-* May require a deprecation strategy for for the old syntax
-* Allows for a given class to use a mix of the two behaviours
-
-
-#### II. Using Different Syntax
-1. Using a different keyword for class delegation
+#### I. Using Different Syntax
+1. Adding a contextual keyword to indicate new behaviour
+    - `class B : A by val b` (may be expected to declare a new property that stores `b`)
+    - `class B : A by volatile b` (ambiguous meaning of `volatile`)
+1. Using a different keyword
     - `class B : A to b`
-1. Declaring delegation inside the class body 
-    - `A { ... delegate A to b ... }`
-    - `A { ... implement A by b ... }`
-
+    
 ##### Pros
 * Syntactically backward compatible
-* May be made as concise as the current syntax
-* It's clearer to the compiler and programmer which behaviour is expected.  
-* Syntax differs from the property delegation syntax and stops confusing newcomers with a concept of delegation having two totally different use cases
+* It's clear to the compiler and programmer which behaviour is expected
+* In the case of [2], syntax differs from the property delegation syntax and doesn't highlight that those are similar concepts
+* Old syntax can be deprecated, if that's desired
 
 ##### Cons
-* We add a distinct, new, feature to the language
+* We add a new language feature, different than the old one
 * May require a deprecation strategy for for the old syntax
 * Allows for a given class to use a mix of the two behaviours (even if one is deprecated)
-* Syntax differs from the property delegation syntax and doesn't highlight that those are similar concepts
 
-#### III. Adding Contextual Indication
+#### II. Adding Contextual Indication
 This approach allows the programmer to indicate to the compiler that the class should have its interface delegates implemented using the new behaviour.
 To indicate this, an annotation should be used. For example, the following declaration can be added to the standard library (name TBD):
 
@@ -169,17 +151,25 @@ public annotation class NewInterfaceDelegates
 ##### Pros
 * Doesn't add a new syntax/feature
 * Doesn't allow both behaviours to be present on a given class
+* Doesn't break backward compatibility because the programmer explicitly changes behaviour by declaring the annotation
 
 ##### Cons
-* Backward compatibility is not preserved for users with custom `@NewInterfaceDelegates` annotation 
-* An annotation is used to semantics of the language in a significant way
+* An annotation is used to change behaviour and semantics of a language feature significantly
+* Annotation needs to be present on all classes using the new behaviour unless a compiler argument is used, which could break backward compatibility
 
 The *new behaviour* would be defined as such:
-* The Delegate Expression, following the `by` keyword, is evaluated on every invocation of a delegated method.
+* The Delegate Expression, wherever it is declared, is evaluated on every invocation of a delegated method.
 * The Delegate Expression has `this` in its scope
 * No invisible fields are generated
 * The Delegate Expression cannot refer to constructor parameters, use class members instead (programmer should store the delegate if it should be stored)
 * There are cases where the reuse of the same syntax is a problem (see *Deprecation* section)
+
+#### Dropped Ideas
+* Modifying the form of the delegation expression
+    - `class B : A by ::b`
+    - `class B : A by { b }`
+    - these would clash with existing delegations of functional types
+    - compiler could behave differently when it infers type of `KProperty`, but this is implicit and confusing.
 
 ### Approach for proposal 2
 
