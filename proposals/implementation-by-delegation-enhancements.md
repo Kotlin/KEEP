@@ -40,9 +40,9 @@ Add a compiler-intrinsic way to access the delegate identity used by a given obj
 | Current/Old behaviour | The current behaviour of Implementation By Delegation, at the time of creating the proposal |
 | New behaviour | The behaviour of Implementation By Delegation as proposed and defined at the bottom of *Approach* section 
 
-## Motivation
+## Proposal 1
 
-### Motivation for proposal 1
+### Motivation
 Kotlin provides Implementation By Delegation as a no-boilerplate way of implementing the Delegation/Decorator pattern,
 which is a flexible alternative to implementation inheritance ([see doc](https://kotlinlang.org/docs/reference/delegation.html)).
 
@@ -70,41 +70,10 @@ Any case where the programmer would want to:
 * Use Implementation By Delegation in inline classes  
 This doesn't work in the old behaviour because it implicitly adds an (invisible) field, making the class exceed the one property constraint.
 
-### Motivation for proposal 2
-With the old behaviour of Implementation By Delegation, the Delegate Identity is stored in an invisible field.
-This invisible field cannot be accessed normally by the programmer, however, there are many cases where the programmer would need the Delegate Identity:
-* When overriding the behaviour of a delegated method, but still delegating to the same object.  
-* When controlling the state of the delegate if it is a stateful object.
-* Using the delegate identity in a context where it's just an object with a type.
-
-#### Current Workaround
-In order to access the Delegate Identity, with the old behaviour:
-* The Delegate Identity must be passed to the primary constructor as a parameter, as only primary constructor parameters are accessible within the scope of Delegate Expressions.
-* The parameter holding the Delegate Identity must be stored in an explicitly declared property (by declaring the parameter as a property or storing it elsewhere explicitly).
-
-This means that:
-* The class itself does not have any control over how the delegate is instantiated, unless the constructor parameter uses a default value.
-* **It requires a primary constructor parameter!!**.
-* 2 distinct fields are used to store the delegate.
-* If the property storing a delegate reference is mutable, mutating it does not change the Delegate Identity, but the programmer might think it does.
-* The delegate can never have a reference to `this`, the delegating object, on instantiation.
-* Code that wants to instantiate the class needs to pass the delegate itself to the constructor.
-This is frequently the intended, but not always. Workarounds include: Secondary constructor, companion object invoke() overload.
-
-There should be a language construct to get the delegate identity for a given delegated interface.  
-It is accessible to the generated delegating interface methods, it should also be accessible in the source code as a solution to these problems.
-
-I want to stress that this is NOT a problem for existing binaries.  
-The delegate instance should NOT be made accessible outside the class scope through whichever solution, as it would break encapsulation,
-and code that uses existing binaries is implicitly outside the class scope. 
-
-If an approach for proposal 1 is chosen that exposes the Delegate Identity (such as approach II), it shouldn't be necessary to add this (proposal 2).
-
-## Approach
+### Approaches
 This proposal aims at preserving source backward compatibility. 
 Any existing sources should keep working and not have their behaviour changed.
  
-### Approach for proposal 1
 We found 3 approaches:
 * Using different syntax
 * Moving declaration of delegate inside the class body
@@ -122,12 +91,13 @@ In the examples below, `target` refers to a property of class `A`
 ##### Pros
 * Syntactically backward compatible
 * It's clear to the compiler and programmer which behaviour is expected
-* In the case of [2], syntax differs from the property delegation syntax and doesn't highlight that those are similar concepts
 * Old syntax can be deprecated, if that's desired
+* In the case of [2], syntax doesn't borrow `by` keyword, so it doesn't *incorrectly* highlight that those are similar concepts
 
 ##### Cons
 * We add a new language feature, instead of reusing old syntax
-* Allows for a given class to use a mix of the two behaviours (even if one is deprecated)
+* Allows for a given class to use a mix of the two behaviours
+* No intuitive or explicit (using `override` keyword) way to override the Delegate Expression
 
 #### II. Moving declaration inside class body
 by adding a contextual keyword to indicate that a property is a `delegate` of its interface type:
@@ -145,14 +115,14 @@ class Proxy(target: List<Int>): List<Int> {
 * Very simple and intuitive
 * Same semantics as regular kotlin properties
 * Inheritance of the delegate property also has the same semantics as regular kotlin properties, 
-overriding the delegate expression is simple, intuitive and explicit.
+overriding the delegate expression is the same as overriding the property, so we borrow the existing language semantics, making it more intuitive.
 * Proposal 2 (the delegate accessor function) becomes obsolete (except for the old behaviour), as accessing the delegate is intuitive with a property.
 * Doesn't litter the class declaration line as much
 * Old syntax can be deprecated, if that's desired
 
 ##### Cons
 * We add a new language feature, instead of reusing old syntax
-* Allows for a given class to use a mix of the two behaviours (even if one is deprecated)
+* Allows for a given class to use a mix of the two behaviours
 * Confusing with property delegates? They are still a completely different concept...
 * Repeats a type instead of referring to an identifier
 
@@ -190,22 +160,56 @@ public annotation class NewInterfaceDelegates
 ##### Cons
 * An annotation is used to change behaviour and semantics of a language feature significantly
 * Annotation needs to be present on all classes using the new behaviour unless a compiler argument is used, which could break backward compatibility
+* No intuitive or explicit (using `override` keyword) way to override the Delegate Expression
+* No clear path has been found to deprecate and possibly phase out the old behaviour, without potentially breaking source backward compatibility.  
+A compiler argument could change the behaviour for a class without the programmer knowing, so that idea was dropped.
 
 The *new behaviour* would be defined as such:
 * The Delegate Expression, wherever it is declared, is evaluated on every invocation of a delegated method.
 * The Delegate Expression has `this` in its scope
 * No invisible fields are generated
 * The Delegate Expression cannot refer to constructor parameters, use class members instead (programmer should store the delegate if it should be stored)
-* There are cases where the reuse of the same syntax is a problem (see *Deprecation* section)
 
 #### Dropped Ideas
 * Modifying the form of the delegation expression
     - `class B : A by ::b`
     - `class B : A by { b }`
     - these would clash with existing delegations of functional types
-    - compiler could behave differently when it infers type of `KProperty`, but this is implicit and confusing.
+    - compiler could behave differently when it infers type of `KProperty`, but this is implicit and confusing
 
-### Approach for proposal 2
+## Proposal 2
+
+### Motivation
+With the old behaviour of Implementation By Delegation, the Delegate Identity is stored in an invisible field.
+This invisible field cannot be accessed normally by the programmer, however, there are many cases where the programmer would need the Delegate Identity:
+* When overriding the behaviour of a delegated method, but still delegating to the same object.  
+* When controlling the state of the delegate if it is a stateful object.
+* Using the delegate identity in a context where it's just an object with a type.
+
+#### Current Workaround
+In order to access the Delegate Identity, with the old behaviour:
+* The Delegate Identity must be passed to the primary constructor as a parameter, as only primary constructor parameters are accessible within the scope of Delegate Expressions.
+* The parameter holding the Delegate Identity must be stored in an explicitly declared property (by declaring the parameter as a property or storing it elsewhere explicitly).
+
+This means that:
+* The class itself does not have any control over how the delegate is instantiated, unless the constructor parameter uses a default value.
+* **It requires a primary constructor parameter!!**.
+* 2 distinct fields are used to store the delegate.
+* If the property storing a delegate reference is mutable, mutating it does not change the Delegate Identity, but the programmer might think it does.
+* The delegate can never have a reference to `this`, the delegating object, on instantiation.
+* Code that wants to instantiate the class needs to pass the delegate itself to the constructor.
+This is frequently the intended, but not always. Workarounds include: Secondary constructor, companion object invoke() overload.
+
+There should be a language construct to get the delegate identity for a given delegated interface.  
+It is accessible to the generated delegating interface methods, it should also be accessible in the source code as a solution to these problems.
+
+I want to stress that this is NOT a problem for existing binaries.  
+The delegate instance should NOT be made accessible outside the class scope through whichever solution, as it would break encapsulation,
+and code that uses existing binaries is implicitly outside the class scope. 
+
+If an approach for proposal 1 is chosen that exposes the Delegate Identity (such as approach II), it shouldn't be necessary to add this (proposal 2).
+
+### Approach
 A way to grant access to delegate identities would be to expose the invisible fields, making them accessible as properties. However, this solution is not ideal:
 * How to name the delegate properties? Their names might clash with existing properties.
 * Do we want invisible fields to be a part of the language? The invisible fields emitted by the old behaviour aren't officially documented (correct me if I'm wrong).
@@ -266,34 +270,15 @@ I don't know.
 
 ## Additional notes
 
-### Overriding the Delegate Expression
-This is not a problem at all with `delegate val` approach.  
-Something to consider is to allow overriding the Delegate Expression. 
-If it's allowed, delegate accessor functions should not be marked final unless the declaring class is final. 
-It should also be considered that, if it's allowed, the `override` keyword would not be present with the syntax.
-
 ### Class Construction
 This note may be trivial, but there may be times before construction of an instance was completed, 
 during which invocations of the interface methods produce undefined behaviour. This is already the case currently as the
 invisible fields cannot be initialized before the superclass constructor has been called. When the restrictions are removed,
 the programmer will gain control of the exact order in which things are initialized with respect to delegated interfaces.
 
-### Deprecation
-If the ability to deprecate the old behaviour and phase it out over time, by emitting compiler warnings, is desirable,
-the approach of using a contextual indication is very awkward in that to not use the deprecated feature, you must add an annotation.  
-To tackle this, a compiler argument can be used to enable the new behaviour for each class in the code base.
-To allow the programmer to still use the old behaviour with this compiler argument, if it is decided that they should be able to, 
-another annotation or an annotation parameter can be introduced.
-
-The problem comes when JB want to switch from having a compiler argument to enable the new behaviour, 
-to having a compiler argument to still support the old behaviour. In that case, we would want to emit a warning or error
-when the old behaviour is still used, but the old and new behaviour use the same syntax, so the problem is how to know which
-behaviour was used.  
-The programmer might not have explicitly enabled the new behaviour when we want to do this, and we can't emit errors, 
-so some code might compile with completely different behaviour without the programmer knowing.  
-Because of this, I think it would be acceptable to support both behaviours indefinitely or until a solution to this problem is found.
-
 ## Open Discussion
-* Should we prefer a separate syntax over an annotation and/or compiler argument?
-* How to deprecate and phase out the old behaviour, if at all? (See Deprecation above)
-* Lexer/Parser implications when a new syntax is to be introduced remain undiscussed
+* Which of the approaches should be used for proposal 1? 
+We think the approach II is probably the best, as its pros far outweigh the cons and proposal 2 becomes obsolete.
+* Should the old behaviour be deprecated and possibly even phased out?
+Since its semantics are inferior to the new behaviour, it might be a good idea to try phasing it out to avoid having 2 seemingly identical features.
+* Lexer/Parser implications if a new syntax is to be introduced
