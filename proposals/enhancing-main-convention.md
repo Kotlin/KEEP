@@ -95,15 +95,16 @@ object A {
 ```
 
 - Semantically, the behavior of such entry point may be slightly different on different platforms. 
- Briefly, it should work like the content of the entry point is passed as a lambda to [`runBlocking`](https://kotlin.github.io/kotlinx.coroutines/kotlinx-coroutines-core/kotlinx.coroutines.experimental/run-blocking.html) 
- from kotlinx.coroutines. Mainly, the idea is the following:
-    - If no suspension point happens, the execution is the same as for regular non-suspend main function
+ Briefly, it should work like the body of the entry point is passed as a lambda to [`runBlocking`](https://kotlin.github.io/kotlinx.coroutines/kotlinx-coroutines-core/kotlinx.coroutines.experimental/run-blocking.html) 
+ from kotlinx.coroutines. 
+   Mainly, the idea is the following:
+    - If no suspension happens, the execution should be the same as for regular non-suspend main function
     - Otherwise, the beginning of the function body should be executed in the regular main thread until the first 
     suspension point. Then the program should be run until the started coroutine is not completed
-    - If the coroutine was completed normally then the whole program should be terminated normally, as wall
-    - If the coroutine was completed with an exception the whole program
+    - If the coroutine was completed normally then the whole program should be terminated normally, as well
+    - If the coroutine was completed with an exception then the whole program
     should be terminated just like the exception was thrown synchronously
-    and wasn't caught in no stack frame including the entry point
+    and wasn't caught anywhere including the entry point
     
     
 ### Implementation details on JVM
@@ -121,7 +122,7 @@ fun main(args: Array<String>) {
 }
 ```
 
-`runSuspend` is defined like:
+and `runSuspend` is defined like:
 ```kotlin
 @SinceKotlin("1.3")
 internal fun runSuspend(block: suspend () -> Unit) {
