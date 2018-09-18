@@ -23,10 +23,7 @@ To rectify this, we propose the following:
 
 ### Proposal 1
 Add a way to change the behaviour of interface delegates for a class.
-The new behaviour will:
-* Never create an invisible / inaccessible / implicit field;
-* Move the responsibility to store the delegate reference to the programmer, should they mean to store it
-* Have `this` in the scope of the expression
+Whether by reusing the old syntax, or adding a new language feature, the aim is to have the same or almost the same semantics as kotlin properties (see approach 2)
 
 ### Proposal 2
 Add a compiler-intrinsic way to access the delegate identity used by a given object for a given interface which does not violate encapsulation constraints.
@@ -38,7 +35,7 @@ Add a compiler-intrinsic way to access the delegate identity used by a given obj
 | Delegate Identity | delegate instance, the reference to the delegate object |
 | Delegate Expression | Delegate expression, following `by` keyword, with the Delegate Identity as its result |
 | Current/Old behaviour | The current behaviour of Implementation By Delegation, at the time of creating the proposal |
-| New behaviour | The behaviour of Implementation By Delegation as proposed and defined at the bottom of *Approach* section 
+| New behaviour | The behaviour of Implementation By Delegation as proposed and defined at the bottom of *Approach* section |
 
 ## Proposal 1
 
@@ -71,17 +68,24 @@ Any case where the programmer would want to:
 This doesn't work in the old behaviour because it implicitly adds an (invisible) field, making the class exceed the one property constraint.
 
 ### Approaches
-This proposal aims at preserving source backward compatibility. 
-Any existing sources should keep working and not have their behaviour changed.
+The *new behaviour* should be defined like this (all in contrast to the current behaviour):
+* The Delegate Expression, wherever it is declared, is evaluated on every invocation of a delegated method.
+* The Delegate Expression has `this` in its scope
+* No invisible fields are generated
+* The Delegate Expression cannot refer to constructor parameters, use class members instead (programmer should store the delegate if it should be stored)  
+    - An exception to this would be when a property is used and an expression is assigned to it, instead of its getter. 
+    The delegate expression is in the getter, which (probably) uses the default implementation of returning the stored value.
+
+And this behaviour should be implemented when using one of these approaches for delegation.
  
-We found 3 approaches:
-* Using different syntax
-* Moving declaration of delegate inside the class body
-* Adding contextual indication  
+We are considering 3 approaches:
+1. Using different syntax
+1. Moving declaration of delegate inside the class body
+1. Adding contextual indication  
 
-In the examples below, `target` refers to a property of class `A`
+In the examples below, `target` refers to a property of class `Proxy`
 
-#### I. Using Different Syntax
+#### 1. Using Different Syntax
 1. Adding a contextual keyword to indicate new behaviour
     - `class Proxy : List<Int> by val target` (may be expected to declare a new property that stores `target`)
     - `class Proxy : List<Int> by volatile target` (ambiguous meaning of `volatile`)
@@ -99,7 +103,7 @@ In the examples below, `target` refers to a property of class `A`
 * Allows for a given class to use a mix of the two behaviours
 * No intuitive or explicit (using `override` keyword) way to override the Delegate Expression
 
-#### II. Moving declaration inside class body
+#### 2. Moving declaration inside class body
 by adding a contextual keyword to indicate that a property is a `delegate` of its interface type:
 
 ```kotlin
@@ -134,7 +138,7 @@ with slightly different semantics and less complexity
 
 Possible type policies of a `delegate` property include:
 1. the type is restricted to the interface types implemented by the class (mimicking old behaviour's effective policy)
-2. the type is not restricted, and all its public members, except for those declared in `Any`, are delegated
+1. the type is not restricted, and all its public members, except for those declared in `Any`, are delegated
 
 The policy for delegated interface member collisions should probably be as follows:
 * If the colliding member is from the supertype, and it is final, the delegation is illegal
@@ -142,7 +146,7 @@ The policy for delegated interface member collisions should probably be as follo
 * Else (if the member is declared in the same class), that member takes priority
 * And the programmer can use `super` call to prevent the delegate overriding the behavior of a member from the supertype.
 
-#### III. Adding Contextual Indication
+#### 3. Adding Contextual Indication
 This approach allows the programmer to indicate to the compiler that the class should have its interface delegates implemented using the new behaviour.
 To indicate this, an annotation should be used. For example, the following declaration can be added to the standard library (name TBD):
 
@@ -163,12 +167,6 @@ public annotation class NewInterfaceDelegates
 * No intuitive or explicit (using `override` keyword) way to override the Delegate Expression
 * No clear path has been found to deprecate and possibly phase out the old behaviour, without potentially breaking source backward compatibility.  
 A compiler argument could change the behaviour for a class without the programmer knowing, so that idea was dropped.
-
-The *new behaviour* would be defined as such:
-* The Delegate Expression, wherever it is declared, is evaluated on every invocation of a delegated method.
-* The Delegate Expression has `this` in its scope
-* No invisible fields are generated
-* The Delegate Expression cannot refer to constructor parameters, use class members instead (programmer should store the delegate if it should be stored)
 
 #### Dropped Ideas
 * Modifying the form of the delegation expression
@@ -207,7 +205,7 @@ I want to stress that this is NOT a problem for existing binaries.
 The delegate instance should NOT be made accessible outside the class scope through whichever solution, as it would break encapsulation,
 and code that uses existing binaries is implicitly outside the class scope. 
 
-If an approach for proposal 1 is chosen that exposes the Delegate Identity (such as approach II), it shouldn't be necessary to add this (proposal 2).
+If an approach for proposal 1 is chosen that exposes the Delegate Identity (such as approach 2), it shouldn't be necessary to add this (proposal 2).
 
 ### Approach
 A way to grant access to delegate identities would be to expose the invisible fields, making them accessible as properties. However, this solution is not ideal:
@@ -238,7 +236,7 @@ The compiler should emit an error if the given type isn't being delegated.
 ### Class members for classes with new behaviour
 Each delegated interface type will be accompanied by an accessor function, called to access the Delegate Identity.
 
-If the approach for proposal 1 is approach II (move declaration inside class body), this is the property getter.
+If the approach for proposal 1 is approach 2 (move declaration inside class body), this is the property getter.
 
 Else, the compiler should emit bytecode for new a function to fill this task.  
 It will contain the bytecode for the Delegate Expression.
@@ -278,7 +276,7 @@ the programmer will gain control of the exact order in which things are initiali
 
 ## Open Discussion
 * Which of the approaches should be used for proposal 1? 
-We think the approach II is probably the best, as its pros far outweigh the cons and proposal 2 becomes obsolete.
+We think the approach 2 is probably the best, as its pros far outweigh the cons and proposal 2 becomes obsolete.
 * Should the old behaviour be deprecated and possibly even phased out?
 Since its semantics are inferior to the new behaviour, it might be a good idea to try phasing it out to avoid having 2 seemingly identical features.
 * Lexer/Parser implications if a new syntax is to be introduced
