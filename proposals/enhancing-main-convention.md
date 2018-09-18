@@ -5,7 +5,7 @@
 * **Contributors**: Andrey Breslav, Roman Elizarov
 * **Status**: Submitted
 * **Prototype**: Implemented in 1.3-RC
-* **Discussion**: [KEEP-156](https://github.com/Kotlin/KEEP/issues/156)
+* **Discussion**: [KEEP-158](https://github.com/Kotlin/KEEP/issues/158)
 
 ## Summary
 
