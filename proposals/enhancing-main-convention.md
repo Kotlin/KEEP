@@ -155,7 +155,7 @@ private class RunSuspend : Continuation<Unit> {
 }
 ```
 
-### Implementation on JS
+### Implementation details on JS
 %% TODO
 
 ## Entry points in singleton instances
