@@ -3,8 +3,7 @@
 * **Type**: Standard Library API proposal
 * **Author**: Roman Elizarov
 * **Contributors**: Andrey Breslav, Ilya Gorbunov
-* **Status**: Public review
-* **Prototype**: Implemented in 1.3-M1
+* **Status**: Implemented in 1.3.0
 * **Related issues**: [KT-18608](https://youtrack.jetbrains.com/issue/KT-18608) 
 * **Discussion**: [KEEP-127](https://github.com/Kotlin/KEEP/issues/127)
 
@@ -22,13 +21,13 @@ We'd like to introduce a type in the Kotlin standard library that is effectively
 and failed outcome of execution of Kotlin function &mdash; `Success T | Failure Throwable`, 
 where `Success T` represents a successful result of some type `T` 
 and `Failure Throwable` represents a failure with any `Throwable` exception. 
-For the purpose of efficiency, we would model it as a generic `inline class SuccessOrFailure<T>` 
+For the purpose of efficiency, we would model it as a generic `inline class Result<T>` 
 in the standard library. 
 
-**NOTE: This `SuccessOrFailure` class SHOULD NOT be used directly as a return type of Kotlin functions with a few 
-exceptions that are explained in more detail in the section on 
-[style and exceptions](#error-handling-style-and-exceptions). 
-See [use cases](#use-cases) below on how `SuccessOrFailure` is designed be used.** 
+**NOTE: This `Result` class cannot be used directly as a return type of Kotlin functions.
+See [limitations](#limitations) section for details.
+See also [style and exceptions](#error-handling-style-and-exceptions) and 
+[use cases](#use-cases) below on how `Result` is designed to be used.** 
 
 ## Use cases
 
@@ -42,7 +41,7 @@ We'd like to be able to have only a single function with "success or failure" un
 
 ```kotlin
 interface Continuation<in T> {
-    fun resumeWith(result: SuccessOrFailure<T>)
+    fun resumeWith(result: Result<T>)
 }
 ```  
 
@@ -60,15 +59,8 @@ val deferreds: List<Deferred<T>> = List(n) {
 }
 val outcomes1: List<T> = deferreds.map { it.await() } // BAD -- crash on the first (by index) failure
 val outcomes2: List<T> = deferreds.awaitAll() // BAD -- crash on the earliest (by time) failure 
-val outcomes3: List<SuccessOrFailure<T>> = deferreds.map { it.awaitCatching() } // !!! <= THIS IS THE ONE WE WANT  
+val outcomes3: List<Result<T>> = deferreds.map { runCatching { it.await() } } // !!! <= THIS IS THE ONE WE WANT  
 ```     
-
-Where `awaitCatching` could be defined like this:
-
-```kotlin
-suspend fun <T> Deferred<T>.awaitCatching(): SuccessOrFailure<T> = 
-    runCatching { await() }
-```
 
 ### Functional bulk manipulation of failures
 
@@ -91,7 +83,7 @@ However, for `readFiles` we'd explicitly like to be able to continue after the f
 Moreover, we'd like to be able to have a functional implementation of `readFiles` like this:
 
 ```kotlin
-fun readFilesCatching(files: List<File>): List<SuccessOrFailure<Data>> =
+fun readFilesCatching(files: List<File>): List<Result<Data>> =
     files.map { 
         runCatching { 
             readFileData(it)
@@ -100,13 +92,13 @@ fun readFilesCatching(files: List<File>): List<SuccessOrFailure<Data>> =
 ```
 
 > This function is named `readFileCatching` to make it explicit to the caller that all encountered failures
-were _caught_ and encapsulated in `SuccessOrFailure` and it is caller responsibility to process these failures.
+were _caught_ and encapsulated in `Result` and it is caller responsibility to process these failures.
 
 Now, consider making some transformation of `readFilesCatching` results that we'd like to express functionally, 
 while preserving accumulated failures:
 
 ```kotlin                                                     
-readFilesCatching(files).map { result: SuccessOrFailure<Data> -> // type explicitly written here for clarity
+readFilesCatching(files).map { result: Result<Data> -> // type explicitly written here for clarity
     result.map { it.doSomething() } // Operates on Success case, while preserving Failure
 }
 ```
@@ -115,7 +107,7 @@ If `doSomething`, in turn, can potentially fail and we are interested in keeping
 file, then we can write it using `mapCatching` instead of `map`:
 
 ```kotlin
-readFilesCatching(files).map { result: SuccessOrFailure<Data> -> 
+readFilesCatching(files).map { result: Result<Data> -> 
     result.mapCatching { it.doSomething() }
 }
 ```
@@ -272,35 +264,35 @@ if (success)
 The following snippet gives summary of all the public APIs:
 
 ```kotlin
-class SuccessOrFailure<out T> /* internal constructor */ {
+class Result<out T> /* internal constructor */ {
     val isSuccess: Boolean
     val isFailure: Boolean
-    fun getOrThrow(): T
     fun getOrNull(): T?
     fun exceptionOrNull(): Throwable?
     
     companion object {
-        fun <T> success(value: T): SuccessOrFailure<T>
-        fun <T> failure(exception: Throwable): SuccessOrFailure<T>
+        fun <T> success(value: T): Result<T>
+        fun <T> failure(exception: Throwable): Result<T>
     }
 }
 
-inline fun <R> runCatching(block: () -> R): SuccessOrFailure<R>
-inline fun <T, R> T.runCatching(block: T.() -> R): SuccessOrFailure<R>
+inline fun <R> runCatching(block: () -> R): Result<R>
+inline fun <T, R> T.runCatching(block: T.() -> R): Result<R>
 
-fun <R, T : R> SuccessOrFailure<T>.getOrDefault(defaultValue: R): R
+fun <T> Result<T>.getOrThrow(): T
+fun <R, T : R> Result<T>.getOrDefault(defaultValue: R): R
 
-inline fun <R, T : R> SuccessOrFailure<T>.getOrElse(onFailure: (exception: Throwable) -> R): R
-inline fun <R, T> SuccessOrFailure<T>.fold(onSuccess: (value: T) -> R, onFailure: (exception: Throwable) -> R): R
+inline fun <R, T : R> Result<T>.getOrElse(onFailure: (exception: Throwable) -> R): R
+inline fun <R, T> Result<T>.fold(onSuccess: (value: T) -> R, onFailure: (exception: Throwable) -> R): R
 
-inline fun <R, T> SuccessOrFailure<T>.map(transform: (value: T) -> R): SuccessOrFailure<R>
-inline fun <R, T: R> SuccessOrFailure<T>.recover(transform: (exception: Throwable) -> R): SuccessOrFailure<R>
+inline fun <R, T> Result<T>.map(transform: (value: T) -> R): Result<R>
+inline fun <R, T: R> Result<T>.recover(transform: (exception: Throwable) -> R): Result<R>
 
-inline fun <R, T> SuccessOrFailure<T>.mapCatching(transform: (value: T) -> R): SuccessOrFailure<R>
-inline fun <R, T: R> SuccessOrFailure<T>.recoverCatching(transform: (exception: Throwable) -> R): SuccessOrFailure<R>
+inline fun <R, T> Result<T>.mapCatching(transform: (value: T) -> R): Result<R>
+inline fun <R, T: R> Result<T>.recoverCatching(transform: (exception: Throwable) -> R): Result<R>
 
-inline fun <T> SuccessOrFailure<T>.onSuccess(action: (value: T) -> Unit): SuccessOrFailure<T>
-inline fun <T> SuccessOrFailure<T>.onFailure(action: (exception: Throwable) -> Unit): SuccessOrFailure<T>
+inline fun <T> Result<T>.onSuccess(action: (value: T) -> Unit): Result<T>
+inline fun <T> Result<T>.onFailure(action: (exception: Throwable) -> Unit): Result<T>
 ```
 
 All of the functions have self-explanatory consistent names that follow established tradition in Kotlin Standard library
@@ -308,15 +300,19 @@ and establish the following additional conventions:
 
 * Functions that can throw previously suppressed (captured) exception are named 
   with explicit `OrThrow` suffix like `getOrThrow`.
-* Functions that capture thrown exception and encapsulate it into `SuccessOrFailure` instance are named 
+* Functions that capture thrown exception and encapsulate it into `Result` instance are named 
   with explicit `Catching` suffix like `runCatching` and `mapCatching`.
 * A traditional `map` transformation function that works on successful cases 
   is augmented with a `recover` function that similarly transforms exceptional cases. 
   A failure inside either `map` or `recover` transform aborts operation like a traditional function, 
-  but `mapCatching` and `recoverCatching` encapsulate failure in transform into the resulting `SuccessOrFailure`.
+  but `mapCatching` and `recoverCatching` encapsulate failure in transform into the resulting `Result`.
 * Functions to query the case are naturally named `isSuccess` and `isFailure`. 
 * Functions that act on the success or failure cases are named `onSuccess` and `onFailure` and return their receiver
-  unchanged for further chaining according to tradition established by `onEach` extension from the Standard Library.   
+  unchanged for further chaining according to tradition established by `onEach` extension from the Standard Library.  
+  
+String representation of the `Result` value (`toString`) is either `Success(v)` or `Failure(x)` where `v` and `x` are 
+the string representations of the corresponding value and exception. `equals` and `hashCode` are implemented 
+naturally for the result type, comparing the corresponding values or exceptions.
 
 ## Dependencies
 
@@ -324,42 +320,93 @@ This library depends on
 [`inline class`](https://github.com/zarechenskiy/KEEP/blob/master/proposals/inline-classes.md) 
 language feature for its efficient implementation. 
 
+## Limitations
+
+`Result<T>` cannot be used as a direct result type of Kotlin functions, properties of 
+`Result` type are also restricted:
+
+```kotlin
+fun findUserByName(name: String): Result<User> // ERROR: 'kotlin.Result' cannot be used as a return type 
+fun foo(): Result<List<Int>> // ERROR 
+fun foo(): Result<Int>? // ERROR
+var foo: Result<Int> // ERROR
+```
+
+However, functions that use `Result` type in generic containers or receive result as a parameter type 
+are allowed:
+
+```kotlin
+fun findIntResults(): List<Result<Int>> // Ok
+fun receiveIntResult(result: Result<Int>) // Ok
+```
+
+Functions that declare generic result types may, in fact, return values of `Result` type when the
+`Result` type is substituted in place of their generic type parameters:
+
+```kotlin
+private val first: Result<Int> = findIntResults().first() // Ok, even though result is Result<Int>
+```
+
+Private and local properties of `Result`  type are allowed as long as they don't have custom getters:
+
+```kotlin
+private var foo: Result<Int> // Ok
+```
+
+The use of Kotlin null-safety operators `.?`, `?:` and `!!` is not allowed on both nullable and non-null `Result` types:
+
+```kotlin
+val r: Result<String?> = runCatching { readLine() }
+println(r!!) // ERROR
+```
+ 
+The rationale behind these limitations is that future versions of Kotlin may expand and/or change semantics
+of functions that return `Result` type and null-safety operators may change their semantics when used
+on values of `Result` type. In order to avoid breaking existing code in the future releases of Kotin and leave door open 
+for those changes, the corresponding uses produce an error now. Exceptions to this rule are made for carefully-reviewed
+declarations in the standard library that are part of the `Result` type API itself. 
+
+See [Future advancements](#future-advancements) for details.
+
 ## Binary contract and implementation details
 
-`SuccessOrFailure` is implemented by an `inline class` and is optimized for a successful case. Success is stored as
-a value of `SuccessOrFailure` directly, without additional boxing, while failure exception is wrapped into an internal 
-`SuccessOrFailure.Failure` class. `SuccessOrFailure` class has the following internal published APIs that 
+`Result<T>` is implemented by an `inline class` and is optimized for a successful case. Success is stored as
+a value of type `T` directly, without additional boxing, while failure exception is wrapped into an internal 
+`Result.Failure` class that is not exposed through binary interface and may be changed later. 
+
+`Result` class has the following internal published APIs that 
 represent its binary interface on JVM in addition to its public [API](#api-details):
 
 ```kotlin
-inline class SuccessOrFailure<out T> @PublishedApi internal constructor(
+inline class Result<out T> @PublishedApi internal constructor(
     @PublishedApi internal val value: Any? // internal value -- either T or Failure
-) : Serializable {
-    @PublishedApi internal class Failure(
-        @JvmField val exception: Throwable
-    ) : Serializable
-} 
+) : Serializable
+
+@PublishedApi internal fun createFailure(exception: Throwable): Any
+@PublishedApi internal fun Result<*>.throwOnFailure()
 ```  
 
 ## Error-handling style and exceptions
 
-The `SuccessOrFailure` class is not designed to be used directly as the result type of general functions and we'd like 
-to explicitly discourage using it like this:
-
-```kotlin
-fun findUserByName(name: String): SuccessOrFailure<User> // !!! DON'T DO THIS !!! 
-```
+The `Result` class is not designed to be used directly as the result type of general functions and
+such use produces an error (see [Limitations](#limitations)). 
 
 In general, if some API requires its callers to handle failures locally (immediately around or next to the invocation), 
 then it should use nullable types, when these failures do not carry additional business meaning, 
 or domain-specific data types to represent its successful results and failures with any additional business-related
 data that is needed to process these failures.  
 
-In the above example, if the only kind of failure we might be interested in handling is the failure to find 
+Consider this hypothetical API design:
+
+```kotlin
+fun findUserByName(name: String): Result<User> // ERROR 
+```
+
+If the only kind of failure we might be interested in handling is the failure to find 
 the user with the given name, then the following signature shall be used:
 
 ```kotlin
-fun findUserByName(name: String): User? // Much better
+fun findUserByName(name: String): User? // Ok
 ```   
    
 If there is a business need to distinguish different failures and process these different failures in distinct ways
@@ -376,10 +423,6 @@ sealed class FindUserResult {
 fun findUserByName(name: String): FindUserResult
 ```
 
-> This is one of the reasons that `SuccessOrFailure` was not named `Result`. That is, to prevent its abuse
-  as a "universal result class" and to encourage declaration of more domain-specific and more explanatory 
-  result classes.
- 
 _Exceptions_ in Kotlin are designed for the failures that usually do not require local handling at each call site.
 This includes several broad areas &mdash; logic and programming errors like index bounds problems and various checks
 for internal invariants and preconditions, environment problems, out of memory conditions, etc. 
@@ -412,18 +455,7 @@ fun findUserByName(name: String): User
 If invoker of this function wants to perform multiple operations and process their failures afterwards
 (without aborting on the first failure), it can always use `runCatching { findUserByName(name) }` 
 to make it explicit that a failure is being caught and
-encapsulated into `SuccessOrFailure` instance. If the need to do so happen often, then it is fine to define
-a function named `findUserByNameCatching` that returns `SuccessOrFailure<User>`
-in _addition_ to `findUserByName`, following the convention of `Catching` suffix in the name of the function
-that encapsulates failures.
-
-> That is the only case when having a function that directly returns `SuccessOrFailure<T>` is appropriate. To recap:
-it shall have `Catching` suffix in its name and it shall be written _in addition to_ the function without 
-`Catching` suffix. 
-
-> A function that returns `List<SuccessOrFailure<T>>` should also have `Catching` suffix in its name, but it is 
-not required to have a kin without this suffix, since this 
-[bulk error-handling use-case](#functional-bulk-manipulation-of-failures) cannot be represented otherwise.  
+encapsulated into `Result` instance. 
 
 ## Similar API review
 
@@ -434,7 +466,7 @@ for non-standard exception handling in the Standard Library -- exceptions always
 Other programming languages include a similar facility to represent a union of success and failure in their standard 
 library with the following names:
 
-* [`Try[T]`](https://www.scala-lang.org/api/current/scala/util/Try.html) in Scala is similar to the proposed `SuccessOrFailure<T>`.
+* [`Try[T]`](https://www.scala-lang.org/api/current/scala/util/Try.html) in Scala is similar to the proposed `Result<T>`.
 * [`Result<T, E>`](https://doc.rust-lang.org/std/result/) in Rust (also parametrized by the type of error).
 * [`Exceptional e t`](https://wiki.haskell.org/Exception) in Haskell (also parametrized by the type of error).  
 * [`expected<E, T>`](http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2014/n4015.pdf) in C++ (proposed, also parametrized by the type of error).
@@ -448,11 +480,11 @@ Existing Kotlin libraries that provide similar functionality:
 style with monads and their transformations, which heavily relies on functions returning `Try`, `Result`, etc.
 This programming style can be implemented and used in Kotlin via libraries as the above examples demonstrate.
 However, core Kotlin language and its Standard Library are designed around a _direct_ programming 
-[style](#error-handling-style-and-exceptions) in mind and so returning `SuccessOrFailure` 
-as function result is discouraged. The general approach in Kotlin is that alternative programming styles
+[style](#error-handling-style-and-exceptions) in mind. 
+The general approach in Kotlin is that alternative programming styles
 should be provided as 3rd party libraries and DSLs. 
 
-For a more detailed comparison of Scala's `Try` and its Kotlin analogue in Arrow library with this `SuccessOrFailure` class
+For a more detailed comparison of Scala's `Try` and its Kotlin analogue in Arrow library with this `Result` class
 see [Appendix](#appendix-why-flatmap-is-missing). 
 
 ## Placement
@@ -460,35 +492,22 @@ see [Appendix](#appendix-why-flatmap-is-missing).
 This API shall be placed into the Kotlin Standard Library. Since the proposed API is fairly small and does not
 clearly belong to any larger group of APIs, it should be placed directly into `kotlin` package.  
 
-## Unresolved questions
+## Open issues
 
-This section lists unresolved (open) or contentious questions about this design.
+This section lists open issues about this design.
 
-### Name of the class
-
-The proposed name is `SuccessOrFailure` was chosen because it clearly express that this class is a union of
-successful and failed outcomes. Some alternative names like `Result` and `Try` were discussed and the 
-following objections were raised:
-
-* A shorter name does not clearly indicate what this wrapper class actually represents. 
-  Neither `Result` nor `Try` have the corresponding connotations. 
-  `Exception` or `Expected` were not at the table and the time of naming discussion.
-* A shorter name would encourage abuse of this class as a return type of a function in cases where simply throwing
-  an exception and letting a caller decide works better
-  (see [Error-handling style and exceptions](#error-handling-style-and-exceptions)).
-  
 ### Parameterization by the base error type
 
-Parameterizing this class by the type of exception like `SuccessOrFailure<T, E>` is possible, but raises the
+Parameterizing this class by the type of exception like `Result<T, E>` is possible, but raises the
 following problems:
     
 * It increases verboseness without providing improvement for any of the outlined [Use cases](#use-cases).
 * Kotlin currently lacks facility to specify default values for generic type parameters.
 * It leads to abuse in cases where a user-provided API-specific sealed class would work better.   
 
-It is possible to define a separate class like `SuccessOrFailureEx<T, E>` that is parametrized by 
+It is possible to define a separate class like `ResultEx<T, E>` that is parametrized by 
 both successful type `T` and failed type `E` (that must extend `Throwable`)
-and then define `SuccessOrFailure<T>` and a `typealias` to `SuccessOrFailureEx<T, Throwable>`.
+and then define `Result<T>` and a `typealias` to `ResultEx<T, Throwable>`.
 However, this creates its own problems:
 
 * Typealiases are quite verbosely rendered by IDE in signatures and there is no clear way on making them better.   
@@ -501,25 +520,15 @@ However, this creates its own problems:
 All in all, it does not seem that the costs outweigh whatever benefits it might bring.
 
 > Defining an even more general `Either<L, R>` type as a discriminated union between between two arbitrary types 
-`L` and `R` and then using `typealias SuccessOrFailure<T> = Either<Throwable, T>` raises similar problems with 
+`L` and `R` and then using `typealias Result<T> = Either<Throwable, T>` raises similar problems with 
 an additional burden of designing functions for `Either` that would not needlessly pollute the namespace
-of functions applicable to `SuccessOrFailure`. We don't have sufficient motivating use-cases for having
-`Either` in the Kotlin Standard Library beyond theoretical desire to base `SuccessOrFailure` upon it. 
+of functions applicable to `Result`. We don't have sufficient motivating use-cases for having
+`Either` in the Kotlin Standard Library beyond theoretical desire to base `Result` upon it. 
 
-### Name for the Catching suffix
+### Result must be used
 
-We need to clearly mark functions that return `SuccessOrFailure` and this KEEP suggests `Catching` suffix
-like in `runCatching`. Alternatives:
-
-* `OrCatch` suffix as in `runOrCatch` (inspired by `OrNull` suffix).
-* `OrFailure` suffix as in `runOrFailure` (same inspiration).
-
-### Success or failure must be used
-
-Using `SuccessOrFailure` as the return type poses a problem that it might accidentally get lost, thus loosing
-unhandled exception. The problem is somewhat alleviated by naming 
-all such functions with `Catching` suffix, but finding potential lost exception in the code that uses `SuccessOrFailure` 
-is still non trivial challenge.  
+Using `Result` as the return type of `Catching` functions poses a problem that it might accidentally get lost, 
+thus losing unhandled exception. 
 
 Consider this code from [Functional bulk manipulation of failures](#functional-bulk-manipulation-of-failures):
 
@@ -531,15 +540,15 @@ readFilesCatching(files).map { result ->
 
 If `doSomething` here throws an exception, then all exceptions that were returned in a list by `readFilesCatching` are lost.
 
-Some IDE inspections can be designed to detect these kinds of problems. It is an open question how exactly they should
+Some IDE inspections can be designed to detect these kinds of problems. 
+It is an open question how exactly they should
 work and and whether it is really a big problem after all.
 
 ### Additional APIs for collections
 
-API for `SuccessOrFailure` class is designed to be quite bare-bones, because we'd like to discourage its
-wide-spread use in the return types of the functions. In general, functions should not use `SuccessOrFailure` as their
-result. However, according to [Functional bulk manipulation of failures](#functional-bulk-manipulation-of-failures) use-case,
-one might occasionally encounter `List<SuccessOrFailure<T>>` or another collection of `SuccessOrFailure` instances. 
+API for `Result` class is designed to be quite bare-bones.
+However, according to [Functional bulk manipulation of failures](#functional-bulk-manipulation-of-failures) use-case,
+one might occasionally encounter `List<Result<T>>` or another collection of `Result` instances. 
 It is open question whether we should provide additional extensions in the Standard Library to represent common
 operations on such collections and what those operations might be. 
 
@@ -552,12 +561,12 @@ and all of them are purely tentative.
 
 Kotlin `inline` classes cannot be currently used with `sealed class` construct. 
 If that is supported in the future, then we could change implementation of 
-`SuccessOrFailure` without affecting its public APIs and binary interfaces in the following way:
+`Result` without affecting its public APIs and binary interfaces in the following way:
 
 ```kotlin
-sealed inline class SuccessOrFailure<T> {
-    inline class Success<T>(val value: T) : SuccessOrFailure<T>()
-    class Failure<T>(val exception: Throwable) : SuccessOrFailure<T>()
+sealed inline class Result<T> {
+    inline class Success<T>(val value: T) : Result<T>()
+    class Failure<T>(val exception: Throwable) : Result<T>()
 }
 ``` 
 
@@ -575,7 +584,7 @@ with smart casts.
 ### Parameterizing by the base error type
 
 If `Kotlin` adds some form of support for type parameter default values and partial type inference,
-then we can consider extending `SuccessOrFailure` class with an additional type parameter `E: Throwable` that represents
+then we can consider extending `Result` class with an additional type parameter `E: Throwable` that represents
 the base class for caught exceptions. For example, in input/output code there may be a desire to catch only 
 `IOException` and its subclasses, while aborting on any other exception using something like
 `runCatching<_, IOException> { code }` assuming that return type can be still inferred
@@ -584,50 +593,50 @@ the base class for caught exceptions. For example, in input/output code there ma
 ### Integration into the language
 
 Kotlin nullable types have extensive support in Kotlin via operators `?.`, `?:`, `!!`, and `T?` type constructor
-syntax. We can envision better integration of `SuccessOrFailure` into the Kotlin language in the future.
+syntax. We can envision better integration of `Result` into the Kotlin language in the future.
 However, unlike nullable types, that are often used to represent _non signalling_ failure that does not cary
-additional information, `SuccessOrFailure` instances also carry additional information and, in general, shall be
-always handled in some way. Making `SuccessOrFailure` an integral part of the language also requires a 
+additional information, `Result` instances also carry additional information and, in general, shall be
+always handled in some way. Making `Result` an integral part of the language also requires a 
 considerable effort on improving Kotlin type system to ensure proper handling of encapsulated exceptions.
 
-One potential direction is to design a special syntax for `SuccessOrFailure<T>`. For example, it might be
-represented as `T throws Throwable` (note, all of the following is a pure speculation), 
-with natural support for a more specific list of exceptions that can 
-be encapsulated inside the given `SuccessOrFailure<T>` instance, 
-so one can write `T throws IOException` type, for example.
-
-Using this hypothetical syntax we can declare the function from 
-[Error-handling style](#error-handling-style-and-exceptions) section in the following way:
+One potential direction is to allow  return value of `Result` type, 
+so that with paremetrization by the base error type one can write:
 
 ```kotlin
-fun findUserByName(name: String): User throws NotFoundException, MalformedNameException
+fun findUserByName(name: String): Result<User, IOException>
 ``` 
 
-However, unlike `throws` annotation in Java, `User throws NotFoundException, MalformedNameException` is going to 
-be considered a _return type_ of this function that explicitly lists exceptions that must be handled locally.
-There will be no silent propagation of these _listed_ exception types up to the caller. The caller will be 
-required to handle them just like with nullable types. When one writes:
+This declaration would be conceptually equivalent to a Java function that is declared with `User` 
+result type and `throws IOException` annotation.
+However, unlike `throws` annotation in Java, `Result<User, IOException>` is going to 
+be considered a _return type_ of this function that explicitly declares exception that must be handled locally.
+There will be no silent propagation of that exception type up to the caller. The caller will be 
+required to handle it explicitly. When one writes:
 
 ```kotlin
 val result = findUserByName(name)
 ```  
 
-Then inferred type of `result` will be `User throws NotFoundException, MalformedNameException` and it will be 
-stored in `SuccessOrFailure<User>` behind the scenes. Direct access to the `User` methods and extensions on 
-`User throws` type will be forbidden, but all the `?.`, `?:`, and `!!` operators can be extended to work with those `throws`
-types in a similar way as it happens with nullable types today. Some additional operators might be required, too.
+Then inferred type of `result` will be `Result<User, IOException>`. 
+Direct access to the `User` methods and extensions would not be possible,
+but all the `?.`, `?:`, and `!!` operators can be extended to work appropriately with `Result` type to 
+make the corresponding code fluent 
+in a similar way as it happens with nullable types today. Some additional operators might be required, too.
 
 Unlike checked exception in Java, these are going to be full-blown types, so they play nicely with collections
-(`List<Data throws IOException>` is going to be a valid type represented as `List<SuccessOrFailure<Data>>` behind 
-the scenes) and all the higher-order functions in Kotlin will work properly with those types without all the problems
+(`List<Result<User, IOException>>` is going to be a valid type) 
+and all the higher-order functions in Kotlin will work properly with those types without the problems
 that made it impossible to properly integrate checked exceptions with Java generics. 
 
 Moreover, it can be very efficiently implemented on JVM in the return type position by actually throwing the corresponding
-exceptions inside and catching them outside, on the caller side, so no boxing will be required even for primitive
-results. All in all, it could provide a safe replacement for checked exceptions on JVM and open a path to a better
+exception inside and catching it outside, on the caller side, so no boxing will be required even for primitive
+results. "Retrowing" exceptions with `!!` can be transparent in JVM bytecode in the same way as it
+happens in Java programs using exceptions.
+
+All in all, it could provide a safe replacement for checked exceptions on JVM and open a path to a better
 integration with JVM APIs that rely on checked exceptions. However, details of this interoperability will have to 
 be worked out as there are lots of problems down this path. We cannot just lift all Java functions with `throws` into
-Kotlin functions with such `throws` type not only because of backwards compatibility, but also due to the way checked 
+Kotlin functions with the corresponding `Result` type not only because of backwards compatibility, but also due to the way checked 
 exceptions are (ab)used in the JVM ecosystem, so are more fine-grained control for interoperability will have to 
 be designed.   
 
@@ -636,29 +645,26 @@ It is all beyond the scope of this KEEP.
 ## Appendix: Why flatMap is missing
 
 You can skip this appendix is you are not familiar with Scala's or Arrow's `Try` monad that provides very 
-similar functionality to this `SuccessOrFailure` class. 
+similar functionality to this `Result` class. 
 
 If you are familiar with `Try` monad, then you might ask why there is no `flatMap` 
-function on the `SuccessOrFailure` class. This function could have been defined with the following signature:
+function on the `Result` class. This function could have been defined with the following signature:
 
 ```kotlin
-inline fun <R, T> SuccessOrFailure<T>.flatMap(transform: (T) -> SuccessOrFailure<R>): SuccessOrFailure<R>
+inline fun <R, T> Result<T>.flatMap(transform: (T) -> Result<R>): Result<R>
 ```  
 
 The usual reason to have `flatMap` is to avoid "nesting" of monadic types when combining multiple
 functions that return them, like in the following example:
 
 ```kotlin
-d.awaitCatching().map { it.doSomethingCatching() } // : SuccessOrFailure<SuccessOrFailure<Data>> -- oops!
+runCatching { d.await() }.map { it.doSomethingCatching() } // : Result<Result<Data>> -- oops!
 ``` 
  
 Functional code that uses `Try` monad gets quickly polluted
 with `flatMap` invocations. To make such code manageable, a functional programming language is usually extended 
 with monad comprehension syntax to hide those `flatMap` invocations.  
-
-However, we discourage writing functions that return `SuccessOrFailure` as 
-a [matter of style](#error-handling-style-and-exceptions). If those functions are written, they should
-only be present in addition to regular (throwing) ones. 
+However, writing functions that return `Result` is not allowed in Kotlin. 
 
 Take a look at the following example code that
 uses monad comprehension over `Try` monad 
@@ -702,9 +708,8 @@ the `fromInputStream` invocation. Original code would fail with exception if thi
 in `openConnection` and `getInputStream` is encapsulated into the result of the function via `Try`. Rewritten code 
 does not make distinctions between different kinds of failures anymore.
 
-All in all, the differences can be summarized as follows. `SuccessOrFailure` is a blunt tool designed to catch
-any failure in the function invocation for the processing later on. That is why, as a matter of 
-[style](#error-handling-style-and-exceptions), we don't recommend writing functions that return `SuccessOrFailure`.
+All in all, the differences can be summarized as follows. `Result` is a blunt tool designed to catch
+any failure in the function invocation for the processing later on.
 On the other hand, libraries like [Arrow](https://arrow-kt.io) provide utility classes like `Try` and the 
 corresponding extension functions that enable more fine-grained control. When a function is declared with `Try<T>`
 as its result type, it means that this function can make a fine-grained decision on which failures are encapsulated
