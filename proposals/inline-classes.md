@@ -480,8 +480,8 @@ As this functions are accessible only from Kotlin, the problem about non-public 
 
 *Simple functions*
 
-Simple functions with inline class type parameters are mangled as <name>-<hash>, where <name> is the original function name, 
-and <hash> is a mangling suffix for the signature. Mangling suffix can contain upper case and lower case Latin letters, digits, _ and -. 
+Simple functions with inline class type parameters are mangled as `<name>-<hash>`, where `<name>` is the original function name, 
+and `<hash>` is a mangling suffix for the signature. Mangling suffix can contain upper case and lower case Latin letters, digits, `_` and `-`. 
 This scheme applies to property getters and setters as well.
 
 *Constructors* 
