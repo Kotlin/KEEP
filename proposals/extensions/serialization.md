@@ -3,7 +3,8 @@
 * **Type**: Design proposal
 * **Authors**: Leonid Startsev, Roman Elizarov, Vsevolod Tolstopyatov
 * **Status**: Draft, Submitted
-* **Prototype**: Partially implemented, shipped separately
+* **Prototype**: Partially implemented, bundled as a separate plugin in Kotlin 1.3
+* **Discussion**: [KEEP-149](https://github.com/Kotlin/KEEP/issues/149)
 
 ## Feedback
 
