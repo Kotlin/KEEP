@@ -223,7 +223,7 @@ fun test(f: Foo) {
 
 Since boxing doesn't have side effects as is, it's possible to reuse various optimizations that are done for primitive types.
 
-### Type mapping on JVM
+### Type mapping on JVM (without mangling)
 
 Depending on the underlying type of inline class and its declaration site, inline class type can be mapped to the underlying type or to the 
 boxed type.  
@@ -249,7 +249,7 @@ Also, if inline class type is used in generic position, then its boxed type will
 inline class Name(val s: String)
 
 fun generic(names: List<Name>) {} // generic signature will have `List<Name>` as for parameters type
-fun simple(name: Name) {}
+fun simple(): Name = Name("Kt")
 
 // Java
 class Test {
@@ -402,3 +402,206 @@ actual inline class Foo(val prop: String)
 For actual inline classes we don't require to write `actual` modifier on primary constructor and value parameter.
 
 Currently, expect inline class requires actual inline and vice versa. 
+
+## Overloads, private constructors and initialization blocks
+
+Let's consider several most important issues that appear in the current implementation.
+
+*Overloads*
+
+Signatures of overloads with inline classes that are erased to the same type on the same position will be conflicting:
+```kotlin
+inline class UInt(val u: Int)
+
+// Conflicting overloads
+fun compute(i: Int) { ... }
+fun compute(u: UInt) { ... }
+
+inline class Login(val s: String)
+inline class UserName(val s: String)
+
+// Conflicting overloads
+fun foo(x: Login) {}
+fun foo(x: UserName) {}
+```
+
+One could use `JvmName` to disambiguate functions, but this looks verbose and confusing. Inline class types are normal types 
+and we'd like to think about inline classes as about usual classes with several restrictions, 
+it allows thinking less about implementation details.
+    
+*Non-public constructors and initialization blocks*
+
+Current restrictions for inline classes require having a public primary constructor without `init` blocks in order 
+to have clear initialization semantics. This is needed because of values that can come from Java:
+```
+// Kotlin
+inline class Foo(val x: Int) 
+
+fun kotlinFun(f: Foo) {}
+
+// Java:
+
+static void test() {
+    kotlinFun(42); // constructor or initialization block wasn't called
+}
+```
+    
+As a result, it's impossible to encapsulate underlying value or create an inline class that will represent some constrained values:
+```kotlin
+inline class Negative(val x: Int) {
+    init {
+        require(x < 0) { ... }
+    }
+}
+```
+
+Note that these problems can go away if we'll use inline classes (which is a Kotlin-only feature) only in Kotlin:
+there are no problems with initialization, so we can add non-public constructors with `init` blocks, for overloads 
+we can use different names on JVM.
+
+### Mangling
+
+To mitigate described problems, we propose to do mangling for declarations that have top-level inline class types in their signatures.
+Example:
+```kotlin
+inline class UInt(val x: Int)
+
+fun compute(x: UInt) {}
+fun compute(x: Int) {}
+```
+
+We'll compile function `compute(UInt)` to `compile-<hash>(Int)`, where `<hash>` is a mangling suffix for the signature.
+Now it will not possible to call this function from Java because `-` is an illegal symbol there, but from Kotlin point of view 
+it's a usual function with the name `compute`.
+
+As this functions are accessible only from Kotlin, the problem about non-public primary constructors and `init` blocks becomes easier. 
+
+#### Mangling rules
+
+*Simple functions*
+
+Simple functions with inline class type parameters are mangled as <name>-<hash>, where <name> is the original function name, 
+and <hash> is a mangling suffix for the signature. Mangling suffix can contain upper case and lower case Latin letters, digits, _ and -. 
+This scheme applies to property getters and setters as well.
+
+*Constructors* 
+
+Constructors with inline class type parameters are marked as private, and have a public synthetic accessor with additional marker parameter. 
+Note that unlike mangled simple functions, hidden constructors can clash, but we consider that a less important issue than type safety.
+
+*Functions inside inline class*
+
+Each function inside inline class is mangled. By default, if such function doesn't have a parameter of inline class type, then it will
+get suffix `-impl`, otherwise, it will be mangled as a simple function with inline class type parameters.
+
+*Overridden functions inside inline class*
+
+Overridden functions inside inline class are mangled same as usual ones, but compiler we'll also generate bridge to override function 
+from interface.
+
+### Inline classes ABI (JVM)
+
+Let's consider the following inline class:
+```kotlin
+interface Base {
+    fun base(s: String): Int
+}
+
+inline class IC(val u: Int) : Base {
+    fun simple(y: String) {}
+    fun icInParameter(ic: IC, y: String) {}
+    
+    val simpleProperty get() = 42
+    val propertyIC get() = IC(42)
+    var mutablePropertyIC: IC
+            get() = IC(42)
+            set(value) {}
+    
+    override fun base(s: String): Int = 0
+    override fun toString(): String = "IC = $u"
+}
+```
+
+On JVM this inline class will have next declarations:
+```
+public final class IC implements Base {
+    // Underlying field
+    private final I u
+
+    // Members
+
+    public base(Ljava/lang/String;)I
+    public toString()Ljava/lang/String;
+
+    // Auto generated methods from Any
+    public equals(Ljava/lang/Object;)Z
+    public hashCode()I
+
+    // Synthetic constructor to hide it from Java
+    private synthetic <init>(I)V
+
+    // function to create and initialize value for `IC` class
+    public static constructor-impl(I)I
+
+    // fun simple(y: String) {}
+    public final static simple-impl(ILjava/lang/String;)V
+
+    // fun icInParameter(ic: IC, y: String) {}
+    public final static icInParameter-8euKKQA(IILjava/lang/String;)V
+
+    // val simpleProperty: Int
+    public final static getSimpleProperty-impl(I)I
+
+    // val propertyIC: IC
+    public final static getPropertyIC-impl(I)I
+
+    // getter of var mutablePropertyIC: IC
+    public final static getMutablePropertyIC-impl(I)I
+
+    // setter of var mutablePropertyIC: IC
+    public final static setMutablePropertyIC-kVEzI7o(II)V
+
+    // override fun base(s: String): Int 
+    public static base-impl(ILjava/lang/String;)I
+
+    // override fun toString(): String
+    public static toString-impl(I)Ljava/lang/String;
+
+    // Methods to box/unbox value of inline class type
+    public final static synthetic box-impl(I)Lorg/jetbrains/kotlin/resolve/IC;
+    public final synthetic unbox-impl()I
+
+    // Static versions of auto-generated methods from Any
+    public static hashCode-impl(I)I
+    public static equals-impl(ILjava/lang/Object;)Z
+
+    // Reserved method for specialized equals to avoid boxing
+    public final static equals-impl0(II)Z 
+}
+```
+
+Note that member-constructor (`<init>`) is synthetic, this is needed because with the addition of `init` blocks it will not evaluate them,
+they will be evaluated in `constructor-impl`. Therefore we should hide it to avoid creating non-initialized values from Java. 
+To make it more clear, consider the following situation:
+```kotlin
+inline class WithInit(val u: Int) {
+    init { ... }
+}
+
+fun foo(): List<WithInit> {
+    // call `constructor-impl` and evaluate `init` block
+    val u = WithInit(0)
+     
+    // call `box-impl` and constructor (`init`), DO NOT evaluate `init` block again 
+    return listOf(u)  
+}
+```
+
+Note that declarations that have inline class types in parameters not on top-level will not be mangled:
+```
+inline class IC(val u: Int)
+
+fun foo(ls: List<IC>) {}
+```
+
+Function `foo` will have name `foo` in the bytecode.
