@@ -73,7 +73,11 @@ Presence of `ACC_SYNTHETIC` is needed for several reasons:
 - Debugger may use this as an indicator to skip the relevant frame
 
 ### Implementation details on JS
-%% TODO
+In Kotlin/JS the invocation of the `main` function is controlled by the compiler itself.
+Normally it is just another JavaScript statement `main([]);` at the end of the module definition.
+
+In case of a main function with no parameters no arguments are passed, i.e. there is a `main();`
+statement at the end of the module definition in the generated JavaScript file.
 
 ## Suspend main convention
 
@@ -157,7 +161,31 @@ private class RunSuspend : Continuation<Unit> {
 ```
 
 ### Implementation details on JS
-%% TODO
+Similar to the previous case, Kotlin/JS generates a direct invocation to the
+main function in the generated JavaScript file.
+
+In case of `suspend fun main(args: Array<String>)` if looks like this:
+
+```js
+main([], kotlin.coroutines.js.internal.EmptyContinuation);
+```
+
+where `EmptyContinuation` is defined as:
+
+```kotlin
+@PublishedApi
+internal val EmptyContinuation = Continuation<Any?>(EmptyCoroutineContext) { result ->
+    result.getOrThrow()
+}
+```
+
+Basically it launches the `suspend main` function with an empty context, and rethrows
+any exceptions that have occured during it's execution.
+
+In case of a suspend `main` with no parameters, only the continuation is passed:
+```js
+main(kotlin.coroutines.js.internal.EmptyContinuation);
+```
 
 ## Entry points in singleton instances
 Both entry points convention enhancements are only applied to top-level functions, while on JVM one can declare an entry
