@@ -362,7 +362,7 @@ println(r!!) // ERROR
  
 The rationale behind these limitations is that future versions of Kotlin may expand and/or change semantics
 of functions that return `Result` type and null-safety operators may change their semantics when used
-on values of `Result` type. In order to avoid breaking existing code in the future releases of Kotin and leave door open 
+on values of `Result` type. In order to avoid breaking existing code in the future releases of Kotlin and leave door open 
 for those changes, the corresponding uses produce an error now. Exceptions to this rule are made for carefully-reviewed
 declarations in the standard library that are part of the `Result` type API itself. 
 
