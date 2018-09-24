@@ -474,7 +474,7 @@ We'll compile function `compute(UInt)` to `compile-<hash>(Int)`, where `<hash>` 
 Now it will not possible to call this function from Java because `-` is an illegal symbol there, but from Kotlin point of view 
 it's a usual function with the name `compute`.
 
-As this functions are accessible only from Kotlin, the problem about non-public primary constructors and `init` blocks becomes easier. 
+As these functions are accessible only from Kotlin, the problem about non-public primary constructors and `init` blocks becomes easier. 
 
 #### Mangling rules
 
