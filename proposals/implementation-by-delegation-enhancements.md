@@ -30,6 +30,7 @@ The old syntax may be deprecated depending on the chosen approach.
 | Delegate Identity | delegate instance, the reference to the delegate object |
 | Delegate Expression | *Delegate Expression*, following `by` keyword, with the *Delegate Identity* as its result |
 | Current/Old behaviour | The current behaviour of Implementation By Delegation, at the time of creating the proposal |
+| Current/Old syntax | refers to `by <expression>` syntax of the Old behaviour |
 | New behaviour | The behaviour of Implementation By Delegation as proposed and defined at the bottom of *Approach* section |
 | Delegate Accessor | Getter function that can be called to access the *Delegate Identity* of a particular interface specific to that function |
 
@@ -38,7 +39,7 @@ See *Summary*.
 
 Each approach aims to satisfy these requirements:
 1. Introduce a method to change the behaviour of delegated interfaces to the *New Behaviour*;
-The method should be distinguishable from plain `by` syntax under all circumstances for source backward compatibility.  
+Its syntax should be distinguishable from the old syntax under all circumstances for source backward compatibility.  
 Among others, this allows for the old behaviour and syntax to be deprecated in source, if that's desirable.
 1. Introduce a method to access the *Delegate Identity* from source. Small bonus if it works for the old behaviour too.
 
@@ -247,7 +248,8 @@ I don't know.
 
 ### Global Delegate Accessor Function
 These are details of a particular way to fill requirement 2 of an approach.  
-If an approach doesn't explicitly refer to this section, this is not used.
+If an approach doesn't explicitly refer to this section, this is not used.  
+This option does not work for Java source code.
 
 A way to grant access to delegate identities would be to expose the invisible fields, making them accessible as properties. However, this solution is not ideal:
 * How to name the delegate properties? Their names might clash with existing properties.
@@ -274,16 +276,12 @@ The compiler should emit an error if the given type isn't being delegated.
 
 #### JVM Codegen
 The compiler should emit bytecode for new a function to fill the task of the delegate accessor function for that interface.
-It will contain the bytecode for the *Delegate Expression*.
-A template for its signature could be as follows: `protected final fun delegate$className(): T`  
-For example: `protected final fun delegate$java$util$List(): java.util.List`
-It is `protected` to allow access by subclasses. It is `final` to hint to the JVM that it can be inlined (optimization).
+It will contain the bytecode for the *Delegate Expression*. Its name will always be `delegate$accessor`.
+A template for its signature could be as follows: `protected final fun delegate$accessor(): T`  
+It is `protected` to allow access by subclasses. It is `final` to allow the JVM to inline it.
 
-In JVM bytecode, there can be method overloads for descriptors that only differentiate themselves by return type.  
-However, there might be a problem if the kotlin delegating class is subclassed by Java, where name collisions would be a problem
-because the methods are going to be visible, unlike in Kotlin (if I didn't mention that, they should be invisible).  
-If the `$` character makes a method invisible in Java, then we can just have the same name for all accessors as long as it has a `$` in it.  
-If not, we just need an algorithm that prevents name collisions in the method name, for example by replacing `.` with `$` and any `$` with `$$` in the `className` part.
+Name collisions are not a problem, because in JVM bytecode, there can be method overloads for descriptors that only differentiate themselves by return type.  
+The method should be synthetic to avoid issues in Java source code when subclassing a kotlin delegating class.
 
 For every invocation of the global delegate accessor function, whose declaration is described in detail under *Approach*, the compiler should:
 * Check that the interface type `<I>` is being delegated by the receiver type `<R>`, emitting an error if this is not the case.
