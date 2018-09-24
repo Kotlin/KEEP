@@ -171,10 +171,12 @@ Possible type policies of a `delegate` property include:
 1. the type is restricted to the interface types implemented by the class (mimicking old behaviour's effective policy)
 1. the type is restricted such that there is always 1 common interface implemented by the type and the declaring class
 1. the type is not restricted, and all its public members, except for those declared in `Any`, are delegated
+1. the syntax can declare one (or optionally multiple) delegated interface type immediately following `delegate `,  
+   Then the property type is only restricted to implement all those types, like [2], but more explicit.
 
 Requirement 2 is filled automatically by the addition of a property.  
 It would be very confusing for this approach to live alongside the old syntax. It should be deprecated.  
-The *Delegate Expression* in this approach is defined as the contents of the property's getter.
+The *Delegate Expression* in this approach is defined as the contents of the property's getter.  
 
 #### Pros 
 * **Delegation is declared inside the class body**, a much more sensible place because:
@@ -190,7 +192,6 @@ overriding the *Delegate Expression* is the same as overriding the property, so 
 * We add a new language feature, with a syntax completely different to the old syntax
 * Allows for a given class to use a mix of the two behaviours
 * Confusing with property delegates? They are still a completely different concept...
-* Repeats a type instead of referring to an identifier
 
 The policy for delegated interface member collisions should probably be as follows:
 * If the colliding member is from the supertype, and it is final, the delegation is illegal
