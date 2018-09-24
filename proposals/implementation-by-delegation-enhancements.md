@@ -19,14 +19,16 @@ Prior progress of this proposal is held in [this gist](https://gist.github.com/D
 ## Summary
 The current behaviour of Implementation by delegation has a number of limitations.  
 There are also situations where behaviour might be unexpected.  
+The aim of this proposal is to provide an alternative to the existing syntax, which offers better semantics.  
 We detail the current problems and some approaches for tackling them along with their respective pros and cons.  
+The old syntax may be deprecated depending on the chosen approach.
 
 ## Glossary
 | Term | Meaning |
 | ---- | ------- |
 | Implementation By Delegation | kotlin feature, subject of this KEEP |
-| *Delegate Identity* | delegate instance, the reference to the delegate object |
-| *Delegate Expression* | *Delegate Expression*, following `by` keyword, with the *Delegate Identity* as its result |
+| Delegate Identity | delegate instance, the reference to the delegate object |
+| Delegate Expression | *Delegate Expression*, following `by` keyword, with the *Delegate Identity* as its result |
 | Current/Old behaviour | The current behaviour of Implementation By Delegation, at the time of creating the proposal |
 | New behaviour | The behaviour of Implementation By Delegation as proposed and defined at the bottom of *Approach* section |
 | Delegate Accessor | Getter function that can be called to access the *Delegate Identity* of a particular interface specific to that function |
@@ -124,16 +126,18 @@ The alternatives are grouped as follows for simplification of *Pros* and *Cons* 
 1. Full on different syntax
     - TODO
     
-Requirement 2 is filled by using the Global Accessor Function detailed in the appendix.
-    
+Requirement 2 is filled by using the *Global Delegate Accessor Function* detailed in the appendix.  
+When this proposal is used, it can live alongside the old syntax peacefully without too much confusion.  
+Just an extra keyword that makes the old feature offer different semantics, which is easy to explain.
+
 #### Pros
+* Similar to old syntax
 * It's clear to the compiler and programmer which behaviour is expected
-* Old syntax can be deprecated, if that's desired
 * In the case of [2]:
     - Syntax doesn't borrow `by` keyword, so it doesn't *incorrectly* highlight that those are similar concepts
+* Declaration is at the top of the class
 
 #### Cons
-* We add a new language feature, instead of reusing old syntax
 * Allows for a given class to use a mix of the two behaviours
 * No intuitive or explicit (using `override` keyword) way to override the *Delegate Expression*
 * In the case of [3]:
@@ -160,22 +164,22 @@ Possible type policies of a `delegate` property include:
 1. the type is restricted such that there is always 1 common interface implemented by the type and the declaring class
 1. the type is not restricted, and all its public members, except for those declared in `Any`, are delegated
 
-Requirement 2 is filled automatically by the addition of a property.
+Requirement 2 is filled automatically by the addition of a property.  
+It would be very confusing for this approach to live alongside the old syntax. It should be deprecated.  
+The *Delegate Expression* in this approach is defined as the contents of the property's getter.
 
 #### Pros 
 * **Delegation is declared inside the class body**, a much more sensible place because:
     - Delegation is an implementation detail
     - It's where you always have `this` in the scope
-* Very simple and intuitive
-* Same semantics as regular kotlin properties
+* Does not make use of *Global Delegate Accessor Function* to fill requirement 2
+* Same semantics as regular kotlin properties, so it's simple and intuitive to use
 * Inheritance of the delegate property also has the same semantics as regular kotlin properties, 
 overriding the *Delegate Expression* is the same as overriding the property, so we borrow the existing language semantics, making it more intuitive.
-* Proposal 2 (the delegate accessor function) becomes obsolete (except for the old behaviour), as accessing the delegate is intuitive with a property.
-* Doesn't litter the class declaration line as much
-* Old syntax can be deprecated, if that's desired
+* Doesn't litter the class declaration line with implementation details
 
 #### Cons
-* We add a new language feature, instead of reusing old syntax
+* We add a new language feature, with a syntax completely different to the old syntax
 * Allows for a given class to use a mix of the two behaviours
 * Confusing with property delegates? They are still a completely different concept...
 * Repeats a type instead of referring to an identifier
@@ -196,7 +200,8 @@ To indicate this, an annotation should be used. For example, the following decla
 public annotation class NewInterfaceDelegates
 ```
 
-Requirement 2 is filled by using the Global Accessor Function detailed in the appendix.
+Requirement 2 is filled by using the *Global Delegate Accessor Function* detailed in the appendix.  
+When using this approach, the old syntax must stay. It is not possible to deprecate without making breaking changes.  
 
 #### Pros
 * Doesn't add a new syntax/feature
