@@ -124,14 +124,20 @@ The alternatives are grouped as follows for simplification of *Pros* and *Cons* 
 1. Adding a character
     - `class Proxy : List<Int> by &target`
 1. Full on different syntax
-    - TODO
+    - `class Proxy : List<Int> where `  
+    followed by 1 or more of the below, separated by commas:
+      * `List<Int> delegates target`
+      * `List<Int> delegates this.target`
+      * `List<Int> delegates <expression with class scope>`  
+        It might be best to require direct reference to a property to borrow its semantics.
     
 Requirement 2 is filled by using the *Global Delegate Accessor Function* detailed in the appendix.  
 When this proposal is used, it can live alongside the old syntax peacefully without too much confusion.  
-Just an extra keyword that makes the old feature offer different semantics, which is easy to explain.
+Just an extra keyword that makes the old feature offer different semantics, which is easy to explain.  
+In the case of [4], this doesn't apply. Old syntax should be deprecated.
 
 #### Pros
-* Similar to old syntax
+* Similar to old syntax (except for [4])
 * It's clear to the compiler and programmer which behaviour is expected
 * In the case of [2]:
     - Syntax doesn't borrow `by` keyword, so it doesn't *incorrectly* highlight that those are similar concepts
@@ -139,7 +145,9 @@ Just an extra keyword that makes the old feature offer different semantics, whic
 
 #### Cons
 * Allows for a given class to use a mix of the two behaviours
-* No intuitive or explicit (using `override` keyword) way to override the *Delegate Expression*
+* No intuitive or explicit (using `override` keyword) way to override the *Delegate Expression* 
+unless a property is referenced directly
+* Permits `this` access outside class brackets
 * In the case of [3]:
     - Meaning of `&` is unclear, and unfamiliar for programmers that don't have experience in certain languages.
     - Special characters are limited. Before using them, we should carefully evaluate that there isn't a better use.
