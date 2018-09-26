@@ -210,7 +210,7 @@ The policy for delegated interface member collisions should probably be as follo
 Add contextual keywords to indicate that an interface is `delegate` `to` an expression.
 
 ```kotlin
-class Proxy: List<Int> { 
+class Proxy : List<Int> { 
     delegate List<Int> to emptyList()
 }
 ```
@@ -327,8 +327,5 @@ invisible fields cannot be initialized before the superclass constructor has bee
 the programmer will gain control of the exact order in which things are initialized with respect to delegated interfaces.
 
 ## Open Discussion
-* Which of the approaches should be used for proposal 1? 
-We think the approach 2 is probably the best, as its pros far outweigh the cons and proposal 2 becomes obsolete.
-* Should the old behaviour be deprecated and possibly even phased out?
-Since its semantics are inferior to the new behaviour, it might be a good idea to try phasing it out to avoid having 2 seemingly identical features.
+* Which of the approaches should be used?
 * Lexer/Parser implications if a new syntax is to be introduced
