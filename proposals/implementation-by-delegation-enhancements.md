@@ -115,6 +115,7 @@ We are considering 3 approaches:
 
 In the examples below, `target` refers to a property of class `Proxy`
 
+---
 ### 1. Using different syntax
 The alternatives are grouped as follows for simplification of *Pros* and *Cons* sections:
 1. Adding a contextual keyword
@@ -153,8 +154,13 @@ unless a property is referenced directly
     - Meaning of `&` is unclear, and unfamiliar for programmers that don't have experience in certain languages.
     - Special characters are limited. Before using them, we should carefully evaluate that there isn't a better use.
 
+---
 ### 2. Moving declaration inside class body
-by adding a contextual keyword to indicate that a property is a `delegate` of its interface type:
+2 options are considered.  
+They both make use of the `delegate` keyword, and could be implemented together for flexibility.
+
+#### Option 1: `delegate val`
+Add a contextual keyword to indicate that a property is a `delegate` of its interface type:
 
 ```kotlin
 class Proxy(target: List<Int>): List<Int> { 
@@ -179,7 +185,7 @@ Requirement 2 is filled automatically by the addition of a property.
 It would be very confusing for this approach to live alongside the old syntax. It should be deprecated.  
 The *Delegate Expression* in this approach is defined as the contents of the property's getter.  
 
-#### Pros 
+##### Pros 
 * **Delegation is declared inside the class body**, a much more sensible place because:
     - Delegation is an implementation detail
     - It's where you always have `this` in the scope
@@ -189,7 +195,7 @@ The *Delegate Expression* in this approach is defined as the contents of the pro
 overriding the *Delegate Expression* is the same as overriding the property, so we borrow the existing language semantics, making it more intuitive.
 * Doesn't litter the class declaration line with implementation details
 
-#### Cons
+##### Cons
 * We add a new language feature, with a syntax completely different to the old syntax
 * Allows for a given class to use a mix of the two behaviours
 * Confusing with property delegates? They are still a completely different concept...
@@ -200,6 +206,29 @@ The policy for delegated interface member collisions should probably be as follo
 * Else (if the member is declared in the same class), that member takes priority
 * And the programmer can use `super` call to prevent the delegate overriding the behavior of a member from the supertype.
 
+#### Option 2. `delegate Interface to expression`
+Add contextual keywords to indicate that an interface is `delegate` `to` an expression.
+
+```kotlin
+class Proxy: List<Int> { 
+    delegate List<Int> to emptyList()
+}
+```
+
+Optionally, `delegate List<Int> by lazy { listOf(1) }` can be implemented as well, allowing the use of property delegates with the same syntax.
+
+##### Pros vs Option 1
+* It is possible to declare the delegate anonymously
+* Avoids boilerplate for the common case where a delegate is declared anonymously
+
+##### Cons vs Option 1
+* Can't access the Delegate Identity because of anonymity
+* Can't override the Delegate Expression because of anonymity
+* Also adds `to` contextual keyword
+
+This option can also have exactly the same semantics as Option 1 if it delegates directly `to` a property's getter.
+
+---
 ### 3. Adding Contextual Indication
 This approach allows the programmer to indicate to the compiler that the class should have its interface delegates implemented using the new behaviour.
 To indicate this, an annotation should be used. For example, the following declaration can be added to the standard library (name TBD):
