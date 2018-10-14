@@ -2,7 +2,6 @@
 
 * **Type**: Design proposal
 * **Author**: Adam Arold
-* **Status**: Implemented in Kotlin 1.3
 * **Discussion**: [KEEP-162](https://github.com/Kotlin/KEEP/issues/162)
 
  ## Summary
