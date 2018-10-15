@@ -7,13 +7,13 @@
 
 ## Summary
 
-Allow to use '@JvmStatic' annotation on interface companion members similar to class companion ones.
+Allow to use `@JvmStatic` annotation on interface companion members similar to class companion ones.
 
 ## Description
 
-'@JvmStatic' annotation on interface companion members has same effect and similar restrictions as annotation on class companion members:
-* generates static method in interface that delegates to companion member
-* can't be used on 'const' and '@JvmField' properties
+`@JvmStatic` annotation on interface companion members has same effect and similar restrictions as annotation on class companion members:
+* generates static method in interface. This static method will delegate to the companion member
+* can't be used on `const` and `@JvmField` properties
 * additionally requires '-jvm-target 1.8' compilation option
 
 
