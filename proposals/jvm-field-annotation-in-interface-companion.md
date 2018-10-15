@@ -7,16 +7,17 @@
 
 ## Summary
 
-Allow to use '@JvmField' annotation on interface companion properties similar to class companion ones.
+Allow to use `@JvmField` annotation on interface companion properties similar to class companion ones.
 
 ## Description
 
-'@JvmField' annotation on interface companion properties has same effect and similar restrictions as annotation on class companion members:
-* generates static field in interface with initialization in interface <clinit>.
-* not applicable for 'const', 'lateinit' and delegated properties
+`@JvmField` annotation on interface companion properties has same effect and similar restrictions as annotation on class companion members:
+* generates static field in interface with initialization in interface <clinit> 
+* adding or removing `@JvmField` annotation is binary incompatible change cause it's changes fields owner
+* not applicable for `const`, `lateinit` and delegated properties
 * property should not have any custom accessors
 * property can't override anything
-* **applicable only if all companion properties are 'public final val' annotated with '@JvmField'** (additional restriction)   
+* **applicable only if all companion properties are `public final val` annotated with `@JvmField`** (additional restriction)   
 
 
 ``` kotlin
@@ -28,12 +29,14 @@ interface Foo {
 }
 ```
 
+NB: field is removed from companion class to interface one (so adding or removing `@JvmField` annotation is binary incompatible change
+
 ## Open questions
 
-Maybe weak additional condition ("all companion properties are 'public final val' annotated with '@JvmField'") 
-to allow use 'const' properties withing '@JvmField' ones. 
-In such case 'const' properties should also be moved to interface 
-(NB: now additional declaration copy is created in interface for 'const' property in companion)     
+Maybe weak additional condition ("all companion properties are `public final val` annotated with `@JvmField`") 
+to allow use `const` properties withing `@JvmField` ones. 
+In such case `const` properties should also be moved to interface 
+(NB: now additional declaration copy is created in interface for `const` property in companion)     
 
 
 ## Related issues
