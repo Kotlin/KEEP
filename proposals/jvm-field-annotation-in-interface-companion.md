@@ -29,8 +29,6 @@ interface Foo {
 }
 ```
 
-NB: field is removed from companion class to interface one (so adding or removing `@JvmField` annotation is binary incompatible change
-
 ## Open questions
 
 Maybe weak additional condition ("all companion properties are `public final val` annotated with `@JvmField`") 
