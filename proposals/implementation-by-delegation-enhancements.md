@@ -6,7 +6,6 @@
 * **Prototype**: Not implemented, but I would be happy to do so
 
 Discussion of this proposal is held in [this issue](https://github.com/Kotlin/KEEP/issues/155).  
-Prior progress of this proposal is held in [this gist](https://gist.github.com/Dico200/0065293bcd9a19c50e371cde047a9f22).
 
 ##### Links
 * [KT-83](https://youtrack.jetbrains.com/issue/KT-83)
@@ -31,7 +30,7 @@ The old syntax may be deprecated depending on the chosen approach.
 | Delegate Expression | *Delegate Expression*, following `by` keyword, with the *Delegate Identity* as its result |
 | Current/Old behaviour | The current behaviour of Implementation By Delegation, at the time of creating the proposal |
 | Current/Old syntax | refers to `by <expression>` syntax of the Old behaviour |
-| New behaviour | The behaviour of Implementation By Delegation as proposed and defined at the bottom of *Approach* section |
+| New behaviour | The behaviour of Implementation By Delegation as proposed and defined at the bottom of *Description* section |
 | Delegate Accessor | Getter function that can be called to access the *Delegate Identity* of a particular interface specific to that function |
 
 ## Description
@@ -43,13 +42,15 @@ Its syntax should be distinguishable from the old syntax under all circumstances
 Among others, this allows for the old behaviour and syntax to be deprecated in source, if that's desirable.
 1. Introduce a method to access the *Delegate Identity* from source. Small bonus if it works for the old behaviour too.
 
-The *New Behaviour* aims to have (almost) the same semantics as kotlin properties and should be defined (roughly) like this (all in contrast to the current behaviour):
+The *New Behaviour* aims to have (almost) the same semantics as kotlin properties and should be defined (roughly) like this, varying slightly between approaches.
+All of these aspects are in contrast with the old behaviour:
 * The *Delegate Expression*, wherever it is declared, is evaluated on every invocation of a delegated method.
 * The *Delegate Expression* has `this` in its scope
+* The *Delegate Expression* cannot refer to constructor parameters.
+    - It should use class members instead.
+    - To refer to constructor parameters, *Delegate Identity* can be computed in the constructor and stored in a property explicitly.
+    - *Delegate Expression* can then point to that property.
 * No invisible fields are generated
-* The *Delegate Expression* cannot refer to constructor parameters, use class members instead (programmer should store the delegate if it should be stored)  
-    - An exception to this would be when a property is used and an expression is assigned to it, instead of its getter. 
-    The *Delegate Expression* is in the getter, which (probably) uses the default implementation of returning the stored value.
 
 ## Motivation
 Kotlin provides Implementation By Delegation as a no-boilerplate way of implementing the Delegation/Decorator pattern,
@@ -71,7 +72,7 @@ which declares the delegation inside of the class scope, on a JVM field, and gra
 
 ### Use cases
 Any case where the programmer would want to:
-* Access the *Delegate Identity* (proposal 2)
+* Access the *Delegate Identity*
 * Implement how to store the *Delegate Identity*
 * Change the *Delegate Identity*
 * Compute the *Delegate Identity* on every invocation
@@ -134,7 +135,7 @@ The alternatives are grouped as follows for simplification of *Pros* and *Cons* 
         It might be best to require direct reference to a property to borrow its semantics.
     
 Requirement 2 is filled by using the *Global Delegate Accessor Function* detailed in the appendix.  
-When this proposal is used, it can live alongside the old syntax peacefully without too much confusion.  
+When this approach is used, it can live alongside the old syntax peacefully without too much confusion.  
 Just an extra keyword that makes the old feature offer different semantics, which is easy to explain.  
 In the case of [4], this doesn't apply. Old syntax should be deprecated.
 
@@ -181,7 +182,7 @@ Possible type policies of a `delegate` property include:
 1. the syntax can declare one (or optionally multiple) delegated interface type immediately following `delegate `,  
    Then the property type is only restricted to implement all those types, like [2], but more explicit.
 
-Requirement 2 is filled automatically by the addition of a property.  
+Requirement 2 is filled automatically by the addition of an accessible property.  
 It would be very confusing for this approach to live alongside the old syntax. It should be deprecated.  
 The *Delegate Expression* in this approach is defined as the contents of the property's getter.  
 
@@ -277,13 +278,12 @@ I don't know.
 
 ### Global Delegate Accessor Function
 These are details of a particular way to fill requirement 2 of an approach.  
-If an approach doesn't explicitly refer to this section, this is not used.  
+If a chosen approach doesn't explicitly refer to this section, this is not used and irrelevant.  
 This option does not work for Java source code.
 
 A way to grant access to delegate identities would be to expose the invisible fields, making them accessible as properties. However, this solution is not ideal:
 * How to name the delegate properties? Their names might clash with existing properties.
 * Do we want invisible fields to be a part of the language? The invisible fields emitted by the old behaviour aren't officially documented (correct me if I'm wrong).
-* If proposal 1 is accepted, this is irrelevant as there are no invisible fields in the new behaviour
 
 This is why we propose an intrinsic accessor function that can be used to access delegate objects, known as the global accessor function, whose declarion can be seen below:
 
