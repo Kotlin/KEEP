@@ -1,9 +1,14 @@
 # Implementation by delegation enhancements
 * **Type**: Design proposal
-* **Author**: Dico Karssiens
-* **Contributors**: Daniil Vodopian
+* **Author**: [Dico Karssiens](https://github.com/Dico200)
+* **Contributors**: 
+    [Daniil Vodopian](https://github.com/voddan),
+    [Francesco Vasco](https://github.com/fvasco),
+    [Thijs de Haan](https://github.com/tieskedh),
+    [Burkhard Mittelbach](https://github.com/Wasabi375),
+    [Nikolaus Knop](https://github.com/NKb03)
 * **Status**: Submitted
-* **Prototype**: Not implemented, but I would be happy to do so
+* **Prototype**: Not implemented
 
 Discussion of this proposal is held in [this issue](https://github.com/Kotlin/KEEP/issues/155).  
 
