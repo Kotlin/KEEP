@@ -2,7 +2,7 @@
 
 * **Type**: Design proposal
 * **Author**: Mikhail Zarechenskiy
-* **Contributors**: Andrey Breslav, Denis Zharkov, Ilya Gorbunov, Roman Elizarov, Stanislav Erokhin
+* **Contributors**: Andrey Breslav, Denis Zharkov, Dmitry Petrov, Ilya Gorbunov, Roman Elizarov, Stanislav Erokhin
 * **Status**: Under consideration
 * **Prototype**: Implemented in Kotlin 1.2.30
 
@@ -225,24 +225,102 @@ Since boxing doesn't have side effects as is, it's possible to reuse various opt
 
 ### Type mapping on JVM (without mangling)
 
-Depending on the underlying type of inline class and its declaration site, inline class type can be mapped to the underlying type or to the 
-boxed type.  
+#### Top-level types
 
-| Underlying Type \ Declaration Site | Not-null | Nullable | Generic |
-| --------------------------------------------- | --------------- | ---------------- | ---------------- |
-| **Reference type** | Underlying type | Underlying type | Boxed type |
-| **Nullable reference type** | Underlying type  | Boxed type | Boxed type |
-| **Primitive type** | Underlying type  | Boxed type | Boxed type |
-| **Nullable primitive type** | Underlying type  | Boxed type | Boxed type |
-
-For example, from this table it follows that nullable inline class which is based on reference type is mapped to the underlying type:
+##### Inline classes over primitive types
 ```kotlin
-inline class Name(val s: String)
+inline class ICPrimitive(val x: Int)
 
-fun foo(n: Name?) { ... } // `Name?` here is mapped to String
+fun foo(i: ICPrimitive) {}
+fun bar(i: ICPrimitive?) {}
 ```
 
-Also, if inline class type is used in generic position, then its boxed type will be used:
+Only values of `ICPrimitive` can be passed to the function `foo` and therefore on JVM this type will be erased to just `int`.
+At the same time, it's also possible to pass `null` to the function `bar`, to handle it correctly, `ICPrimitive?` will be mapped to the 
+reference type `LICPrimitive;` as on JVM primitive type `int` can't hold `null` values.
+
+So, `ICPrimitive` -> `int`, `ICPrimitive?` -> `LICPrimitive;`.
+
+##### Inline classes over reference types
+
+Now, let's consider an inline class over some reference type:
+```kotlin
+inline class ICReference(val s: String)
+
+fun foo(i: ICReference) {}
+fun bar(i: ICReference?) {}
+```
+
+With the type `ICReference` rationale is the same, it can't hold `nulls`, so this type will be mapped to `String`.
+Next, function `bar` can hold `null` values, but note that underlying type of `ICReference` is a reference type `String`, which
+can hold `null` values on JVM and can be safely used as a mapped type.
+
+So, `ICReference` -> `String`, `ICReference?` -> `String`.
+
+##### Inline classes over nullable types
+
+Now, what if inline class is declared over some nullable type?
+```kotlin
+inline class ICNullable(val s: String?)
+
+fun foo(i: ICNullable) {}
+fun bar(i: ICNullable?) {}
+```
+
+`ICNullable` can't hold `nulls`, so it can be safely mapped to `String` on JVM.
+`ICNullable?` can hold `nulls` and also inline classes over `nulls`: `ICNullable(null)`.
+It's important to distinguish such values:
+```kotlin
+fun baz(a: ICNullable?, b: ICNullable?) {
+    if (a === b) { ... }
+}
+
+fun test() {
+    baz(ICNullable(null), null)
+}
+``` 
+If we map `ICNullable?` to `String` as in the previous example, it will not be possible to distinguish `ICNullable(null)` from `null` as on JVM
+they will be represented with the just value `null`, therefore `ICNullable?` should be mapped to the `LICNullable;`
+
+So, `ICNullable` -> `String`, `ICNullable?` -> `LICNullable;`.
+
+##### Inline classes over other inline classes
+
+Besides these cases, inline class can also be declared over some other inline class:
+```kotlin
+inline class IC2(val i: IC)
+inline class IC2Nullable(val i: IC?)
+```
+
+Mapping rules for `IC2Nullable` are simple:
+- `IC2Nullable` -> mapped type of `IC?`
+- `IC2Nullable?` -> `LICNullable;`
+
+Mapping rules for `IC2` are the following:
+- `IC2` -> mapped type of `IC`
+- `IC2?` -> 
+    - fully mapped type of `IC` if it's a non-null reference type
+    - `LIC2;` if fully mapped type of `IC` can hold `nulls` or it's a primitive type
+
+Rationale for these rules is the same as in the previous steps: for nullable types, it should be possible to hold
+`null` and distinguish `nulls` from inline classes over `nulls`. 
+
+Example, let's consider the following hierarchy of inline classes:
+```
+inline class IC1(val s: String)
+inline class IC2(val ic1: IC1?)
+inline class IC3(val ic2: IC2)
+
+fun foo(i: IC3) {}
+fun bar(i: IC3?) {} 
+```
+
+Here `IC3` will be mapped to the type `String`, `IC3?` will be mapped to `LIC3;` as it should be possible to distinguish `null` 
+from `IC3(IC2(null))`. But if `IC2` was declared as `inline class IC2(val ic1: IC1)`, then `IC3` would be mapped to `String`.
+
+#### Generic types
+
+If inline class type is used in generic position, then its boxed type will be used:
 ```
 // Kotlin: sample.kt
 
@@ -260,6 +338,7 @@ class Test {
 }
 ```
 
+This is needed to preserve information about inline classes at runtime.
 
 #### Generic inline class mapping
 
