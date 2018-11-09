@@ -24,9 +24,11 @@ Please don't create new issues unless really necessary, let's try to keep discus
 
 ## How to propose
 
-If you only have a vague feature idea, please share it in the [#language-proposals](https://kotlinlang.slack.com/messages/language-proposals/) channel in our public Slack (get invite [here](http://slack.kotlinlang.org/)), or in the [Forum's Language design category](https://discuss.kotlinlang.org/c/language-design).
+If you only have a vague feature idea, please file a [YouTrack issue](https://kotl.in/issue). Alternatively, share it in the [#language-proposals](https://kotlinlang.slack.com/messages/language-proposals/) channel in our public Slack (get invite [here](http://slack.kotlinlang.org/)), or in the [Forum's Language design category](https://discuss.kotlinlang.org/c/language-design).
 
-If a discussion in these media has lead to a detailed proposal, feel free to submit a pull request here. We appreciate your work, but can not guarantee that all proposals will be considered soon after submission.
+If a discussion in these media has led to a detailed proposal, feel free to submit a pull request with a proposal here. A proposal should describe in detail why the feature is needed, how is it going to be implemented in the compiler and whether any changes will be required in the tooling. Use [existing proposals](https://github.com/Kotlin/KEEP/tree/master/proposals) as an inspiration.
+
+We appreciate your work, but can not guarantee that all proposals will be considered soon after submission.
 
 ### KEEP Shepherds
 
