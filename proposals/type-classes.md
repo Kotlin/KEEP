@@ -2,9 +2,9 @@
 
 * **Type**: Design proposal
 * **Author**: Raul Raja
-* **Contributors**: Francesco Vasco, Claire Neveu
+* **Contributors**: Francesco Vasco, Claire Neveu, Tomás Ruiz López
 * **Status**: New
-* **Prototype**: -
+* **Prototype**: [initial implementation](https://github.com/arrow-kt/kotlin/pull/6)
 
 ## Summary
 
@@ -27,7 +27,7 @@ Introduction of type classes improves usages for `reified` generic functions wit
 We propose to use the existing `interface` semantics allowing for generic definition of type classes and their instances with the same style interfaces are defined
 
 ```kotlin
-extension interface Monoid<A> {
+interface Monoid<A> {
     fun A.combine(b: A): A
     val empty: A
 }
@@ -170,7 +170,10 @@ transform(listOf(1), { it + 1 }) // does not compile: No `Functor<List>` instanc
 
 ## Language Changes
 
-- Add `with` to require instances evidences in both function and class/object declarations as demonstrated by previous and below examples:
+- Add `with` to require instances evidences in both function and class/object declarations
+- Add `extension` to provide instance evidences for a given type class
+
+As demonstrated by previous and below examples:
 ```kotlin
 extension class OptionMonoid<A>(with M: Monoid<A>) : Monoid<Option<A>> // class position using parameter "M"
 extension class OptionMonoid<A>(with Monoid<A>) : Monoid<Option<A>> // class position using anonymous `Monoid` parameter
@@ -183,10 +186,12 @@ fun <A> add(a: A, b: A, with Monoid<A>): A = a.combine(b) // function position u
 
 Classical interfaces only allow the implementation of interfaces to occur when a type is defined. Type classes typically relax this rule and allow implementations outside of the type definition. When relaxinng this rule it is important to preserve the coherency we take for granted with classical interfaces.
 
-For those reasons type class instances must be declared in one of two places:
+For those reasons type class instances must be declared in one of these places:
 
-1. In the same file as the type class definition (interface-side implementation)
-2. In the same file as the type being implemented (type-side implementation)
+1. In the companion object of the type class (interface-side implementation).
+2. In the companion object of the type implementing the type class (type-side implementation).
+3. In a subpackage of the package where the type class is defined.
+4. In a subpackage of the package where the type implementing the type class is defined.
 
 All other instances are orphan instances and are not allowed. See [Appendix A](#Appendix-A) for a modification to this proposal that allows for orphan instances.
 
@@ -198,13 +203,16 @@ This definition site is simple to implement and requires to rules except that th
 ```kotlin
 package foo.collections
 
-extension interface Monoid<A> {
+interface Monoid<A> {
    ...
+   companion object {
+      extension object IntMonoid : Monoid<Int> { ... }
+   }
 }
 ```
 
 ```kotlin
-package foo.collections
+package foo.collections.instances
 
 extension object : Monoid<String> {
    ...
@@ -218,13 +226,13 @@ This definition site poses additional complications when you consider multi-para
 ```kotlin
 package foo.collections
 
-extension interface Isomorphism<A, B> {
+interface Isomorphism<A, B> {
    ...
 }
 ```
 
 ```kotlin
-package data.foo
+package data.collections.foo
 
 data class Foo(...)
 extension class<A> : Isomorphism<Foo, A> {
@@ -233,7 +241,7 @@ extension class<A> : Isomorphism<Foo, A> {
 ```
 
 ```kotlin
-package data.bar
+package data.collections.bar
 
 data class Bar(...)
 extension class<A> : Isomorphism<A, Bar> {
@@ -245,7 +253,7 @@ The above instances are each defined alongside their respective type definitions
 
 To determine whether a typeclass definition is a valid type-side implementation we perform the following check:
 
-1. A "local type" is any type (but not typealias) defined in the current file (e.g. everything defined in `data.bar` if we're evaluating `data.bar`).
+1. A "local type" is any type (but not typealias) defined in the current file (e.g. everything defined in `data.collections.bar` if we're evaluating `data.collections.bar`).
 2. A generic type parameter is "covered" by a type if it occurs within that type, e.g. `MyType` covers `T` in `MyType<T>` but not `Pair<T, MyType>`.
 3. Write out the parameters to the type class in order.
 4. The parameters must include a type defined in this file.
@@ -267,12 +275,24 @@ Call site:
 fun addInts(): Int = add(1, 2)
 ```
 
-1. The compiler first looks at the file the interface is defined in. If it finds exactly one implementation it uses that instance.
-2. If it fails to find an implementation in the interface's file, it then looks at the files of the implemented types. For each type class parameter check the file it was defined in. If exactly one implementation is found use that instance.
+1. The compiler first looks at the function context where the invocation is happening. If a function argument matches the required instance for a typeclass, it uses that instance; e.g.:
+
+```kotlin
+fun <a> duplicate(a : A, with M: Monoid<A>): A = a.combine(a)
+```
+
+The invocation `a.combine(a)` requires a `Monoid<A>` and since one is passed as an argument to `duplicate`, it uses that one.
+
+2. In case it fails, it inspects the following places, sequentially, until it is able to find a valid unique instance for the typeclass:
+    a. The current package (where the invocation is taking place), as long as the `extension` is `internal`.
+    b. The companion object of the type parameter(s) in the type class (e.g. in `Monoid<A>`, it looks into `A`'s companion object).
+    c. The companion object of the type class.
+    d. The subpackages of the package where the type parameter(s) in the type class is defined.
+    e. The subpackages of the package where the type class is defined.
 3. If no matching implementation is found in either of these places fail to compile.
 4. If more than one matching implementation is found, fail to compile and indicate that there or conflicting instances.
 
-Some of these examples where originally proposed by Roman Elizarov and the Kategory contributors where these features where originally discussed https://github.com/Kotlin/KEEP/pull/87
+Some of these examples were originally proposed by Roman Elizarov and the Arrow contributors where these features where originally discussed https://github.com/Kotlin/KEEP/pull/87
 
 ## Appendix A: Orphan Implementations
 
