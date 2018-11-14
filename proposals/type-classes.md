@@ -161,7 +161,7 @@ Here `F<_>` refers to a type constructor meaning a type that has a hole on it su
 A use of this declaration in a polymorphic function would look like:
 
 ```kotlin
-fun <F<_>, A, B> transform(fa: F<A>, f: (A) -> B, with Functor<F>): F<B> = F.map(fa, f)
+fun <F<_>, A, B> transform(fa: F<A>, f: (A) -> B, with Functor<F>): F<B> = fa.map(f)
 
 transform(Option(1), { it + 1 }) // Option(2)
 transform("", { it + "b" }) // Does not compile: `String` is not type constructor with shape F<_>
@@ -292,7 +292,8 @@ The invocation `a.combine(a)` requires a `Monoid<A>` and since one is passed as 
 3. If no matching implementation is found in either of these places fail to compile.
 4. If more than one matching implementation is found, fail to compile and indicate that there or conflicting instances.
 
-Some of these examples were originally proposed by Roman Elizarov and the Arrow contributors where these features where originally discussed https://github.com/Kotlin/KEEP/pull/87
+Some of these examples were originally proposed by Roman Elizarov and the Arrow contributors where these features were originally discussed https://github.com/Kotlin/KEEP/pull/87
+
 
 ## Appendix A: Orphan Implementations
 
