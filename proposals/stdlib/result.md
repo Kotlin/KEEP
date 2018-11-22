@@ -630,7 +630,7 @@ that made it impossible to properly integrate checked exceptions with Java gener
 
 Moreover, it can be very efficiently implemented on JVM in the return type position by actually throwing the corresponding
 exception inside and catching it outside, on the caller side, so no boxing will be required even for primitive
-results. "Retrowing" exceptions with `!!` can be transparent in JVM bytecode in the same way as it
+results. "Rethrowing" exceptions with `!!` can be transparent in JVM bytecode in the same way as it
 happens in Java programs using exceptions.
 
 All in all, it could provide a safe replacement for checked exceptions on JVM and open a path to a better
