@@ -102,7 +102,7 @@ A program can be designed so that mocking/proxying of concrete classes is not ne
 
 #### JarOpener
 
-A post-processor that flips flags in teh byte code: [JarOpener](https://discuss.kotlinlang.org/t/classes-final-by-default/166/39)
+A post-processor that flips flags in the byte code: [JarOpener](https://discuss.kotlinlang.org/t/classes-final-by-default/166/39)
 
 ## Open questions
 
