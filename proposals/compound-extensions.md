@@ -28,6 +28,48 @@ receiver, expressions of type `String` have a unary `+` operator.
 
 ### Motivation / use cases
 
+* Contextual extensions ([from](https://youtrack.jetbrains.com/issue/KT-10468))
+
+  In Android it is common to refer to density independent pixels. In Kotlin this can be
+  improved by the use of an extension `val` but the calculation requires the current
+  `Context`.
+
+  Given this proposal, `View` can be extended with a  `Float` and `Int` extensions to simplify
+  usage in a `View`.
+
+  ```kotlin
+  val View.Float.dp get() = context.displayMetrics.density * this
+  val View.Int.dp get() = this.toFloat().dp
+  ```
+
+  which would then be used like,
+
+  ```kotlin
+  class SomeView : View {
+    val someDimension = 4.dp
+  }
+  ```
+
+* DSL by extension ([from](https://discuss.kotlinlang.org/t/add-infix-fun-to-a-class-without-extend-the-class/10772))
+
+  Consider the Android type `JSONObject`, the following extensions can be written:
+
+  ```kotlin
+  inline operator fun JSONObject.String.invoke(build: JSONObject.() -> Unit) = put(this, JSONObject().build())
+  inline infix operator fun JSONObject.String.to(value: Any?) = put(this, value)
+  fun json(build: JSONObject.() -> Unit) = JSONObject().build()
+  ```
+
+  which could be used like,
+
+  ```kotlin
+  val obj = json {
+      "key" {
+          "key1" to "value"
+          "key2" to 3
+      }
+  }
+
 * Allows a fluent programming style in a receiver scope
 
   Consider wishing to use `produce` from `CoroutineScope` to implement a filter
@@ -202,6 +244,41 @@ operator fun Body.String.unaryPlus() = escape(this)
 
 is syntactically valid but reports that `String` is not valid as there is no nested
 `String` class of `Body`.
+
+The type expression syntax is similarly interpreted. For example the type of,
+
+```kotlin
+fun A.B.C.someMethod(v: Int): Int = ...
+```
+
+would be written, `A.B.C.(Int) -> Int`.
+
+#### Alternate syntax
+
+Syntax is always contentious. The problem with the primary proposal is the ambiguity it has
+with namespaces. Two other syntaxes can be considered:
+
+##### Using parenthesis
+```kotlin
+fun (A, B, C).someMethod(v: Int)-> Int = ...
+```
+
+The types are unambiguous such that `fun (A.B, C).someMethod(v: Int)`, the `A.B` is
+unambiguously a reference to the nested type `B` in `A`.
+
+The type expression syntax would be similarly extended to allow `(A.B, C).() -> Unit`.
+
+However, the type expression syntax is ambiguous at the `(` and it is not until the `.` is
+seen after the initial closing `)`.
+
+#### Using brackets
+```kotlin
+fun [A, B, C].someMethod(v: Int)
+```
+
+The types are similarly unambiguous without introducing the same syntactic ambiguity. However,
+this require introducing a use for `[` in a type expression that might be better reserved by
+a feature more widely leveraged such as tuples.
 
 ### Lookup rules
 
