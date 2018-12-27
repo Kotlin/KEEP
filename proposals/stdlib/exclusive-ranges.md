@@ -152,7 +152,7 @@ package kotlin.ranges
 
 ## Reference implementation
 
-You can find an `ClosedOpenRange` implementation [here in Kotlin-Statistics](https://github.com/thomasnield/kotlin-statistics/blob/master/src/main/kotlin/org/nield/kotlinstatistics/Ranges.kt), although there it is called an `OpenRange`. There is no `Range` parent either. 
+You can find implementations [here in Kotlin-Statistics](https://github.com/thomasnield/kotlin-statistics/tree/master/src/main/kotlin/org/nield/kotlinstatistics/range). 
 
 
 ## Unresolved questions
