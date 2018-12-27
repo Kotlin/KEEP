@@ -12,9 +12,9 @@
 
 After doing some substantial exploration using Kotlin for [statistics](https://github.com/thomasnield/kotlin-statistics) and [stochastic optimization](https://github.com/thomasnield/traveling_salesman_demo), I think there are opportunties to take advantage of a better implementation for ranges, and be able to support an `until` infix operator implementation for `Double` and `Float`. 
 
-Kotlin's stdlib has an implementation for `ClosedRange`, but not `OpenRange`, `OpenStartRange`, and `OpenEndRange`. I believe the latter items need to be implemented at least for continuous `Double` and `Float` ranges, where the exclusive start/end point cannot be achieved discretely with a `ClosedRange`.
+Kotlin's stdlib has an implementation for `ClosedRange`, but not `OpenRange`, `OpenClosedRange`, and `ClosedOpenRange`. I believe the latter items need to be implemented at least for continuous `Double` and `Float` ranges, where the exclusive start/end point cannot be achieved discretely with a `ClosedRange`.
 
-The `ClosedRange`, `OpenRange`, `OpenStartRange`, and `OpenEndRange` should also share a common `Range` parent, so they all can be mixed together in a `List<Range>` (i.e. [histograms](https://en.wikipedia.org/wiki/Histogram) or [probability density functions](https://en.wikipedia.org/wiki/Probability_density_function)).
+The `ClosedRange`, `OpenRange`, `OpenClosedRange`, and `ClosedOpenRange` should also share a common `Range` parent, so they all can be mixed together in a `List<Range>` (i.e. [histograms](https://en.wikipedia.org/wiki/Histogram) or [probability density functions](https://en.wikipedia.org/wiki/Probability_density_function)).
 
 Also proposed is deprecating the `start` property in `ClosedRange` for `startInclusive`. The `Range` interface would also benefit from having `upperBound` and `lowerBound` properties that do not define a specific inclusivity/exclusivity behavior. 
 
@@ -79,7 +79,7 @@ val ranges = binned.ranges // should return endExclusive ranges
 }
 ```
 
-I can also define my own ranges for a continuous histogram of values, and putting an `until` between two `Double` or `Float` values will conveniently return an `OpenEndRange`. I should have the option of putting in a `ClosedRange` so the last bin can capture the final end boundary. 
+I can also define my own ranges for a continuous histogram of values, and putting an `until` between two `Double` or `Float` values will conveniently return an `ClosedOpenRange`. I should have the option of putting in a `ClosedRange` so the last bin can capture the final end boundary. 
 
 ```kotlin 
 val histogramBins = listOf(
@@ -91,7 +91,7 @@ val histogramBins = listOf(
 )
 ```
 
-To support a collection having both `ClosedRange` and `OpenEndRange` types, extracting a common `Range` interface might be necessary (with `contains()`, `isEmpty()`, `lowerBound`, and `upperBound` functions and properties). 
+To support a collection having both `ClosedRange` and `ClosedOpenRange` types, extracting a common `Range` interface might be necessary (with `contains()`, `isEmpty()`, `lowerBound`, and `upperBound` functions and properties). 
 
 
 ### Probability and Weighted Sampling
@@ -152,12 +152,12 @@ package kotlin.ranges
 
 ## Reference implementation
 
-You can find an `OpenEndRange` implementation [here in Kotlin-Statistics](https://github.com/thomasnield/kotlin-statistics/blob/master/src/main/kotlin/org/nield/kotlinstatistics/Ranges.kt), although there it is called an `OpenRange`. There is no `Range` parent either. 
+You can find an `ClosedOpenRange` implementation [here in Kotlin-Statistics](https://github.com/thomasnield/kotlin-statistics/blob/master/src/main/kotlin/org/nield/kotlinstatistics/Ranges.kt), although there it is called an `OpenRange`. There is no `Range` parent either. 
 
 
 ## Unresolved questions
 
-If we were to extract a `Range` parent for `ClosedRange`, `OpenRange`, `OpenStartRange`, and `OpenEndRange`, what should it contain? 
+If we were to extract a `Range` parent for `ClosedRange`, `OpenRange`, `OpenClosedRange`, and `ClosedOpenRange`, what should it contain? 
 
 Here is one proposed implementation: a `lowerBound` and `upperBound` should be defined to generalize the start and end, but not indicate whether they are inclusive or exclusive. This allows a `List<Range>` to still have access to the start and end values, regardless if they are inclusive or exclusive. 
 
@@ -193,7 +193,7 @@ The child implementations can still have their own properties such as `startIncl
 
 
 ```kotlin 
-public interface OpenEndRange<T: Comparable<T>>: Range<T> {
+public interface ClosedOpenRange<T: Comparable<T>>: Range<T> {
     /**
      * The minimum value in the range.
      */
@@ -254,13 +254,13 @@ It might also be beneficial to explore progressions with continuous numeric type
 
 ## Naming
 
-Considering there is a `ClosedRange`, the additional types `OpenRange`, `OpenEndRange`, and `OpenStartRange` follow a stdlib-like convention. 
+Considering there is a `ClosedRange`, the additional types `OpenRange`, `ClosedOpenRange`, and `OpenClosedRange` follow a stdlib-like convention. 
 
 ## Contracts
 
-For the `OpenRange` and `OpenEndRange`  implementations, the `lowerBound` must be *less than* the `upperBound`. Otherwise the range should be empty. 
+For the `OpenRange` and `ClosedOpenRange`  implementations, the `lowerBound` must be *less than* the `upperBound`. Otherwise the range should be empty. 
 
-For the `OpenStartRange`  implementations, the `lowerBound` must be *less than or equal to* the `upperBound`. Otherwise the range should be empty. 
+For the `OpenClosedRange`  implementations, the `lowerBound` must be *less than or equal to* the `upperBound`. Otherwise the range should be empty. 
 
 
 ## Compatibility impact
