@@ -28,6 +28,8 @@ receiver, expressions of type `String` have a unary `+` operator.
 
 ### Motivation / use cases
 
+* Context-oriented programming as discussed [here](https://proandroiddev.com/an-introduction-context-oriented-programming-in-kotlin-2e79d316b0a2).
+
 * Contextual extensions ([from](https://youtrack.jetbrains.com/issue/KT-10468))
 
   In Android it is common to refer to density independent pixels. In Kotlin this can be
@@ -256,11 +258,13 @@ would be written, `A.B.C.(Int) -> Int`.
 #### Alternate syntax
 
 Syntax is always contentious. The problem with the primary proposal is the ambiguity it has
-with namespaces. Two other syntaxes can be considered:
+with namespaces. Other syntaxes to consider are:
 
 ##### Using parenthesis
 ```kotlin
-fun (A, B, C).someMethod(v: Int)-> Int = ...
+fun (A, B, C).someMethod(v: Int): Int = ...
+
+val a: (A,B,C).(v: Int)->Int = ...
 ```
 
 The types are unambiguous such that `fun (A.B, C).someMethod(v: Int)`, the `A.B` is
@@ -273,21 +277,54 @@ seen after the initial closing `)`.
 
 #### Using brackets
 ```kotlin
-fun [A, B, C].someMethod(v: Int)
+fun [A, B, C].someMethod(v: Int): Int = ...
+
+val a: [A,B,C].(Int)->Int = ...
 ```
 
 The types are similarly unambiguous without introducing the same syntactic ambiguity. However,
 this require introducing a use for `[` in a type expression that might be better reserved by
 a feature more widely leveraged such as tuples.
 
-### Lookup rules
+#### Using a pseudo-keyword
 
-When resolving the an extension, if the type expression following a `.` prior to the member
-name is not resolvable in scope of the type to the left, the ambient lookup scope is consulted
-and if the expression is resolvable to a type then the extension declaration is interpreted to
-extend the type to the left with, the potentially compound, extension of the type resolved.
+```kotlin
+extension fun (A, B, C).someMethod(v: Int): Int = ...
+val a: extension (A, B, C).(Int)->Int = ...
+```
 
-Type aliases or import aliases can be used to extend types that are obscured by nested types.
+Using a pseudo keyword avoids the ambiguity of the `(` in the type expression. A pseudo-
+keyword could also be used with the `[`...`]` syntax to leave a unadorned `[`...`]` to
+mean a tuple in the future.
+
+### Matching rules
+
+1. **Create an ordered list of implicit receivers** in scope with types
+<code>I<sup>1</sup></code>...<code>I<sup>m</sup></code> where <code>I<sup>1</sup></code>
+is the outer most implicit receiver and the <code>I<sup>m</sup></code> is the inner most.
+
+2. **Checking** given an extension function with receivers
+<code>T<sup>1</sup></code>...<code>T<sup>n</sup></code> and a receiver scope type of `R`
+and implicit receiver scopes in the scope tower of
+<code>I<sup>1</sup></code>...<code>I<sup>m</sup></code> an extension is valid if `R` :>
+<code>T<sup>n</sup></code> and there exists some permutation of (<code>T<sup>i</sup></code>,
+<code>I<sup>j</sup></code>) in `i` `1`...`n-1` and `j` in `1`..`m` where
+<code>I<sup>j</sup></code> :> <code>T<sup>i</sup></code> and for each element in the
+permutation all `i` and `j` values are in increasing order. If multiple valid permutations are
+possible then the last permutation is selected when the permutations are ordered by the values
+of `i` and `j`.
+
+3. **Report ambiguous calls** If multiple valid candidates are possible the call is ambiguous
+and an error is reported.
+
+#### Implementation note
+
+Finding a last valid permutation can be done efficiently if the permutations are produced by
+pairing  <code>T<sup>n-1</sup></code> to the last <code>I<sup>j</sup></code> where
+<code>T<sup>n-1</sup></code> :> <code>I<sup>j</sup></code> and then pairing
+<code>T<sup>n-2</sup></code> to some <code>I<sup>k</sup></code> where `k` < `j` until a valid
+permutation is found. The first valid pairing found will be the last permutation given the
+ordering described above. This can be accomplished in worst case *O(nm)* steps.
 
 ### Disambiguation of `this`
 
