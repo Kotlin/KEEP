@@ -626,6 +626,7 @@ The following style is recommended for library defined context elements.
 The example below shows a hypothetical authorization context element that stores current user name:
 
 ```kotlin
+                                                                // ↓ AuthUser here is a reference to the companion object, shorthand for AuthUser.Key
 class AuthUser(val name: String) : AbstractCoroutineContextElement(AuthUser) {
     companion object Key : CoroutineContext.Key<AuthUser>
 }
