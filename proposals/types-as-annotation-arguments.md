@@ -50,7 +50,7 @@ Something like `Foo<Bar>::type`.
 
 ### `typeof`
 
-Something like `@Ann(typeof(Foo<Bar>))`. Note: `typeof` is [reserved as a keyword](https://github.com/JetBrains/kotlin/blob/master/compiler/frontend/src/org/jetbrains/kotlin/lexer/Kotlin.flex#L249) already.
+Something like `@Ann(typeof(Foo<Bar>))`. Note: `typeof` is [reserved as a keyword](https://github.com/JetBrains/kotlin/blob/1.3.0/compiler/psi/src/org/jetbrains/kotlin/lexer/Kotlin.flex#L255) already.
 
 - "typeof" is not a great name, because the result is not the *type of* the expression in parentheses,
 - what to use: `typeof<...>` or `typeof(...)`?
