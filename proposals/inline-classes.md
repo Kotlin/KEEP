@@ -141,7 +141,6 @@ Currently, inline classes must satisfy the following requirements:
 - Inline class can implement only interfaces
 - Inline class cannot have backing fields
     - Hence, it follows that inline class can have only simple computable properties (no lateinit/delegated properties)
-- Inline class cannot have inner classes
 - Inline class must be a toplevel class 
 
 Sidenotes:
