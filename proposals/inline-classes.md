@@ -386,7 +386,7 @@ In both cases resulting `KClass` or `java.lang.Class` object will represent wrap
 inline class Duration(val seconds: Int)
 
 fun test(duration: Duration) {
-    // the following expressions are translated into "java.lang.Class" object for "Duration" class
+    // the following expressions are translated into class objects for "Duration" class
     Duration::class
     duration::class
     duration.javaClass
