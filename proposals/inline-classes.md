@@ -381,14 +381,18 @@ but in generic signature it will be `java.util.List<java.lang.String>`
 _Note: this functionality is added in Kotlin 1.3.20._
 
 Class literals and `javaClass` property are available for expressions of inline class types.
-In both cases resulting `java.util.Class` will represent wrapper for used inline class:
+In both cases resulting `KClass` or `java.lang.Class` object will represent wrapper for used inline class:
 ```kotlin
-inline class IC(val x: Int)
+inline class Duration(val seconds: Int)
 
-fun foo(ic: IC) {
-    IC::class // IC;.class
-    ic::class // java.util.Class for IC
-    ic.javaClass // // java.util.Class for IC
+fun test(duration: Duration) {
+    // the following expressions are translated into "java.lang.Class" object for "Duration" class
+    Duration::class
+    duration::class
+    duration.javaClass
+    
+    assertEquals(duration::class.toString(), "class Duration")
+    assertEquals(Duration::class.simpleName, "Duration")  
 }
 ```
 
