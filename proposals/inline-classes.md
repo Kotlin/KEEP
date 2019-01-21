@@ -376,6 +376,59 @@ fun foo(param: AsList<String>) {}
 In JVM signature `param` will have type `java.util.List`, 
 but in generic signature it will be `java.util.List<java.lang.String>` 
 
+### Reflection
+
+_Note: this functionality is added in Kotlin 1.3.20._
+
+Class literals and `javaClass` property are available for expressions of inline class types.
+In both cases resulting `java.util.Class` will represent wrapper for used inline class:
+```kotlin
+inline class IC(val x: Int)
+
+fun foo(ic: IC) {
+    IC::class // IC;.class
+    ic::class // java.util.Class for IC
+    ic.javaClass // // java.util.Class for IC
+}
+```
+
+Also, it's possible to use `call`/`callBy` for functions that have inline class types in their signatures:
+```kotlin
+inline class S(val value: String) {
+    operator fun plus(other: S): S = S(this.value + other.value)
+}
+
+class C {
+    private var member: S = S("")
+    
+    fun memberFun(x: S, y: String): S = x + S(y)
+
+    fun unboundRef() = C::member.apply { isAccessible = true }
+    fun boundRef() = this::member.apply { isAccessible = true }
+}
+
+private var topLevel: S = S("")
+
+fun test() {
+    val c = C()
+    
+    assertEquals(S("ab"), C::memberFun.call(C(), S("a"), "b"))
+    
+    assertEquals(Unit, c.unboundRef().setter.call(c, S("ab")))
+    assertEquals(S("ab"), c.unboundRef().call(c))
+    assertEquals(S("ab"), c.unboundRef().getter.call(c))
+
+    assertEquals(Unit, c.boundRef().setter.call(S("cd")))
+    assertEquals(S("cd"), c.boundRef().call())
+    assertEquals(S("cd"), c.boundRef().getter.call())
+
+    val topLevel = ::topLevel.apply { isAccessible = true }
+    assertEquals(Unit, topLevel.setter.call(S("ef")))
+    assertEquals(S("ef"), topLevel.call())
+    assertEquals(S("ef"), topLevel.getter.call())
+}
+```
+
 ## Methods from `kotlin.Any`
 
 Inline classes are indirectly inherited from `Any`, i.e. they can be assigned to a value of type `Any`, but only through boxing.
