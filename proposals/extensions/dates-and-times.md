@@ -152,8 +152,8 @@ data class DateTime(val date: Date, val time: Time) : Comparable<DateTime> {
     companion object {
         fun iso8601(string: String): DateTime
     }
-    fun toTimeStamp(offset: Duration = default) 
-    fun iso8601(offset: Duration = default):String
+    fun toTimeStamp(timeZoneOffset: Duration = default) 
+    fun iso8601(timeZoneOffset: Duration = default):String
 
     operator fun plus(amount: Duration): DateTime
     operator fun minus(amount: Duration): DateTime
@@ -166,7 +166,7 @@ inline class TimeStamp(val millisecondsSinceEpoch: Long) : Comparable<TimeStamp>
     constructor(
         date: Date,
         time: Time,
-        offset: Duration = Duration(DefaultLocale.getTimeOffsetMilliseconds())
+        offset: Duration = default
     )
 
     companion object {
@@ -180,9 +180,9 @@ inline class TimeStamp(val millisecondsSinceEpoch: Long) : Comparable<TimeStamp>
     operator fun minus(duration: Duration): TimeStamp
     operator fun minus(other: TimeStamp): Duration
 
-    fun date(offset: Duration = default): Date
-    fun time(offset: Duration = default): Time
-    fun dateTime(offset: Duration = default): DateTime
+    fun date(timeZoneOffset: Duration = default): Date
+    fun time(timeZoneOffset: Duration = default): Time
+    fun dateTime(timeZoneOffset: Duration = default): DateTime
 }
 
 
