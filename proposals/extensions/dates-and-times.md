@@ -113,9 +113,9 @@ inline class Time(val millisecondsSinceMidnight: Int) : Comparable<Time> {
     val seconds:Int
     val milliseconds:Int
 
-    operator fun plus(amount: Duration)
-    operator fun minus(amount: Duration)
-    operator fun minus(other: Time)
+    operator fun plus(amount: Duration): Time
+    operator fun minus(amount: Duration): Time
+    operator fun minus(other: Time): Duration
 
     fun iso8601(): String
 }
@@ -137,14 +137,15 @@ inline class Date(val daysSinceEpoch: Int) : Comparable<Date> {
     fun toNextDayOfWeek(value: DayOfWeek): Date
     fun toDayInSameWeek(value: DayOfWeek): Date
     val dayOfYear: Int
-    val dayOfMonth: Int get() = yearAndDayInYear.dayOfMonth
-    val month: Month get() = yearAndDayInYear.month
-    val year: Year get() = yearAndDayInYear.year
+    val dayOfMonth: Int
+    val month: Month
+    val year: Year
 
     fun iso8601(): String
 
     operator fun minus(other: Date): Duration
 }
+
 
 data class DateTime(val date: Date, val time: Time) : Comparable<DateTime> {
     companion object {
@@ -152,10 +153,20 @@ data class DateTime(val date: Date, val time: Time) : Comparable<DateTime> {
     }
     fun toTimeStamp(offset: Duration = default) 
     fun iso8601(offset: Duration = default):String
-    operator fun minus(other: DateTime)
+
+    operator fun plus(amount: Duration): DateTime
+    operator fun minus(amount: Duration): DateTime
+    operator fun minus(other: DateTime): Duration
 }
 
+
 inline class TimeStamp(val millisecondsSinceEpoch: Long) : Comparable<TimeStamp> {
+
+    constructor(
+        date: Date,
+        time: Time,
+        offset: Duration = Duration(DefaultLocale.getTimeOffsetMilliseconds())
+    )
 
     companion object {
         fun iso8601(string: String): TimeStamp
@@ -166,23 +177,38 @@ inline class TimeStamp(val millisecondsSinceEpoch: Long) : Comparable<TimeStamp>
     operator fun plus(duration: Duration): TimeStamp
     operator fun minus(duration: Duration): TimeStamp
     operator fun minus(other: TimeStamp): Duration
+
+    fun date(offset: Duration = default): Date
+    fun time(offset: Duration = default): Time
+    fun dateTime(offset: Duration = default): DateTime
 }
 
-fun TimeStamp.date(offset: Duration = default): Date
 
-fun TimeStamp.time(offset: Duration = default): Time =
-    Time(((millisecondsSinceEpoch - offset.milliseconds) % TimeConstants.MS_PER_DAY).toInt())
+enum class DayOfWeek {
+    Sunday,
+    Monday,
+    Tuesday,
+    Wednesday,
+    Thursday,
+    Friday,
+    Saturday
+}
 
-fun TimeStamp.dateTime(offset: Duration = Duration(DefaultLocale.getTimeOffsetMilliseconds())): DateTime = DateTime(date(offset), time(offset))
+
+enum class Month(val days: Int, val daysLeap: Int = days) {
+    January(31),
+    February(28, 29),
+    March(31),
+    April(30),
+    May(31),
+    June(30),
+    July(31),
+    August(31),
+    September(30),
+    October(31),
+    November(30),
+    December(31);
+}
 
 
-fun TimeStamp(
-    date: Date,
-    time: Time,
-    offset: Duration = Duration(DefaultLocale.getTimeOffsetMilliseconds())
-) = TimeStamp(
-    date.daysSinceEpoch * 24L * 60 * 60 * 1000 +
-            time.millisecondsSinceMidnight +
-            offset.milliseconds
-)
 ```
