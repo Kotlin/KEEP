@@ -25,7 +25,7 @@ This is intended to be a simple, not all-encompassing implementation of date and
 
 Java 8 uses the classes `LocalDate`, `LocalTime`, `LocalDateTime`, `Instant`, and `Duration`.
 
-- The `Local` before `Date`, `Time`, and `DateTime` are arguably unnecessary as it is implied that a date alone and a time alone can't be related to a time zone.
+- The `Local` before `Date`, `Time`, and `DateTime` doesn't clearly communicate what they are.  `Local` is a misnomer; they are not local, they are timezone-agnostic.
 - `Instant` may be clear, but maybe `TimeStamp` is more searchable/expected.
 
 Java 8 also has a large number of other classes, which deal with time zone functionality.
