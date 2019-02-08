@@ -88,7 +88,8 @@ See the [time package in *lokalize*](https://github.com/lightningkite/lokalize/t
 ## Future advancements
 
 - Time zone related functions
-- Things for dealing with spans of time 
+- Things for dealing with spans of time and repeating events
+- [RFC5545](https://tools.ietf.org/html/rfc5545)
 
 
 ## API Detail
