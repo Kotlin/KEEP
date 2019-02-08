@@ -83,6 +83,7 @@ See the [time package in *lokalize*](https://github.com/lightningkite/lokalize/t
 
 - Should inline classes or expect/actual be used?
     - Interoperability VS Efficiency
+- Default timezone offset should come from a locale - perhaps another thing to add in the same library?
 
 
 ## Future advancements
@@ -124,7 +125,7 @@ inline class Time(val millisecondsSinceMidnight: Int) : Comparable<Time> {
 inline class Date(val daysSinceEpoch: Int) : Comparable<Date> {
 
     constructor(
-            year: Year,
+            year: Int,
             month: Month,
             day: Int
     )
@@ -139,7 +140,7 @@ inline class Date(val daysSinceEpoch: Int) : Comparable<Date> {
     val dayOfYear: Int
     val dayOfMonth: Int
     val month: Month
-    val year: Year
+    val year: Int
 
     fun iso8601(): String
 
@@ -170,6 +171,7 @@ inline class TimeStamp(val millisecondsSinceEpoch: Long) : Comparable<TimeStamp>
 
     companion object {
         fun iso8601(string: String): TimeStamp
+        fun now(): TimeStamp
     }
 
     fun iso8601(): String
