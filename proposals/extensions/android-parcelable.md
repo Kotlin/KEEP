@@ -51,7 +51,6 @@ class MyParcelable(val data: Int): Parcelable
 > The name of the annotation is just an example here. Note: we can't use `Parcelable` for the annotation name as it clashes with the base interface name.
   
 There's a number of annotation processing libraries that mitigate this:
-  - A comparison is available [here](http://blog.bradcampbell.nz/a-comparison-of-parcelable-boilerplate-libraries/)
   - [Parceler](https://github.com/johncarl81/parceler)
   - [AutoParcel](https://github.com/frankiesardo/auto-parcel)
   - [AutoValue Parcelable Extension](https://github.com/rharter/auto-value-parcel)
