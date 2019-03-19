@@ -18,7 +18,7 @@ to additional heap allocations.
 
 ## Motivation / use cases
 
-Inline classes allow to create wrappers for a value of a certain type and such wrappers would be fully inlined. 
+Inline classes allow creating wrappers for a value of a certain type and such wrappers would be fully inlined. 
 This is similar to type aliases but inline classes are not assignment-compatible with the corresponding underlying types.
 
 Use cases:
@@ -145,7 +145,7 @@ Currently, inline classes must satisfy the following requirements:
 
 Sidenotes:
 
-- Let's elaborate requirement to have public primary constructor and restriction of `init` blocks.
+- Let's elaborate requirement of having public primary constructor and restriction of `init` blocks.
 For example, we want to have an inline class for some bounded value:
     ```kotlin
     inline class Positive(val value: Int) {
@@ -157,10 +157,11 @@ For example, we want to have an inline class for some bounded value:
     fun foo(p: Positive) {}
     ```
     
-    Because of inlining, method `foo` have type `int` from Java POV, so we can pass to method `foo` everything we want and `init` 
-    block will not be executed. Since we cannot control behaviour of `init` block execution, we restrict it for inline classes.
+    Because of inlining, method `foo` has parameter of type `int` from Java point of view, so it's possible to pass any number as an argument
+    and there will be no assertion as `init` block isn't evaluated at this moment. Since it's impossible to control behaviour of `init` block 
+    execution, we restrict it for inline classes.
     
-    Unfortunately, it's not enough, because `init` blocks can be emulated via factory methods:
+    Unfortunately, it's not enough as `init` blocks can be emulated via factory methods:
     ```kotlin
     inline class Positive private constructor(val value: Int) {
         companion object {
@@ -174,8 +175,8 @@ For example, we want to have an inline class for some bounded value:
     fun foo(p: Positive) {}
     ```
     
-    Again, method `foo` have type `int` from Java POV, so we can indirectly create values of type `Positive` 
-    even with the presence of private constructor.
+    Again, method `foo` has parameter of type `int` from Java point of view, so it's possible to create values of type `Positive`
+    implicitly, even with the presence of private constructor.
     
     To make behaviour more predictable and consistent with Java, we demand public primary constructor and restrict `init` blocks.
 
@@ -193,9 +194,10 @@ fun test(vararg foos: Foo) { ... } // should be an error
 
 ## Java interoperability  
 
-Each inline class has its own wrapper, which is boxed/unboxed by the same rules as for primitive types.
-Basically, rule for boxing can be formulated as follows: inline class is boxed when it is used as another type.
-Unboxed inline class is used when value is statically known to be inline class.
+Each inline class has its own wrapper that is represented as a usual class on JVM. This wrapper is needed to box values of inline class
+types and use it where it's impossible to use unboxed values. Rules for boxing are pretty the same as for primitive types 
+and can be formulated as follows: inline class is boxed when it is used as another type. Unboxed inline class is used when value is 
+statically known to be inline class.
 
 Examples:
 ```kotlin
@@ -220,13 +222,15 @@ fun test(f: Foo) {
 }
 ```
 
-Since boxing doesn't have side effects as is, it's possible to reuse various optimizations that are done for primitive types.
+Since boxing doesn't have side effects as is, it's possible to reuse various optimizations that are done for primitive types to avoid
+extra boxing/unboxing operations.
 
 ### Type mapping on JVM (without mangling)
 
 #### Top-level types
 
 ##### Inline classes over primitive types
+Consider the following example:
 ```kotlin
 inline class ICPrimitive(val x: Int)
 
@@ -234,13 +238,17 @@ fun foo(i: ICPrimitive) {}
 fun bar(i: ICPrimitive?) {}
 ```
 
-Only values of `ICPrimitive` can be passed to the function `foo` and therefore on JVM this type will be erased to just `int`.
-At the same time, it's also possible to pass `null` to the function `bar`, to handle it correctly, `ICPrimitive?` will be mapped to the 
-reference type `LICPrimitive;` as on JVM primitive type `int` can't hold `null` values.
+Function `foo` can take only values of the underlying type of `ICPrimitive` type, which is `Int`, therefore, such inline class types are 
+mapped to the underlying types. Here, `ICPrimitive` will be mapped to primitive `int`.
+ 
+Function `bar` can also take `null` literal, which is not of type `int`, therefore, such inline class types are mapped to the reference
+type. Here, `ICPrimitive?` will be mapped to `LICPrimitive;`.
 
-So, `ICPrimitive` -> `int`, `ICPrimitive?` -> `LICPrimitive;`.
+So, 
+- not-null inline class types over primitive types are mapped directly to the underlying primitive type
+- nullable inline class types over primitive types are mapped to the boxed reference type (wrapper of an inline class)
 
-##### Inline classes over reference types
+##### Inline classes over not-null reference types
 
 Now, let's consider an inline class over some reference type:
 ```kotlin
@@ -254,11 +262,13 @@ With the type `ICReference` rationale is the same, it can't hold `nulls`, so thi
 Next, function `bar` can hold `null` values, but note that underlying type of `ICReference` is a reference type `String`, which
 can hold `null` values on JVM and can be safely used as a mapped type.
 
-So, `ICReference` -> `String`, `ICReference?` -> `String`.
+So, 
+- not-null inline class types over reference types are mapped directly to the underlying reference type
+- not-null inline class types over not-null reference types are mapped directly to the underlying reference type
 
-##### Inline classes over nullable types
+##### Inline classes over nullable reference types
 
-Now, what if inline class is declared over some nullable type?
+Now, what if inline class is declared over some nullable reference type?
 ```kotlin
 inline class ICNullable(val s: String?)
 
@@ -279,9 +289,11 @@ fun test() {
 }
 ``` 
 If we map `ICNullable?` to `String` as in the previous example, it will not be possible to distinguish `ICNullable(null)` from `null` as on JVM
-they will be represented with the just value `null`, therefore `ICNullable?` should be mapped to the `LICNullable;`
+they will be represented by value `null`, therefore `ICNullable?` should be mapped to the `LICNullable;`
 
-So, `ICNullable` -> `String`, `ICNullable?` -> `LICNullable;`.
+So, 
+- not-null inline class types over nullable reference types are mapped directly to the underlying reference type
+- nullable inline class types over nullable reference types are mapped to the boxed reference type (wrapper of an inline class)
 
 ##### Inline classes over other inline classes
 
@@ -435,7 +447,8 @@ fun test() {
 
 ## Methods from `kotlin.Any`
 
-Inline classes are indirectly inherited from `Any`, i.e. they can be assigned to a value of type `Any`, but only through boxing.
+Inline classes are indirectly inherited from `Any`, i.e. they can be assigned to a value of type `Any` but only through boxing.
+This is the same as for primitives, for example, `Int` doesn't inherit `Any` but its boxed version (`java.lang.Object`) does. 
 
 Methods from `Any` (`toString`, `hashCode`, `equals`) can be useful for a user-defined inline classes and therefore should be customizable. 
 Methods `toString` and `hashCode` can be overridden as usual methods from `Any`. For method `equals` we're going to introduce new operator 
@@ -457,7 +470,7 @@ Consider the following inline class:
 inline class Foo(val x: Int)
 ``` 
 
-To represent array of unboxed values of `Foo` we propose to use new inline class `FooArray`:
+To represent array of unboxed values of `Foo` we propose using new inline class `FooArray` over an array:
 ```kotlin
 inline class FooArray(private val storage: IntArray): Collection<Foo> {
     operator fun get(index: Int): UInt = Foo(storage[index])
@@ -470,10 +483,10 @@ While `Array<Foo>` will represent array of **boxed** values:
 fun test(a: FooArray, b: Array<Foo>) {} 
 ``` 
 
-This is similar how we work with arrays of primitive types such as `IntArray`/`ByteArray` and allows to explicitly differ array of 
+This is similar how one works with arrays of primitive types such as `IntArray`/`ByteArray`, it allows explicitly differ array of 
 unboxed values from array of boxed values.
 
-This decision doesn't allow to declare `vararg` parameter that will represent array of unboxed inline class values, because we can't
+This decision doesn't allow declaring `vararg` parameters that represent array of unboxed inline class values, because it's impossible to
 associate vararg of inline class type with the corresponding array type. For example, without additional information it's impossible to match
 `vararg v: Foo` with `FooArray`. Therefore, we are going to prohibit `vararg` parameters for now.
 
@@ -544,7 +557,7 @@ Let's consider several most important issues that appear in the current implemen
 
 *Overloads*
 
-Signatures of overloads with inline classes that are erased to the same type on the same position will be conflicting:
+Signatures with inline classes that are erased to the same type on the same position will be conflicting:
 ```kotlin
 inline class UInt(val u: Int)
 
@@ -561,8 +574,8 @@ fun foo(x: UserName) {}
 ```
 
 One could use `JvmName` to disambiguate functions, but this looks verbose and confusing. Inline class types are normal types 
-and we'd like to think about inline classes as about usual classes with several restrictions, 
-it allows thinking less about implementation details.
+and we'd like to think about inline classes as about usual classes with several restrictions, it allows thinking less about 
+implementation details.
     
 *Non-public constructors and initialization blocks*
 
@@ -596,7 +609,7 @@ we can use different names on JVM.
 
 ### Mangling
 
-To mitigate described problems, we propose to do mangling for declarations that have top-level inline class types in their signatures.
+To mitigate described problems, we propose introducing mangling for declarations that have top-level inline class types in their signatures.
 Example:
 ```kotlin
 inline class UInt(val x: Int)
