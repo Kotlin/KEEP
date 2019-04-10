@@ -12,7 +12,7 @@ The goal of this proposal is to enable `type classes` and lightweight `higher ki
 
 Type classes are a form of interface that provide a greater degree of polymorphism than classical interfaces. Type classes can also improve code reuse in contrast to classical interfaces if done correctly.
 
-The introduction of type classes allow the substitution of `reified` generic functions with a more robust approach that does not require functions to be declared `inline` or `reified`.
+The introduction of type classes allows the substitution of `reified` generic functions with a more robust approach that does not require functions to be declared `inline` or `reified`.
 
 ## Motivation
 
