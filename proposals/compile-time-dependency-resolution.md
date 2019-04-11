@@ -97,44 +97,6 @@ fetch<User>("1182938") // compiles since we got evidence of a `Repository<User>`
 fetch<Coin>("1239821") // does not compile: No `Repository<Coin>` evidence defined in scope!
 ```
 
-## Overcoming `inline` + `reified` limitations
-
-Extension interface contracts allow us to work around `inline` `reified` generics and their limitations and express those as part of the constraints instead:
-
-```kotlin
-extension interface Reified<A> {
-    val A.selfClass: KClass<A>
-}
-```
-
-Now a function that was doing something like:
-
-```kotlin
-inline fun <reified A> foo() { .... A::class ... }
-```
-
-can be replaced with:
-
-```kotlin
-fun <A> fooTC(with Reified<A>): Klass<A> { .... A.selfClass ... }
-```
-
-This allows us to obtain generics info without the need to declare functions as `inline` or `reified`, overcoming the current limitation of inline reified functions in that they can't be invoked unless made concrete from non-reified contexts.
-
-Note that this does not remove the need to use `inline reified` where one tries to inspect generic type information at runtime through reflection. This particular case is only relevant for those cases where you know the types you want `reified` ahead of time and you need to access their class value.
-
-```kotlin
-extension class Foo<A> {
-   val someKlazz = foo<A>() // won't compile because class disallow reified type args
-}
-```
-
-```kotlin
-extension class Foo<A> {
-   val someKlazz = fooTC<A>() // works and does not require to be inside an `inline reified` context
-}
-```
-
 ## Composition and chain of evidences
 
 Interface declarations and extension evidences can encode further constraints on their type parameters so that they can be composed nicely:
