@@ -403,13 +403,13 @@ Ideally we want to ban orphan implementations in libraries but not in executable
 
 ### Package-based approach to orphans
 
-A simple way to allow orphan implementations is to replace the file-based restrictions with package-based restrictions. Because there are no restrictions on packages, it is possible to do the following.
+A simple way to allow orphan extenions is to replace the file-based restrictions with package-based restrictions. Because there are no restrictions on packages, it is possible to do the following.
 
 ```kotlin
 // In some library foo
 package foo.collections
 
-extension class Monoid<A> {
+extension class Repository<A> {
    ...
 }
 ```
@@ -418,25 +418,25 @@ extension class Monoid<A> {
 // In some application that uses the foo library
 package foo.collections
 
-extension object : Monoid<Int> {
+extension object : Repository<Int> {
    ...
 }
 ```
 
-This approach would not forbid orphan implementations in libraries but it would highly discourage libraries from providing them, as this would involve writing code in the package namespace of another library.
+This approach would not forbid orphan extensions in libraries but it would highly discourage libraries from providing them, as this would involve writing code in the package namespace of another library.
 
 ### Internal modifier-based approach to orphans
 
-An alternate approach is to require that orphan implementations be marked `internal`. The full rules would be as follows:
+An alternate approach is to require that orphan extensions be marked `internal`. The full rules would be as follows:
 
-1. All orphan implementations must be marked `internal`.
-2. All code which closes over an internal implementation must be marked internal. Code closes over a type class instance if it contains a static reference to such an implementation.
-3. Internal implementations defined in the same module are in scope for the current module.
-4. Internal implementations defined in other modules are not valid for type class resolution.
+1. All orphan extensions must be marked `internal`.
+2. All code which closes over an internal extension must be marked internal. Code closes over a constraint interface extension if it contains a static reference to such an extension.
+3. Internal extensions defined in the same module are in scope for the current module.
+4. Internal extensions defined in other modules are not valid for constraint interface resolution.
 
 This approach works well but it has a few problems.
 
-1. It forces applications that use orphan implementations to mark all their code as internal, which is a lot of syntactic noise.
+1. It forces applications that use orphan extensions to mark all their code as internal, which is a lot of syntactic noise.
 2. It complicates the compiler's resolution mechanism since it's not as easy to enumerate definition sites.
 
 The first problem actually leads us to a better solution.
