@@ -320,16 +320,18 @@ Once you hit the "compile" button or run any compile command you'll also get tho
 
 ![Screenshot 2019-04-05 at 12 59 54](https://user-images.githubusercontent.com/6547526/55623259-be44a900-57a2-11e9-927e-fe0150265ba5.png)
 
-## How to try KEEEP-87? - approach 1
+## How to try KEEEP-87? (First approach)
 
-- Clone this project and checkout the **keep-87** branch.
+- Clone [Our Kotlin fork](https://github.com/arrow-kt/kotlin) and checkout the **keep-87** branch.
 - Follow the instructions on the [README](https://github.com/arrow-kt/kotlin/blob/master/ReadMe.md#build-environment-requirements) configure the necessary JVMs.
 - Follow the instructions on the [README](https://github.com/arrow-kt/kotlin/blob/master/ReadMe.md#-working-with-the-project-in-intellij-idea) to open the project in IntelliJ IDEA.
 - Once you have everything working, you can run a new instance of IntelliJ IDEA with the new modifications to the language by executing `./gradlew runIde`. There is also a pre-configured run configuration titled **IDEA** that does this.
 - It will open a new instance of the IDE where you can create a new project and experiment with the new features of the language. You can also download [this project](https://github.com/arrow-kt/kotlin/files/3064100/Keep87Sample.zip)
 ) with some sample code that you can try out.
 
-## How to try KEEEP-87? - Alternative approach (easier)
+## How to try KEEEP-87? (Alternative approach - easier)
+
+We've got the Keep 87 deployed to our own Idea plugin repository over Amazon s3. To use it:
 
 - Download the latest version of IntelliJ IDEA 2018.2.4 from JetBrains
 - Go to `preferences` -> `plugins` section.
