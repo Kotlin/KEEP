@@ -117,7 +117,7 @@ fetchById<User>("1182938") // compiles since we got evidence of a `Repository<Us
 fetchById<User>("1182938", UserRepository()) // you can provide it manually.
 ```
 
-When `with` is used in class constructors, it is important to **add val to extension class fields** to make sure they are accessible in the scope of the class. Here, the with keyword adds the value to the scope of every method in the class. In this scenario, the following classes would be equivalent:
+When `with` is used in class constructors, it is important to **add val to extension class fields** to make sure they are accessible in the scope of the class. Here, the `with` keyword adds the value to the scope of every method in the class. In this scenario, the following classes would be equivalent:
 
 ```kotlin
 data class Group<A>(val values: List<A>)
