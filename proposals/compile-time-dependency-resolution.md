@@ -137,35 +137,38 @@ extension class Foo<A> {
 
 ## Composition and chain of evidences
 
-Type class instances and declarations can encode further constraints on their type parameters so that they can be composed nicely:
+Interface declarations and extension evidences can encode further constraints on their type parameters so that they can be composed nicely:
 
 ```kotlin
-package optionext
+package com.data.instances
 
-extension class OptionMonoid<A>(with Monoid<A>): Monoid<Option<A>> {
+import com.data.Repository
+import com.domain.User
+import com.domain.Group
 
-  val empty: Option<A> = None
-
-  fun Option.combine(ob: Option<A>): Option<A> =
-    when (this) {
-      is Some<A> -> when (ob) {
-                      is Some<A> -> Some(this.value.combine(b.value)) //works because there is evidence of a Monoid<A>
-                      is None -> ob
-                    }
-      is None -> this
+extension class GroupRepository<A>(with val repoA: Repository<A>) : Repository<Group<A>> {
+  override fun loadAll(): List<Group<A>> {
+    return listOf(Group(userRepository.loadAll()))
   }
 
+  override fun loadById(id: Int): Group<A>? {
+    return Group(userRepository.loadById(id))
+  }
 }
 ```
 
-The above instance declares a `Monoid<Option<A>>` as long as there is a `Monoid<A>` in scope.
+The above extension provides evidence of a `Repository<Group<A>>` as long as there is a `Repository<A>` in scope. Call site would be like:
 
 ```kotlin
-Option(1).combine(Option(1)) // Option(2)
-Option("a").combine(Option("b")) // does not compile. Found `Monoid<Option<A>>` instance providing `combine` but no `Monoid<String>` instance was in scope
+fun fetchGroup<A>(with repo: GroupRepository<A>) = repo.loadAll()
+
+fun main() {
+  fetchGroup<User>() // Succeeds! There's evidence of Repository<Group<A>> and Repository<User> provided in scope.
+  fetchGroup<Coin>() // Fails! There's evidence of Repository<Group<A>> but no evidence of `Repository<Coin>` available.
+}
 ```
 
-We believe the encoding proposed above fits nicely with Kotlin's philosophy of extensions and will reduce the boilerplate compared to other langs that also support type classes such as Scala where this is done via implicits.
+We believe the encoding proposed above fits nicely with Kotlin's philosophy of extensions and will reduce the boilerplate compared to other langs that also support compile time dependency resolution such as Scala where this is done via implicits.
 
 ## Type classes over type constructors
 
