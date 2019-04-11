@@ -138,7 +138,7 @@ class GroupRepository<A>(val R: Repository<A>) : Repository<Group<A>> {
 
 ## Composition and chain of evidences
 
-Interface declarations and extension evidences can encode further constraints on their type parameters so that they can be composed nicely:
+Constraint interface declarations and extension evidences can encode further constraints on their type parameters so that they can be composed nicely:
 
 ```kotlin
 package com.data.instances
