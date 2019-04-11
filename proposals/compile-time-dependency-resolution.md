@@ -1,4 +1,4 @@
-# Type Classes
+# Compile time dependency resolution
 
 * **Type**: Design proposal
 * **Author**: Raul Raja
@@ -8,18 +8,14 @@
 
 ## Summary
 
-The goal of this proposal is to enable `type classes` and lightweight `higher kinded types` in Kotlin to enable ad-hoc polymorphism and better extension syntax.
-
-Type classes are a form of interface that provide a greater degree of polymorphism than classical interfaces. Type classes can also improve code reuse in contrast to classical interfaces if done correctly.
-
-The introduction of type classes allows the substitution of `reified` generic functions with a more robust approach that does not require functions to be declared `inline` or `reified`.
+The goal of this proposal is to enable **compile time dependency resolution** through extension syntax. Overall, we'd want to enable extension contract interfaces to be defined as function or class arguments and enable compiler to automatically resolve and inject those instances that must be provided evidence for in one of a given set of scopes. In case of not having evidence of any of those required interfaces (program constraints), compiler would fail and provide proper error messages.
 
 ## Motivation
 
-* Support type class evidence compile-time verification.
-* Support a broader range of Typed FP patterns.
+* Support extension evidence compile-time verification.
+* Enable nested extension resolution.
 * Enable multiple extension function groups for type declarations.
-* Enable the use of reified generics without the need for explicit inlining.
+* Support compile-time verification of a program correctness given behavioral constraints are raised to the interface types.
 * Enable definition of polymorphic functions whose constraints can be verified at compile time in call sites.
 
 ## Description
