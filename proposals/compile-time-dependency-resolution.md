@@ -20,50 +20,81 @@ The goal of this proposal is to enable **compile time dependency resolution** th
 
 ## Description
 
-We propose to use the existing `interface` semantics, allowing for generic definition of type classes and their instances in the same style interfaces are defined.
+We propose to use the existing `interface` semantics, allowing for generic definition of behaviors and their instances in the same style interfaces are defined.
 
 ```kotlin
-interface Monoid<A> {
-    fun A.combine(b: A): A
-    val empty: A
+package com.data
+
+interface Repository<A> {
+  fun loadAll(): List<A>
+  fun loadById(id: Int): A?
 }
 ```
 
-The above declaration can serve as a target for implementations of any arbitrary data type.
-In the implementation below we provide evidence that there is a `Monoid<Int>` instance, enabling `combine` and `empty` on `Int`.
+The above declaration can serve as a target for implementations for any arbitrary type passed for `A`.
+
+In the implementation below we provide evidence that there is a `Repository<User>` extensions available in scope, enabling both methods defined for the given behavior to work over the `User` type. As you can see, we're enabling a new keyword here: `extension`.
 
 ```kotlin
-package intext
+package com.data.instances
 
-extension object : Monoid<Int> {
-    fun Int.combine(b: Int): Int = this + b
-    val empty: Int = 0
+import com.data.Repository
+import com.domain.User
+
+extension object UserRepository: Repository<User> {
+  override fun loadAll(): List<User> {
+    return listOf(User(25, "Bob"))
+  }
+
+  override fun loadById(id: Int): User? {
+    return if (id == 25) {
+      User(25, "Bob")
+    } else {
+      null
+    }
+  }
 }
 ```
 
-Type class implementations can be given a name for Java interop.
+You can also provide evidence of an extension using classes:
 
 ```kotlin
-package intext
+package com.data.instances
 
-extension object IntMonoid : Monoid<Int> {
-    fun Int.combine(b: Int): Int = this + b
-    val empty: Int = 0
+import com.data.Repository
+import com.domain.User
+
+extension class UserRepository: Repository<User> {
+  override fun loadAll(): List<User> {
+    return listOf(User(25, "Bob"))
+  }
+
+  override fun loadById(id: Int): User? {
+    return if (id == 25) {
+      User(25, "Bob")
+    } else {
+      null
+    }
+  }
 }
 ```
 
-```kotlin
+**Extensions are named** for now, mostly for supporting Java, but we'd be open to iterate that towards allowing definition through properties and anonymous classes.
+We got the contract definition (interface) and the way to provide evidence of an extension, we'd just need to connect both things now. Interfaces can be used to define constraints of a function or a class. We the `with` keyword for that.
 
-1.combine(2) // 3
-Monoid<Int>.empty() // 0
+```kotlin
+fun <A> fetchById(id: String, with repository: Repository<A>): A? {
+  return loadById(id) // Repository syntax is automatically activated inside the function scope!
+}
 ```
 
-Type classes can be used as constraints on type parameters within polymorphic functions. In the example below, we constrain `A` to being a type for which evidence exists that it can be treated as a `Monoid`.
+As you can see, we get the constraint syntax automatically active inside the function scope, so we can call it's functions at will. That's because we consider `Repository` a constraint of our program at this point. In other words, the program cannot work without it, it's a requirement.
+
+On the call site:
 
 ```kotlin
-fun <A> add(a: A, b: A, with Monoid<A>): A = a.combine(b)
-add(1, 1) // compiles
-add("a", "b") // does not compile: No `String: Monoid` instance defined in scope
+fetch<User>("1182938") // compiles since we got evidence of a `Repository<User>` in scope.
+fetch<Coin>("1239821") // does not compile: No `Repository<Coin>` evidence defined in scope!
 ```
 
 ## Overcoming `inline` + `reified` limitations
