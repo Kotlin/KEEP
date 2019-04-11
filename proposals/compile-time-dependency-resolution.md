@@ -195,7 +195,7 @@ Classical interfaces only permit their implementation at the site of a type defi
 
 For those reasons constraint interfaces must be declared in one of the following places (in strict resolution order):
 
-1. Scope of the caller function.
+1. Arguments of the caller function.
 2. Companion object for the target type (User).
 3. Companion object for the constraint interface we're looking for (Repository).
 4. Subpackages of the package where the target type (User) to resolve is defined.
@@ -205,32 +205,125 @@ All other instances are considered orphan instances and are not allowed. See [Ap
 
 Additionally, a constraint extension must not conflict with any other pre-existing extension for the same constraint interface; for the purposes of checking this we use the normal resolution rules. That's what we refer as compiler "coherence".
 
-### Interface-side implementations
+#### 1. Arguments of the caller function
 
-This definition site is simple to implement and requires no rules except that the instances occur in the same package. For example, the following implementation is allowed:
+It looks into the caller function argument list for an evidence of the required extension. Here, `bothValid()` gets a `Validator<A>` passed in so whenever it needs to resolve it for the inner calls to `validate()`, it'll be able to retrieve it from its own argument list.
+```kotlin
+fun <A> validate(a: A, with validator: Validator<A>): Boolean = a.isValid()
+
+fun <A> bothValid(x: A, y: A, with validator: Validator<A>): Boolean = validate(x) && validate(y)
+```
+
+#### 2. Companion object for the target type
+
+In case there's no evidence at the caller function level, we'll look into the companion of the target type. Let's say we have `Repository<A>` and `User` for the `A` type:
+```kotlin
+data class User(val id: Int, val name: String) {
+  companion object {
+    extension class UserValidator(): Validator<User> {
+      override fun User.isValid(): Boolean {
+        return id > 0 && name.length > 0
+      }
+    }
+  }
+}
+```
+That'll be enough for resolving the extension.
+
+#### 3. Companion object for the constraint interface we're looking for
+
+In case there's neither evidence in the companion of the target type, we'll look in the companion of the constraint interface:
 
 ```kotlin
-package foo.collections
+interface Validator<A> {
+  fun A.isValid(): Boolean
 
-interface Monoid<A> {
-   ...
-   companion object {
-      extension object IntMonoid : Monoid<Int> { ... }
-   }
+  companion object {
+    extension class GroupValidator<A>(with val userValidator: Validator<User>) : Validator<Group> {
+      override fun Group.isValid(): Boolean {
+        for (x in users) {
+          if (!x.isValid()) return false
+        }
+        return true
+      }
+    }
+  }
 }
 ```
 
-```kotlin
-package foo.collections.instances
+#### 4. Subpackages of the package where the target type is defined
 
-extension object : Monoid<String> {
-   ...
+The next step would be to look into the subpackages of the package where the target type (`User`) is declared.
+
+```kotlin
+package com.domain.repository
+
+import com.domain.User
+
+extension object UserRepository: Repository<User> {
+  override fun loadAll(): List<User> {
+    return listOf(User(25, "Bob"))
+  }
+
+  override fun loadById(id: Int): User? {
+    return if (id == 25) {
+      User(25, "Bob")
+    } else {
+      null
+    }
+  }
 }
 ```
 
-### Type-side implementations
+Here we got a `Repository<User>` defined in a subpackage of `com.domain`, where the `User` type is defined.
 
-This definition site poses additional complications when you consider multi-parameter type classes.
+#### 5. Subpackages of the package where the constraint interface is defined
+
+Last place to look at would be subpackages of the package where the constraint interface is defined.
+
+```kotlin
+package com.data.instances
+
+import com.data.Repository
+import com.domain.User
+
+extension object UserRepository: Repository<User> {
+  override fun loadAll(): List<User> {
+    return listOf(User(25, "Bob"))
+  }
+
+  override fun loadById(id: Int): User? {
+    return if (id == 25) {
+      User(25, "Bob")
+    } else {
+      null
+    }
+  }
+}
+```
+
+Here, we are resolving it from `com.data.instances`, which a subpackage of `com.data`, where our constraint `Repository` is defined.
+
+## Error reporting
+
+We've got a `CallChecker` in place to report inlined errors using the context trace. That allows us to report as many errors as possible in a single compiler pass. Also provide them in two different formats:
+
+#### Inline errors while coding (using inspections and red underline)
+
+Whenever you're coding the checker is running and proper unresolvable extension errors can be reported within IDEA inspections.
+
+![Screenshot 2019-04-05 at 12 51 11](https://user-images.githubusercontent.com/6547526/55622809-85580480-57a1-11e9-8254-0830d29593ec.png)
+
+#### Errors once you hit the "compile" button:
+
+Once you hit the "compile" button or run any compile command you'll also get those errors reported.
+
+![Screenshot 2019-04-05 at 12 59 54](https://user-images.githubusercontent.com/6547526/55623259-be44a900-57a2-11e9-927e-fe0150265ba5.png)
+
+
+### What's still to be done?
+
+We have additional complications when you consider multi-parameter constraint interfaces.
 
 ```kotlin
 package foo.collections
@@ -269,43 +362,6 @@ To determine whether a type class definition is a valid type-side implementation
 5. Any generic type parameters must occur after the first instance of a local type or be covered by a local type.
 
 If a type class implementation meets these rules it is a valid type-side implementation.
-
-## Compile resolution rules
-
-When the compiler finds a call site of a function that has type class instance constraints declared with `with`, as in the example below:
-
-Declaration:
-
-```kotlin
-fun <A> add(a: A, b: A, with Monoid<A>): A = a.combine(b)
-```
-
-Call site:
-
-```kotlin
-fun addInts(): Int = add(1, 2)
-```
-
-1. The compiler first looks at the function context where the invocation is happening. If a function argument matches the required instance for a type class, it uses that instance; e.g.:
-
-    ```kotlin
-    fun <a> duplicate(a : A, with M: Monoid<A>): A = a.combine(a)
-    ```
-
-    The invocation `a.combine(a)` requires a `Monoid<A>` and since one is passed as an argument to `duplicate`, it uses that one.
-
-2. In case it fails, it inspects the following places, sequentially, until it is able to find a valid unique instance for the type class:
-
-    * The current package (where the invocation is taking place), as long as the `extension` is `internal`.
-    * The companion object of the type parameter(s) in the type class (e.g. in `Monoid<A>`, it looks into `A`'s companion object).
-    * The companion object of the type class.
-    * The subpackages of the package where the type parameter(s) in the type class is defined.
-    * The subpackages of the package where the type class is defined.
-
-3. If no matching implementation is found in either of these places then the code fails to compile.
-4. If more than one matching implementation is found, then the code fails to compile and the compiler indicates that there are conflicting instances.
-
-Some of these examples were proposed by Roman Elizarov and the Arrow contributors where these features were originally discussed: https://github.com/Kotlin/KEEP/pull/87
 
 ## Appendix A: Orphan implementations
 
