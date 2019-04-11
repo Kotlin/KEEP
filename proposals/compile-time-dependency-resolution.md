@@ -256,20 +256,21 @@ extension class UserRepository: Repository<User> {
 }
 ```
 
-## Type class instance rules
+## Extension resolution order
 
-Classical interfaces only permit their implementation at the site of a type definition. Type classes typically relax this rule and allow implementations outside of the type definition. When relaxing this rule it is important to preserve the coherency we take for granted with classical interfaces.
+Classical interfaces only permit their implementation at the site of a type definition. Compiler extension resolution pattern typically relax this rule and **allow extension evidences be declared outside of the type definition**. When relaxing this rule it is important to preserve the coherency we take for granted with classical interfaces.
 
-For those reasons type class instances must be declared in one of these places:
+For those reasons constraint interfaces must be declared in one of the following places (in strict resolution order):
 
-1. In the companion object of the type class (interface-side implementation).
-2. In the companion object of the type implementing the type class (type-side implementation).
-3. In a subpackage of the package where the type class is defined.
-4. In a subpackage of the package where the type implementing the type class is defined.
+1. Scope of the caller function.
+2. Companion object for the target type (User).
+3. Companion object for the constraint interface we're looking for (Repository).
+4. Subpackages of the package where the target type (User) to resolve is defined.
+5. Subpackages of the package where the constraint interface (Repository) is defined.
 
-All other instances are orphan instances and are not allowed. See [Appendix A](#Appendix-A) for a modification to this proposal that allows for orphan instances.
+All other instances are considered orphan instances and are not allowed. See [Appendix A](#Appendix-A) for a modification to this proposal that allows for orphan instances.
 
-Additionally, a type class instance must not conflict with any other pre-existing type class instances; for the purposes of checking this we use the normal resolution rules.
+Additionally, a constraint extension must not conflict with any other pre-existing extension for the same constraint interface; for the purposes of checking this we use the normal resolution rules. That's what we refer as compiler "coherence".
 
 ### Interface-side implementations
 
