@@ -2,7 +2,7 @@
 
 * **Type**: Design proposal
 * **Author**: Raul Raja
-* **Contributors**: Francesco Vasco, Claire Neveu, Tomás Ruiz López
+* **Contributors**: Tomás Ruiz López, Jorge Castillo, Francesco Vasco, Claire Neveu
 * **Status**: New
 * **Prototype**: [initial implementation](https://github.com/arrow-kt/kotlin/pull/6)
 
@@ -295,7 +295,7 @@ fun addInts(): Int = add(1, 2)
     * The companion object of the type class.
     * The subpackages of the package where the type parameter(s) in the type class is defined.
     * The subpackages of the package where the type class is defined.
-  
+
 3. If no matching implementation is found in either of these places then the code fails to compile.
 4. If more than one matching implementation is found, then the code fails to compile and the compiler indicates that there are conflicting instances.
 
