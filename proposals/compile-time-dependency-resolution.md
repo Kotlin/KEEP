@@ -170,35 +170,6 @@ fun main() {
 
 We believe the encoding proposed above fits nicely with Kotlin's philosophy of extensions and will reduce the boilerplate compared to other langs that also support compile time dependency resolution such as Scala where this is done via implicits.
 
-## Type classes over type constructors
-
-We recommend if this proposal is accepted that a lightweight version of higher kinds support is included to unveil the true power of type classes through the extensions mechanisms.
-
-A syntax that would allow for higher kinds in these definitions may look like this:
-
-```kotlin
-extension interface FunctionK<F<_>, G<_>> {
-  fun <A> invoke(fa: F<A>): G<A>
-}
-
-extension object : FunctionK<Option, List> {
-  fun <A> invoke(fa: Option<A>): List<A> =
-    fa.fold({ emptyList() }, { listOf(it) })
-}
-```
-
-Here `F<_>` refers to a type constructor, meaning a type that has a hole within it such as `Option`, `List`, etc.
-
-A use of this declaration in a polymorphic function would look like:
-
-```kotlin
-fun <F<_>, A, B> transform(fa: F<A>, f: (A) -> B, with Functor<F>): F<B> = fa.map(f)
-
-transform(Option(1), { it + 1 }) // Option(2)
-transform("", { it + "b" }) // Does not compile: `String` is not type constructor with shape F<_>
-transform(listOf(1), { it + 1 }) // does not compile: No `Functor<List>` instance defined in scope.
-```
-
 ## Language changes
 
 * Add `with` to require evidence of extensions in both function and class/object declarations.
