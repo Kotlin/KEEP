@@ -8,13 +8,12 @@
 
 ## Summary
 
-The goal of this proposal is to enable **compile time dependency resolution** through extension syntax. Overall, we'd want to enable extension contract interfaces to be defined as function or class arguments and enable compiler to automatically resolve and inject those instances that must be provided evidence for in one of a given set of scopes. In case of not having evidence of any of those required interfaces (program constraints), compiler would fail and provide proper error messages.
+The goal of this proposal is to enable **compile time dependency resolution** through extension syntax. Overall, we'd want to enable extension contract interfaces to be defined as function or class constructor arguments and enable compiler to automatically resolve and inject those instances that must be provided evidence for in one of a given set of scopes. In case of not having evidence of any of those required interfaces (program constraints), compiler would fail and provide proper error messages.
 
 ## Motivation
 
-* Support extension evidence compile-time verification.
+* Support compile-time verification of program dependencies (extensions).
 * Enable nested extension resolution.
-* Enable multiple extension function groups for type declarations.
 * Support compile-time verification of a program correctness given behavioral constraints are raised to the interface types.
 * Enable definition of polymorphic functions whose constraints can be verified at compile time in call sites.
 
@@ -33,7 +32,7 @@ interface Repository<A> {
 
 The above declaration can serve as a target for implementations for any arbitrary type passed for `A`.
 
-In the implementation below we provide evidence that there is a `Repository<User>` extensions available in scope, enabling both methods defined for the given behavior to work over the `User` type. As you can see, we're enabling a new keyword here: `extension`.
+In the implementation below we provide evidence that there is a `Repository<User>` extension available in scope, enabling both methods defined for the given behavior to work over the `User` type. As you can see, we're enabling a new keyword here: `extension`.
 
 ```kotlin
 package com.data.instances
@@ -79,8 +78,9 @@ extension class UserRepository: Repository<User> {
 }
 ```
 
-**Extensions are named** for now, mostly for supporting Java, but we'd be open to iterate that towards allowing definition through properties and anonymous classes.
-We got the contract definition (interface) and the way to provide evidence of an extension, we'd just need to connect both things now. Interfaces can be used to define constraints of a function or a class constructor. We the `with` keyword for that.
+**Extensions are named** for now, mostly with the purpose of supporting Java. We'd be fine with this narrower approach, but we'd be open to iterate that towards allowing definition through properties and anonymous classes, if there's a need for it.
+
+Now we've got the constraint definition (interface) and a way to provide evidence of an extension for it, we'd just need to connect the dots. Interfaces can be used to define constraints of a function or a class constructor. We the `with` keyword for that.
 
 ```kotlin
 fun <A> fetchById(id: String, with repository: Repository<A>): A? {
@@ -88,7 +88,7 @@ fun <A> fetchById(id: String, with repository: Repository<A>): A? {
 }
 ```
 
-As you can see, we get the constraint syntax automatically active inside the function scope, so we can call it's functions at will. That's because we consider `Repository` a constraint of our program at this point. In other words, the program cannot work without it, it's a requirement. That means the following two functions are equivalent:
+As you can see, we get the constraint syntax automatically active inside the function scope, so we can call it's functions at will. That's because we consider `Repository` a constraint of our program at this point. In other words, the program cannot work without it, it's a requirement. That means the following two functions would be equivalent:
 
 ```kotlin
 // Kotlin + KEEP-87
@@ -103,21 +103,21 @@ fun <A> fetchById(id: String, repository: Repository<A>): A? =
   }
 ```
 
-On the call site:
+On the call site, we could use it like:
 
 ```kotlin
 fetchById<User>("1182938") // compiles since we got evidence of a `Repository<User>` in scope.
 fetchById<Coin>("1239821") // does not compile: No `Repository<Coin>` evidence defined in scope!
 ```
 
-Functions with extension parameters can be passed all values, or extension ones can be omitted and let the compiler resolve the suitable extensions for them.
+Functions with extension parameters can be passed all values, or extension ones can be omitted and let the compiler resolve the suitable extensions for them. That makes the approach really similar to how default arguments work in Kotlin.
 
 ```kotlin
 fetchById<User>("1182938") // compiles since we got evidence of a `Repository<User>` in scope.
 fetchById<User>("1182938", UserRepository()) // you can provide it manually.
 ```
 
-When used in class constructors, it is important to **add val to extension class fields** to make sure they are accessible in the scope of the class. Here, the with keyword adds the value to the scope of every method in the class. The following classes are equivalent:
+When `with` is used in class constructors, it is important to **add val to extension class fields** to make sure they are accessible in the scope of the class. Here, the with keyword adds the value to the scope of every method in the class. In this scenario, the following classes would be equivalent:
 
 ```kotlin
 data class Group<A>(val values: List<A>)
