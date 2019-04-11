@@ -149,11 +149,11 @@ import com.domain.Group
 
 extension class GroupRepository<A>(with val repoA: Repository<A>) : Repository<Group<A>> {
   override fun loadAll(): List<Group<A>> {
-    return listOf(Group(userRepository.loadAll()))
+    return listOf(Group(repoA.loadAll()))
   }
 
   override fun loadById(id: Int): Group<A>? {
-    return Group(userRepository.loadById(id))
+    return Group(repoA.loadById(id))
   }
 }
 ```
