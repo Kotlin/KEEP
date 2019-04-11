@@ -99,7 +99,7 @@ fetch<Coin>("1239821") // does not compile: No `Repository<Coin>` evidence defin
 
 ## Overcoming `inline` + `reified` limitations
 
-Type classes allow us to work around `inline` `reified` generics and their limitations and express those as type classes instead:
+Extension interface contracts allow us to work around `inline` `reified` generics and their limitations and express those as part of the constraints instead:
 
 ```kotlin
 extension interface Reified<A> {
