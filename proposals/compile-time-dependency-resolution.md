@@ -206,16 +206,23 @@ transform(listOf(1), { it + 1 }) // does not compile: No `Functor<List>` instanc
 
 Usage of these language changes are demonstrated by the previous and below examples:
 
+#### Class constraint
+
 ```kotlin
-// Class constraint
 extension class GroupRepository<A>(with R: Repository<A>) : Repository<Group<A>> {
   /* ... */
 }
+```
 
-// Function constraint
+#### Function constraint
+
+```kotlin
 fun <A> fetch(id: String, with R: Repository<A>): A = loadById(id) // function position using parameter "R"
+```
 
-// Extension evidence using an Object
+#### Extension evidence using an Object
+
+```kotlin
 extension object UserRepository: Repository<User> {
   override fun loadAll(): List<User> {
     return listOf(User(25, "Bob"))
@@ -229,8 +236,11 @@ extension object UserRepository: Repository<User> {
     }
   }
 }
+```
 
-// Extension evidence using a Class
+#### Extension evidence using a Class
+
+```kotlin
 extension class UserRepository: Repository<User> {
   override fun loadAll(): List<User> {
     return listOf(User(25, "Bob"))
