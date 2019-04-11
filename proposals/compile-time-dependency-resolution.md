@@ -80,7 +80,7 @@ extension class UserRepository: Repository<User> {
 ```
 
 **Extensions are named** for now, mostly for supporting Java, but we'd be open to iterate that towards allowing definition through properties and anonymous classes.
-We got the contract definition (interface) and the way to provide evidence of an extension, we'd just need to connect both things now. Interfaces can be used to define constraints of a function or a class. We the `with` keyword for that.
+We got the contract definition (interface) and the way to provide evidence of an extension, we'd just need to connect both things now. Interfaces can be used to define constraints of a function or a class constructor. We the `with` keyword for that.
 
 ```kotlin
 fun <A> fetchById(id: String, with repository: Repository<A>): A? {
@@ -88,13 +88,52 @@ fun <A> fetchById(id: String, with repository: Repository<A>): A? {
 }
 ```
 
-As you can see, we get the constraint syntax automatically active inside the function scope, so we can call it's functions at will. That's because we consider `Repository` a constraint of our program at this point. In other words, the program cannot work without it, it's a requirement.
+As you can see, we get the constraint syntax automatically active inside the function scope, so we can call it's functions at will. That's because we consider `Repository` a constraint of our program at this point. In other words, the program cannot work without it, it's a requirement. That means the following two functions are equivalent:
+
+```kotlin
+// Kotlin + KEEP-87
+fun <A> fetchById(id: String, with repository: Repository<A>): A? {
+  return loadById(id)
+}
+
+// Regular Kotlin
+fun <A> fetchById(id: String, repository: Repository<A>): A? =
+  with (semigroup) {
+    return loadById(id)
+  }
+```
 
 On the call site:
 
 ```kotlin
-fetch<User>("1182938") // compiles since we got evidence of a `Repository<User>` in scope.
-fetch<Coin>("1239821") // does not compile: No `Repository<Coin>` evidence defined in scope!
+fetchById<User>("1182938") // compiles since we got evidence of a `Repository<User>` in scope.
+fetchById<Coin>("1239821") // does not compile: No `Repository<Coin>` evidence defined in scope!
+```
+
+Functions with extension parameters can be passed all values, or extension ones can be omitted and let the compiler resolve the suitable extensions for them.
+
+```kotlin
+fetchById<User>("1182938") // compiles since we got evidence of a `Repository<User>` in scope.
+fetchById<User>("1182938", UserRepository()) // you can provide it manually.
+```
+
+When used in class constructors, it is important to **add val to extension class fields** to make sure they are accessible in the scope of the class. Here, the with keyword adds the value to the scope of every method in the class. The following classes are equivalent:
+
+```kotlin
+data class Group<A>(val values: List<A>)
+
+// Kotlin + KEEP-87
+extension class GroupRepository<A>(with val R: Repository<A>) : Repository<Group<A>> {
+  override fun loadAll(): Group<A> =
+    Group(R.loadAll())
+}
+
+// Regular Kotlin
+class GroupRepository<A>(val R: Repository<A>) : Repository<Group<A>> {
+  override fun loadAll(): Group<A> = with (R) {
+    Group(loadAll())
+  }
+}
 ```
 
 ## Composition and chain of evidences
