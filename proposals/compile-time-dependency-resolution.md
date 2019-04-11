@@ -345,53 +345,57 @@ We've got the Keep 87 deployed to our own Idea plugin repository over Amazon s3.
 ![InstallKeepFromRepository4](https://user-images.githubusercontent.com/6547526/55884479-6b0a9600-5ba8-11e9-8a19-0eec53187fc5.png)
 - Download and run [this project](https://github.com/arrow-kt/kotlin/files/3064100/Keep87Sample.zip) on that IntellIJ instance.
 
-### What's still to be done?
+
+## What's still to be done?
+
+### Type-side implementations
 
 We have additional complications when you consider multi-parameter constraint interfaces.
 
 ```kotlin
-package foo.collections
+package foo.repo
 
-interface Isomorphism<A, B> {
+// I stands for the index type, A for the stored type.
+interface Repository<I, A> {
    ...
 }
 ```
 
 ```kotlin
-package data.collections.foo
+package data.foo
 
-data class Foo(...)
-extension class<A> : Isomorphism<Foo, A> {
+data class Id(...)
+extension class RepoIndexedById<A> : Repository<Id, A> {
    ...
 }
 ```
 
 ```kotlin
-package data.collections.bar
+package data.foo.user
 
-data class Bar(...)
-extension class<A> : Isomorphism<A, Bar> {
+data class User(...)
+extension class UserRepository<I> : Repository<I, User> {
    ...
 }
 ```
 
 The above instances are each defined alongside their respective type definitions and yet they clearly conflict with each other. We will also run into quandaries once we consider generic types. We can crib some prior art from Rust<sup>1</sup> to help us out here.
 
-To determine whether a type class definition is a valid type-side implementation we perform the following check:
+To determine whether an extension definition is a valid type-side implementation we'd need to perform the following check:
 
-1. A "local type" is any type (but not type alias) defined in the current file (e.g. everything defined in `data.collections.bar` if we're evaluating `data.collections.bar`).
+1. A "local type" is any type (but not type alias) defined in the current file (e.g. everything defined in `data.foo.user` if we're evaluating `data.foo.user`).
 2. A generic type parameter is "covered" by a type if it occurs within that type (e.g. `MyType` covers `T` in `MyType<T>` but not `Pair<T, MyType>`).
-3. Write out the parameters to the type class in order.
+3. Write out the parameters to the constraint interface in order.
 4. The parameters must include a type defined in this file.
 5. Any generic type parameters must occur after the first instance of a local type or be covered by a local type.
 
-If a type class implementation meets these rules it is a valid type-side implementation.
+**If an extension meets these rules it is a valid type-side implementation.**
 
 ## Appendix A: Orphan implementations
 
-Orphan implementations are a subject of controversy. Combining two libraries - one defining a data type, the other defining an interface - is a feature that many programmers have longed for. However, implementing this feature in a way that doesn't break other features of interfaces is difficult and drastically complicates how the compiler works with those interfaces.
+Orphan implementations are a subject of controversy. Combining two libraries - one defining a target type (`User`), the other defining an interface (`Repository`) - is a feature that many programmers have longed for. However, implementing this feature in a way that doesn't break other features of interfaces is difficult and drastically complicates how the compiler works with those interfaces.
 
-Orphan implementations are the reason that type classes have often been described as "anti-modular", as the most common way of dealing with them is through global coherence checks. This is necessary to ensure that two libraries have not defined incompatible implementations of a type class interface.
+Orphan implementations are the reason that other implementations of this approach have often been described as "anti-modular", as the most common way of dealing with them is through global coherence checks. This is necessary to ensure that two libraries have not defined incompatible extensions of a given constraint interface.
 
 Relaxing the orphan rules is a backwards-compatible change. If this proposal is accepted without permitting orphans then it's useful to consider how they could be added in the future.
 
