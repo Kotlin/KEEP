@@ -201,17 +201,49 @@ transform(listOf(1), { it + 1 }) // does not compile: No `Functor<List>` instanc
 
 ## Language changes
 
-* Add `with` to require evidence of type class instances in both function and class/object declarations.
-* Add `extension` to provide instance evidence for a given type class.
+* Add `with` to require evidence of extensions in both function and class/object declarations.
+* Add `extension` to provide instance evidence for a given interface.
 
 Usage of these language changes are demonstrated by the previous and below examples:
 
 ```kotlin
-extension class OptionMonoid<A>(with M: Monoid<A>) : Monoid<Option<A>> // class position using parameter "M"
-extension class OptionMonoid<A>(with Monoid<A>) : Monoid<Option<A>> // class position using anonymous `Monoid` parameter
+// Class constraint
+extension class GroupRepository<A>(with R: Repository<A>) : Repository<Group<A>> {
+  /* ... */
+}
 
-fun <A> add(a: A, b: A, with M: Monoid<A>): A = a.combine(b) // function position using parameter "M"
-fun <A> add(a: A, b: A, with Monoid<A>): A = a.combine(b) // function position using anonymous `Monoid` parameter
+// Function constraint
+fun <A> fetch(id: String, with R: Repository<A>): A = loadById(id) // function position using parameter "R"
+
+// Extension evidence using an Object
+extension object UserRepository: Repository<User> {
+  override fun loadAll(): List<User> {
+    return listOf(User(25, "Bob"))
+  }
+
+  override fun loadById(id: Int): User? {
+    return if (id == 25) {
+      User(25, "Bob")
+    } else {
+      null
+    }
+  }
+}
+
+// Extension evidence using a Class
+extension class UserRepository: Repository<User> {
+  override fun loadAll(): List<User> {
+    return listOf(User(25, "Bob"))
+  }
+
+  override fun loadById(id: Int): User? {
+    return if (id == 25) {
+      User(25, "Bob")
+    } else {
+      null
+    }
+  }
+}
 ```
 
 ## Type class instance rules
