@@ -380,13 +380,13 @@ We've got a `CallChecker` in place to report inlined errors using the context tr
 
 Whenever you're coding the checker is running and proper unresolvable extension errors can be reported within IDEA inspections.
 
-![Idea Inspections](https://user-images.githubusercontent.com/6547526/56019955-43c9db00-5d06-11e9-8780-5fb12c55f9ff.png)
+![Idea Inspections](https://user-images.githubusercontent.com/6547526/56020688-fea6a880-5d07-11e9-906a-9d085565eee2.png)
 
 #### Errors once you hit the "compile" button:
 
 Once you hit the "compile" button or run any compile command you'll also get those errors reported.
 
-![Idea Inspections](https://user-images.githubusercontent.com/6547526/56019952-43314480-5d06-11e9-956c-dc161dd38835.png)
+![Idea Inspections](https://user-images.githubusercontent.com/6547526/56020690-00706c00-5d08-11e9-8cbd-ba4b852b9105.png)
 
 ## How to try KEEP-87?
 
