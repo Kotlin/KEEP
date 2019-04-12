@@ -253,7 +253,7 @@ extension class UserRepository: Repository<User> {
 
 Classical interfaces only permit their implementation at the site of a type definition. Compiler extension resolution pattern typically relax this rule and **allow extension evidences be declared outside of the type definition**. When relaxing this rule it is important to preserve the coherency we take for granted with classical interfaces.
 
-For those reasons constraint interfaces must be declared in one of the following places (in strict resolution order):
+For those reasons constraint interfaces must be provided in one of the following scopes (in strict resolution order):
 
 1. Arguments of the caller function.
 2. Companion object for the target type (User).
