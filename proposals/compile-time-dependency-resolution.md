@@ -276,7 +276,7 @@ fun <A> bothValid(x: A, y: A, with validator: Validator<A>): Boolean = validate(
 
 #### 2. Companion object for the target type
 
-In case there's no evidence at the caller function level, we'll look into the companion of the target type. Let's say we have `Repository<A>` and `User` for the `A` type:
+In case there's no evidence at the caller function level, we'll look into the companion of the target type. Let's say we have an extension of `Validator<User>`:
 ```kotlin
 data class User(val id: Int, val name: String) {
   companion object {
