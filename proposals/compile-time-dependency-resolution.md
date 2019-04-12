@@ -94,7 +94,7 @@ extension class UserRepository: Repository<User> {
 Now we've got the constraint definition (interface) and a way to provide evidence of an extension for it, we'd just need to connect the dots. Interfaces can be used to define constraints of a function or a class constructor. We use the `with` keyword for that.
 
 ```kotlin
-fun <A> fetchById(id: String, with repository: Repository<A>): A? {
+fun <A> fetchById(id: Int, with repository: Repository<A>): A? {
   return loadById(id) // Repository syntax is automatically activated inside the function scope!
 }
 ```
@@ -103,12 +103,12 @@ As you can see, we get the constraint syntax automatically active inside the fun
 
 ```kotlin
 // Kotlin + KEEP-87
-fun <A> fetchById(id: String, with repository: Repository<A>): A? {
+fun <A> fetchById(id: Int, with repository: Repository<A>): A? {
   return loadById(id)
 }
 
 // Regular Kotlin
-fun <A> fetchById(id: String, repository: Repository<A>): A? =
+fun <A> fetchById(id: Int, repository: Repository<A>): A? =
   with (repository) {
     return loadById(id)
   }
@@ -117,15 +117,15 @@ fun <A> fetchById(id: String, repository: Repository<A>): A? =
 On the call site, we could use it like:
 
 ```kotlin
-fetchById<User>("1182938") // compiles since we got evidence of a `Repository<User>` in scope.
-fetchById<Coin>("1239821") // does not compile: No `Repository<Coin>` evidence defined in scope!
+fetchById<User>(11829) // compiles since we got evidence of a `Repository<User>` in scope.
+fetchById<Coin>(12398) // does not compile: No `Repository<Coin>` evidence defined in scope!
 ```
 
 Functions with extension parameters can be passed all values, or extension ones can be omitted and let the compiler resolve the suitable extensions for them. That makes the approach really similar to how default arguments work in Kotlin.
 
 ```kotlin
-fetchById<User>("1182938") // compiles since we got evidence of a `Repository<User>` in scope.
-fetchById<User>("1182938", UserRepository()) // you can provide it manually.
+fetchById<User>(11829) // compiles since we got evidence of a `Repository<User>` in scope.
+fetchById<User>(11829, UserRepository()) // you can provide it manually.
 ```
 
 When `with` is used in class constructors, it is important to **add val to extension class fields** to make sure they are accessible in the scope of the class. Here, the `with` keyword adds the value to the scope of every method in the class. In this scenario, the following classes would be equivalent:
