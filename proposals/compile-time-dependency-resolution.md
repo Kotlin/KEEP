@@ -184,7 +184,7 @@ fun main() {
 }
 ```
 
-We believe the encoding proposed above fits nicely with Kotlin's philosophy of extensions and will reduce the boilerplate compared to other langs that also support compile time dependency resolution such as Scala where this is done via implicits.
+We believe the encoding proposed above fits nicely with Kotlin's philosophy of extensions and will reduce the boilerplate compared to other langs that also support compile time dependency resolution.
 
 ## Language changes
 
