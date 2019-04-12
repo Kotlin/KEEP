@@ -10,6 +10,10 @@
 
 The goal of this proposal is to enable **compile time dependency resolution** through extension syntax. Overall, we'd want to enable extension contract interfaces to be defined as function or class constructor arguments and enable compiler to automatically resolve and inject those instances that must be provided evidence for in one of a given set of scopes. In case of not having evidence of any of those required interfaces (program constraints), compiler would fail and provide proper error messages.
 
+This would bring **first-class named extensions families** to Kotlin. Extension families allow us to guarantee a given data type (class, interface, etc.) satisfies behaviors (group of functions) that are decoupled from the type's inheritance hierarchy.
+
+Extension families favor horizontal composition based on compile-time resolution between types and their extensions vs the traditional subtype style composition where users are forced to extend and implement classes and interfaces.
+
 ## Motivation
 
 * Support compile-time verification of program dependencies (extensions).
