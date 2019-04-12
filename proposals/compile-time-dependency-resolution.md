@@ -109,7 +109,7 @@ fun <A> fetchById(id: String, with repository: Repository<A>): A? {
 
 // Regular Kotlin
 fun <A> fetchById(id: String, repository: Repository<A>): A? =
-  with (semigroup) {
+  with (repository) {
     return loadById(id)
   }
 ```
