@@ -89,7 +89,7 @@ extension class UserRepository: Repository<User> {
 }
 ```
 
-**Extensions are named** for now, mostly with the purpose of supporting Java. We'd be fine with this narrower approach, but we'd be open to iterate that towards allowing definition through properties and anonymous classes, if there's a need for it.
+In the KEEP as it's coded now, **Extensions are named**. That's mostly with the purpose of supporting Java. We'd be fine with this narrower approach we're providing, but we'd be open to iterate that towards allowing definition through properties and anonymous classes, if there's a need for it.
 
 Now we've got the constraint definition (interface) and a way to provide evidence of an extension for it, we'd just need to connect the dots. Interfaces can be used to define constraints of a function or a class constructor. We use the `with` keyword for that.
 
