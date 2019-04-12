@@ -386,16 +386,7 @@ Once you hit the "compile" button or run any compile command you'll also get tho
 
 ![Screenshot 2019-04-05 at 12 59 54](https://user-images.githubusercontent.com/6547526/55623259-be44a900-57a2-11e9-927e-fe0150265ba5.png)
 
-## How to try KEEEP-87? (First approach)
-
-- Clone [Our Kotlin fork](https://github.com/arrow-kt/kotlin) and checkout the **keep-87** branch.
-- Follow the instructions on the [README](https://github.com/arrow-kt/kotlin/blob/master/ReadMe.md#build-environment-requirements) configure the necessary JVMs.
-- Follow the instructions on the [README](https://github.com/arrow-kt/kotlin/blob/master/ReadMe.md#-working-with-the-project-in-intellij-idea) to open the project in IntelliJ IDEA.
-- Once you have everything working, you can run a new instance of IntelliJ IDEA with the new modifications to the language by executing `./gradlew runIde`. There is also a pre-configured run configuration titled **IDEA** that does this.
-- It will open a new instance of the IDE where you can create a new project and experiment with the new features of the language. You can also download [this project](https://github.com/arrow-kt/kotlin/files/3064100/Keep87Sample.zip)
-) with some sample code that you can try out.
-
-## How to try KEEEP-87? (Alternative approach - easier)
+## How to try KEEP-87?
 
 We've got the Keep 87 deployed to our own Idea plugin repository over Amazon s3. To use it:
 
@@ -410,6 +401,15 @@ We've got the Keep 87 deployed to our own Idea plugin repository over Amazon s3.
 - Install it.
 ![InstallKeepFromRepository4](https://user-images.githubusercontent.com/6547526/55884479-6b0a9600-5ba8-11e9-8a19-0eec53187fc5.png)
 - Download and run [this project](https://github.com/arrow-kt/kotlin/files/3064100/Keep87Sample.zip) on that IntellIJ instance.
+
+## How to try KEEP-87? (Alternative approach)
+
+- Clone [Our Kotlin fork](https://github.com/arrow-kt/kotlin) and checkout the **keep-87** branch.
+- Follow the instructions on the [README](https://github.com/arrow-kt/kotlin/blob/master/ReadMe.md#build-environment-requirements) configure the necessary JVMs.
+- Follow the instructions on the [README](https://github.com/arrow-kt/kotlin/blob/master/ReadMe.md#-working-with-the-project-in-intellij-idea) to open the project in IntelliJ IDEA.
+- Once you have everything working, you can run a new instance of IntelliJ IDEA with the new modifications to the language by executing `./gradlew runIde`. There is also a pre-configured run configuration titled **IDEA** that does this.
+- It will open a new instance of the IDE where you can create a new project and experiment with the new features of the language. You can also download [this project](https://github.com/arrow-kt/kotlin/files/3064100/Keep87Sample.zip)
+) with some sample code that you can try out.
 
 
 ## What's still to be done?
