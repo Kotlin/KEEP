@@ -278,6 +278,8 @@ fun <A> bothValid(x: A, y: A, with validator: Validator<A>): Boolean = validate(
 
 In case there's no evidence at the caller function level, we'll look into the companion of the target type. Let's say we have an extension of `Validator<User>`:
 ```kotlin
+package com.domain
+
 data class User(val id: Int, val name: String) {
   companion object {
     extension class UserValidator(): Validator<User> {
