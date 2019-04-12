@@ -128,24 +128,61 @@ fetchById<User>(11829) // compiles since we got evidence of a `Repository<User>`
 fetchById<User>(11829, UserRepository()) // you can provide it manually.
 ```
 
-When `with` is used in class constructors, it is important to **add val to extension class fields** to make sure they are accessible in the scope of the class. Here, the `with` keyword adds the value to the scope of every method in the class. In this scenario, the following classes would be equivalent:
+When `with` is used in class constructors, it is important to **add val to extension class fields** to make sure they are accessible in the scope of the class. Here, the `with` keyword adds the value to the scope of every method in the class. To showcase that, let's say we have a `Validator<A>`, like: 
+
+```kotlin
+interface Validator<A> {
+  fun A.isValid(): Boolean
+}
+```
+
+In this scenario, the following classes would be equivalent:
 
 ```kotlin
 data class Group<A>(val values: List<A>)
 
 // Kotlin + KEEP-87
-extension class GroupRepository<A>(with val R: Repository<A>) : Repository<Group<A>> {
-  override fun loadAll(): Group<A> =
-    Group(R.loadAll())
+extension class ValidatedRepository<A>(with val V: Validator<A>) : Repository<A> {
+
+    val storedUsers: MutableMap<Int, A> = mutableMapOf() // e.g. users stored in a DB
+
+    override fun loadAll(): Map<Int, A> {
+        return storedUsers.filter { it.value.isValid() }
+    }
+
+    override fun loadById(id: Int): A? {
+        return storedUsers[id]?.let { if (it.isValid()) it else null }
+    }
+
+    override fun A.save() {
+        storedUsers[generateKey(this)] = this
+    }
 }
 
 // Regular Kotlin
-class GroupRepository<A>(val R: Repository<A>) : Repository<Group<A>> {
-  override fun loadAll(): Group<A> = with (R) {
-    Group(loadAll())
-  }
+class ValidatedRepository<A>(val V: Validator<A>) : Repository<A> {
+
+    val storedUsers: MutableMap<Int, A> = mutableMapOf() // e.g. users stored in a DB
+
+    override fun loadAll(): Map<Int, A> {
+        with (V) {
+            return storedUsers.filter { it.value.isValid() }
+        }
+    }
+
+    override fun loadById(id: Int): A? {
+        with (V) {
+            return storedUsers[id]?.let { if (it.isValid()) it else null }
+        }
+    }
+
+    override fun A.save() {
+        storedUsers[generateKey(this)] = this
+    }
 }
 ```
+
+As you can see on the first example, `A.isValid()` becomes automatically available inside the methods scope. The equivalence for that without the KEEP-87 would be to manually use `with (V)` inside each one of them, as you can see in the second example.
 
 ## Composition and chain of evidences
 
@@ -176,7 +213,7 @@ extension class GroupRepository<A>(with val repoA: Repository<A>) : Repository<G
 The above extension provides evidence of a `Repository<Group<A>>` as long as there is a `Repository<A>` in scope. Call site would be like:
 
 ```kotlin
-fun fetchGroup<A>(with repo: GroupRepository<A>) = repo.loadAll()
+fun <A> fetchGroup(with repo: GroupRepository<A>) = loadAll()
 
 fun main() {
   fetchGroup<User>() // Succeeds! There's evidence of Repository<Group<A>> and Repository<User> provided in scope.
