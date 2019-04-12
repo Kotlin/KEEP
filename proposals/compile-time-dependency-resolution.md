@@ -29,8 +29,9 @@ We propose to use the existing `interface` semantics, allowing for generic defin
 package com.data
 
 interface Repository<A> {
-  fun loadAll(): List<A>
+  fun loadAll(): Map<Int, A>
   fun loadById(id: Int): A?
+  fun A.save(): Unit
 }
 ```
 
@@ -44,17 +45,20 @@ package com.data.instances
 import com.data.Repository
 import com.domain.User
 
-extension object UserRepository: Repository<User> {
-  override fun loadAll(): List<User> {
-    return listOf(User(25, "Bob"))
+extension object UserRepository : Repository<User> {
+
+  val storedUsers: MutableMap<Int, User> = mutableMapOf() // e.g. users stored in a DB
+
+  override fun loadAll(): Map<Int, User> {
+    return storedUsers
   }
 
   override fun loadById(id: Int): User? {
-    return if (id == 25) {
-      User(25, "Bob")
-    } else {
-      null
-    }
+    return storedUsers[id]
+  }
+
+  override fun User.save() {
+    storedUsers[this.id] = this
   }
 }
 ```
@@ -68,16 +72,19 @@ import com.data.Repository
 import com.domain.User
 
 extension class UserRepository: Repository<User> {
-  override fun loadAll(): List<User> {
-    return listOf(User(25, "Bob"))
+
+  val storedUsers: MutableMap<Int, User> = mutableMapOf() // e.g. users stored in a DB
+
+  override fun loadAll(): Map<Int, User> {
+    return storedUsers
   }
 
   override fun loadById(id: Int): User? {
-    return if (id == 25) {
-      User(25, "Bob")
-    } else {
-      null
-    }
+    return storedUsers[id]
+  }
+
+  override fun User.save() {
+    storedUsers[this.id] = this
   }
 }
 ```
@@ -152,12 +159,16 @@ import com.domain.User
 import com.domain.Group
 
 extension class GroupRepository<A>(with val repoA: Repository<A>) : Repository<Group<A>> {
-  override fun loadAll(): List<Group<A>> {
-    return listOf(Group(repoA.loadAll()))
+  override fun loadAll(): Map<Int, Group<A>> {
+    return repoA.loadAll().mapValues { Group(it.value) }
   }
 
   override fun loadById(id: Int): Group<A>? {
-    return Group(repoA.loadById(id))
+    return repoA.loadById(id)?.let { Group(it) }
+  }
+
+  override fun Group<A>.save() {
+    this.items.map { repoA.run { it.save() } }
   }
 }
 ```
@@ -199,17 +210,20 @@ fun <A> fetch(id: String, with R: Repository<A>): A = loadById(id) // function p
 #### Extension evidence using an Object
 
 ```kotlin
-extension object UserRepository: Repository<User> {
-  override fun loadAll(): List<User> {
-    return listOf(User(25, "Bob"))
+extension object UserRepository : Repository<User> {
+
+  val storedUsers: MutableMap<Int, User> = mutableMapOf() // e.g. users stored in a DB
+
+  override fun loadAll(): Map<Int, User> {
+    return storedUsers
   }
 
   override fun loadById(id: Int): User? {
-    return if (id == 25) {
-      User(25, "Bob")
-    } else {
-      null
-    }
+    return storedUsers[id]
+  }
+
+  override fun User.save() {
+    storedUsers[this.id] = this
   }
 }
 ```
@@ -218,16 +232,19 @@ extension object UserRepository: Repository<User> {
 
 ```kotlin
 extension class UserRepository: Repository<User> {
-  override fun loadAll(): List<User> {
-    return listOf(User(25, "Bob"))
+
+  val storedUsers: MutableMap<Int, User> = mutableMapOf() // e.g. users stored in a DB
+
+  override fun loadAll(): Map<Int, User> {
+    return storedUsers
   }
 
   override fun loadById(id: Int): User? {
-    return if (id == 25) {
-      User(25, "Bob")
-    } else {
-      null
-    }
+    return storedUsers[id]
+  }
+
+  override fun User.save() {
+    storedUsers[this.id] = this
   }
 }
 ```
@@ -303,17 +320,20 @@ package com.domain.repository
 
 import com.domain.User
 
-extension object UserRepository: Repository<User> {
-  override fun loadAll(): List<User> {
-    return listOf(User(25, "Bob"))
+extension object UserRepository : Repository<User> {
+
+  val storedUsers: MutableMap<Int, User> = mutableMapOf() // e.g. users stored in a DB
+
+  override fun loadAll(): Map<Int, User> {
+    return storedUsers
   }
 
   override fun loadById(id: Int): User? {
-    return if (id == 25) {
-      User(25, "Bob")
-    } else {
-      null
-    }
+    return storedUsers[id]
+  }
+
+  override fun User.save() {
+    storedUsers[this.id] = this
   }
 }
 ```
@@ -330,17 +350,20 @@ package com.data.instances
 import com.data.Repository
 import com.domain.User
 
-extension object UserRepository: Repository<User> {
-  override fun loadAll(): List<User> {
-    return listOf(User(25, "Bob"))
+extension object UserRepository : Repository<User> {
+
+  val storedUsers: MutableMap<Int, User> = mutableMapOf() // e.g. users stored in a DB
+
+  override fun loadAll(): Map<Int, User> {
+    return storedUsers
   }
 
   override fun loadById(id: Int): User? {
-    return if (id == 25) {
-      User(25, "Bob")
-    } else {
-      null
-    }
+    return storedUsers[id]
+  }
+
+  override fun User.save() {
+    storedUsers[this.id] = this
   }
 }
 ```
