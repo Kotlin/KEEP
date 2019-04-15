@@ -453,6 +453,14 @@ We've got the Keep 87 deployed to our own Idea plugin repository over Amazon s3.
 
 ## What's still to be done?
 
+### Instance resolution based on inheritance
+
+Some scenarios are not covered yet given some knowledge we are lacking about how subtyping resolution rules are coded in Kotlin compiler. The different scenarios would be required for a fully working compile time extension resolution feature, and [are described in detail here](https://github.com/arrow-kt/kotlin/issues/15).
+
+### Using extensions in inlined lambdas
+
+Inlined functions get into trouble when it comes to capture resolved extensions.[The problem is described here](https://github.com/arrow-kt/kotlin/issues/14).
+
 ### Function and property extension providers
 
 Ideally we'd enable users to provide extensions also using `val` and `fun`. They'd look similar to:
