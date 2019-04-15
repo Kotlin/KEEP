@@ -295,8 +295,8 @@ For those reasons constraint interfaces must be provided in one of the following
 1. Arguments of the caller function.
 2. Companion object for the target type (User).
 3. Companion object for the constraint interface we're looking for (Repository).
-4. Subpackages of the package where the target type (User) to resolve is defined.
-5. Subpackages of the package where the constraint interface (Repository) is defined.
+4. Subpackages of the package where the target type (User) to resolve is defined, **under the same gradle module**. The extension needs to be marked as `internal`.
+5. Subpackages of the package where the constraint interface (Repository) is defined, **under the same gradle module**. The extension needs to be marked as `internal`.
 
 All other instances are considered orphan instances and are not allowed. See [Appendix A](#Appendix-A) for a modification to this proposal that allows for orphan instances.
 
@@ -352,7 +352,7 @@ interface Validator<A> {
 
 #### 4. Subpackages of the package where the target type is defined
 
-The next step would be to look into the subpackages of the package where the target type (`User`) is declared.
+The next step would be to look into the subpackages of the package where the target type (`User`) is declared. It'll just look in subpackages under the current gradle module, it doesn't support cross-module definitions. These extensions **must be flagged as `internal`**.
 
 ```kotlin
 package com.domain.repository
@@ -381,7 +381,7 @@ Here we got a `Repository<User>` defined in a subpackage of `com.domain`, where 
 
 #### 5. Subpackages of the package where the constraint interface is defined
 
-Last place to look at would be subpackages of the package where the constraint interface is defined.
+Last place to look at would be subpackages of the package where the constraint interface is defined. It'll just look in subpackages under the current gradle module, it doesn't support cross-module definitions. These extensions **must be flagged as `internal`**.
 
 ```kotlin
 package com.data.instances
