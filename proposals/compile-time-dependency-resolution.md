@@ -359,7 +359,7 @@ package com.domain.repository
 
 import com.domain.User
 
-extension object UserRepository : Repository<User> {
+internal extension object UserRepository : Repository<User> {
 
   val storedUsers: MutableMap<Int, User> = mutableMapOf() // e.g. users stored in a DB
 
@@ -389,7 +389,7 @@ package com.data.instances
 import com.data.Repository
 import com.domain.User
 
-extension object UserRepository : Repository<User> {
+internal extension object UserRepository : Repository<User> {
 
   val storedUsers: MutableMap<Int, User> = mutableMapOf() // e.g. users stored in a DB
 
