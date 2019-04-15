@@ -453,6 +453,30 @@ We've got the Keep 87 deployed to our own Idea plugin repository over Amazon s3.
 
 ## What's still to be done?
 
+### Function and property extension providers
+
+Ideally we'd enable users to provide extensions also using `val` and `fun`. They'd look similar to:
+
+```kotlin
+// Simple fun extension provisioning
+extension fun userRepository(): Repository<User> = object : Repository<User>() {
+	/* ... */
+}
+
+// Chained fun extension provisioning (would require both to resolve).
+extension fun userValidator(): Validator<User> = UserValidator()
+extension fun userRepository(with validator: Validator<User>) : Repository<User> = UserRepository(validator)
+
+// Simple extension provisioning
+extension val userRepository: Repository<User> = UserRepository()
+
+// Chained extension provisioning (would require both to resolve).
+extension val userValidator: Validator<User> = UserValidator()
+extension val userRepository: Repository<User> = UserRepository(userValidator)
+```
+
+In chained extension provisioning, all chained extensions would be required from the caller scope, but not necessarily all provided in the same resolution scope. E.g: `Repository<User>` could be provided in a different resolution scope than `Validator<User>`, and the program would still compile successfully as long as both are available.
+
 ### Type-side implementations
 
 We have additional complications when you consider multi-parameter constraint interfaces.
