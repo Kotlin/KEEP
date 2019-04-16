@@ -8,22 +8,22 @@
 
 ## Summary
 
-The goal of this proposal is to enable **compile time dependency resolution** through extension syntax. Overall, we'd want to enable extension contract interfaces to be defined as function or class constructor arguments and enable compiler to automatically resolve and inject those instances that must be provided evidence for in one of a given set of scopes. In case of not having evidence of any of those required interfaces (program constraints), compiler would fail and provide proper error messages.
+The goal of this proposal is to enable **compile time dependency resolution** through extension syntax. Overall, we want to enable extension contract interfaces to be declared as constraints in function or class constructor arguments and enable the compiler to automatically resolve and inject those instances that must be provided with evidence in one of a given set of scopes. We'll cover these later in the Extension resolution order section. In the case of not having evidence of a required interface (program constraints), the compiler would fail and provide the proper error messages.
 
-This would bring **first-class named extensions families** to Kotlin. Extension families allow us to guarantee a given data type (class, interface, etc.) satisfies behaviors (group of functions) that are decoupled from the type's inheritance hierarchy.
+This would bring **first-class named extension families** to Kotlin. Extension families allow us to guarantee that a given data type (class, interface, etc.) satisfies behaviors (a group of functions) that are decoupled from the type's inheritance hierarchy.
 
-Extension families favor horizontal composition based on compile-time resolution between types and their extensions vs the traditional subtype style composition where users are forced to extend and implement classes and interfaces.
+Unlike the traditional subtype style composition where users are forced to extend and implement classes and interfaces, extension families favor horizontal composition based on compile time resolution between types and their extensions.
 
 ## Motivation
 
 * Support compile-time verification of program dependencies (extensions).
 * Enable nested extension resolution.
-* Support compile-time verification of a program correctness given behavioral constraints are raised to the interface types.
-* Enable definition of polymorphic functions whose constraints can be verified at compile time in call sites.
+* Support compile-time verification of the correctness of a program give that behavioral constraints are raised to the interface types.
+* Enable the definition of polymorphic functions whose constraints can be verified at compile time in call sites.
 
 ## Description
 
-We propose to use the existing `interface` semantics, allowing for generic definition of behaviors and their instances in the same style interfaces are defined.
+We propose to use the existing `interface` semantics, allowing for a generic definition of behaviors and their instances in the same style that's used to define interfaces.
 
 ```kotlin
 package com.data
@@ -37,7 +37,7 @@ interface Repository<A> {
 
 The above declaration can serve as a target for implementations for any arbitrary type passed for `A`.
 
-In the implementation below we provide evidence that there is a `Repository<User>` extension available in scope, enabling both methods defined for the given behavior to work over the `User` type. As you can see, we're enabling a new keyword here: `extension`.
+In the implementation below, we provide evidence that there is a `Repository<User>` extension available in scope, enabling both methods defined for the given behavior to work over the `User` type. As you can see, we're enabling a new keyword here: `extension`.
 
 ```kotlin
 package com.data.instances
@@ -89,9 +89,10 @@ extension class UserRepository: Repository<User> {
 }
 ```
 
-In the KEEP as it's coded now, **extensions are named**. That's mostly with the purpose of supporting Java. We'd be fine with this narrower approach we're providing, but we'd be open to iterate that towards allowing definition through properties and anonymous classes, if there's a need for it.
+In KEEP, as it’s coded now, **extensions are named** primarily with the purpose of supporting Java.  We’d be fine with this narrower approach that we’re illustrating here, but would be open to iterating towards allowing definition through properties and anonymous classes if there’s a need for it.
 
-Now we've got the constraint definition (interface) and a way to provide evidence of an extension for it, we'd just need to connect the dots. Interfaces can be used to define constraints of a function or a class constructor. We use the `with` keyword for that.
+
+Now that we've got the constraint definition (interface) and a way to provide evidence of an extension for it, we just need to connect the dots. Interfaces can be used to define constraints of a function or a class constructor. We use the `with` keyword for that.
 
 ```kotlin
 fun <A> fetchById(id: Int, with repository: Repository<A>): A? {
@@ -99,7 +100,8 @@ fun <A> fetchById(id: Int, with repository: Repository<A>): A? {
 }
 ```
 
-As you can see, we get the constraint syntax automatically active inside the function scope, so we can call it's functions at will. That's because we consider `Repository` a constraint of our program at this point. In other words, the program cannot work without it, it's a requirement. That means the following two functions would be equivalent:
+As you can see, the constraint syntax is automatically active inside the function scope, so we can call its functions at will.  That's because we consider `Repository` a constraint of our program at this point. In other words, the program cannot work without it, it's a requirement. That means the following two functions would be equivalent:
+
 
 ```kotlin
 // Kotlin + KEEP-87
@@ -114,21 +116,21 @@ fun <A> fetchById(id: Int, repository: Repository<A>): A? =
   }
 ```
 
-On the call site, we could use it like:
+On the call site, we could use it as follows:
 
 ```kotlin
 fetchById<User>(11829) // compiles since we got evidence of a `Repository<User>` in scope.
 fetchById<Coin>(12398) // does not compile: No `Repository<Coin>` evidence defined in scope!
 ```
 
-Functions with extension parameters can be passed all values, or extension ones can be omitted and let the compiler resolve the suitable extensions for them. That makes the approach really similar to how default arguments work in Kotlin.
+All values can be passed to functions with extension parameters, or we can omit extension parameters and let the compiler resolve the suitable extensions for them. This makes the approach really similar to the way default arguments work in Kotlin.
 
 ```kotlin
 fetchById<User>(11829) // compiles since we got evidence of a `Repository<User>` in scope.
 fetchById<User>(11829, UserRepository()) // you can provide it manually.
 ```
 
-When `with` is used in class constructors, it is important to **add val to extension class fields** to make sure they are accessible in the scope of the class. Here, the `with` keyword adds the value to the scope of every method in the class. To showcase that, let's say we have a `Validator<A>`, like: 
+When `with` is used in class constructors, it is important to **add val to extension class fields** to make sure they are accessible in the scope of the class. Here, the `with` keyword adds the value to the scope of every method in the class. To showcase this, let's say we have a `Validator<A>`, like:
 
 ```kotlin
 interface Validator<A> {
@@ -182,7 +184,7 @@ class ValidatedRepository<A>(val V: Validator<A>) : Repository<A> {
 }
 ```
 
-As you can see on the first example, `A.isValid()` becomes automatically available inside the methods scope. The equivalence for that without the KEEP-87 would be to manually use `with (V)` inside each one of them, as you can see in the second example.
+As you can see in the first example, `A.isValid()` becomes available inside the method’s scope automatically. The equivalent version of doing this without KEEP-87 is to manually add `with (V)` inside each method, as you can see in the second example.  
 
 ## Composition and chain of evidences
 
@@ -210,7 +212,7 @@ extension class GroupRepository<A>(with val repoA: Repository<A>) : Repository<G
 }
 ```
 
-The above extension provides evidence of a `Repository<Group<A>>` as long as there is a `Repository<A>` in scope. Call site would be like:
+The above extension provides evidence of a `Repository<Group<A>>` as long as there is a `Repository<A>` in scope. The Call site would look like:
 
 ```kotlin
 fun <A> fetchGroup(with repo: GroupRepository<A>) = loadAll()
@@ -221,7 +223,8 @@ fun main() {
 }
 ```
 
-We believe the encoding proposed above fits nicely with Kotlin's philosophy of extensions and will reduce the boilerplate compared to other langs that also support compile time dependency resolution.
+We believe that the encoding proposed above fits nicely with Kotlin's philosophy of extensions and will reduce the boilerplate compared to other languages that also support compile-time dependency resolution.
+
 
 ## Language changes
 
@@ -288,9 +291,9 @@ extension class UserRepository: Repository<User> {
 
 ## Extension resolution order
 
-Classical interfaces only permit their implementation at the site of a type definition. Compiler extension resolution pattern typically relax this rule and **allow extension evidences be declared outside of the type definition**. When relaxing this rule it is important to preserve the coherency we take for granted with classical interfaces.
+Classical interfaces only permit their implementation at the site of a type definition. Compiler extension resolution patterns typically relax this rule and **allow extension evidences to be declared outside of the type definition**. When relaxing this rule, it is important to preserve the coherency we take for granted with classical interfaces.
+For those reasons, constraint interfaces must be provided in one of the following scopes (in strict resolution order):
 
-For those reasons constraint interfaces must be provided in one of the following scopes (in strict resolution order):
 
 1. Arguments of the caller function.
 2. Companion object for the target type (User).
@@ -300,11 +303,11 @@ For those reasons constraint interfaces must be provided in one of the following
 
 All other instances are considered orphan instances and are not allowed. See [Appendix A](#Appendix-A) for a modification to this proposal that allows for orphan instances.
 
-Additionally, a constraint extension must not conflict with any other pre-existing extension for the same constraint interface; for the purposes of checking this we use the normal resolution rules. That's what we refer as compiler "coherence".
+Additionally, a constraint extension must not conflict with any other pre-existing extension for the same constraint interface; for the purpose of checking this, we use the normal resolution rules. That's what we refer to as compiler "coherence".
 
 #### 1. Arguments of the caller function
 
-It looks into the caller function argument list for an evidence of the required extension. Here, `bothValid()` gets a `Validator<A>` passed in so whenever it needs to resolve it for the inner calls to `validate()`, it'll be able to retrieve it from its own argument list.
+It looks into the caller function argument list for an evidence of the required extension. Here, `bothValid()` gets a `Validator<A>` passed in so, whenever it needs to resolve it for the inner calls to `validate()`, it'll be able to retrieve it from its own argument list.
 ```kotlin
 fun <A> validate(a: A, with validator: Validator<A>): Boolean = a.isValid()
 
@@ -331,7 +334,7 @@ That'll be enough for resolving the extension.
 
 #### 3. Companion object for the constraint interface we're looking for
 
-In case there's neither evidence in the companion of the target type, we'll look in the companion of the constraint interface:
+In case neither evidence exists in the companion of the target type, we'll look in the companion of the constraint interface:
 
 ```kotlin
 interface Validator<A> {
@@ -352,7 +355,7 @@ interface Validator<A> {
 
 #### 4. Subpackages of the package where the target type is defined
 
-The next step would be to look into the subpackages of the package where the target type (`User`) is declared. It'll just look in subpackages under the current gradle module, it doesn't support cross-module definitions. These extensions **must be flagged as `internal`**.
+The next step would be to look into the subpackages of the package where the target type (`User`) is declared. It will simply look in subpackages under the current gradle module, it doesn't support cross-module definitions. These extensions **must be flagged as `internal`**.
 
 ```kotlin
 package com.domain.repository
@@ -381,7 +384,7 @@ Here we got a `Repository<User>` defined in a subpackage of `com.domain`, where 
 
 #### 5. Subpackages of the package where the constraint interface is defined
 
-Last place to look at would be subpackages of the package where the constraint interface is defined. It'll just look in subpackages under the current gradle module, it doesn't support cross-module definitions. These extensions **must be flagged as `internal`**.
+The last place to look would be the subpackages of the package where the constraint interface is defined. t will simply look in subpackages under the current gradle module, it doesn't support cross-module definitions. These extensions **must be flagged as `internal`**.
 
 ```kotlin
 package com.data.instances
@@ -407,7 +410,7 @@ internal extension object UserRepository : Repository<User> {
 }
 ```
 
-Here, we are resolving it from `com.data.instances`, which a subpackage of `com.data`, where our constraint `Repository` is defined.
+Here, the constraint is resolved by finding a valid evidence for it in the  `com.data.instances`, which a subpackage of `com.data`, where our constraint `Repository` is defined.
 
 ## Error reporting
 
@@ -415,27 +418,27 @@ We've got a `CallChecker` in place to report inlined errors using the context tr
 
 #### Inline errors while coding (using inspections and red underline)
 
-Whenever you're coding the checker is running and proper unresolvable extension errors can be reported within IDEA inspections.
+The checker is running whenever you’re coding and proper unresolvable extension errors can be reported within IDEA inspections.
 
 ![Idea Inspections](https://user-images.githubusercontent.com/6547526/56020688-fea6a880-5d07-11e9-906a-9d085565eee2.png)
 
 #### Errors once you hit the "compile" button:
 
-Once you hit the "compile" button or run any compile command you'll also get those errors reported.
+You will also get a report of those errors once you hit the "compile" button or run any compile command.
 
 ![Idea Inspections](https://user-images.githubusercontent.com/6547526/56020690-00706c00-5d08-11e9-8cbd-ba4b852b9105.png)
 
 ## How to try KEEP-87?
 
-We've got the Keep 87 deployed to our own Idea plugin repository over Amazon s3. To use it:
+KEEP-87 is currently deployed to our own Idea plugin repository over Amazon s3. To use it:
 
 - Download the latest version of IntelliJ IDEA 2018.2.4 from JetBrains
 - Go to `preferences` -> `plugins` section.
 - Click on "Manage Plugin Repositories".
 ![InstallKeepFromRepository1](https://user-images.githubusercontent.com/6547526/55884351-38609d80-5ba8-11e9-8855-3c570ee8a1af.png)
-- Add our Amazon s3 plugin repository as in the image.
+- Add our Amazon s3 plugin repository as seen in the image below.
 ![InstallKeepFromRepository2](https://user-images.githubusercontent.com/6547526/55884427-562e0280-5ba8-11e9-98e8-8811e8e3e8b0.png)
-- Now browse for "keep87" plugin.
+- Now browse for the "keep87" plugin.
 ![InstallKeepFromRepository3](https://user-images.githubusercontent.com/6547526/55884468-67770f00-5ba8-11e9-92d6-e9cc8cc3f572.png)
 - Install it.
 ![InstallKeepFromRepository4](https://user-images.githubusercontent.com/6547526/55884479-6b0a9600-5ba8-11e9-8a19-0eec53187fc5.png)
@@ -444,26 +447,26 @@ We've got the Keep 87 deployed to our own Idea plugin repository over Amazon s3.
 ## How to try KEEP-87? (Alternative approach)
 
 - Clone [Our Kotlin fork](https://github.com/arrow-kt/kotlin) and checkout the **keep-87** branch.
-- Follow the instructions on the [README](https://github.com/arrow-kt/kotlin/blob/master/ReadMe.md#build-environment-requirements) configure the necessary JVMs.
+- Follow the instructions on the [README](https://github.com/arrow-kt/kotlin/blob/master/ReadMe.md#build-environment-requirements) to configure the necessary JVMs.
 - Follow the instructions on the [README](https://github.com/arrow-kt/kotlin/blob/master/ReadMe.md#-working-with-the-project-in-intellij-idea) to open the project in IntelliJ IDEA.
 - Once you have everything working, you can run a new instance of IntelliJ IDEA with the new modifications to the language by executing `./gradlew runIde`. There is also a pre-configured run configuration titled **IDEA** that does this.
 - It will open a new instance of the IDE where you can create a new project and experiment with the new features of the language. You can also download [The Keep87Sample project](https://github.com/47deg/KEEP/files/3079552/Keep87Sample.zip)
-) with some sample code that you can try out.
+) that includes some sample code that you can try out.
 
 
 ## What's still to be done?
 
 ### Instance resolution based on inheritance
 
-Some scenarios are not covered yet given some knowledge we are lacking about how subtyping resolution rules are coded in Kotlin compiler. The different scenarios would be required for a fully working compile time extension resolution feature, and [are described in detail here](https://github.com/arrow-kt/kotlin/issues/15).
+Some scenarios aren’t covered yet, given we’re lacking some knowledge about how subtyping resolution rules are coded in the Kotlin compiler. These scenarios would be required for a fully working compile-time extension resolution feature and [are described in detail here](https://github.com/arrow-kt/kotlin/issues/15).
 
 ### Using extensions in inlined lambdas
 
-Inlined functions get into trouble when it comes to capture resolved extensions.[The problem is described here](https://github.com/arrow-kt/kotlin/issues/14).
+Inlined functions get into trouble when it comes to capturing resolved extensions. [The problem is described here](https://github.com/arrow-kt/kotlin/issues/14).
 
 ### Function and property extension providers
 
-Ideally we'd enable users to provide extensions also using `val` and `fun`. They'd look similar to:
+Ideally, we'd enable users to provide extensions also using `val` and `fun`. They'd look similar to:
 
 ```kotlin
 // Simple fun extension provisioning
@@ -516,9 +519,9 @@ extension class UserRepository<I> : Repository<I, User> {
 }
 ```
 
-The above instances are each defined alongside their respective type definitions and yet they clearly conflict with each other. We will also run into quandaries once we consider generic types. We can crib some prior art from Rust<sup>1</sup> to help us out here.
+The above instances are defined alongside their respective type definitions and yet they clearly conflict with each other. We will also run into quandaries once we consider generic types. We can crib some prior art from Rust<sup>1</sup> to help us out here.
 
-To determine whether an extension definition is a valid type-side implementation we'd need to perform the following check:
+To determine whether an extension definition is a valid type-side implementation, we'd need to perform the following check:
 
 1. A "local type" is any type (but not type alias) defined in the current file (e.g. everything defined in `data.foo.user` if we're evaluating `data.foo.user`).
 2. A generic type parameter is "covered" by a type if it occurs within that type (e.g. `MyType` covers `T` in `MyType<T>` but not `Pair<T, MyType>`).
@@ -534,13 +537,13 @@ Orphan implementations are a subject of controversy. Combining two libraries - o
 
 Orphan implementations are the reason that other implementations of this approach have often been described as "anti-modular", as the most common way of dealing with them is through global coherence checks. This is necessary to ensure that two libraries have not defined incompatible extensions of a given constraint interface.
 
-Relaxing the orphan rules is a backwards-compatible change. If this proposal is accepted without permitting orphans then it's useful to consider how they could be added in the future.
+Relaxing the orphan rules is a backwards-compatible change. If this proposal is accepted without permitting orphans, it will be useful to consider how they could be added in the future.
 
-Ideally we want to ban orphan implementations in libraries but not in executables; this allows a programmer to manually deal with coherence in their own code but prevents situations where adding a new library breaks code.
+Ideally, we want to ban orphan implementations in libraries but not in executables; this allows a programmer to manually deal with coherence in their own code but prevents situations where adding a new library breaks code.
 
 ### Package-based approach to orphans
 
-A simple way to allow orphan extenions is to replace the file-based restrictions with package-based restrictions. Because there are no restrictions on packages, it is possible to do the following.
+A simple way to allow orphan extensions is to replace the file-based restrictions with package-based restrictions. Because there are no restrictions on packages, it is possible to do the following:
 
 ```kotlin
 // In some library foo
@@ -560,7 +563,7 @@ extension object : Repository<Int> {
 }
 ```
 
-This approach would not forbid orphan extensions in libraries but it would highly discourage libraries from providing them, as this would involve writing code in the package namespace of another library.
+This approach wouldn't forbid orphan extensions in libraries but, it would highly discourage libraries from providing them, as this would involve writing code in the package namespace of another library.
 
 ### Internal modifier-based approach to orphans
 
@@ -580,7 +583,7 @@ The first problem actually leads us to a better solution.
 
 ### Java 9 module-based approach to orphans
 
-Kotlin does not currently make use of Java 9 modules but it is easy to see how they could eventually replace Kotlin's `internal` modifier. The rules for this approach would be the same as the `internal`-based approach; code which uses orphans is not allowed to be exported.
+Currently, Kotlin doesn't make use of Java 9 modules but, it's easy to see how they could eventually replace Kotlin's `internal` modifier. The rules for this approach would be the same as the `internal`-based approach; code which uses orphans is not allowed to be exported.
 
 ## Footnotes
 
