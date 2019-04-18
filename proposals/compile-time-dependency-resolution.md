@@ -141,8 +141,6 @@ interface Validator<A> {
 In this scenario, the following classes would be equivalent:
 
 ```kotlin
-data class Group<A>(val values: List<A>)
-
 // Kotlin + KEEP-87
 extension class ValidatedRepository<A>(with val V: Validator<A>) : Repository<A> {
 
@@ -195,7 +193,8 @@ package com.data.instances
 
 import com.data.Repository
 import com.domain.User
-import com.domain.Group
+
+data class Group<A>(val values: List<A>)
 
 extension class GroupRepository<A>(with val repoA: Repository<A>) : Repository<Group<A>> {
   override fun loadAll(): Map<Int, Group<A>> {
