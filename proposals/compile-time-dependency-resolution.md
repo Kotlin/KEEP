@@ -128,6 +128,7 @@ All values can be passed to functions with extension parameters, or we can omit 
 ```kotlin
 fetchById<User>(11829) // compiles since we got evidence of a `Repository<User>` in scope.
 fetchById<User>(11829, UserRepository()) // you can provide it manually.
+fetchById<User>(11829, repository=UserRepository()) // you can provide it manually with named application.
 ```
 
 When `with` is used in class constructors, it is important to **add val to extension class fields** to make sure they are accessible in the scope of the class. Here, the `with` keyword adds the value to the scope of every method in the class. To showcase this, let's say we have a `Validator<A>`, like:
