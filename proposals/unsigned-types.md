@@ -186,24 +186,40 @@ There's an open question how to call the operation that shifts an unsigned integ
 
 **Narrowing conversion** to a narrower unsigned type like `UInt.toUByte()` is just a bit pattern truncation.
 
-### signed/unsigned reinterpretation
+### Signed/unsigned reinterpretation
 
 A conversion between signed and unsigned types of the same with to each other is done by reinterpreting the bit pattern of
 a number as signed or unsigned. Therefore `UInt.MAX_VALUE.toInt()` will turn into `-1`.
 
-### signed/unsigned narrowing conversion
+### Signed/unsigned narrowing conversion
 
 **Narrowing conversion** between signed and unsigned types is done by reinterpreting
 the bit pattern of a number truncated to the given width as signed or unsigned.
 For example `511u.toByte()` will turn into `-1` signed byte value.
 
-### signed/unsigned widening conversion
+### Signed/unsigned widening conversion
 
 **Widening conversion** of unsigned type to a wider signed type, for example `UInt.toLong()` is done by extending it with zero bits,
 so the resulting signed value is always non-negative.
 
 **Widening conversion** of signed type to a wider unsigned type is done by signed extension to a wider signed type first 
 and then reinterpreting it as unsigned type of the same width.
+
+### Floating point/unsigned conversion
+
+**Conversion from floating point numbers to unsigned integers** follows the same principles as for the signed types:
+
+- If the floating point number is outside of the target unsigned type range, it is coerced into that range, e.g. 
+all negative numbers are clamped to zero.
+- The floating point number is rounded towards zero, i.e. its fractional part is truncated.
+
+**Conversion from unsigned integers to floating point numbers**
+
+- When converting `UByte`, `UShort` to `Float` and `Double` or `UInt` to `Double`, 
+the resulting floating point number represents the same integer numeric value as the original unsigned number.
+- When converting `UInt` to `Float` or `ULong` to `Float` and `Double`,
+the resulting floating point number has the integer numeric value that is the closest to the original unsigned number, 
+as close as the accuracy of the floating point type at this magnitude affords.
 
 ### Arrays
 
