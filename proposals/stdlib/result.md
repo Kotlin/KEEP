@@ -3,7 +3,7 @@
 * **Type**: Standard Library API proposal
 * **Author**: Roman Elizarov
 * **Contributors**: Andrey Breslav, Ilya Gorbunov
-* **Status**: Implemented in 1.3.0
+* **Status**: Implemented in Kotlin 1.3
 * **Related issues**: [KT-18608](https://youtrack.jetbrains.com/issue/KT-18608) 
 * **Discussion**: [KEEP-127](https://github.com/Kotlin/KEEP/issues/127)
 

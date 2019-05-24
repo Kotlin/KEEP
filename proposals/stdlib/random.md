@@ -3,8 +3,8 @@
 * **Type**: Standard Library API proposal
 * **Author**: Ilya Gorbunov
 * **Contributors**: Roman Elizarov, Vsevolod Tolstopyatov, Pavel Punegov
-* **Status**: Submitted
-* **Prototype**: In progress
+* **Status**: Implemented in Kotlin 1.3
+* **Prototype**: Implemented
 * **Related issues**: [KT-17261](https://youtrack.jetbrains.com/issue/KT-17261)
 * **Discussion**: [KEEP-131](https://github.com/Kotlin/KEEP/issues/131)
 

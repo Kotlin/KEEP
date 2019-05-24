@@ -3,8 +3,8 @@
 * **Type**: Design proposal
 * **Authors**: Ilya Gorbunov, Mikhail Zarechenskiy
 * **Contributors**: Andrey Breslav, Roman Elizarov, Nikolay Igotti
-* **Status**: Under consideration
-* **Prototype**: Implemented in Kotlin 1.3-M1
+* **Status**: Experimental in Kotlin 1.3
+* **Prototype**: Implemented
 * **Related issues**: [KT-191](https://youtrack.jetbrains.com/issue/KT-191)
 * **Discussion**: [KEEP-135](https://github.com/Kotlin/KEEP/issues/135)
 
