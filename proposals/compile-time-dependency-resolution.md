@@ -384,7 +384,7 @@ Here we got a `Repository<User>` defined in a subpackage of `com.domain`, where 
 
 #### 5. Subpackages of the package where the constraint interface is defined
 
-The last place to look would be the subpackages of the package where the constraint interface is defined. t will simply look in subpackages under the current gradle module, it doesn't support cross-module definitions. These extensions **must be flagged as `internal`**.
+The last place to look would be the subpackages of the package where the constraint interface is defined. It will simply look in subpackages under the current gradle module, it doesn't support cross-module definitions. These extensions **must be flagged as `internal`**.
 
 ```kotlin
 package com.data.instances
