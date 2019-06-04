@@ -317,7 +317,7 @@ naturally for the result type, comparing the corresponding values or exceptions.
 ## Dependencies
 
 This library depends on 
-[`inline class`](https://github.com/zarechenskiy/KEEP/blob/master/proposals/inline-classes.md) 
+[`inline class`](https://github.com/kotlin/KEEP/blob/master/proposals/inline-classes.md) 
 language feature for its efficient implementation. 
 
 ## Limitations
