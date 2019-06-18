@@ -2,8 +2,8 @@
 
 * **Type**: Standard Library API proposal
 * **Author**: Ilya Gorbunov
-* **Status**: Experimental in Kotlin 1.3.x
-* **Prototype**: In progress
+* **Status**: Experimental in Kotlin 1.3.50
+* **Prototype**: Implemented
 * **Discussion**: [KEEP-190](https://github.com/Kotlin/KEEP/issues/190)
 
 
