@@ -222,12 +222,16 @@ accordance with the following principles:
     * round fractions to 3 significant digits: `750`, `75.0`, `7.50`
     * prefer a larger number in more granular unit than a smaller number in less granular one, 
       if the ratio between their scales is not a power of 10. For example, prefer `105m` to `1.75h`, or `40h` to `1.67d`
-    * very big durations are represented in scientific notation in days: `3.65e7d`
-    * very small durations are represented in scientific notation in seconds: `5.4e-44s`
+    * very big durations are represented in scientific notation in days: `3.65e+7d`
+    * very small durations are represented in scientific notation in seconds: `5.40e-44s`
     * `ZERO` duration is represented as `0s`
     * the infinite duration is represented as `Infinity` without unit and with optional `-` sign
 
-2. The operation `toString(unit, decimals = number)` allows to represent a duration in a fixed unit with a fixed number of decimal places.
+2. The operation `toString(unit, decimals = number)` allows to represent a duration in a fixed unit with a fixed number 
+of decimal places, with the exceptions:
+    * values greater than 1e+14 in the specified unit are represented in scientific notation
+    * the maximum `decimals` value supported is 12, specifying greater values leads to the same result as for `decimals = 12`
+    * the infinite duration is represented as `Infinity` without unit and with optional `-` sign
 
 3. The operation `toIsoString()` returns an ISO-8601 based string representation of a duration. Only `H`, `M` and `S` components are used.
    For example: 
