@@ -47,12 +47,20 @@ These functions will have implementations on primitive numeric types that curren
 * Long
 * Byte
 * Short
+* UInt
+* ULong
+* UByte
+* UShort
+
+### Lexer changes
+Similar to the token counting already implemented for curly braces, token counting will be used to distinguish between nested generics `Class<Generic<T>>` and a right shift operation `1 >> 2`.
 
 ## Use Cases
 * Serialization code
   * Code to serialize values to ByteArrays makes use of bitwise operators extensively. Examples include LEB128 variable-length integers, where serialization and deserialization have to make use of bitwise operators to interpret the correct value from the byte sequence.
 * Flags
   * Android has many operations involving bitwise flags (e.g. Intent, Gravity flags). Operations regarding them would be simplified when using bitwise operators, rather than infix functions.
+  * Typesafe wrappers for flags could also be used in the future, where a `sealed class` or `enum class` with predefined variants is used, with overloads for these operators for consistency. 
 
 ```kotlin
   someView.setForegroundGravity(Gravity.BOTTOM | Gravity.LEFT)
@@ -62,12 +70,17 @@ someView.setForegroundGravity(Gravity.BOTTOM or Gravity.LEFT)
 ```
 
 ```kotlin
-flags = (flags & ~FLAG_A) | FLAG_B | FLAG_C
-...
+val flags = Control.ENABLED | Control.TELEOP
+if((flags & Control.ENABLED) != 0) {
+  ...
+}
 ```
 
 ```kotlin
-flags = (flags and FLAG_A.inv()) or FLAG_B or FLAG_C
+val flags = Control.ENABLED or Control.TELEOP
+if((flags and Control.ENABLED) != 0) {
+  ...
+}
 ```
 
 The examples with bitwise operators are universally recognized as manipulating bitflags. Kotlin's approach is nonstandard among programming languages and [leads to confusion](https://stackoverflow.com/questions/37631397/complex-gravity-in-anko/37631466).
