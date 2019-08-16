@@ -67,9 +67,10 @@ Timeout dealing cases usually involve taking a `ClockMark` at some point and the
 has exceeded the given timeout value. This requires operating two entities: the `ClockMark` and the timeout `Duration`.
 
 Instead the `ClockMark` can be displaced by the given `Duration` value to get another `ClockMark` representing timeout 
-expiration point in future. The function `elapsed` invoked on the latter `ClockMark` will return negative values while the
-timeout is not expired, and positive values if it is. This way timeout can be represented by a single `ClockMark` instead 
-of `ClockMark` and `Duration`.
+expiration point in future. The function `elapsedNow` invoked on the latter `ClockMark` will return negative values while the
+timeout is not expired, and positive values if it is. For convenience, instead of checking `elapsedNow` function returning
+a negative duration one can use `hasPassedNow`/`hasNotPassedNow` functions of the `ClockMark`.
+This way timeout can be represented by a single `ClockMark` instead of `ClockMark` and `Duration`.
 
 
 ## Similar API review
@@ -160,7 +161,7 @@ expressed in the unit specified with the parameter `unit`;
 - division by a duration: `Duration / Duration = Double`
 - negation: `-Duration`
 - absolute value: `Duration.absoluteValue`
-- `isNegative()`, `isFinite()`, `isInfinite()` functions
+- `isNegative()`, `isPositive()`, `isFinite()`, `isInfinite()` functions
 
 #### Equality and comparison
 
@@ -252,20 +253,35 @@ On JVM it is a typealias to `java.util.concurrent.TimeUnit`.
 
 ```kotlin
 interface Clock {
-    fun mark(): ClockMark
+    fun markNow(): ClockMark
 }
 ```
 
-In turn `ClockMark` provides the operation `elapsed` that returns a `Duration` of an interval elapsed since that mark.
+In turn `ClockMark` provides the operation `elapsedNow` that returns a `Duration` of an interval elapsed at the current moment
+since that mark was taken.
 Additionally it has two operators `+` and `-` allowing to get another `ClockMark` displaced from this one by the given duration.
 
 ```kotlin
 abstract class ClockMark {
-    abstract fun elapsed(): Duration
+    abstract fun elapsedNow(): Duration
     open operator fun plus(duration: Duration): ClockMark = ...
     open operator fun minus(duration: Duration): ClockMark = plus(-duration)
+
+    fun hasPassedNow(): Boolean = elapsedNow() >= Duration.ZERO
+    fun hasNotPassedNow(): Boolean = elapsedNow() < Duration.ZERO
 }
 ```
+
+`hasPassedNow` and `hasNotPassedNow` functions are useful for checking whether a deadline or expiration `ClockMark` has been reached:
+
+```kotlin
+val timeout: Duration = 5.minutes
+val expirationMark = clock.markNow() + timeout
+// later
+if (expirationMark.hasPassedNow()) {
+    // cached data are expired now
+}
+``` 
 
 A `ClockMark` is not serializable because it isn't possible to restore the captured time point upon deserialization
 in a meaningful way.
@@ -297,7 +313,7 @@ having a time source that returns the current timestamp as a number.
 public abstract class AbstractLongClock(protected val unit: DurationUnit) : Clock {
     protected abstract fun read(): Long
 
-    override fun mark(): ClockMark = ...
+    override fun markNow(): ClockMark = ...
 }
 ```
 
@@ -380,7 +396,7 @@ of the system monotonic clock:
 val systemTimeStamp: Long
    get() = ...
 val systemTimeStampFrequency: Long
-  get() = ...
+   get() = ...
 ```
 
 They shall return the value of some system-wide ticking counter and its frequency in Hz respectively.
