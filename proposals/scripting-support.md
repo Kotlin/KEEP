@@ -66,23 +66,26 @@ The document is still a draft, and few important parts are still missing, in par
 
 ## Basic definitions
 
-- **Script** - a text file written in Kotlin language but allowing top-level statements and having access to some 
-  implicit (not directly mentioned in the script text) properties, functions and objects, as if the whole script body 
-  is a body of an implicit function placed in some environment (see below)
+- **Script** - a text file written in Kotlin language but allowing top-level statements and expressions and having access 
+  to some implicit (not directly mentioned in the script text) properties, functions and objects, as if the whole script 
+  body is a body of an implicit function placed in some environment (see below)
 - **Scripting Host** - an application or a component which handles script execution   
 - **Scripting Host Environment** - a set of parameters that defines an environment for all scripting host services,
   contains when relevant: project paths, jdk path, etc. It is passed on constructing the services     
-- **REPL statement** - a group of script text lines, executed in a single REPL eval call
-- **Script compilation configuration** - a set of parameters configuring a script compilation, such as dependencies,
-  external (global) variables, script parameters, etc. 
-- **Script definition** - a set of parameters and services defining a script type   
+- **REPL snippet** - a group of script text lines, executed in a single REPL eval call
+- **Script compilation configuration** - a set of parameters configuring script compilation, such as dependencies,
+  external variables declarations, implicit import statements, etc. 
+- **Script evaluation configuration** - a set of parameters configuring script evaluation, such as external variables 
+  instances, actual script parameters, etc. 
+- **Script definition** - a set of parameters and configurations defining a script type   
 - **Compiled script** - a binary compiled code of the script, stored in memory or on disk, which could be loaded 
   and instantiated by appropriate platform
 - **Dependency** - an external library or another project whose declarations are available for the script being compiled 
   and evaluated
 - **Imported script** - another script whose declarations are available for the script being compiled and evaluated
-- **Execution environment** - the environment in which the script is executed, defining which services, objects, 
-  actions, etc. are accessible for the script
+- **Configuration refinement** - the process of updating script compilation and evaluation configurations during 
+  compilation/evaluation with parameter specific to the particular script exemplar, e.g. depending on the script 
+  contents
 
 ## Use cases
 
@@ -99,16 +102,21 @@ provide script authors with a possibility to customize some configuration parame
 specify additional compilation options, e.g. using annotations in the script text:
 
 ```
-@file:dependsOn("maven:artifact:1.0", "imported.package.*")
-@file:require("path/to/externalScript.kts")
-@file:compilerOptions("-someCompilerOpt")
+@file:DependsOn("maven:artifact:1.0", "imported.package.*")
+@file:Import("path/to/externalScript.kts")
+@file:CompilerOptions("-someCompilerOpt")
 ```
+
+To implement this the compilation/evaluation pipeline should provide a callback mechanism to call a host-provided code 
+that could analyze script text directly or parsed annotations in order to update compilation and evaluation 
+configurations with parameters depending on the script contents or other dynamic factors.
 
 If the host need to support several script *types*, i.e. sets of compilation configurations and customization means, 
 there should be a way for the host to distinguish the scripts and select appropriate set of 
 compilation/configuration/evaluation services and properties. The host authors can implement the selection based on any 
 script property, but due to the difficulties in supporting file type distinction based on anything but filename 
-extension across platforms and IDEs, the default implementations should support only extension-based selection.     
+extension across platforms and IDEs, the default implementations should support only extension-based or file name based 
+selection.     
 
 *Note: It would be nice to provide an infrastructure (complete hosts or libraries) that support some typical mean for 
 each platform to resolve external libraries from online repositories (e.g. - maven for JVM) out of the box.*
@@ -132,17 +140,15 @@ scriptingHost.eval(File("path/to/script.kts"), compilationConfiguration, evaluat
 ```
 This would also allows the developer to control the lifetime of the scripting host.
 
-In some specific cases it is desired to perform additional action between compilation and actual evaluation of the 
-script, e.g. verify the compiled script. In this case, the usage may look like:
+In cases then there is more control needed for the compilation and evaluation process, the direct use of the script
+compiler and evaluator could be desirable:
 ```
-val scriptingHost = KotlinScriptingHost(configurationParams...)
-val compiledScript = scriptingHost.compile(File("path/to/script.kts"), compilationConfiguration)
-// do some verification, and if it succeeds
-scriptingHost(compiledScript, evaluationConfiguration)
+val scriptCompiler = KotlinScriptCompiler(configurationParams...)
+val compiledScript = scriptCompiler.invoke(File("path/to/script.kts), compilationConfiguration)
+val scriptEvaluator = KotlinScriptEvaluator(configurationParams...)
+val evaluationResult = scriptEvaluator.invoke(compiledScript, evaluationConfiguration)
 ```
-This snipped provides also an example of passing specific parameters to the evaluation, which should be supported for 
-the simpler usages as well.  
-And also in this form the compiled script could be evaluated more than once.  
+In addition in this case the compiled script could be evaluated more than once.  
 
 #### More control
 
@@ -154,12 +160,12 @@ provided to the host:
     should compile script into the appropriate class
   - *Dependencies* - external libraries that could be used in the script
   - *Default imports* - import statements implicitly added to any compiled script
-  - *Environment variables* - global variables with types that is assumed visible in the script scope
+  - *Provided properties* - properties with types that is assumed visible in the script scope
   - etc.
 - *Script Evaluator* - the service that will actually evaluate the compiled scripts in the required execution 
   environment
 - *Evaluation configuration* - set of properties defining an environment for the evaluation, including:
-  - *Environment variables* - actual values of the environment variables from compilation configuration
+  - *Provided properties* - actual values of the provided properties from the compilation configuration
   - etc. 
   
 Some of these parameters could be wrapped into a *Script Definition* for easier identification of the script types
@@ -174,11 +180,12 @@ of the compiled script should be supported by the compilation platform.
 
 The script is executed according to the following scheme:
 - compilation - the *Script Compiler* takes the script, it's compilation configuration and 
-  provides a compiled class. Inside this process, the following activity is possible:
-  - configuration refinement - if the compilation configured accordingly, the user-supplied callbacks are called 
-    before or after parsing to refine the configuration taking into account the script contents
+  provides a compiled class. Inside this process. If the compilation configuration defines refinement callbacks, they 
+  are called before or after parsing to update configuration with parameter depending on the script contents or other
+  dynamic data.
 - evaluation - the *Script Evaluator* takes the compiled script instantiates it if needed, and calls the appropriate 
-  method, passing arguments from the environment to it; this step could be repeated many times
+  method, passing arguments from the environment to it; this step could be repeated many times. If evaluation 
+  configuration defines refinement callbacks, they will be called before evaluation similarly to the compilation ones.
   
 #### Processing in an IDE
 
@@ -191,7 +198,8 @@ should support the appropriate functionality, based on the standard set of confi
 
 Standalone scripting applications include command-line utilities and a standalone Kotlin REPL.
 
-Standalone scripting is a variant of the embedded scripting with hosts provided with the Kotlin distribution.
+Standalone scripting is a variant of the embedded scripting with hosts provided with the Kotlin distribution or 
+3rd-party hosts.
 
 #### Hosts
 
@@ -218,7 +226,7 @@ therefore alternative schemes of configuring scripts should be available.*
 It should be possible to process custom scripts with the standard hosts, e.g. by supplying a custom script definition 
 in the command line, e.g.:
 
-`kotlin -scriptDefinition="org.acme.MyScriptDef" -scriptDefinitionClasspath=myScriptDefLib.jar myscript.kts`
+`kotlin -script-templates="org.acme.MyScriptDef" -cp myScriptDefLib.jar myscript.myscr.kts`
 
 In this case the host loads specified definition class, and extract required definition from it and its annotations.
 
@@ -229,7 +237,8 @@ Another possible mechanism is automatic discovery, with the simplified usage:
 In this case the host analyses the classpath, discovers script definitions located there and then processes then as 
 before. Note that in this case it is should be recommended to use dedicated script extension (`myscr.kts`) in every 
 definition to minimize chances of clashes if several script definitions will appear in the classpath. And on top of
-that, some clash-resolving mechanism is needed.   
+that, some selection mechanism based on the file names and/or paths is needed, e.g. to cover cases like gradle's 
+`build.gradle.kts` and `setting.gradle.kts` that should be treated like different script types.
 
 #### Script parameters
 
@@ -251,12 +260,12 @@ println("${name ?: "<unknown>"} ${num/6}: ${list.map { it.toUpperCase() } }")
 #### IDE support
 
 Since in this use case scripts are not part of any project, support for such script should be configured in the IDE
-explicitly, either via plugin or extension or via IDE settings.
+explicitly, either via a plugin or via the IDE settings.
 
 #### Standalone REPL
 
 Standalone REPL is invoked by a dedicated host the same way as for standalone script but accepts user's input as repl 
-statements. It means that the declarations made in the previous statements are accessible in the subsequent ones.  
+snippets. It means that the declarations made in the previous snippets are accessible in the subsequent ones.  
 In this mode, all new scripting features should be accessible as well, including customization.
 
 ### Project infrastructure scripting
@@ -272,7 +281,7 @@ and/or IDE itself.
 From an IDE point of view, they are project-context dependent, but may not be part of the project sources. (In the same 
 sense as e.g. gradle build scripts source is not considered as a part of the project sources.) In this case the support
 in the IDE is possible only if the definitions are supplied to the IDE explicitly, similarly to standalone scripts,
-either via plugin or extension or via IDE settings.
+either via a plugin or via the IDE settings.
 
 #### Discovery
 
@@ -320,15 +329,9 @@ The scripting support consists of the following components:
   environment, supplying any arguments that the script requires:
   - evaluation: `(compiledScript, evaluationConfiguration) -> Any?`
   - the `compiledScript` contains the final compilation configuration used
-  - the `evaluationConfiguration` the parameters describing the actual execution environment of the script
-  - predefined platform-specific executors available, but could be provided by the scripting host
-  - possible executors
-    - JSR-223
-    - IDEA REPL
-    - Jupyter
-    - Gradle
-    - with specific coroutines context
-    - ...
+  - the `evaluationConfiguration` the parameters describing the actual script evaluation configuration of the script
+  - predefined platform-specific evaluators available, but could be provided by the scripting host
+  - pseudo-evaluators that save compiled script into e.g. an executable jar should be provided as well
 - **IDE support** - Kotlin IDEA plugin should have support for scripting with script definition selection based on the 
   file name extension, and also includes discovery. The exposed generic ide support that would allow to build rich 
   script editing apps and REPLs is outside of the scope of this proposal and will be covered elsewhere.    
@@ -342,10 +345,9 @@ The scripting support consists of the following components:
   The class implements source position and fragment referencing classes used e.g. in error reporting. 
 - `KotlinType` a wrapper around Kotlin types, used to decouple script definition and compilation/evaluation 
   environments. It could be constructed either from reflected or from stringified type representation.
-- `ScriptDefinition` - a facade combining services and properties defining a script type. Could be constructed manually
-  or from annotated script base class.
 - `ScriptCompilationConfiguration` - a heterogeneous container of parameters defining the script compilation
-- `ScriptEvaluationConfiguration` - a heterogeneous container of parameters defining teh script evaluation 
+- `ScriptEvaluationConfiguration` - a heterogeneous container of parameters defining the script evaluation 
+- `ScriptingHostConfiguration` - a heterogeneous container of host-specific parameters  
 
 ### Script definition
  
@@ -356,7 +358,8 @@ Script Definition is a way to specify custom script. It is basically consists of
 @KotlinScript(
     displayName = "My Script",
     fileExtension = "myscr.kts",
-    compilationConfiguration = MyScriptConfiguration::class
+    compilationConfiguration = MyScriptCompilationConfiguration::class,
+    evaluationConfiguration = MyScriptEvaluationConfiguration::class
 )
 abstract class MyScript(project: Project, val name: String) {
     fun helper1() { ... } 
@@ -365,9 +368,13 @@ abstract class MyScript(project: Project, val name: String) {
     [suspend] abstract fun <scriptBody>(params...): MyReturnType
 }
 
-object MyScriptConfiguration : ScriptCompilationConfiguration({
+object MyScriptCompilationConfiguration : ScriptCompilationConfiguration({
     defaultImports("java.io.*")
     providedProperties(prop1 to Int::class, prop2 to String::class)
+})
+
+object MyScriptEvaluationConfiguration : ScriptEvaluationConfiguration({
+    providedProperties(prop1 to 42, prop2 to "foo")
 })
 ```
 
@@ -375,7 +382,7 @@ object MyScriptConfiguration : ScriptCompilationConfiguration({
 - any valid method name could be used in place of `<scriptBody>` 
 - `@ScriptBody` annotation marks the method the script body will be compiled into. In the absence of the explicit 
   annotation, if the configuration requires compilation into a method, the SAM notation will be used, otherwise
-  the script will be generated ino target class constructor.
+  the script will be generated into the target class constructor.
 - `interface` or `open class` could be used in place of the `abstract class`
 -  *(see also possible compilation configuration properties below)*
 
@@ -393,6 +400,12 @@ Script compiler implements the following interface:
 ```
 interface ScriptCompiler {
 
+    /**
+     * Compiles the [script] according to the [scriptCompilationConfiguration]
+     * @param script the interface to the script source code
+     * @param scriptCompilationConfiguration the script compilation configuration properties
+     * @return result wrapper, if successful - with compiled script
+     */
     suspend operator fun invoke(
         script: SourceCode,
         scriptCompilationConfiguration: ScriptCompilationConfiguration
@@ -402,8 +415,23 @@ interface ScriptCompiler {
 where:
 ```
 interface CompiledScript<out ScriptBase : Any> {
+
+    /**
+     * The compilation configuration used for script compilation
+     */
     val compilationConfiguration: ScriptCompilationConfiguration
+
+    /**
+     * The function that loads compiled script class
+     * @param scriptEvaluationConfiguration the script evaluation configuration properties
+     * @return result wrapper, if successful - with loaded KClass
+     */
     suspend fun getClass(scriptEvaluationConfiguration: ScriptEvaluationConfiguration?): ResultWithDiagnostics<KClass<*>>
+
+    /**
+     * The name and the type of the script's result field, if any
+     */
+    val resultField: Pair<String, KotlinType>?
 }
 
 ```
@@ -433,13 +461,13 @@ See the following section for the parameters that declare such callbacks.
 
 The following properties are recognized by the compiler:
 - `baseClass` - target script superclass as well as a source for the script target method signature, constructor
-  parameters and annotations
+  parameters and annotations, default - `Any`.
 - `sourceFragments` - script fragments compile - allows to compile script partially
 - `scriptBodyTarget` - defines whether script body will be compiled into resulting class constructor or to a 
   method body. In the latter case, there should be either single abstract method defined in the script base class, or
   single appropriate method should be annotated with the `ScriptBody` annotation
 - `implicitReceivers` - a list of script types that is assumed to be implicit receivers for the script body, as
-  if the script is wrapped into `with` statements, in the order from outer to inner scope, i.e.:  
+  if the script is wrapped into `with` expressions, in the order from outer to inner scope, i.e.:  
   ```
   with(receiver0) {
       ...
@@ -458,6 +486,8 @@ The following properties are recognized by the compiler:
 - `copyAnnotationsFrom` - an external class those annotations should be copied to the generated target class; if not
   specified, the annotations are copied from the base class (except for known scripting annotations)
 - `compilerOptions` - a list of additional compiler options that should be passed to compiler on script compilation
+- `resultField` - the name of the generated script class field to assign the script results to, empty means disabled, 
+  default - `$$result`
 - `refineConfigurationBeforeParsing` - a configuration refining callback that should be called before parsing is
   started
 - `refineConfigurationOnAnnotations` - a list of script file-level annotations and configuration refining callback,
@@ -492,13 +522,14 @@ class Script(
     
     class Cl1(...) {} // for all classes/objects defined in the script body
     
-    val returnVal: ReturnType
+    val $$result: ResultType
     
     init {
         with(receiver0) {
             ...
             with(receiverN) {
                 <script body>
+                $$result = <last expression>
             }
         }
     }
@@ -562,6 +593,11 @@ parameter:
   be passed to the script constructor
 - `runArgs` - a list of arguments to the script body method, if the `scriptBodyTarget` is set to the compiling script
   into the method
+- `scriptsInstancesSharing` - boolean property defining the way of dealing with duplicates among imported scripts - if
+  true - the imported scripts instances are kept in a container and shared among all use sites in the import hierarchy.
+  (the helper `enableScriptsInstancesSharing()` provides another way of turning it on) 
+- `refineConfigurationBeforeEvaluate` - a configuration refining callback that should be called before evaluation is
+  started
   
 It is possible to define and pass additional properties to a user-defined evaluator.    
 
@@ -573,9 +609,10 @@ by passing the environment property bag to the appropriate constructors.
 The following parameters are defined:
 - `configurationDependencies` - a list of dependencies required for script base class and services (configurator and
   evaluator), but not necessarily for scripts themselves (see below)
-- `isolatedDependencies` - a flag denoting whether the dependencies listed above should be visible to the scripts
-  themselves
-- `getScriptingClass` - an interface to an implementation-specific "class loader" for types specified in the configurations  
+- `getScriptingClass` - an interface to an implementation-specific "class loader" for types specified in the 
+  configurations
+- `getEvaluationContext` - optional user-supplied function that can provide data to the evaluation configuration 
+  refinement functions 
   
 ### Standard hosts and discovery
 
@@ -588,9 +625,10 @@ In this case, the compiler scans all jars in the classpath for the discovery fil
 `META-INF/kotlin/script/templates/` those names correspond to fully qualified names of the annotated script base 
 classes. *(Note: the files' contents are not used, only the name)*. When it reads the annotations attached to these 
 classes and lazily constructs actual script definitions from them.  
+
 *(Note: the process is optimized in a way that if the file name extension could be extracted from the annotations alone,
 the actual definition is not loaded until we will actually start to compile a script with the appropriate extension. 
-This practically eliminates the overhead of script definitions discovery for projects that are not using scripts.)*  
+This practically eliminates the overhead of script definitions discovery for projects that are not using scripts.)*
 
 ### How to implement scripting support
      
@@ -599,13 +637,20 @@ To implement scripting support on the JVM one should do the following
 - Implement script definition library/module
    - define custom script compilation configuration class, inherit it from `ScriptCompilationConfiguration` and pass
      configuration lambda to the constructor of the latter
+   - define custom script evaluation configuration class, inherit it from `ScriptEvaluationConfiguration` and pass
+     configuration lambda to the constructor of the latter
    - define script base class with the `@KotlinScript` and pass at least file name extension and the configuration 
-     class to it
+     classes to it
    - optionally add a discovery file named after FQN of the base class to the `META-INF/kotlin/script/templates/` in 
      the target jar 
 
 If discovery file is added to the resulting jar, and this jar is added to the compilation classapth, it becomes possible 
 to use custom script with the default hosts (e.g. Kotlin command-line compiler) and Kotlin IDEA plugin out of the box.   
+
+*(Note for usage with Gradle: the discovery process is not turned on by default in the Kotlin gradle plugin, to enable
+script definitions discovery in particular dependencies, they should be added to the `kotlinScriptDef` (or 
+`testKotlinScriptDef`, etc.) configuration)*
+
 Optionally the custom host and Idea support could be implemented:
 
 - Implement the scripting host with the following functionality:
@@ -616,8 +661,14 @@ Optionally the custom host and Idea support could be implemented:
      - call compiler
      - call evaluator
       
-- Implement IDE support vie appropriate extension
-   - *TODO: current extension mechanism is outdated and needs to be adapted to the new scripting infrastructure*
+- Implement IDE support via the appropriate extension
+   - implement a class with `ScriptDefinitionsProvider` that returns appropriate definition class name and classpath
+     needed to load it. 
+   - use `org.jetbrains.kotlin.scriptDefinitionsProvider` extension point to register the provider class in IntelliJ
+   - in the script compilation configuration created as described above, add `ide` section with the following properties:
+     - `acceptedLocations` - the list of possible project locations where the script of this type will be recognized
+       (see. `ScriptAcceptedLocation` enum class for the possible values)
+     - `dependenciesSources` script source dependencies pointing to the jars with source code    
 
 ### Implementation status
 
@@ -632,10 +683,9 @@ The basic examples could be found in the `libraries/samples/scripting` folder in
 The implementation is functional for many use cases, but there are many gaps, in particular:
 - the following compilation configuration properties are not supported yet:
   - `sourceFragments` - scripts are only compiled as a whole for a moment; accordingly - the next point:
-  - `refineConfigurationOnSections` - has no effect now
+  - `refineConfigurationOnSections` - is not implemented
   - `scriptBodyTarget` - the generation into method body is not yet supported, so this parameter is ignored
   - `restrictions` - not implemented yet
-  - `importedScripts` - not implemented yet
   - `copyAnnotationsFrom` - is not implemented yet, the annotations are copied from the base class
 - some properties are required by the current implementation are not part of this proposal, because they exist only 
   due to some implementation issues, and could soon disappear or change significantly, for example:
@@ -648,10 +698,8 @@ plugin. But the following limitations are known:
     class) should be compiled to class files in order to be recognized by the discovery mechanism
   - the script compilation in maven project is not supported yet
   - the mechanisms for managing script definitions and resolving clashes are not implemented
-  - script compilation caching is not implemented yet (although there is a test implementation im the 
-  kotlin-scripting-jvm-host tests, that one can use to implement caching in a custom host)
-  - additional configuration is needed then custom scripts with file extensions different from "kts" are compiled 
-  via gradle
+  - additional configuration is needed to enable script definitions discovery in a gradle build (see note in the 
+    [How to implement scripting support](#how-to-implement-scripting-support) section)
     
 In general the scripting support is in the experimental stage, so we cannot guarantee stability of the interfaces and 
 implementations.
