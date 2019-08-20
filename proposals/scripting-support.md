@@ -51,6 +51,7 @@ The document is still a draft, and few important parts are still missing, in par
   - [How to implement scripting support](#how-to-implement-scripting-support)
   - [Implementation status](#implementation-status)
   - [Examples](#examples)
+    - [kotlin-main-kts](#kotlin-main-kts)
 
 ## Applications
 
@@ -706,17 +707,90 @@ implementations.
 
 ### Examples
 
-#### kotlin-main-kts - a script definition for simple utility scripts creations
+#### kotlin-main-kts
  
-The `kotlin-main-kts` artifact contains a script definition and a minimal maven artifacts resolver in a single jar. 
-Its purpose is to simplify the creation and usage of the simple utility scripts that may depend on the external 
-libraries. In addition it supports importing scripts, so the definition of the imported scripts are visible for the
-target one. And it implements JSR-223 host and therefore could be used via the `javax.script` API.  
-The complete source code could be found in the `libraries/tools/kotlin-main-kts` folder in the Kotlin source 
-code repository. The artifact is distributed along with kotlin command line compiler package and published in Maven
+The `kotlin-main-kts` artifact contains a script definition and a minimal maven artifacts resolver in a single jar.
+It allows to:
+- create and use the simple utility scripts that may depend on the external libraries;
+- extract the common functionality into “imported” scripts.
+
+It could be used as an example as an advanced script definition or together with standard or custom hosts - as an
+actual scripting tool. It implements JSR-223 host and therefore could be used via the `javax.script` API.
+
+To extend scripts with functionality from 3rd-party libraries and to organize scripts structure, the `kotlin-main-kts`
+implements support of the following file-level annotations:
+- `@DependsOn` allows specifying library dependencies for the script. Either a direct path to the file or jar, or 
+   maven coordinates are accepted as arguments.
+- `@Repository` adds the maven repository for resolving dependencies. If none are specified explicitly, the maven central 
+  repository is used.
+- `@Import` allows importing another script into a given one. All the actions specified in the imported script
+  run before all the actions specified in the given script and all the properties, functions and classes defined
+  in the imported scripts become visible for the given script.
+
+The artifact is distributed along with kotlin command line compiler package and published in Maven
 Central as `org.jetbrains.kotlin:kotlin-main-kts`.
 
+##### Usage
+
+###### Example scripts
+
+common.main.kts:
+```
+val greeting = "Hello, World!"
+```
+
+sample.main.kts:
+```
+@file:Repository("https://jcenter.bintray.com")
+@file:DependsOn("org.jetbrains.kotlinx:kotlinx-html-jvm:0.6.11")
+@file:Import("common.main.kts")
+
+import kotlinx.html.*
+import kotlinx.html.stream.*
+
+print(createHTML().html {
+    body {
+        h1 { +greeting }
+    }
+})
+```
+
+###### Running from command-line compiler (script definition discovery)
+
+```
+kotlinc -cp <path/to/kotlin-main-kts.jar> -script sample.main.kts
+```
+
+###### Simple host: eval function
+
+```
+fun evalFile(scriptFile: File): ResultWithDiagnostics<EvaluationResult> {
+
+    val compilationConfiguration = createJvmCompilationConfigurationFromTemplate<MainKtsScript>()
+    val evaluationConfiguration = createJvmEvaluationConfigurationFromTemplate<MainKtsScript>()
+
+    return BasicJvmScriptingHost().eval(scriptFile.toScriptSource(), compilationConfiguration, evaluationConfiguration)
+}
+
+evalFile(File("sample.main.kts")
+```
+
+###### Using JSR-223 (`javax.script`) API
+
+```
+val engine = ScriptEngineManager().getEngineByExtension("main.kts")!!
+engine.eval("""
+@file:DependsOn("junit:junit:4.11")
+
+org.junit.Assert.assertTrue(true)
+
+println("Hello, World!")
+""")
+```
 ##### Implementation 
+
+The complete source code could be found in the `libraries/tools/kotlin-main-kts` folder in the Kotlin source 
+code repository. Here only partial sources are given to illustrate the main implementation points.
 
 ###### Script base class
 
@@ -815,60 +889,3 @@ class MainKtsConfigurator : RefineScriptCompilationConfigurationHandler {
   
 `META-INF/kotlin/script/templates/org.jetbrains.kotlin.mainKts.MainKtsScript.classname`
 
-##### Usage
-
-###### Example script
-
-common.main.kts:
-```
-val greeting = "Hello, World!"
-```
-
-sample.main.kts:
-```
-@file:Repository("https://jcenter.bintray.com")
-@file:DependsOn("org.jetbrains.kotlinx:kotlinx-html-jvm:0.6.11")
-@file:Import("common.main.kts")
-
-import kotlinx.html.*
-import kotlinx.html.stream.*
-
-print(createHTML().html {
-    body {
-        h1 { +greeting }
-    }
-})
-```
-
-###### Running from command-line compiler (script definition discovery)
-
-```
-kotlinc -cp <path/to/kotlin-main-kts.jar> -script sample.main.kts
-```
-
-###### Simple host: eval function
-
-```
-fun evalFile(scriptFile: File): ResultWithDiagnostics<EvaluationResult> {
-
-    val compilationConfiguration = createJvmCompilationConfigurationFromTemplate<MainKtsScript>()
-    val evaluationConfiguration = createJvmEvaluationConfigurationFromTemplate<MainKtsScript>()
-
-    return BasicJvmScriptingHost().eval(scriptFile.toScriptSource(), compilationConfiguration, evaluationConfiguration)
-}
-
-evalFile(File("sample.main.kts")
-```
-
-###### Using JSR-223 (`javax.script`) API
-
-```
-val engine = ScriptEngineManager().getEngineByExtension("main.kts")!!
-engine.eval("""
-@file:DependsOn("junit:junit:4.11")
-
-org.junit.Assert.assertTrue(true)
-
-println("Hello, World!")
-""")
-```
