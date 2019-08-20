@@ -706,78 +706,169 @@ implementations.
 
 ### Examples
 
-#### Script with maven dependencies resolving support
+#### kotlin-main-kts - a script definition for simple utility scripts creations
  
-The complete source code could be found in the `libraries/samples/scripting/jvm-maven-deps` folder in the Kotlin source 
-code repository. *(Note: discovery file is not part of the mentioned example projects in the Kotlin repository, due to
-some clashes with the Kotlin build infrastructure.)*
+The `kotlin-main-kts` artifact contains a script definition and a minimal maven artifacts resolver in a single jar. 
+Its purpose is to simplify the creation and usage of the simple utility scripts that may depend on the external 
+libraries. In addition it supports importing scripts, so the definition of the imported scripts are visible for the
+target one. And it implements JSR-223 host and therefore could be used via the `javax.script` API.  
+The complete source code could be found in the `libraries/tools/kotlin-main-kts` folder in the Kotlin source 
+code repository. The artifact is distributed along with kotlin command line compiler package and published in Maven
+Central as `org.jetbrains.kotlin:kotlin-main-kts`.
 
-Script base class:
+##### Implementation 
+
+###### Script base class
 
 ```
 @KotlinScript(
-    fileExtension = "scriptwithdeps.kts",
-    compilationConfiguration = ScriptWithMavenDepsConfiguration::class
+    fileExtension = "main.kts",
+    compilationConfiguration = MainKtsScriptDefinition::class,
+    evaluationConfiguration = MainKtsEvaluationConfiguration::class
 )
-abstract class ScriptWithMavenDeps
+abstract class MainKtsScript(val args: Array<String>)
 ```
 
-Script static configuration properties:
+###### Script compilation configuration properties
 
 ```
-object ScriptWithMavenDepsConfiguration : ScriptCompilationConfiguration(
+object MainKtsScriptDefinition : ScriptCompilationConfiguration(
     {
-        defaultImports(DependsOn::class, Repository::class)
+        defaultImports(DependsOn::class, Repository::class, Import::class)
         jvm {
-            dependenciesFromCurrentContext(
-                "scripting-jvm-maven-deps", // script library jar name
-                "kotlin-script-util" // DependsOn annotation is taken from script-util
+            dependenciesFromClassContext( // extract dependencies from the host environment
+                MainKtsScriptDefinition::class, // use this class classloader for dependencies search
+                "kotlin-main-kts", "kotlin-stdlib", "kotlin-reflect" // search these libraries in it and use then as a script compilation classpath
             )
         }
         refineConfiguration {
-            onAnnotations(DependsOn::class, Repository::class, handler = ::configureMavenDepsOnAnnotations)
+            onAnnotations(
+                DependsOn::class, Repository::class, Import::class, // if these annotations are found on script parsing 
+                handler = MainKtsConfigurator() // call this handler to refine configuration parameters
+            )
         }
+        ide {
+            acceptedLocations(ScriptAcceptedLocation.Everywhere) // these scripts are recognized everywhere in the project structure
+        }
+        jsr223 {
+            importAllBindings(true) // when used as a JSR-223 host, import engine bindings as kotlin properties
+        }
+    })
+```
+
+###### Script evaluation configuration properties
+
+```
+object MainKtsEvaluationConfiguration : ScriptEvaluationConfiguration(
+    {
+        scriptsInstancesSharing(true) // if a script is imported multiple times in the import hierarchy, use a single copy
+
+        refineConfigurationBeforeEvaluate( // before evaluation, call this handler to refine configuration properties
+            ::configureProvidedPropertiesFromJsr223Context
+        )
     }
 )
 ```
 
-Dynamic configuration callback
+###### Compilation configuration refinement handler
 
 ```
-fun configureMavenDepsOnAnnotations(context: ScriptConfigurationRefinementContext): ResultWithDiagnostics<ScriptCompilationConfiguration> {
-    val annotations = context.collectedData?.get(ScriptCollectedData.foundAnnotations)?.takeIf { it.isNotEmpty() }
-            ?: return configuration.asSuccess()
-    // ...
-    // take annotations arguments and pass them to resolver
-    // ...
-    // wrap resulting references to resolved and downloaded jars to the returned refined configuration
-    return ScriptCompilationConfiguration(context.compilationConfiguration) {
-        dependencies.append(JvmDependency(resolvedClasspath))
-    }.asSuccess(diagnostics)
+class MainKtsConfigurator : RefineScriptCompilationConfigurationHandler {
+    private val resolver = FilesAndIvyResolver()
+
+    override operator fun invoke(context: ScriptConfigurationRefinementContext): ResultWithDiagnostics<ScriptCompilationConfiguration> =
+        
+        val annotations = context.collectedData?.get(ScriptCollectedData.foundAnnotations)?.takeIf { it.isNotEmpty() }
+            ?: return context.compilationConfiguration.asSuccess()
+
+        // collect imported scripts paths from  Import annotations 
+        val scriptBaseDir = (context.script as? FileBasedScriptSource)?.file?.parentFile
+        val importedSources = annotations.flatMap {
+            (it as? Import)?.paths?.map { sourceName ->
+                FileScriptSource(scriptBaseDir?.resolve(sourceName) ?: File(sourceName))
+            } ?: emptyList()
+        }
+
+        // pass resolving annotations to resolver
+        val resolvedClassPath = try {
+            val scriptContents = object : ScriptContents {
+                override val annotations: Iterable<Annotation> = annotations.filter { it is DependsOn || it is Repository }
+                override val file: File? = null
+                override val text: CharSequence? = null
+            }
+            resolver.resolve(scriptContents, emptyMap(), {}, null).get()?.classpath?.toList()
+            // TODO: add diagnostics
+        } catch (e: Throwable) {
+            return ResultWithDiagnostics.Failure(*diagnostics.toTypedArray(), e.asDiagnostics(path = context.script.locationId))
+        }
+
+        // return updated configuration with resolved dependencies and imported scripts
+        return ScriptCompilationConfiguration(context.compilationConfiguration) {
+            if (resolvedClassPath != null) updateClasspath(resolvedClassPath)
+            if (importedSources.isNotEmpty()) importScripts.append(importedSources)
+        }.asSuccess()
+    }
 }
 ```
 
-The discovery file (resources):  
-`META-INF/kotlin/script/templates/org.jetbrains.kotlin.script.examples.jvm.resolve.maven.MyScriptWithMavenDeps`
+###### The discovery file (resources)
+  
+`META-INF/kotlin/script/templates/org.jetbrains.kotlin.mainKts.MainKtsScript.classname`
 
-Simple host: eval function:
+##### Usage
+
+###### Example script
+
+common.main.kts:
+```
+val greeting = "Hello, World!"
+```
+
+sample.main.kts:
+```
+@file:Repository("https://jcenter.bintray.com")
+@file:DependsOn("org.jetbrains.kotlinx:kotlinx-html-jvm:0.6.11")
+@file:Import("common.main.kts")
+
+import kotlinx.html.*
+import kotlinx.html.stream.*
+
+print(createHTML().html {
+    body {
+        h1 { +greeting }
+    }
+})
+```
+
+###### Running from command-line compiler (script definition discovery)
+
+```
+kotlinc -cp <path/to/kotlin-main-kts.jar> -script sample.main.kts
+```
+
+###### Simple host: eval function
 
 ```
 fun evalFile(scriptFile: File): ResultWithDiagnostics<EvaluationResult> {
 
-    val compilationConfiguration = createJvmCompilationConfigurationFromTemplate<ScriptWithMavenDeps>()
+    val compilationConfiguration = createJvmCompilationConfigurationFromTemplate<MainKtsScript>()
+    val evaluationConfiguration = createJvmEvaluationConfigurationFromTemplate<MainKtsScript>()
 
-    return BasicJvmScriptingHost().eval(scriptFile.toScriptSource(), compilationConfiguration, null)
+    return BasicJvmScriptingHost().eval(scriptFile.toScriptSource(), compilationConfiguration, evaluationConfiguration)
 }
+
+evalFile(File("sample.main.kts")
 ```
 
-Example script (file: `hello.scriptwithdeps.kts`):
+###### Using JSR-223 (`javax.script`) API
 
 ```
+val engine = ScriptEngineManager().getEngineByExtension("main.kts")!!
+engine.eval("""
 @file:DependsOn("junit:junit:4.11")
 
 org.junit.Assert.assertTrue(true)
 
 println("Hello, World!")
-
+""")
 ```
