@@ -52,6 +52,8 @@ After careful review, we decided that some declarations should not require expli
 
     Because getters can't change visibility and setter-only explicit visibility looks ugly.
 
+However, if you still want to insert explicit visibility modifier for such declarations, it would not be marked as redundant by IDE.
+
 ## Implementation
 
 This mode is enabled by the compiler flag `-Xexplicit-api={strict|warning}`. `strict` state of the flag means that compiler will issue errors when public API declaration does not have explicit visibility or explicit return type.
@@ -79,9 +81,9 @@ Kotlin plugin in IntelliJ IDEA would recognize that explicit mode is enabled and
 
 The following **IDE** inspections would be disabled either because they're redundant or duplicated in the compiler:
 
-* Redundant visibility modifier
-* Public API declaration has implicit return type (would be replaced with compiler diagnostic)
-* Missing KDoc comment for public declaration (would be replaced with compiler diagnostic)
+* 'Redundant visibility modifier' for public API declarations
+* 'Public API declaration has implicit return type' (would be replaced with compiler diagnostic)
+* 'Missing KDoc comment for public declaration' (would be replaced with compiler diagnostic)
 
 Effectively, 'disabled in IDE/replaced with compiler diagnostic' means that you would not be able to control these inspections via 'Preferences - Editor - Inspections'.
 
