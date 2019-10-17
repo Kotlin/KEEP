@@ -24,13 +24,53 @@ While such a decision is convenient for application programming, the main concer
 
 Introduce 'Explicit API' compiler mode. Compilation in such mode differs from the default mode in the following aspects:
 
-* Compiler requires you to specify explicit visibility for a declaration when leaving default visibility would result in exposing that declaration to the public API surface.
+* Compiler requires you to specify explicit visibility for a declaration when leaving default visibility would result in exposing that declaration to the public API.
 
-* Compiler requires you to specify the explicit type of property/function when it is exposed to the public API surface.
+* Compiler requires you to specify the explicit type of property/function when it is exposed to the public/published API.
 
-* Compiler warns you when exposed to public API surface declaration does not have a KDoc.
+* Compiler warns you when exposed to public API declaration does not have a KDoc.
 
-See the definition of public API [here](https://github.com/JetBrains/kotlin/blob/master/libraries/tools/binary-compatibility-validator/ReadMe.md#what-constitutes-the-public-api).
+### Public API definition
+
+#### Classes
+
+A class is considered to be effectively public if all of the following conditions are met:
+
+ - it has public or protected JVM access (`ACC_PUBLIC` or `ACC_PROTECTED`)
+ - it has one of the following visibilities in Kotlin:
+    - no visibility (means no Kotlin declaration corresponds to this compiled class)
+    - *public*
+    - *protected*
+ - it isn't a local class
+ - it isn't a synthetic class with mappings for `when` tableswitches (`$WhenMappings`)
+ - it contains at least one effectively public member, in case if the class corresponds
+   to a kotlin *file* with top-level members or a *multifile facade*
+ - in case if the class is a member in another class, it is contained in the *effectively public* class
+ - in case if the class is a protected member in another class, it is contained in the *non-final* class
+
+#### Members
+
+A member of the class (i.e. a field or a method) is considered to be effectively public
+if all of the following conditions are met:
+
+ - it has public or protected JVM access (`ACC_PUBLIC` or `ACC_PROTECTED`)
+ - it has one of the following visibilities in Kotlin:
+    - no visibility (means no Kotlin declaration corresponds to this class member)
+    - *public*
+    - *protected*
+
+    > Note that Kotlin visibility of a field exposed by `lateinit` property is the visibility of its setter.
+
+ - in case if the member is protected, it is contained in *non-final* class
+ - it isn't a synthetic access method for a private field
+
+### Published API
+
+If declaration has *internal* visibility modifier, and declaration itself or its containing class is annotated with `PublishedApi`, and all other conditions from previous sections are met, it is considered **published** API.
+
+As with public API, you should avoid making [incompatible changes](https://github.com/JetBrains/kotlin/blob/master/libraries/tools/binary-compatibility-validator/ReadMe.md#what-makes-an-incompatible-change-to-the-public-binary-api) to published API.
+
+However, published API is usually not visible in the sources from the point of view of library client. Therefore, compiler in 'Explicit API' mode will not complain about missing KDoc or missing visibility modifier (because it is `internal` anyway). Explicit return type is still required for published API to prevent implementation details exposure.
 
 ### Inspection exclusions
 
