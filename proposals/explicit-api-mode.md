@@ -9,7 +9,7 @@
 ## Synopsis
 
 Provide an 'Explicit API' mode in the compiler which helps library authoring.
-Such mode should prevent delivery of unintended pubic API/ABI to the clients by requiring explicit visibility and return types on declarations.
+Such mode should prevent delivery of unintended public API/ABI to the clients by requiring explicit visibility modifier and explicit return types for public declarations.
 
 ## Motivation
 
@@ -18,7 +18,7 @@ There were a couple of hot discussions about the default visibility before relea
 * https://discuss.kotlinlang.org/t/public-by-default-for-classes/110
 * https://discuss.kotlinlang.org/t/kotlins-default-visibility-should-be-internal/1400
 
-While such a decision is convenient for application programming, the main concern against public-by-default visibility was that it becomes too easy for library authors to expose something accidentally, release it, and then have to make breaking changes to hide it back.
+While such a decision is convenient for application development, the main concern against public-by-default visibility was that it becomes too easy for library authors to expose something accidentally, release it, and then have to make breaking changes to hide it back.
 
 ## Proposal
 
@@ -28,6 +28,8 @@ Introduce 'Explicit API' compiler mode. Compilation in such mode differs from th
 
 * Compiler requires you to specify the explicit type of property/function when it is exposed to the public/published API.
 
+* Compiler requires you to explicitly [propagate experimental status](https://kotlinlang.org/docs/reference/experimental.html#propagating-use) for functions which contain experimental types in the signature.
+
 * Compiler warns you when exposed to public API declaration does not have a KDoc.
 
 ### Public API definition
@@ -36,13 +38,11 @@ Introduce 'Explicit API' compiler mode. Compilation in such mode differs from th
 
 A class is considered to be effectively public if all of the following conditions are met:
 
- - it has public or protected JVM access (`ACC_PUBLIC` or `ACC_PROTECTED`)
  - it has one of the following visibilities in Kotlin:
     - no visibility (means no Kotlin declaration corresponds to this compiled class)
     - *public*
     - *protected*
  - it isn't a local class
- - it isn't a synthetic class with mappings for `when` tableswitches (`$WhenMappings`)
  - it contains at least one effectively public member, in case if the class corresponds
    to a kotlin *file* with top-level members or a *multifile facade*
  - in case if the class is a member in another class, it is contained in the *effectively public* class
@@ -53,7 +53,6 @@ A class is considered to be effectively public if all of the following condition
 A member of the class (i.e. a field or a method) is considered to be effectively public
 if all of the following conditions are met:
 
- - it has public or protected JVM access (`ACC_PUBLIC` or `ACC_PROTECTED`)
  - it has one of the following visibilities in Kotlin:
     - no visibility (means no Kotlin declaration corresponds to this class member)
     - *public*
@@ -66,11 +65,18 @@ if all of the following conditions are met:
 
 ### Published API
 
-If declaration has *internal* visibility modifier, and declaration itself or its containing class is annotated with `PublishedApi`, and all other conditions from previous sections are met, it is considered **published** API.
+If a declaration has *internal* visibility modifier, and the declaration itself or its containing class is annotated with `PublishedApi`, and all other conditions from previous sections are met, it is considered **published** API.
 
-As with public API, you should avoid making [incompatible changes](https://github.com/JetBrains/kotlin/blob/master/libraries/tools/binary-compatibility-validator/ReadMe.md#what-makes-an-incompatible-change-to-the-public-binary-api) to published API.
+As with public API, you should avoid making [binary incompatible changes](https://github.com/JetBrains/kotlin/blob/master/libraries/tools/binary-compatibility-validator/ReadMe.md#what-makes-an-incompatible-change-to-the-public-binary-api) to published API.
 
-However, published API is usually not visible in the sources from the point of view of library client. Therefore, compiler in 'Explicit API' mode will not complain about missing KDoc or missing visibility modifier (because it is `internal` anyway). Explicit return type is still required for published API to prevent implementation details exposure.
+However, published API is usually not visible in the sources from the point of view of a library client. Therefore, the compiler in 'Explicit API' mode will not complain about missing KDoc or missing visibility modifier (because it is `internal` anyway). Explicit return type is still required for published API to prevent implementation details exposure.
+
+### Experimental API
+
+When one is writing a library, they should use `@Experimental(...)` annotation to propagate the experimental status of types they use.
+If experimental types are used as implementation details across all library, it might be convenient to mark the whole module with `-Xuse-experimental`.
+In that case, it would be easy to forget to mark the corresponding public API as propagative.
+Therefore, in Explicit API mode, the compiler would still require explicit `@Experimental` or `@UseExperimental` annotation on a declaration with experimental types in the signature, even if the whole module accepts experimental status via `-Xuse-experimental`.
 
 ### Inspection exclusions
 
@@ -92,7 +98,7 @@ After careful review, we decided that some declarations should not require expli
 
     Because getters can't change visibility and setter-only explicit visibility looks ugly.
 
-However, if you still want to insert explicit visibility modifier for such declarations, it would not be marked as redundant by IDE.
+However, if you still want to insert an explicit visibility modifier for such declarations, it would not be marked as redundant by IDE.
 
 ## Implementation
 
@@ -142,7 +148,7 @@ Besides embedding such mode as a compiler flag, the following alternatives were 
 ## Compatibility
 
 The explicit mode doesn't change the semantics of the correct code and does not affect bytecode generation, so it's safe from the standpoint of compatibility.
-For example, if some code was compiled once in explicit mode and later without explicit mode, the result should be the same.
+For example, if some code was compiled once in the explicit mode and later without explicit mode, the result should be the same.
 
-However, this mode could make previously correct code to compile with errors (the code that had default visibility declarations and inferred types in public API).
+However, this mode could make previously correct code to compile with errors (the code that had the default visibility declarations and inferred types in public API).
 That effect is similar to the "Treat warning as errors" option; but the separate compiler flag allows fine-grained control (since we can't turn _particular_ warnings into errors).
