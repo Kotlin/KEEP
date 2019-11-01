@@ -39,7 +39,7 @@ Examples:
 
     when (val x: Number = foo()) { ... }    // Ok, explicit type annotation can be provided
 
-    when (var x = foo() { ... }             // Error, must be a val
+    when (var x = foo()) { ... }             // Error, must be a val
 
     when (val x: Number) { ... }            // Error, must have an initializer
 
