@@ -210,3 +210,74 @@ of Kotlin's compiler internals.
 - immutable data classes for pattern-matching (they can be also used for pattern-matching
   in functional-style code)
 - tuples and changes in immutable collections for pattern-matching
+
+### A toy example
+
+Solution for a [Wolf, goat and cabbage problem](https://en.wikipedia.org/wiki/Wolf,_goat_and_cabbage_problem)
+```
+// A man has a wolf, a goat and a cole.
+// He must ferry them using a boat that can carry one more item only.
+// State is a class that describes transfer state, where 'true' means ferried,
+// and 'false' means not farried
+data class State(
+    val man: Boolean,
+    val wolf: Boolean,
+    val goat: Boolean,
+    val cole: Boolean)
+
+fun State.forbidden(): Boolean =
+    (wolf != man && wolf == goat) // the wolf eats the goat
+||  (goat != man && goat == cole) // the goat eats the cole
+
+
+val goal = State(true,true,true,true)
+
+// ========= Solution Start =========
+rule fun solve(seq: MutableList<State>) {
+    ferry(seq),
+    {   seq.last() == goal // solved!
+    ;   solve(seq)         // try more
+    }
+}
+
+rule fun ferry(seq: MutableList<State>) {
+    val cs = seq.last(); // current state
+    var ns = PVar<State>(); // new state
+
+    // the man can
+    {   // cross alone
+        ns ?= cs.copy(man = !cs.man)
+    ;   // ferry the wolf
+        ns ?= cs.copy(man = !cs.man, wolf = !cs.wolf)
+    ;   // ferry the goat
+        ns ?= cs.copy(man = !cs.man, goat = !cs.goat)
+    ;   // ferry the cole
+        ns ?= cs.copy(man = !cs.man, cole = !cs.cole)
+    },
+    ! (-ns).forbidden(),
+    !seq.contains(-ns), // prevent infinit loop
+    // add new state, and remove it on backtracking
+    seq.push(-ns) ?< seq.pop()
+}
+// ========= Solution End =========
+
+fun MutableList<State>.last(): State = this[size-1]
+
+fun MutableList<State>.push(s: State) = this.add(s)
+
+fun MutableList<State>.pop() = this.removeAt(size-1)
+
+operator fun PVar<State>.unaryMinus(): State = this.value!! 
+
+
+fun main() {
+    val seq = mutableListOf(State(false,false,false,false))
+
+    for (i in solve(seq)) {
+        println("--- Found sequence:")
+        for (s in seq)
+            println("${s}")
+    }
+    println("--- No more solutions")
+}
+```
