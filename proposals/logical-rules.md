@@ -248,10 +248,13 @@ rule fun ferry(seq: MutableList<State>) {
     {   // cross alone
         ns ?= cs.copy(man = !cs.man)
     ;   // ferry the wolf
+        cs.man == cs.wolf,
         ns ?= cs.copy(man = !cs.man, wolf = !cs.wolf)
     ;   // ferry the goat
+        cs.man == cs.goat,
         ns ?= cs.copy(man = !cs.man, goat = !cs.goat)
     ;   // ferry the cole
+        cs.man == cs.cole,
         ns ?= cs.copy(man = !cs.man, cole = !cs.cole)
     },
     ! (-ns).forbidden(),
