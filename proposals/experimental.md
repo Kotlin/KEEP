@@ -36,7 +36,10 @@ package kotlin
 
 @Target(ANNOTATION_CLASS)
 @Retention(BINARY)
-annotation class RequiresOptIn(val level: Level = Level.ERROR) {
+annotation class RequiresOptIn(
+    val level: Level = Level.ERROR,
+    val message: String = ""
+) {
     enum class Level { WARNING, ERROR }
 }
 
@@ -98,6 +101,16 @@ Note that by opting into the API with the propagating opt-in, `useFooAndBar` eff
 Both opt-in mechanisms allow to use the API for the selected markers anywhere in the parse tree lexically under the annotated element.
 
 Using `OptIn` with annotations that are *not* opt-in requirement markers has no effect and yields a compilation warning. (Note that this must not be an error because user code should not break once an annotation is no longer an opt-in requirement marker.) Using `OptIn` with no arguments has no effect and yields a warning as well.
+
+## Opt-in requirement message
+
+When using an API that requires opt-in without the said opt-in, the compiler reports a warning or an error depending on the specified level. It's possible to specify a custom message in `RequiresOptIn`, that will be reported by the compiler. If no message is given (i.e. if `message` is empty), the compiler will report that the API is *experimental*:
+
+```
+test.kt:22:9: error: this declaration is experimental and its usage must be marked with '@ShinyNewAPI' or '@OptIn(ShinyNewAPI::class)'
+    foo.bar()
+        ^
+```
 
 ## Opt-in for whole modules
 
