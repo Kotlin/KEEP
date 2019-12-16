@@ -97,24 +97,17 @@ Both opt-in mechanisms allow to use the API for the selected markers anywhere in
 
 Using `UseExperimental` with annotations that are *not* experimental API markers has no effect and yields a compilation warning. (Note that this must not be an error because user code should not break once an annotation is no longer an experimental API marker.) Using `UseExperimental` with no arguments has no effect and yields a warning as well.
 
-## Propagation and opt-in for whole modules
+## Opt-in for whole modules
 
-Annotating every usage of an experimental API might quickly become annoying, especially for application modules, where the developer does not care about the clients of the code simply because application modules have no clients. In such cases, it'd be useful to have a module-wide switch to turn on (and propagate, if needed) the used experimental API.
+Annotating every usage of an experimental API might quickly become annoying, especially for application modules, where the developer does not care about the clients of the code simply because application modules have no clients. In such cases, it'd be useful to have a module-wide switch to turn on the used experimental API.
 
-We introduce two CLI arguments to kotlinc, which mirror the two ways to enable the experimental API:
+We introduce a new CLI argument to kotlinc, `-Xuse-experimental=org.foo.Ann`, where `org.foo.Ann` is a fully qualified name of the experimental API marker, which enables the corresponding experimental API for the module. It's as if the *whole module* was annotated with `@UseExperimental(org.foo.Ann::class)`
 
-1. `-Xexperimental=org.foo.Ann`, where `org.foo.Ann` is a fully qualified name of the experimental API marker, enables and propagates the corresponding API for the module. It's as if the *whole module* was annotated with `@org.foo.Ann`
-2. `-Xuse-experimental=org.foo.Ann` enables the corresponding compile-time experimental API for the module. It's as if the *whole module* was annotated with `@UseExperimental(org.foo.Ann::class)`
+Since it's not easy to encode arbitrary Kotlin expressions in the CLI arguments, and because experimental API markers are used in the `-Xuse-experimental` argument, we **require all marker annotations to have no parameters**. The compiler will report an error otherwise.
 
-We recognize that a better way to handle this would be to introduce some kind of module annotations in the language, however the design of that feature is far from obvious and until it's done, we're proposing this quick intermediate solution instead.
+The compiler will check the value of `-Xuse-experimental` in the same way it checks the argument of the `@UseExperimental` annotation. In particular, if any of the annotations mentioned in the `-Xuse-experimental` are deprecated, the compiler is going to report a warning or error, depending on the deprecation level.
 
-Since it's not easy to encode arbitrary Kotlin expressions in the CLI arguments, and because experimental API markers are used in the `-Xexperimental` argument, we **require all marker annotations to have no parameters**. The compiler will report an error otherwise.
-
-Note that using the propagating opt-in (`-Xexperimental=org.foo.Ann`) during the compilation will make the whole module “annotated” with the given experimental marker, i.e. all declarations in that module are going to be considered experimental with that marker. On JVM, this information is going to be stored in the `.kotlin_module` file. Upon checking call sites for experimental API usage, the Kotlin compiler is going to look not only at annotations on the declaration and its containing declarations, but also at the `.kotlin_module` of the containing module.
-
-If any of the annotations mentioned in the `-Xexperimental`/`-Xuse-experimental` are deprecated, the compiler is going to report a warning or error, depending on the deprecation level.
-
-The compiler will check the value of `-Xuse-experimental` in the same way it checks the argument of the `@UseExperimental` annotation.
+In a previous version of this proposal, we discussed the possibility of introducing another argument, `-Xexperimental=org.foo.Ann`, to use the propagating opt-in on the whole module (i.e. mark the whole module as experimental). The implementation of that feature turned out to be unexpectedly complicated, and it wasn't widely used, so we've decided not to add it at this point.
 
 ## Experimentality of Experimental/UseExperimental itself
 
