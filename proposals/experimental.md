@@ -37,8 +37,8 @@ package kotlin
 @Target(ANNOTATION_CLASS)
 @Retention(BINARY)
 annotation class RequiresOptIn(
-    val level: Level = Level.ERROR,
-    val message: String = ""
+    val message: String = "",
+    val level: Level = Level.ERROR
 ) {
     enum class Level { WARNING, ERROR }
 }
