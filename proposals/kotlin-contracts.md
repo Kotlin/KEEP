@@ -408,7 +408,7 @@ Kotlin Contracts is an experimental feature. However, it has several components,
 Here we summarize limitations of the prototype:
 
 * Contracts are allowed only on functions, which are:
-    * Top-level (because inheritance not implemented yet)
+    * Final functions (members or top-level, not local) that override nothing (because inheritance not implemented yet)
     * Have block body (consequence of the first-statement convention)
 * Compiler trusts contracts unconditionally (because verification not implemented yet); programmer is responsible for writing correct and sound contracts
 * Only `Returns()`, `Returns() implies condition` and `CallsInPlace` are supported
