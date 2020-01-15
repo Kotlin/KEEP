@@ -1,8 +1,8 @@
 # Explicit API mode
 
 * **Type**: Design proposal
-* **Author**: Ilya Gorbunov
-* **Contributors**: Leonid Startsev, Roman Elizarov
+* **Authors**: Ilya Gorbunov, Leonid Startsev
+* **Contributors**: Roman Elizarov, Vsevolod Tolstopyatov
 * **Status**: Prototype
 * **Original proposal and discussion**: [KEEP-45](https://github.com/Kotlin/KEEP/issues/45)
 
@@ -30,7 +30,7 @@ Introduce 'Explicit API' compiler mode. Compilation in such mode differs from th
 
 * Compiler requires you to explicitly [propagate experimental status](https://kotlinlang.org/docs/reference/experimental.html#propagating-use) for functions which contain experimental types in the signature.
 
-* Compiler warns you when exposed to public API declaration does not have a KDoc.
+* Compiler warns you when declaration exposed to public API does not have a KDoc.
 
 ### Public API definition
 
@@ -39,12 +39,10 @@ Introduce 'Explicit API' compiler mode. Compilation in such mode differs from th
 A class is considered to be effectively public if all of the following conditions are met:
 
  - it has one of the following visibilities in Kotlin:
-    - no visibility (means no Kotlin declaration corresponds to this compiled class)
+    - no visibility
     - *public*
     - *protected*
  - it isn't a local class
- - it contains at least one effectively public member, in case if the class corresponds
-   to a kotlin *file* with top-level members or a *multifile facade*
  - in case if the class is a member in another class, it is contained in the *effectively public* class
  - in case if the class is a protected member in another class, it is contained in the *non-final* class
 
@@ -54,14 +52,13 @@ A member of the class (i.e. a field or a method) is considered to be effectively
 if all of the following conditions are met:
 
  - it has one of the following visibilities in Kotlin:
-    - no visibility (means no Kotlin declaration corresponds to this class member)
+    - no visibility
     - *public*
     - *protected*
 
     > Note that Kotlin visibility of a field exposed by `lateinit` property is the visibility of its setter.
 
  - in case if the member is protected, it is contained in *non-final* class
- - it isn't a synthetic access method for a private field
 
 ### Published API
 
@@ -150,5 +147,5 @@ Besides embedding such mode as a compiler flag, the following alternatives were 
 The explicit mode doesn't change the semantics of the correct code and does not affect bytecode generation, so it's safe from the standpoint of compatibility.
 For example, if some code was compiled once in the explicit mode and later without explicit mode, the result should be the same.
 
-However, this mode could make previously correct code to compile with errors (the code that had the default visibility declarations and inferred types in public API).
+However, this mode could make previously correct code compile with errors (the code that had the default visibility declarations and inferred types in public API).
 That effect is similar to the "Treat warning as errors" option; but the separate compiler flag allows fine-grained control (since we can't turn _particular_ warnings into errors).
