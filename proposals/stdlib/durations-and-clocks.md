@@ -2,7 +2,7 @@
 
 * **Type**: Standard Library API proposal
 * **Author**: Ilya Gorbunov
-* **Status**: Experimental in Kotlin 1.3.50
+* **Status**: Experimental in Kotlin 1.3.70
 * **Prototype**: Implemented
 * **Discussion**: [KEEP-190](https://github.com/Kotlin/KEEP/issues/190)
 
@@ -13,8 +13,8 @@ The goal of this proposal is to introduce the following API into the common Kotl
 - the class `Duration` representing the duration of time interval between two instants of time;
 - the enum class `DurationUnit` that lists the possible units in which a duration can be expressed;
 - the functions `measureTime` and `measureTimedValue` allowing to measure execution time of a code block;
-- the interface `Clock` abstracting the source of time and allowing to notch a mark on
-the clock and then read the amount of time elapsed from that mark.
+- the interface `TimeSource` abstracting the source of time and allowing to notch a mark on
+the time scale and then read the amount of time elapsed from that mark.
 
 ## Use cases
 
@@ -57,20 +57,20 @@ the beginning and end of a time interval measurement cannot be placed in the sco
 to notch the moment of the beginning, store it somewhere and then calculate the elapsed time from that moment. 
 Also the elapsed time can be noted not only once, as it is with `measureTime`, but multiple times.
 
-The interface `Clock` is a basic building block both for implementing `measureTime` and for covering the case above.
-It allows to obtain a `ClockMark` that captures the current instant of the clock. That `ClockMark` can be queried later 
+The interface `TimeSource` is a basic building block both for implementing `measureTime` and for covering the case above.
+It allows to obtain a `TimeMark` that captures the current instant of the time source. That `TimeMark` can be queried later 
 for the amount of time elapsed since that instant, potentially multiple times.
 
 #### Noting time remaining to a particular point in future
 
-Timeout dealing cases usually involve taking a `ClockMark` at some point and then verifying whether the elapsed time 
-has exceeded the given timeout value. This requires operating two entities: the `ClockMark` and the timeout `Duration`.
+Timeout dealing cases usually involve taking a `TimeMark` at some point and then verifying whether the elapsed time 
+has exceeded the given timeout value. This requires operating two entities: the `TimeMark` and the timeout `Duration`.
 
-Instead the `ClockMark` can be displaced by the given `Duration` value to get another `ClockMark` representing timeout 
-expiration point in future. The function `elapsedNow` invoked on the latter `ClockMark` will return negative values while the
+Instead, the `TimeMark` can be displaced by the given `Duration` value to get another `TimeMark` representing timeout 
+expiration point in the future. The function `elapsedNow` invoked on the latter `TimeMark` will return negative values while the
 timeout is not expired, and positive values if it is. For convenience, instead of checking `elapsedNow` function returning
-a negative duration one can use `hasPassedNow`/`hasNotPassedNow` functions of the `ClockMark`.
-This way timeout can be represented by a single `ClockMark` instead of `ClockMark` and `Duration`.
+a negative duration one can use `hasPassedNow`/`hasNotPassedNow` functions of the `TimeMark`.
+This way timeout can be represented by a single `TimeMark` instead of a `TimeMark` and a `Duration`.
 
 
 ## Similar API review
@@ -140,7 +140,7 @@ A `Duration` value can be negative.
 The primary constructor of `Duration` is internal. 
 A `Duration` value can be constructed from a numeric value (`Int`, `Long` or `Double`) and 
 a unit of duration. If the unit is known in advance and constant, the extension properties provide the most expressive 
-way to construct a duration, e.g. `1.5.minutes`, `30.seconds`, `500.milliseconds`. Otherwise the extension function 
+way to construct a duration, e.g. `1.5.minutes`, `30.seconds`, `500.milliseconds`. Otherwise, the extension function 
 `numericValue.toDuration(unit)` can be used.
 
 #### Conversions
@@ -157,6 +157,7 @@ expressed in the unit specified with the parameter `unit`;
 
 - addition and subtraction: `Duration +- Duration = Duration`
 - multiplication by a scalar: `Duration * number = Duration`
+- multiplication a scalar by a duration: `number * Duration = Duration` 
 - division by a scalar: `Duration / number = Duration`
 - division by a duration: `Duration / Duration = Double`
 - negation: `-Duration`
@@ -247,48 +248,49 @@ An enum that lists the possible units in which duration can be expressed: `DAYS`
 
 On JVM it is a typealias to `java.util.concurrent.TimeUnit`.
 
-### Clock and ClockMark
+### TimeSource and TimeMark
 
-`Clock` is an interface with a single method:
+`TimeSource` is an interface with a single method:
 
 ```kotlin
-interface Clock {
-    fun markNow(): ClockMark
+interface TimeSource {
+    fun markNow(): TimeMark
 }
 ```
 
-In turn `ClockMark` provides the operation `elapsedNow` that returns a `Duration` of an interval elapsed at the current moment
+In turn `TimeMark` provides the operation `elapsedNow` that returns a `Duration` of an interval elapsed at the current moment
 since that mark was taken.
-Additionally it has two operators `+` and `-` allowing to get another `ClockMark` displaced from this one by the given duration.
+Additionally, it has two operators `+` and `-` allowing to get another `TimeMark` displaced from this one by the given duration.
 
 ```kotlin
-abstract class ClockMark {
+abstract class TimeMark {
     abstract fun elapsedNow(): Duration
-    open operator fun plus(duration: Duration): ClockMark = ...
-    open operator fun minus(duration: Duration): ClockMark = plus(-duration)
+    open operator fun plus(duration: Duration): TimeMark = ...
+    open operator fun minus(duration: Duration): TimeMark = plus(-duration)
 
     fun hasPassedNow(): Boolean = elapsedNow() >= Duration.ZERO
     fun hasNotPassedNow(): Boolean = elapsedNow() < Duration.ZERO
 }
 ```
 
-`hasPassedNow` and `hasNotPassedNow` functions are useful for checking whether a deadline or expiration `ClockMark` has been reached:
+`hasPassedNow` and `hasNotPassedNow` functions are useful for checking whether a deadline or expiration `TimeMark` has been reached:
 
 ```kotlin
 val timeout: Duration = 5.minutes
-val expirationMark = clock.markNow() + timeout
+val expirationMark = timeSource.markNow() + timeout
 // later
 if (expirationMark.hasPassedNow()) {
     // cached data are expired now
 }
 ``` 
 
-A `ClockMark` is not serializable because it isn't possible to restore the captured time point upon deserialization
+A `TimeMark` is not serializable because it isn't possible to restore the captured time point upon deserialization
 in a meaningful way.
 
-### MonoClock
+### Monotonic TimeSource
 
-`MonoClock` is an object implementing `Clock` and providing the default source of monotonic time in a platform.
+`TimeSource` has the nested object `Monotonic` that implements `TimeSource` and provides the default source of monotonic 
+time in the platform.
 
 Different platforms provide different sources of monotonic time:
 
@@ -304,21 +306,22 @@ on the Android platform. This can be solved by providing an extension point in t
 a specialized implementation in another Android-targeted library. Should this API graduate to stable, such an implementation
 could be provided in [Android KTX](https://developer.android.com/kotlin/ktx).
 
-### AbstractLongClock/AbstractDoubleClock
+### AbstractLongTimeSource/AbstractDoubleTimeSource
 
-These are two abstract classes that are provided to make it easy implementing own `Clock` 
-having a time source that returns the current timestamp as a number.
+These two abstract classes are provided to make it easy implementing own `TimeSource` 
+from a source that returns the current timestamp as a number.
 
 ```kotlin
-public abstract class AbstractLongClock(protected val unit: DurationUnit) : Clock {
+public abstract class AbstractLongTimeSource(protected val unit: DurationUnit) : TimeSource {
     protected abstract fun read(): Long
 
-    override fun markNow(): ClockMark = ...
+    override fun markNow(): TimeMark = ...
 }
 ```
 
-To implement a clock all one needs to do is to extend one of these abstract classes, specifying the time unit in the 
-super constructor call, and to provide an implementation of the abstract function `read` that returns the current reading of the clock.
+To implement a time source all one needs to do is to extend one of these abstract classes, specifying the time unit in the 
+super constructor call, and to provide an implementation of the abstract function `read` that returns the current reading 
+of the time source.
 
 ### measureTime and measureTimedValue
 
@@ -332,18 +335,18 @@ inline fun measureTime(block: () -> Unit): Duration
 It has a contract stating that `block` is invoked exactly once, and due to it's being inline it is possible to call 
 suspend functions in the lambda passed to `block`.
 
-It uses `MonoClock` as a source of time by default. Another `Clock` implementation can be specified as a receiver 
+It uses `TimeSource.Monotonic` as a source of time by default. Another `TimeSource` implementation can be specified as a receiver 
 of the following overload of `measureTime`:
 
 ```kotlin
-inline fun Clock.measureTime(block: () -> Unit): Duration
+inline fun TimeSource.measureTime(block: () -> Unit): Duration
 ```
 
 `measureTimedValue` returns both the result of `block` execution and the elapsed time as a simple `TimedValue<T>` data class:
 
 ```kotlin
 inline fun <T> measureTimedValue(block: () -> T): TimedValue<T>
-inline fun <T> Clock.measureTimedValue(block: () -> T): TimedValue<T>
+inline fun <T> TimeSource.measureTimedValue(block: () -> T): TimedValue<T>
 
 data class TimedValue<T>(val value: T, val duration: Duration)
 ```
@@ -364,7 +367,7 @@ It's proposed to provide this API in the common Kotlin Standard Library in a new
 To gather early adoption feedback, the new API can be released in the experimental status in the coming Kotlin 1.3.x release. 
 To mark the experimental status of this API we provide the annotation `@kotlin.time.ExperimentalTime`.
 
-However, we can't deprecate the existing stable API, such as `measureTimeMillis`, that is going to be replaced with the new API 
+However, we can't deprecate the existing stable API that is going to be replaced with the new API, such as `measureTimeMillis`, 
 before the new API goes stable.
 
 The experimental status of `Duration` and consequently almost all API in `kotlin.time` cannot be lifted without graduating
@@ -373,23 +376,19 @@ The experimental status of `Duration` and consequently almost all API in `kotlin
 ## Unresolved questions
 
 * Are the shortcut functions `toLongMilliseconds` and `toLongNanoseconds` short enough for their use cases?
-* Do we need symmetrical multiplication operator overloads `number * Duration = Duration`?
 
 ## Future advancements
 
-### `WallClock` extending `Clock` interface
+### `WallClock` extending `TimeSource` interface
 
-`WallClock` interface can extend `Clock` interface with an operation that returns the current instant of the world time (and date).
-Such instant values do not lose their meaning after restarting the program or the entire system, and their clock marks can be persisted.
-On the other hand such clock is subject to automatic and manual time adjustments, so it is not monotonic, 
-therefore measuring elapsed time with such clock can yield a negative duration.
-
-The `ClockMark` returned by a `WallClock` can be potentially serialized, though
-it is not clear how to restore the clock reference upon deserialization.
+Originally there was a proposal of having `(Wall)Clock` entity that extends `TimeSource` interface with an operation 
+that returns the current instant of the world time (and date). However, we admitted that it would be more clear
+to have that entity separate in order not to pollute its member scope with `TimeSource` members, and provide a wrapping
+extension `.asTimeSource()` if necessary.
 
 ### Low-level timestamp providing functions
 
-In addition to the object `MonoClock`, two lower level functions/properties can be provided to fetch the current time reading
+In addition to the object `TimeSource.Monotonic`, two lower level functions/properties can be provided to fetch the current time reading
 of the system monotonic clock:
 
 ```kotlin
