@@ -1,7 +1,8 @@
 # Successive results of accumulating functions
 
 * **Type**: Standard Library API proposal
-* **Author**: Ilya Gorbunov, Abduqodiri Qurbonzoda
+* **Author**: Abduqodiri Qurbonzoda
+* **Contributors**: Ilya Gorbunov
 * **Status**: Implemented in Kotlin 1.3.70
 * **Prototype**: Implemented
 * **Related issues**: [KT-7657](https://youtrack.jetbrains.com/issue/KT-7657)
@@ -41,7 +42,7 @@ return all intermediate accumulator values. Indexed variants are also introduced
 * Coroutines Flow has `scan` ([docs](https://kotlin.github.io/kotlinx.coroutines/kotlinx-coroutines-core/kotlinx.coroutines.flow/scan.html)) and `scanReduce` ([docs](https://kotlin.github.io/kotlinx.coroutines/kotlinx-coroutines-core/kotlinx.coroutines.flow/scan-reduce.html)) methods
 * RxJava contains method named `scan` ([docs](http://reactivex.io/documentation/operators/scan.html))
 
-#Description
+##Description
 
 ```kotlin
 // function that accumulates collection starting from left to right using a given initial accumulator, and returns all successive accumulation values
@@ -144,7 +145,7 @@ public inline fun UShortArray.scanReduceIndexed(operation: (index: Int, acc: USh
     val total = numbers.fold(0) { acc, element ->
         val nextAcc = acc + element
         runningTotal.add(nextAcc)
-        return nextAcc
+        nextAcc
     }
     ```
 
@@ -193,8 +194,7 @@ The `fold` variant will be called just `scan` due to its use cases being more wi
 
 ## Contracts
 
-* `scan` returns a list containing the `initial` argument when receiver is empty
-* `scanReduce` returns an empty list when receiver is empty
+* `last()` value of the returned list/sequence is equivalent to calling non-scanning counterpart, `fold`/`reduce`
 
 ### Receiver types
 
