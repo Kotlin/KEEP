@@ -6,6 +6,7 @@
 * **Status**: Implemented in Kotlin 1.3.70
 * **Prototype**: Implemented
 * **Related issues**: [KT-7657](https://youtrack.jetbrains.com/issue/KT-7657)
+* **Discussion**: [KEEP-207](https://github.com/Kotlin/KEEP/issues/207)
 
 
 ## Summary
@@ -194,6 +195,8 @@ The `fold` variant will be called just `scan` due to its use cases being more wi
 
 ## Contracts
 
+* `scan` returns a list containing the `initial` argument when receiver is empty
+* `scanReduce` returns an empty list when receiver is empty
 * `last()` value of the returned list/sequence is equivalent to calling non-scanning counterpart, `fold`/`reduce`
 
 ### Receiver types
