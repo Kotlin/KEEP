@@ -43,7 +43,7 @@ return all intermediate accumulator values. Indexed variants are also introduced
 * Coroutines Flow has `scan` ([docs](https://kotlin.github.io/kotlinx.coroutines/kotlinx-coroutines-core/kotlinx.coroutines.flow/scan.html)) and `scanReduce` ([docs](https://kotlin.github.io/kotlinx.coroutines/kotlinx-coroutines-core/kotlinx.coroutines.flow/scan-reduce.html)) methods
 * RxJava contains method named `scan` ([docs](http://reactivex.io/documentation/operators/scan.html))
 
-##Description
+## Description
 
 ```kotlin
 // function that accumulates collection starting from left to right using a given initial accumulator, and returns all successive accumulation values
