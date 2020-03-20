@@ -3,7 +3,7 @@
 * **Type**: Design proposal
 * **Authors**: Ilya Gorbunov, Leonid Startsev
 * **Contributors**: Roman Elizarov, Vsevolod Tolstopyatov
-* **Status**: Prototype
+* **Status**: Implemented in 1.4
 * **Original proposal and discussion**: [KEEP-45](https://github.com/Kotlin/KEEP/issues/45)
 
 ## Synopsis
@@ -83,7 +83,7 @@ After careful review, we decided that some declarations should not require expli
 
     Because explicit visibility also requires you to insert keyword `constructor`.
 
-2. Properties of data classes
+2. Properties of data classes and annotations
 
     Because such classes usually fit in one line of code and do not profit much from information hiding.
 
