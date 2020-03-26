@@ -41,7 +41,7 @@ The `android.os.Parcelable` API requires some boilerplate code to be implemented
  }
 ```
   
-For many simple cases users want to do something like
+For many simple cases, users want to do something like
 
 ```kotlin
 @Parcelize
@@ -104,7 +104,7 @@ data class User(
 
 We can have a compiler extension to generate all the required boilerplate behind the scenes. This is similar to what (some) annotation processors do, but 
 1. Java annotation processors can't alter Kotlin code, 
-2. Normally, annotation processors can't add methods to existing classes (this is possible though a private API only, and kapt does not support such an API),
+2. Normally, annotation processors can't add methods to existing classes (this is possible through a private API only, and kapt does not support such an API),
 3. A compiler extension can be potentially more flexible in terms of suppressing errors and providing syntactic means to the user.
 
 ### Simple case: completely automatic Parcelable
@@ -122,7 +122,7 @@ The following requirements apply here:
 - Only non-`abstract` classes are supported
   - `@Parcelize` can't annotate an `interface` or `annotation class`
   - `sealed` and `enum` classes may be supported
-    - In case of `sealed class`es we should check if all concrete implementations have a `@Parcelize` annotation
+    - In case of `sealed class`es, we should check if all concrete implementations have a `@Parcelize` annotation
   - `object`s are forbidden for now
     - Objects can also be supported. We can serialize just the qualified name because we can't make the new instance of `object` anyway
 - The class annotated with `@Parcelize` must implement `Parcelable` (directly or through a chain of supertypes)
@@ -198,7 +198,7 @@ There is an option to generate two constructors:
 >- one ordinary primary constructor,
 >- another one that takes `Parcel` and creates an object from it.
 >
->This has a benefit of being more convenient when it comes to hierarchies (see below). The issue here is that the second constructor will have to bypass any initializers in the class body or do sophisticated combination of that logic and the deserialization. Overall it seems easier to have only one traditional constructor and call it from the `createFromParcel` method.  
+>This has a benefit of being more convenient when it comes to hierarchies (see below). The issue here is that the second constructor will have to bypass any initializers in the class body or do a sophisticated combination of that logic and the deserialization. Overall it seems easier to have only one traditional constructor and call it from the `createFromParcel` method.  
     
 ### Custom Parcelables
 
@@ -245,7 +245,7 @@ Syntactic options:
 - We may want to require the object to be annotated to explicitly show that the `newArray()` is auto-generated
 
 > :warning: Discussion: why not implement `newArray()` in the `Parceler` interface itself?
-First, this method can not be implemented generically (with erasure), because the runtime type of the array created is different every time.
+First, this method cannot be implemented generically (with erasure), because the runtime type of the array created is different every time.
 We could do something like `fun newArray(size: Int) = throw UnsupportedOperationException("This method must be overridden by subclasses")`, this has the benefit of making the IDE's life easier: otherwise we'd have to teach it to skip `newArray()` when generating stubs for the Override/Implement action in annotated classes. OTOH, this is error-prone in the case of non-annotated classes. A solution here could be to magically implement `newArray()` in all concrete subclasses of `Parceler` regardless of the annotation. I wonder if this can be promoted to a general feature of Kotlin...       
 
 ## Per-property and per-type Parcelers
@@ -273,7 +273,7 @@ Additional rules:
 
 :warning: Question: how to handle `describeContents()` here? Should we bitwise-or all the parcelers? How do annotation processors go about it?    
 
-It would also be desirable to provide bulk customization for all properties of the same type, e.g. `java.util.Date`. This can be done globally, e.g. though a meta-annotation, or locally, e.g.:
+It would also be desirable to provide bulk customization for all properties of the same type, e.g. `java.util.Date`. This can be done globally, e.g. through a meta-annotation, or locally, e.g.:
 
 ```kotlin
 @Parcelize
@@ -285,7 +285,7 @@ class MyParcelable(val from: Date, val to: Date): Parcelable
 ```
 
 Local customization is more flexible, but will likely result in a lot of duplication.
-Global customization is problematic wrt inceremental and separate compilation, but this can be addressed in the future.  
+Global customization is problematic wrt incremental and separate compilation, but this can be addressed in the future.  
 
 ## Handling hierarchies of Parcelable classes
 
