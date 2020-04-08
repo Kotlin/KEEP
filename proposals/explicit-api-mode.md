@@ -103,22 +103,45 @@ This mode is enabled by the compiler flag `-Xexplicit-api={strict|warning}`. `st
 `warning` means that the compiler will issue warnings (this will help migration).
 Note: missing KDoc is always a warning, regardless of the state of the flag.
 
-To ease setting up this mode, a DSL would be provided in Kotlin Gradle plugin:
+To ease setting up this mode, a DSL is provided in the Kotlin Gradle plugin:
+
+*Groovy Syntax*
 
 ```gradle
-kotlinOptions {
+kotlin {
+    // convenience methods
     explicitApi()
     // or
-    explicitApi = ExplicitApiMode.Strict
+    explicitApiWarning()
+
+    // setting level explicitly
+    explicitApi = 'strict'
+    // or
+    explicitApi = 'warning'
+}
+```
+
+*Kotlin Syntax*
+
+```kotlin
+import org.jetbrains.kotlin.gradle.dsl.ExplicitApiMode
+
+kotlin {
+    // convenience methods
+    explicitApi()
     // or
     explicitApiWarning()
+
+    // setting level explicitly
+    explicitApi = ExplicitApiMode.Strict
     // or
     explicitApi = ExplicitApiMode.Warning
 }
 ```
-Explicit mode enabled here would not affect test sources.
 
-The exact place of these methods (top-level `kotlinOptions`, or compilation, or particular source set) is TBA. Maven plugin option is TBD.
+This is a per-module setting that enables explicit API mode only for module production sources.
+
+Maven plugin option is TBD.
 
 Kotlin plugin in IntelliJ IDEA would recognize that explicit mode is enabled and would offer corresponding intentions and quick-fixes.
 
