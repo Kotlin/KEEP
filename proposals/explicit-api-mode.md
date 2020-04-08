@@ -68,12 +68,12 @@ As with public API, you should avoid making [binary incompatible changes](https:
 
 However, published API is usually not visible in the sources from the point of view of a library client. Therefore, the compiler in 'Explicit API' mode will not complain about missing KDoc or missing visibility modifier (because it is `internal` anyway). Explicit return type is still required for published API to prevent implementation details exposure.
 
-### Experimental API
+### Opt-in requirements
 
-When one is writing a library, they should use `@Experimental(...)` annotation to propagate the experimental status of types they use.
-If experimental types are used as implementation details across all library, it might be convenient to mark the whole module with `-Xuse-experimental`.
+When one is writing a library, they should use `@RequiresOptIn(...)` annotation to propagate the opt-in requirements of declarations they use (previously known as experimental declarations).
+If the types that require opt-in are used as implementation details across all library, it might be convenient to mark the whole module with `-Xopt-in`.
 In that case, it would be easy to forget to mark the corresponding public API as propagative.
-Therefore, in Explicit API mode, the compiler would still require explicit `@Experimental` or `@UseExperimental` annotation on a declaration with experimental types in the signature, even if the whole module accepts experimental status via `-Xuse-experimental`.
+Therefore, in Explicit API mode, the compiler would still require explicit `@RequireOptIn` or `@OptIn` annotation on a declaration with opt-in requiring types in the signature, even if the whole module opts in via `-Xopt-in`.
 
 ### Inspection exclusions
 
