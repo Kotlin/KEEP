@@ -344,7 +344,7 @@ Functions that declare generic result types may, in fact, return values of `Resu
 `Result` type is substituted in place of their generic type parameters:
 
 ```kotlin
-private val first: Result<Int> = findIntResults().first() // Ok, even though result is Result<Int>
+private val first: Result<Int> = findIntResults().first() // Ok, even though `first` is of type Result<Int>
 ```
 
 Private and local properties of `Result`  type are allowed as long as they don't have custom getters:
