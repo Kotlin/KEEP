@@ -5,7 +5,7 @@
 ## Synopsis
 
 Support pattern matching in `when` clauses, using existing `is` syntax and
-destructuring semantics
+destructuring semantics.
 
 ## Motivation
 
@@ -76,7 +76,7 @@ along with what they would look like if this KEEP was implemented. The aim of
 using real-world examples is to show the immediate benefit of adding the
 proposal (as it currently looks) to the language.
 
-### Comparisons
+## Comparisons
 
 #### From the [Arrow](https://github.com/arrow-kt/arrow-core/blob/be173c05b60471b02e04a07d246d327c2272b9a3/arrow-core/src/main/kotlin/arrow/core/extensions/option.kt) library:
 
@@ -202,8 +202,8 @@ private fun removeNoChildNode(node: Node, parent: Node?) {
   when (node to parent) {
     is (_, null) ->
       throw IllegalStateException("Can not remove the root node without child nodes")
-    is (n, Parent(n, _)) -> parent.left = null
-    is (n, Parent(_, n)) -> parent.right = null
+    is (n, Node(n, _)) -> parent.left = null
+    is (n, Node(_, n)) -> parent.right = null
   }
 }
 ```
@@ -215,11 +215,11 @@ private fun removeNoChildNode(node: Node, parent: Node?) {
 
 - Java is considering this (see [JEP 375](https://openjdk.java.net/jeps/375))
 - [C# supports this](https://docs.microsoft.com/en-us/dotnet/csharp/pattern-matching) with a more verbose syntax through `case` .. `when` ..
-- In [Haskell](https://www.haskell.org/tutorial/patterns.html) pattern matching is a core language feature extensively used to traverse data structures and to define functions, mathcing on their arguments.
+- In [Haskell](https://www.haskell.org/tutorial/patterns.html) pattern matching is a core language feature extensively used to traverse data structures and to define functions, mathcing on their arguments
 - [Rust](https://doc.rust-lang.org/book/ch18-03-pattern-syntax.html) supports pattern matching through `match` expressions
 - [Scala](https://docs.scala-lang.org/tour/pattern-matching.html) supports pattern matching with the addition of guards that allow to further restrict the match with a boolean expression (much like `case` .. `when` in C#)
-- Python does not support pattern matching, but like Kotlin it supports destructuring of tuples and collections, though not classes.
-- [Swift](https://docs.swift.org/swift-book/ReferenceManual/Patterns.html) can match tuples and `Optional`, and allows slightly more flexibility on what is a match through the `~=` operator.
+- Python does not support pattern matching, but like Kotlin it supports destructuring of tuples and collections, though not classes
+- [Swift](https://docs.swift.org/swift-book/ReferenceManual/Patterns.html) can match tuples and `Optional`, and allows slightly more flexibility on what is a match through the `~=` operator
 
 I have experience with only some of these languages so please feel free to correct any mistakes.
 
