@@ -268,7 +268,7 @@ The proposed syntax is to start a new `when` line with `is PATTERN -> RHS`, wher
 
 ## <a name="design"></a> Design decisions
 
-Some of the semantics of this pattern matching are up to debate in the sense that there is room to decide on behaviour that may or may not be desirable
+Some of the semantics of this pattern matching are up to debate in the sense that there is room to decide on behaviour that may or may not be desirable.
 
 ### Matching existing variables
 consider Jake Wharton's example:
@@ -294,15 +294,42 @@ val result = when(DB.querySomehting()) {
 ```
 ...where a programmer might want to define `x` as a new match for the content of `Success`, but ends up writing `Success.reply == 2` because they forgot that `x` was a variable in scope. The branch taken would then be the undesired `else`.
 
-Some instances of scenario can be avoided with IDE hints clever enough to report matches unlikely to ever succeed (like checking equality for different types), and enforcing exhaustive patterns.
+Some instances of this scenario can be avoided with IDE hints clever enough to report matches unlikely to ever succeed (like checking equality for different types), and enforcing exhaustive patterns when matching.
 
-Even then, it is possible that the already defined identifier does have the same type as the new match, and that the `else` branch exists.
-
-Accidental additional checks are undesired behaviour therefore discussion is encouraged.
+Even then, it is possible that the already defined identifier does have the same type as the new match, and that the `else` branch exists. Despite this edge case, matching existing variables **is part of the proposal**, but accidental additional checks are undesired behaviour therefore discussion is encouraged.
 
 
-<!-- ## Implementation TODO-->
+<!--
+## Implementation 
+TODO
+-->
 
+## Limitations
+
+### Matching on collections
+
+An idiom in Haskell or Scala is to pattern match on collections. This relies on the matched pattern 'changing' depending on the state of the collection. Because this proposal aims to use `componentN()` for destructuring, such a thing would not be possible in Kotlin as `componentN()` returns the Nth element of the collection (instead of its tail for some `componentN()`).
+
+This limitation is due to the fact that in Haskell, a list is represented more similarly to how sealed class work in Kotlin (and we can match on those).
+
+Pattern mathcing on collections is **not** the aim of this proposal, but such a thing *could* be achieved through additional extension functions on some interfaces with the sole purpose of matching them:
+```
+inline fun List<reified A> destructFst() =
+ get(0) to if (size == 1) null else drop(1)
+
+val ls = listOf(1,2,3,4)
+
+fun mySum(l: List<Int>) = when(l.destructFst()) {
+  is (head, null) -> head
+  is (head, tail) -> head + mySum(tail)
+}
+
+// or:
+
+fun List<Int>.mySum2() = when(this.destructFst()) {
+  is (head, tail) -> head + tail?.mySum2()?:0
+}
+```
 
 ## Comparison to other languages
 
