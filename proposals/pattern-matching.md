@@ -61,6 +61,8 @@ constant) to further specify the desired match (a `Prospect` wich is
 Additionally, nested patterns could further look at the members of the class
 (or whatever `componentN()` might return).
 
+#### Destructuring without a type check
+
 The type name after `is` could be omitted entirely to simply destructure
 something that has some `componentN()` functions like so:
 ```
@@ -72,14 +74,14 @@ for (p in list) {
    }
 }
 ```
+See [design decisions](tuples-syntax) for an alternative syntax for destructuring tuples without a type check.
 
 
+## Comparisons
 Below some examples from existing, open source Kotlin projects are listed,
 along with what they would look like if this KEEP was implemented. The aim of
 using real-world examples is to show the immediate benefit of adding the
 proposal (as it currently looks) to the language.
-
-## Comparisons
 
 #### From the [Arrow](https://github.com/arrow-kt/arrow-core/blob/be173c05b60471b02e04a07d246d327c2272b9a3/arrow-core/src/main/kotlin/arrow/core/extensions/option.kt) library:
 
@@ -192,7 +194,7 @@ val result = when(download) {
     val (name, dev) = download
     when(dev) {
       is Person -> 
-        if(name == "Alice") "Alice's app $name" else "Not by Alice"
+        if(dev.name == "Alice") "Alice's app $name" else "Not by Alice"
       else -> "Not by Alice"
     }
   }
@@ -303,7 +305,32 @@ Some instances of this scenario can be avoided with IDE hints clever enough to r
 
 Even then, it is possible that the already defined identifier does have the same type as the new match, and that the `else` branch exists. Despite this edge case, matching existing variables **is part of the proposal**, but accidental additional checks are undesired behaviour therefore discussion is encouraged.
 
+### <a name="tuples-syntax"></a> Destructuring tuples syntax
 
+As an alternative to:
+```
+when(person) {
+  is ("Alice", age) -> ...
+}
+```
+...could be:
+```
+when (person) {
+  ("Alice", age) -> ..
+}
+```
+Where `is` is omitted as no actual type check occurs in this scenario. This proposal argues for keeping `is` as a keyword necessary to pattern matching. Consider this example:
+```
+import arrow.core.Some
+import arrow.core.None
+
+val pairOfOption = 5 to Some(3)
+val something = when (pairOfOption) {
+  (number1, Some(number2)) -> ...
+  (number, None) -> ...
+}
+```
+Here, a full blown pattern match happens where we extract number2 from Arrow's `Option` and do an exhaustive type check on the sealed class for `Some` or `None`. In this scenario, `instanceof` typechecks happen, but no `is` keyword is present. Thus keeping `is` is favourable as it clearly indicates a type check albeit at the price of some verbosity.
 <!--
 ## Implementation 
 TODO
