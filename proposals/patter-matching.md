@@ -1,6 +1,9 @@
 # Pattern Matching
 
 * **Type**: Design proposal
+* **Author**: Nicolas D'Cotta  <!-- * **Contributors**: This could be you! -->
+* **Status**: New
+<!-- * **Prototype**: A transpiler to vanilla Kotlin in the enar future -->
 
 ## Synopsis
 
@@ -340,6 +343,7 @@ fun List<Int>.mySum2() = when(this.destructFst()) {
 - [Scala](https://docs.scala-lang.org/tour/pattern-matching.html) supports pattern matching with the addition of guards that allow to further restrict the match with a boolean expression (much like `case` .. `when` in C#)
 - Python does not support pattern matching, but like Kotlin it supports destructuring of tuples and collections, though not classes
 - [Swift](https://docs.swift.org/swift-book/ReferenceManual/Patterns.html) can match tuples and `Optional`, and allows slightly more flexibility on what is a match through the `~=` operator
+- Ruby recently released pattern matching since [2.7](https://www.ruby-lang.org/en/news/2019/12/25/ruby-2-7-0-released/)
 
 I have experience with only some of these languages so please feel free to correct any mistakes.
 
