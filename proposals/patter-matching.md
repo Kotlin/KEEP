@@ -238,7 +238,7 @@ private fun removeNoChildNode(node: Node, parent: Node?) {
 ```
 ## Semantics
 
-The semantics of this pattern matching can defined through some examples, where
+The semantics of this pattern matching can be defined through some examples, where
 `when` gets called on a particular `subject`.
 
 The proposed syntax is to start a new `when` line with `is PATTERN -> RHS`, where `PATTERN` can be:
