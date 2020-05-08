@@ -109,6 +109,35 @@ fun <A> Kind<ForOption, A>.eqK(other: Kind<ForOption, A>, EQ: Eq<A>) =
         else -> false
     }
 ```
+#### From [kotlinx.coroutines](https://github.com/Kotlin/kotlinx.coroutines/blob/master/kotlinx-coroutines-core/common/src/channels/ConflatedBroadcastChannel.kt):
+Without pattern matching:
+```
+public val value: E get() {
+    _state.loop { state ->
+        when (state) {
+            is Closed -> throw state.valueException
+            is State<*> -> {
+                if (state.value === UNDEFINED) throw IllegalStateException("No value")
+                return state.value as E
+            }
+            else -> error("Invalid state $state")
+        }
+    }
+}
+```
+With pattern matching:
+```
+public val value: E get() {
+    _state.loop { state ->
+        when (state) {
+            is Closed(valueException) -> throw valueException
+            is State<*>(UNDEFINED) -> throw IllegalStateException("No value")
+            is State(value) -> return value as E
+            else -> error("Invalid state $state)
+        }
+    }
+}
+```
 
 #### From JetBrains' [Exposed](https://github.com/JetBrains/Exposed/blob/master/exposed-core/src/main/kotlin/org/jetbrains/exposed/sql/Op.kt):
 Without pattern matching:
@@ -207,6 +236,70 @@ private fun removeNoChildNode(node: Node, parent: Node?) {
   }
 }
 ```
+## Semantics
+
+The semantics of this pattern matching can defined through some examples, where
+`when` gets called on a particular `subject`.
+
+The proposed syntax is to start a new `when` line with `is PATTERN -> RHS`, where `PATTERN` can be:
+- `Person` 
+  - `instanceof` check, same semantics as vanilla Kotlin.
+- `Person(_const)` where `_const` is an expression literal
+  -  `is` check on the subject
+  -  compile time check on whether `Person.component1()` is defined in scope
+  -  call to `subject.component1()`
+  -  `component1().equals(_const)` check
+  -  As with vanilla kotlin, a smart cast of the subject to `Person` happens in `RHS`
+- `Person(_const, age)` where `age` is an undefined identifier
+  - `is` check on the subject
+  - compile time check whether both `Person.component[1,2]()` are defined in scope
+  - equality check of `_const` as above
+  - `age` is defined in `RHS` with value `subject.component2()`
+- `Person(name)` where `name` is a __defined__ identifier
+  - see [Design decisions](#design)
+- `Person(_const, PATTERN2)` where `PATTERN2` is a nested pattern
+  - `_const` is checked as above, and `PATTERN2` is checked recursively, as if `when(subject.component2()) { is PATTERN2 }` was being called.
+- `(PATTERN2, PATTERN3)` 
+  - pattern like this without a type check should only be performed when `componentN()` of the subject are in scope (known at compile time).
+- `Person(age, age)` where age is an undefined identifier
+  - the first `age` should be matched as above
+  - the second destructured argument should also call `equals()` on the first destructured argument to enforce an additional equality constraint where both fields of `Person` must be equal
+  - A match that should never succeed (maybe because `Person` is defind as `(String, Int)` and `Person(age, age)` was defined) can be reported at runtime as it is likely to be a programmer mistake. Note that this match could succeed anyway in a scenario where two different types do `equals() = true` on each other.
+
+## <a name="design"></a> Design decisions
+
+Some of the semantics of this pattern matching are up to debate in the sense that there is room to decide on behaviour that may or may not be desirable
+
+### Matching existing variables
+consider Jake Wharton's example:
+```
+val expected : String = / ...
+
+val result = when(download) {
+  is App(name, Person(expected), _)) -> "$expected's app $name"
+  is Movie(title, Person(expected, _)) -> "$expected's movie $title"
+  is App, Movie -> "Not by $expected"
+}
+```
+In this example it is clear that we wanted to match `Person.component1()` with `expected`. But consider:
+```
+val x = 2
+/* use x for something */
+...
+val result = when(DB.querySomehting()) {
+  is Success(x) -> "DB replied $x"
+  is Error(errorMsg) -> error(errorMsg)
+  else -> error("unexpected query result")
+}
+```
+...where a programmer might want to define `x` as a new match for the content of `Success`, but ends up writing `Success.reply == 2` because they forgot that `x` was a variable in scope. The branch taken would then be the undesired `else`.
+
+Some instances of scenario can be avoided with IDE hints clever enough to report matches unlikely to ever succeed (like checking equality for different types), and enforcing exhaustive patterns.
+
+Even then, it is possible that the already defined identifier does have the same type as the new match, and that the `else` branch exists.
+
+Accidental additional checks are undesired behaviour therefore discussion is encouraged.
+
 
 <!-- ## Implementation TODO-->
 
