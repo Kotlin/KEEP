@@ -191,7 +191,7 @@ val result = when(download) {
     val (name, dev) = download
     when(dev) {
       is Person -> 
-        if(name == "Alice") "Alice's app $name" else "Someone else's
+        if(name == "Alice") "Alice's app $name" else "Someone else's"
       else -> "Not by Alice"
     }
   }
@@ -313,11 +313,11 @@ TODO
 
 An idiom in Haskell or Scala is to pattern match on collections. This relies on the matched pattern 'changing' depending on the state of the collection. Because this proposal aims to use `componentN()` for destructuring, such a thing would not be possible in Kotlin as `componentN()` returns the Nth element of the collection (instead of its tail for some `componentN()`).
 
-This limitation is due to the fact that in Haskell, a list is represented more similarly to how sealed class work in Kotlin (and we can match on those).
+This limitation is due to the fact that in Haskell, a list is represented more similarly to how sealed classes work in Kotlin (and we can match on those).
 
 Pattern mathcing on collections is **not** the aim of this proposal, but such a thing *could* be achieved through additional extension functions on some interfaces with the sole purpose of matching them:
 ```
-inline fun List<reified A> destructFst() =
+inline fun List<A> destructFst() =
  get(0) to if (size == 1) null else drop(1)
 
 val ls = listOf(1,2,3,4)
