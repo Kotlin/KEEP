@@ -214,6 +214,7 @@ val result = when(download) {
   is App, Movie -> "Not by Alice"
 }
 ```
+Note how the pattern match is exhaustive without an `else` branch, allowing us to benefit as usual from the added compile time checks of using `with` and sealed classes. Alice might write a Book in the future, and we would not be able to miss it.
 
 #### From Baeldung on [Binary Trees](https://www.baeldung.com/kotlin-binary-tree):
 Without pattern matching:
