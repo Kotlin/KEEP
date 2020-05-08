@@ -46,7 +46,7 @@ when(elem) {
 
 The syntax proposed uses the already existing `is` construct to check the
 type of the subject, but adds what semantically looks a lot like a
-destructuring delcaration with an added equality checks. This approach is
+destructuring delcaration with added equality checks. This approach is
 intuitive in that the `componentN()` operator functions are used to
 destructure a class.
 
@@ -132,7 +132,7 @@ public val value: E get() {
         when (state) {
             is Closed(valueException) -> throw valueException
             is State<*>(UNDEFINED) -> throw IllegalStateException("No value")
-            is State(value) -> return value as E
+            is State<*>(value) -> return value as E
             else -> error("Invalid state $state)
         }
     }
