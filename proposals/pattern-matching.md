@@ -109,6 +109,7 @@ With pattern matching:
 fun <A> Kind<ForOption, A>.eqK(other: Kind<ForOption, A>, EQ: Eq<A>) =
     when(this.fix() to other.fix()) {
         is (Some(a), Some(b)) -> EQ.run { a.eqv(b) }
+        is (None, None) -> true
         else -> false
     }
 ```
