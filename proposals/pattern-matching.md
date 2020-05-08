@@ -192,7 +192,7 @@ val result = when(download) {
     val (name, dev) = download
     when(dev) {
       is Person -> 
-        if(name == "Alice") "Alice's app $name" else "Someone else's"
+        if(name == "Alice") "Alice's app $name" else "Not by Alice"
       else -> "Not by Alice"
     }
   }
