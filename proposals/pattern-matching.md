@@ -115,7 +115,7 @@ fun <A> Kind<ForOption, A>.eqK(other: Kind<ForOption, A>, EQ: Eq<A>) =
         else -> false
     }
 ```
-#### From [kotlinx.coroutines](https://github.com/Kotlin/kotlinx.coroutines/blob/master/kotlinx-coroutines-core/common/src/channels/ConflatedBroadcastChannel.kt):
+#### <a name="coroutines-example"></a> From [kotlinx.coroutines](https://github.com/Kotlin/kotlinx.coroutines/blob/master/kotlinx-coroutines-core/common/src/channels/ConflatedBroadcastChannel.kt):
 Without pattern matching:
 ```
 public val value: E get() {
@@ -144,6 +144,7 @@ public val value: E get() {
     }
 }
 ```
+Note that here we are testing for equality for an already defined identifier `UNDEFINED`. Refer to [Design decisions](#match-existing-id) for how this could work, if at all.
 
 #### From JetBrains' [Exposed](https://github.com/JetBrains/Exposed/blob/master/exposed-core/src/main/kotlin/org/jetbrains/exposed/sql/Op.kt):
 Without pattern matching:
@@ -263,7 +264,7 @@ The proposed syntax is to start a new `when` line with `is PATTERN -> RHS`, wher
   - equality check of `_const` as above
   - `age` is defined in `RHS` with value `subject.component2()`
 - `Person(name)` where `name` is a __defined__ identifier
-  - see [Design decisions](#design)
+  - see [Design decisions](#match-existing-id)
 - `Person(_const, PATTERN2)` where `PATTERN2` is a nested pattern
   - `_const` is checked as above, and `PATTERN2` is checked recursively, as if `when(subject.component2()) { is PATTERN2 }` was being called.
 - `(PATTERN2, PATTERN3)` 
@@ -277,8 +278,8 @@ The proposed syntax is to start a new `when` line with `is PATTERN -> RHS`, wher
 
 Some of the semantics of this pattern matching are up to debate in the sense that there is room to decide on behaviour that may or may not be desirable.
 
-### Matching existing variables
-consider Jake Wharton's example:
+### <a name="match-existing-id"></a> Matching existing identifiers
+Consider a modified version of Jake Wharton's example:
 ```
 val expected : String = / ...
 
@@ -288,7 +289,7 @@ val result = when(download) {
   is App, Movie -> "Not by $expected"
 }
 ```
-In this example it is clear that we wanted to match `Person.component1()` with `expected`. But consider:
+It is clear that we wish to match `Person.component1()` with `expected`. But consider:
 ```
 val x = 2
 /* use x for something */
@@ -303,17 +304,73 @@ val result = when(DB.querySomehting()) {
 
 Some instances of this scenario can be avoided with IDE hints clever enough to report matches unlikely to ever succeed (like checking equality for different types), and enforcing exhaustive patterns when matching.
 
-Even then, it is possible that the already defined identifier does have the same type as the new match, and that the `else` branch exists. Despite this edge case, matching existing variables **is part of the proposal**, but accidental additional checks are undesired behaviour therefore discussion is encouraged.
+Even then, it is possible that the already defined identifier does have the same type as the new match, and that the `else` branch exists. Different languages handle this scenario differently, and there are a couple possible solutions for Kotlin:
+
+#### Shadowing <a name="shadow-match"></a>
+This would make:
+```
+val x = "a string!"
+val someMapEntry = "Bob" to 4
+
+when(someMapEntry) {
+  is (name, x) -> ... //RHS
+}
+```
+...valid code, but where `x` is not matched against, but redefined in the RHS. Much like shadowing an existing name in an existing scope, this is the approach [Rust](https://doc.rust-lang.org/book/ch18-03-pattern-syntax.html) takes.
+
+#### Allowing matching, implicitly <a name="implicit-match"></a>
+This would make
+```
+val x = 3
+val someMapEntry = "Bob" to 4
+
+when(someMapEntry) {
+  is (name, x) -> ... //RHS
+}
+```
+...valid code, where we are checking whether the second argument of the pair equals `x` (already defined as being 3).
+
+The compiler would look for an existing `x` in the scope to decide whether we are declaring a new `x` or just matching against an existing one.
+
+ This can lead to the issue described at the beginning of this section, but IDE hinting could be used to indicate the matching attempt. Indicators could be extra colours or a symbol on the left bar (like the one currently in place for suspending functions).
+
+#### Allowing matching, explicitly <a name="implicit-match"></a>
+This would require an additional syntactic construct to indicate whether we wish to match the existing variable named `x`, or to extract a new variable named `x`. Such a construct could look like:
+```
+val x = 3
+val someMapEntry = "Bob" to 4
+
+when(someMapEntry) {
+  is (name, ==x) -> ... //RHS
+}
+```
+...which makes it clear that we aim to test for equality between `x` and the extracted second parameter of the pair. Scala uses this approach through [stable identifiers](https://www.scala-lang.org/files/archive/spec/2.11/08-pattern-matching.html#stable-identifier-patterns). The syntactic construct presented in the example is rather arbitrary and suggestions on different ones are welcome.
+
+#### Not allowing matching existing identifiers at all <a name="no-match"></a>
+This would make
+```
+val x = 3
+val someMapEntry = "Bob" to 4
+
+when(someMapEntry) {
+  is (name, x) -> ... //RHS
+}
+```
+...throw a semantic error at compile time, where `x` is defined twice in the same scope and cannot be redefined. This would be the most explicit way of avoiding confusing behaviour but, like shadowing, it would prevent us from matching on non literals.
+
+<br />
+
+Matching existing identifiers **is part of the proposal** (preferably [explicitly](#explicit-match), possibly [implicitly](#implicit-match)), but accidental additional checks are undesired. Therefore this kind of matching can be dropped (in favour of [shadowing](#shadow-match) or [not allowing it at all](#no-match)) if consensus is not reached on its semantics. 
 
 ### <a name="tuples-syntax"></a> Destructuring tuples syntax
 
-As an alternative to:
+An alternative to:
 ```
 when(person) {
   is ("Alice", age) -> ...
 }
 ```
-...could be:
+was suggested. It would look like:
 ```
 when (person) {
   ("Alice", age) -> ..
@@ -331,6 +388,8 @@ val something = when (pairOfOption) {
 }
 ```
 Here, a full blown pattern match happens where we extract number2 from Arrow's `Option` and do an exhaustive type check on the sealed class for `Some` or `None`. In this scenario, `instanceof` typechecks happen, but no `is` keyword is present. Thus keeping `is` is favourable as it clearly indicates a type check albeit at the price of some verbosity.
+
+
 <!--
 ## Implementation 
 TODO
@@ -374,10 +433,12 @@ fun List<Int>.mySum2() = when(this.destructFst()) {
 - [Swift](https://docs.swift.org/swift-book/ReferenceManual/Patterns.html) can match tuples and `Optional`, and allows slightly more flexibility on what is a match through the `~=` operator
 - Ruby recently released pattern matching since [2.7](https://www.ruby-lang.org/en/news/2019/12/25/ruby-2-7-0-released/)
 
-I have experience with only some of these languages so please feel free to correct any mistakes.
+The author has experience with only some of these languages so additional comments are welcome.
 
 ## References
 
 [Pattern Matching for Java, Gavin Bierman and Brian Goetz, September 2018](https://cr.openjdk.java.net/~briangoetz/amber/pattern-match.html)
 
 [JEP 375](https://openjdk.java.net/jeps/375)
+
+[Scala specification on pattern matching](https://www.scala-lang.org/files/archive/spec/2.11/08-pattern-matching.html)
