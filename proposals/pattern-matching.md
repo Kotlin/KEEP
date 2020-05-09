@@ -421,6 +421,36 @@ fun List<Int>.mySum2() = when(this.destructFst()) {
   is (head, tail) -> head + tail?.mySum2()?:0
 }
 ```
+## Beyond the proposal
+The discussion and specification of the actual construct this proposal aims to introduce into the language ends here. But this section covers some possible additions that could be interesting to discuss if they are popular, and are in the spirit of Kotlin's idioms.
+
+### Membership matching <a name="in-match"></a>
+
+Consider:
+```
+data class Point(val x: Double, val y: Double)
+val p: Point = /...
+val max = Double.MAX_VALUE
+val min = Double.MIN_VALUE
+val location = when(p) {
+  is (in 0.0..max, in 0.0..max) -> "Top right quadrant of the graph"
+  is (in 0.0..min, in 0.0..max) -> "Top left"
+  is (in 0.0..min, in 0.0..min) -> "Bottom left"
+  is (in 0.0..max, in 0.0..min) -> "Bottom right"
+}
+```
+...where a destructured `componentN()` in `Point` is called as an argument to `in`, using the operator function `contains()`. This would allow to use pattern matching to test for membership of collections, ranges, and anything that might implement `contains()`. Swift has this idiom through the `~=` operator.
+
+### Guards
+
+A guard is an additional boolean constraint on a match, widely used in Haskell or Scala pattern matching. Consider a variation of the initial customers example:
+```
+when(elem) {
+  is Customer(name, age, addr) where age > 18 -> Mail.send(addr, "Thanks for choosing us, $name!")
+  is Prospect(addr, true) -> Mail.send(addr, "Please consider our product...")
+}
+```
+...where the additional guard allows us to avoid a nested `if` if we only wish to contact customers that are not underage. It would also cover most cases [membership matching](#in-match) covers, and makes for very readable matching.
 
 ## Comparison to other languages
 
