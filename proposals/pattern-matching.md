@@ -604,12 +604,12 @@ widely popular.
 
 - Java is considering this (see [JEP 375](https://openjdk.java.net/jeps/375))
 - [C# supports this](https://docs.microsoft.com/en-us/dotnet/csharp/pattern-matching) with a more verbose syntax through `case` .. `when` ..
-- In [Haskell](https://www.haskell.org/tutorial/patterns.html) pattern matching is a core language feature extensively used to traverse data structures and to define functions, mathcing on their arguments
+- In [Haskell](https://www.haskell.org/tutorial/patterns.html) pattern matching (along with guards) is a core language feature extensively used to traverse data structures and to define functions, mathcing on their arguments
 - [Rust](https://doc.rust-lang.org/book/ch18-03-pattern-syntax.html) supports pattern matching through `match` expressions
-- [Scala](https://docs.scala-lang.org/tour/pattern-matching.html) supports pattern matching with the addition of guards that allow to further restrict the match with a boolean expression (much like `case` .. `when` in C#)
+- [Scala](https://docs.scala-lang.org/tour/pattern-matching.html) supports pattern matching (along with guards)
 - Python does not support pattern matching, but like Kotlin it supports destructuring of tuples and collections, though not classes
-- [Swift](https://docs.swift.org/swift-book/ReferenceManual/Patterns.html) can match tuples and `Optional`, and allows slightly more flexibility on what is a match through the `~=` operator
-- Ruby recently released pattern matching since [2.7](https://www.ruby-lang.org/en/news/2019/12/25/ruby-2-7-0-released/)
+- [Swift](https://docs.swift.org/swift-book/ReferenceManual/Patterns.html) can match tuples and `Optional`, and allows slightly more flexibility on what is a match through the `~=` operator. It does not allow class destructuring.
+- Ruby recently supports pattern matching, since [2.7](https://www.ruby-lang.org/en/news/2019/12/25/ruby-2-7-0-released/)
 
 The author has experience with only some of these languages so additional comments are welcome.
 
