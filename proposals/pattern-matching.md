@@ -396,6 +396,11 @@ Arrow's `Option` and do an exhaustive type check on the sealed class for
 `is` keyword is present. Thus keeping `is` is favourable as it clearly
 indicates a type check albeit at the price of some verbosity.
 
+### Restricting matching to data classes only
+
+A possibilty suggested during the conception of this proposal was to restrict pattern matching to data classes. The argument would be to start with a samller size of 'matchable' elements in order to keep the inital proposal and feature as simple as possible, as it could be extended later down the line.
+
+This proposal argues **against** this restriction. Matching anything that implements `componentN()` has the important benefit of being able to match on 3rd party classes or interfaces that are not data classes, and to extend them for the sole purpose of matching. A notable example is `Map.Entry`, which is a Java interface.
 
 <!--
 ## Implementation 
