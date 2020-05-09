@@ -540,7 +540,7 @@ when(elem) {
 ...where the additional guard allows us to avoid a nested `if` if we only wish to contact customers that are not underage. It would also cover most cases [membership matching](#in-match) covers, and makes for very readable matching.
 
 Additionally, guards would solve the problem of matching existing identifiers. Consider this example:
-```
+``` kotlin
 val expected : String = / ...
 
 val result = when(download) {
@@ -553,9 +553,35 @@ val result = when(download) {
 ## Implementation
 > Disclaimer: contributions are welcome as the author has no background on the specifics of the Kotlin compiler, and only some on JVM bytecode.
 
-Ideally, simple matching on n constructors is O(1) and implemented with a lookup table. This might only be possible on some platforms, as the JVM for example only permits typechecks using `instanceof`, which would have to be called on each match.
+Ideally, simple matching on _n_ constructors is _O(1)_ and implemented with a
+lookup table. In practice this may only be possible on some platforms, as the
+JVM for example only permits typechecks using `instanceof`, which would have
+to be called on each match.
 
-<!-- As discussed in [Semantics](#semantics),  -->
+As discussed in [Semantics](#semantics), there is a `componentN()` call and
+either one variable definition or one `equals()` call for each destructured
+argument. Therefore complexity for each match is _O(m)_ for _m_ destructured
+arguments, assuming all these function calls are O(1). Note this is not a
+safe assumption (the calls are user defined) but it should be by far the
+common case.
+
+While destructuring and checking for equality (with or without [guards](#guards) or [identifier matching](#match-existing-id)) should be mostly trivial, checking for exhaustiveness in nested patterns is not. The proposal suggests a naive implementation where a table is used for each level of nesting for each destructured element. For example, in order to call `when` on a `Pair` of `Option`s:
+
+```kotlin
+when (Some(1) to Some(2)) {
+  is (Some(4), Some(y)) -> ...  // case 1
+  is (Some(x), None) -> ...     // case 2
+  is (None, Some(3)) -> ...     // case 3
+  is (_, None) -> ...           // case 4
+}
+```
+... where `Option` is a sealed class which is either `Some(a)` or `None`.
+- In case 1, the right `Some` case has been matched, whereas on the left no case has been matched
+- In case 2, we finally match the right for `Some`. There are only 2 possible cases for `Option`, so we are waiting to match `None` for both left and right.
+- In case 3, we can make progress on matching `None` for the left, but not for the right.
+- In case 4, `None` is finally matched for both left and right, so we can infer that an `else` branch is not necessary.
+  
+This example uses `Some(1) to Some(2)` for the sake of briefness, but ideally, the compiler can infer that the matches on `None` can't ever succeed, because we are matching a `Pair<Some, Some>`.
 
 ## Comparison to other languages
 
