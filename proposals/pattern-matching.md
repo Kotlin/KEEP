@@ -530,7 +530,7 @@ val location = when(p) {
 ### Guards <a name="guards"></a>
 
 A guard is an additional boolean constraint on a match, widely used in Haskell or Scala pattern matching. Consider a variation of the initial customers example:
-```
+```kotlin
 when(elem) {
   is Customer(name, age, addr) where age > 18 -> Mail.send(addr, "Thanks for choosing us, $name!")
   is Prospect(addr, true) -> Mail.send(addr, "Please consider our product...")
