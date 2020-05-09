@@ -29,13 +29,13 @@ example.
 
 The syntax proposed below aims to not introduce new keywords and leverage the
 existing `when` idiom that the community has already grown used to, but
-discussion is encouraged and welcome on how it can be improved.
+discussion is encouraged and welcome on how it can be improved. While this possible syntax is extensively discussed, the main focus of the proposal is not any specific pattern matching syntax, but rather the feature itself.
 
 ### Simple textbook example
 
 ```
-data class Prospect(val email: String, active: Boolean)
 data class Customer(val name: String, val age: Int, val email: String)
+data class Prospect(val email: String, active: Boolean)
 ...
 
 when(elem) {
@@ -53,8 +53,8 @@ destructuring delcaration with added equality checks. This approach is
 intuitive in that the `componentN()` operator functions are used to
 destructure a class.
 
-Then we pass an already defined expression (or it could be restricted to a
-constant) to further specify the desired match (a `Prospect` wich is
+Then we pass an already defined expression (or it could be restricted to
+literals) to further specify the desired match (a `Prospect` wich is
 `active`, in the example above). This check can be implemented with
 `equals()`.
 
@@ -138,7 +138,7 @@ public val value: E get() {
     _state.loop { state ->
         when (state) {
             is Closed(valueException) -> throw valueException
-            is State<*>(UNDEFINED) -> throw IllegalStateException("No value")
+            is State<*>(== UNDEFINED) -> throw IllegalStateException("No value")
             is State<*>(value) -> return value as E
             else -> error("Invalid state $state)
         }
@@ -167,8 +167,7 @@ With pattern matching:
 infix fun Expression<Boolean>.and(op: Expression<Boolean>): Op<Boolean> = when(this to op) {
   is (AndOp, AndOp(opExpres)) -> AndOp(expressions + opExpres)
   is (AndOp, _) -> AndOp(expressions + op)
-  is (_, AndOp(opExpres)) ->
-    AndOp(ArrayList<Expression<Boolean>>(opExpres + 1).also {
+  is (_, AndOp(opExpres)) -> AndOp(ArrayList<Expression<Boolean>>(opExpres + 1).also {
         it.add(this)
         it.addAll(opExpres)
     })
@@ -218,7 +217,7 @@ val result = when(download) {
   is App, Movie -> "Not by Alice"
 }
 ```
-Note how the pattern match is exhaustive without an `else` branch, allowing us to benefit as usual from the added compile time checks of using `with` and sealed classes. Alice might write a Book in the future, and we would not be able to miss it.
+Note how the pattern match is exhaustive without an `else` branch, allowing us to benefit as usual from the added compile time checks of using `with` and sealed classes. Alice might write a `Book` in the future, and we would not be able to miss it.
 
 #### From Baeldung on [Binary Trees](https://www.baeldung.com/kotlin-binary-tree):
 Without pattern matching:
@@ -254,13 +253,13 @@ The proposed syntax is to start a new `when` line with `is PATTERN -> RHS`, wher
 - `Person` 
   - `instanceof` check, same semantics as vanilla Kotlin.
 - `Person(_const)` where `_const` is an expression literal
-  -  `is` check on the subject
+  -  `is Person` check on the subject
   -  compile time check on whether `Person.component1()` is defined in scope
   -  call to `subject.component1()`
   -  `component1().equals(_const)` check
   -  As with vanilla kotlin, a smart cast of the subject to `Person` happens in `RHS`
 - `Person(_const, age)` where `age` is an undefined identifier
-  - `is` check on the subject
+  - `is Person` check on the subject
   - compile time check whether both `Person.component[1,2]()` are defined in scope
   - equality check of `_const` as above
   - `age` is defined in `RHS` with value `subject.component2()`
@@ -273,7 +272,7 @@ The proposed syntax is to start a new `when` line with `is PATTERN -> RHS`, wher
 - `Person(age, age)` where age is an undefined identifier
   - the first `age` should be matched as above
   - the second destructured argument should also call `equals()` on the first destructured argument to enforce an additional equality constraint where both fields of `Person` must be equal
-  - A match that should never succeed (maybe because `Person` is defind as `(String, Int)` and `Person(age, age)` was defined) can be reported at runtime as it is likely to be a programmer mistake. Note that this match could succeed anyway in a scenario where two different types do `equals() = true` on each other.
+  - A match that should never succeed (maybe because `Person` is defind as `(String, Int)` and `Person(age, age)` was defined) can be reported at compile time as it is likely to be a programmer mistake. Note that this match could succeed anyway in a scenario where two different types do `equals() = true` on each other.
 
 ## <a name="design"></a> Design decisions
 
@@ -305,7 +304,7 @@ val result = when(DB.querySomehting()) {
 
 Some instances of this scenario can be avoided with IDE hints clever enough to report matches unlikely to ever succeed (like checking equality for different types), and enforcing exhaustive patterns when matching.
 
-Even then, it is possible that the already defined identifier does have the same type as the new match, and that the `else` branch exists. Different languages handle this scenario differently, and there are a couple possible solutions for Kotlin:
+Even then, it is possible that the already defined identifier does have the same type as the new match, and that the `else` branch exists. Different languages handle this scenario differently, and there are a few solutions for Kotlin:
 
 #### Shadowing <a name="shadow-match"></a>
 This would make:
@@ -380,7 +379,7 @@ when (person) {
   ("Alice", age) -> ..
 }
 ```
-Where `is` is omitted as no actual type check occurs in this scenario. This proposal argues for keeping `is` as a keyword necessary to pattern matching. Consider this example:
+Where `is` is omitted as no actual type check occurs in this scenario. This proposal argues for keeping `is` as a keyword necessary to pattern matching. Consider this example that uses the alternative syntax:
 ```
 import arrow.core.Some
 import arrow.core.None
@@ -437,6 +436,36 @@ fun List<Int>.mySum2() = when(this.destructFst()) {
   is (head, tail) -> head + tail?.mySum2()?:0
 }
 ```
+## Beyond the proposal
+The discussion and specification of the actual construct this proposal aims to introduce into the language ends here. But this section covers some possible additions that could be interesting to discuss if they are popular, and are in the spirit of Kotlin's idioms.
+
+### Membership matching <a name="in-match"></a>
+
+Consider:
+```
+data class Point(val x: Double, val y: Double)
+val p: Point = /...
+val max = Double.MAX_VALUE
+val min = Double.MIN_VALUE
+val location = when(p) {
+  is (in 0.0..max, in 0.0..max) -> "Top right quadrant of the graph"
+  is (in min..0.0, in 0.0..max) -> "Top left"
+  is (in min..0.0, in min..0.0) -> "Bottom left"
+  is (in 0.0..max, in min..00) -> "Bottom right"
+}
+```
+...where a destructured `componentN()` in `Point` is called as an argument to `in`, using the operator function `contains()`. This would allow to use pattern matching to test for membership of collections, ranges, and anything that might implement `contains()`. Swift has this idiom through the `~=` operator.
+
+### Guards
+
+A guard is an additional boolean constraint on a match, widely used in Haskell or Scala pattern matching. Consider a variation of the initial customers example:
+```
+when(elem) {
+  is Customer(name, age, addr) where age > 18 -> Mail.send(addr, "Thanks for choosing us, $name!")
+  is Prospect(addr, true) -> Mail.send(addr, "Please consider our product...")
+}
+```
+...where the additional guard allows us to avoid a nested `if` if we only wish to contact customers that are not underage. It would also cover most cases [membership matching](#in-match) covers, and makes for very readable matching.
 
 ## Comparison to other languages
 
