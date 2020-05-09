@@ -105,6 +105,25 @@ fun <A> Kind<ForOption, A>.eqK(other: Kind<ForOption, A>, EQ: Eq<A>) =
         }
       }
     }
+
+fun Ior<L, R>.eqv(b: Ior<L, R>): Boolean = when (this) {
+    is Ior.Left -> when (b) {
+      is Ior.Both -> false
+      is Ior.Right -> false
+      is Ior.Left -> EQL().run { value.eqv(b.value) }
+    }
+    is Ior.Both -> when (b) {
+      is Ior.Left -> false
+      is Ior.Both -> EQL().run { leftValue.eqv(b.leftValue) } && EQR().run { rightValue.eqv(b.rightValue) }
+      is Ior.Right -> false
+    }
+    is Ior.Right -> when (b) {
+      is Ior.Left -> false
+      is Ior.Both -> false
+      is Ior.Right -> EQR().run { value.eqv(b.value) }
+    }
+  }
+}
 ```
 
 With pattern matching:
@@ -115,6 +134,14 @@ fun <A> Kind<ForOption, A>.eqK(other: Kind<ForOption, A>, EQ: Eq<A>) =
         is (None, None) -> true
         else -> false
     }
+
+
+fun Ior<L, R>.eqv(other: Ior<L, R>): Boolean = when (this to other) {
+    is (Ior.Left(a), Ior.Left(b)) = EQL().run { a.eqv(b) }
+    is (Ior.Both(al, ar), Ior.Both(bl, br)) -> EQL().run { al.eqv(bl) } && EQR().run { ar.eqv(br) }
+    is (Ior.Right(a), Ior.Right(b)) = EQR().run { a.eqv(b) }
+    else -> false
+}
 ```
 #### <a name="coroutines-example"></a> From [kotlinx.coroutines](https://github.com/Kotlin/kotlinx.coroutines/blob/master/kotlinx-coroutines-core/common/src/channels/ConflatedBroadcastChannel.kt):
 Without pattern matching:
