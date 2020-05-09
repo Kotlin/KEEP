@@ -33,10 +33,10 @@ discussion is encouraged and welcome on how it can be improved. While this possi
 
 ### Simple textbook example
 
-```
+```kotlin
 data class Customer(val name: String, val age: Int, val email: String)
 data class Prospect(val email: String, active: Boolean)
-...
+// ...
 
 when(elem) {
   is Customer(name, _, addr) ->
@@ -65,12 +65,12 @@ Additionally, nested patterns could further look at the members of the class
 
 The type name after `is` could be omitted entirely to simply destructure
 something that has some `componentN()` functions like so:
-```
+```kotlin
 val list : List<Prospect> = // ...
 
 for (p in list) {
    when (p) {
-       is (addr, true) -> ...
+       is (addr, true) -> //...
    }
 }
 ```
@@ -87,7 +87,7 @@ proposal (as it currently looks) to the language.
 #### From the [Arrow](https://github.com/arrow-kt/arrow-core/blob/be173c05b60471b02e04a07d246d327c2272b9a3/arrow-core/src/main/kotlin/arrow/core/extensions/option.kt) library:
 
 Without pattern matching:
-```
+```kotlin
 fun <A> Kind<ForOption, A>.eqK(other: Kind<ForOption, A>, EQ: Eq<A>) =
     (this.fix() to other.fix()).let { (a, b) ->
       when (a) {
@@ -127,7 +127,7 @@ fun Ior<L, R>.eqv(b: Ior<L, R>): Boolean = when (this) {
 ```
 
 With pattern matching:
-```
+```kotlin
 fun <A> Kind<ForOption, A>.eqK(other: Kind<ForOption, A>, EQ: Eq<A>) =
     when(this.fix() to other.fix()) {
         is (Some(a), Some(b)) -> EQ.run { a.eqv(b) }
@@ -145,7 +145,7 @@ fun Ior<L, R>.eqv(other: Ior<L, R>): Boolean = when (this to other) {
 ```
 #### <a name="coroutines-example"></a> From [kotlinx.coroutines](https://github.com/Kotlin/kotlinx.coroutines/blob/master/kotlinx-coroutines-core/common/src/channels/ConflatedBroadcastChannel.kt):
 Without pattern matching:
-```
+```kotlin
 public val value: E get() {
     _state.loop { state ->
         when (state) {
@@ -160,14 +160,14 @@ public val value: E get() {
 }
 ```
 With pattern matching:
-```
+```kotlin
 public val value: E get() {
     _state.loop { state ->
         when (state) {
             is Closed(valueException) -> throw valueException
             is State<*>(== UNDEFINED) -> throw IllegalStateException("No value")
             is State<*>(value) -> return value as E
-            else -> error("Invalid state $state)
+            else -> error("Invalid state $state")
         }
     }
 }
@@ -176,7 +176,7 @@ Note that here we are testing for equality for an already defined identifier `UN
 
 #### From JetBrains' [Exposed](https://github.com/JetBrains/Exposed/blob/master/exposed-core/src/main/kotlin/org/jetbrains/exposed/sql/Op.kt):
 Without pattern matching:
-```
+```kotlin
 infix fun Expression<Boolean>.and(op: Expression<Boolean>): Op<Boolean> = when {
     this is AndOp && op is AndOp -> AndOp(expressions + op.expressions)
     this is AndOp -> AndOp(expressions + op)
@@ -190,7 +190,7 @@ infix fun Expression<Boolean>.and(op: Expression<Boolean>): Op<Boolean> = when {
 ```
 
 With pattern matching:
-```
+```kotlin
 infix fun Expression<Boolean>.and(op: Expression<Boolean>): Op<Boolean> = when(this to op) {
   is (AndOp, AndOp(opExpres)) -> AndOp(expressions + opExpres)
   is (AndOp, _) -> AndOp(expressions + op)
@@ -207,7 +207,7 @@ infix fun Expression<Boolean>.and(op: Expression<Boolean>): Op<Boolean> = when(t
 
 #### From [Jake Wharton at KotlinConf '19](https://youtu.be/te3OU9fxC8U?t=2528)
 
-```
+```kotlin
 sealed class Download
 data class App(val name: String, val developer: Developer) : Download()
 data class Movie(val title: String, val director: Person) : Download()
@@ -216,7 +216,7 @@ val download: Download = // ...
 ```
 
 Without pattern matching:
-```
+```kotlin
 val result = when(download) {
   is App -> {
     val (name, dev) = download
@@ -237,7 +237,7 @@ val result = when(download) {
 }
 ```
 With pattern matching:
-```
+```kotlin
 val result = when(download) {
   is App(name, Person("Alice", _)) -> "Alice's app $name"
   is Movie(title, Person("Alice", _)) -> "Alice's movie $title"
@@ -248,7 +248,7 @@ Note how the pattern match is exhaustive without an `else` branch, allowing us t
 
 #### From Baeldung on [Binary Trees](https://www.baeldung.com/kotlin-binary-tree):
 Without pattern matching:
-```
+```kotlin
 private fun removeNoChildNode(node: Node, parent: Node?) {
   if (parent == null) {
     throw IllegalStateException("Can not remove the root node without child nodes")
@@ -261,7 +261,7 @@ private fun removeNoChildNode(node: Node, parent: Node?) {
 }
 ```
 With pattern matching:
-```
+```kotlin
 private fun removeNoChildNode(node: Node, parent: Node?) {
   when (node to parent) {
     is (_, null) ->
@@ -317,8 +317,8 @@ that there is room to decide on behaviour that may or may not be desirable.
 
 ### <a name="match-existing-id"></a> Matching existing identifiers
 Consider a modified version of Jake Wharton's example:
-```
-val expected : String = / ...
+```kotlin
+val expected : String = // ...
 
 val result = when(download) {
   is App(name, Person(expected, _)) -> "$expected's app $name"
@@ -328,9 +328,9 @@ val result = when(download) {
 ```
 It is clear that we wish to match `Person.component1()` with `expected`. But
 consider:
-```
+```kotlin
 val x = 2
-/* use x for something */
+// use x for something
 ...
 val result = when(DB.querySomehting()) {
   is Success(x) -> "DB replied $x"
@@ -354,12 +354,12 @@ Kotlin:
 
 #### Shadowing <a name="shadow-match"></a>
 This would make:
-```
+```kotlin
 val x = "a string!"
 val someMapEntry = "Bob" to 4
 
 when(someMapEntry) {
-  is (name, x) -> ... //RHS
+  is (name, x) -> // ... RHS
 }
 ```
 ...valid code, but where `x` is not matched against, but redefined in the
@@ -369,12 +369,12 @@ takes.
 
 #### Allowing matching, implicitly <a name="implicit-match"></a>
 This would make
-```
+```kotlin
 val x = 3
 val someMapEntry = "Bob" to 4
 
 when(someMapEntry) {
-  is (name, x) -> ... //RHS
+  is (name, x) -> // ... RHS
 }
 ```
 ...valid code, where we are checking whether the second argument of the pair
@@ -392,12 +392,12 @@ place for suspending functions).
 This would require an additional syntactic construct to indicate whether we
 wish to match the existing variable named `x`, or to extract a new variable
 named `x`. Such a construct could look like:
-```
+```kotlin
 val x = 3
 val someMapEntry = "Bob" to 4
 
 when(someMapEntry) {
-  is (name, ==x) -> ... //RHS
+  is (name, ==x) -> // ... RHS
 }
 ```
 ...which makes it clear that we aim to test for equality between `x` and the extracted second parameter of the pair. Scala uses this approach through [stable identifiers](https://www.scala-lang.org/files/archive/spec/2.11/08-pattern-matching.html#stable-identifier-patterns). 
@@ -407,12 +407,12 @@ suggestions on different ones are welcome.
 
 #### Not allowing matching existing identifiers at all <a name="no-match"></a>
 This would make
-```
+```kotlin
 val x = 3
 val someMapEntry = "Bob" to 4
 
 when(someMapEntry) {
-  is (name, x) -> ... //RHS
+  is (name, x) -> // ... RHS
 }
 ```
 ...throw a semantic error at compile time, where `x` is defined twice in the
@@ -432,30 +432,29 @@ semantics.
 ### <a name="tuples-syntax"></a> Destructuring tuples syntax
 
 An alternative to:
-```
+```kotlin
 when(person) {
-  is ("Alice", age) -> ...
+  is ("Alice", age) -> // ...
 }
 ```
-was suggested. It would look like:
-```
+...was suggested. It would look like:
+```kotlin
 when (person) {
-  ("Alice", age) -> ..
+  ("Alice", age) -> // ...
 }
 ```
 Where `is` is omitted as no actual type check occurs in this scenario. This proposal argues for keeping `is` as a keyword necessary to pattern matching. Consider this example that uses the alternative syntax:
-```
-import arrow.core.Some
-import arrow.core.None
+```kotlin
+// A sealed class Option = Some(a) or None is in scope here
 
 val pairOfOption = 5 to Some(3)
 val something = when (pairOfOption) {
-  (number1, Some(number2)) -> ...
-  (number, None) -> ...
+  (number1, Some(number2)) -> // ...
+  (number, None) -> // ...
 }
 ```
 Here, a full blown pattern match happens where we extract number2 from
-Arrow's `Option` and do an exhaustive type check on the sealed class for
+`Option` and do an exhaustive type check on the sealed class for
 `Some` or `None`. In this scenario, `instanceof` typechecks happen, but no
 `is` keyword is present. Thus keeping `is` is favourable as it clearly
 indicates a type check albeit at the price of some verbosity.
@@ -488,7 +487,7 @@ those).
 Pattern mathcing on collections is **not** the aim of this proposal, but such
 a thing *could* be achieved through additional extension functions on some
 interfaces with the sole purpose of matching them:
-```
+```kotlin
 inline fun List<A> destructFst() =
  get(0) to if (size == 1) null else drop(1)
 
@@ -514,7 +513,7 @@ and are in the spirit of Kotlin's idioms.
 ### Membership matching <a name="in-match"></a>
 
 Consider:
-```
+```kotlin
 data class Point(val x: Double, val y: Double)
 val p: Point = /...
 val max = Double.MAX_VALUE
@@ -541,7 +540,7 @@ when(elem) {
 
 Additionally, guards would solve the problem of matching existing identifiers. Consider this example:
 ``` kotlin
-val expected : String = / ...
+val expected : String = // ...
 
 val result = when(download) {
   is App(name, Person(author, _)) where author == expected -> "$expected's app $name"
