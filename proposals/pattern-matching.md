@@ -271,7 +271,7 @@ private fun removeNoChildNode(node: Node, parent: Node?) {
   }
 }
 ```
-## Semantics
+## Semantics <a name="semantics"></a>
 
 The semantics of this pattern matching can be defined through some examples, where
 `when` gets called on a particular `subject`.
@@ -284,7 +284,8 @@ The proposed syntax is to start a new `when` line with `is PATTERN -> RHS`, wher
   -  compile time check on whether `Person.component1()` is defined in scope
   -  call to `subject.component1()`
   -  `component1().equals(_const)` check
-  -  As with vanilla kotlin, a smart cast of the subject to `Person` happens in `RHS`
+  - As with vanilla kotlin, a smart cast of the subject to `Person` happens
+  in `RHS`
 - `Person(_const, age)` where `age` is an undefined identifier
   - `is Person` check on the subject
   - compile time check whether both `Person.component[1,2]()` are defined in scope
@@ -293,17 +294,26 @@ The proposed syntax is to start a new `when` line with `is PATTERN -> RHS`, wher
 - `Person(name)` where `name` is a __defined__ identifier
   - see [Design decisions](#match-existing-id)
 - `Person(_const, PATTERN2)` where `PATTERN2` is a nested pattern
-  - `_const` is checked as above, and `PATTERN2` is checked recursively, as if `when(subject.component2()) { is PATTERN2 }` was being called.
+  - `_const` is checked as above, and `PATTERN2` is checked recursively, as
+  if `when(subject.component2()) { is PATTERN2 }` was being called.
 - `(PATTERN2, PATTERN3)` 
-  - pattern like this without a type check should only be performed when `componentN()` of the subject are in scope (known at compile time).
+  - pattern like this without a type check should only be performed when
+  `componentN()` of the subject are in scope (known at compile time).
 - `Person(age, age)` where age is an undefined identifier
   - the first `age` should be matched as above
-  - the second destructured argument should also call `equals()` on the first destructured argument to enforce an additional equality constraint where both fields of `Person` must be equal
-  - A match that should never succeed (maybe because `Person` is defind as `(String, Int)` and `Person(age, age)` was defined) can be reported at compile time as it is likely to be a programmer mistake. Note that this match could succeed anyway in a scenario where two different types do `equals() = true` on each other.
+  - the second destructured argument should also call `equals()` on the first
+  destructured argument to enforce an additional equality constraint where
+  both fields of `Person` must be equal
+  - A match that should never succeed (maybe because `Person` is defind as
+  `(String, Int)` and `Person(age, age)` was defined) can be reported at
+  compile time as it is likely to be a programmer mistake. Note that this
+  match could succeed anyway in a scenario where two different types do
+  `equals() = true` on each other.
 
 ## <a name="design"></a> Design decisions
 
-Some of the semantics of this pattern matching are up to debate in the sense that there is room to decide on behaviour that may or may not be desirable.
+Some of the semantics of this pattern matching are up to debate in the sense
+that there is room to decide on behaviour that may or may not be desirable.
 
 ### <a name="match-existing-id"></a> Matching existing identifiers
 Consider a modified version of Jake Wharton's example:
@@ -311,12 +321,13 @@ Consider a modified version of Jake Wharton's example:
 val expected : String = / ...
 
 val result = when(download) {
-  is App(name, Person(expected), _)) -> "$expected's app $name"
+  is App(name, Person(expected, _)) -> "$expected's app $name"
   is Movie(title, Person(expected, _)) -> "$expected's movie $title"
   is App, Movie -> "Not by $expected"
 }
 ```
-It is clear that we wish to match `Person.component1()` with `expected`. But consider:
+It is clear that we wish to match `Person.component1()` with `expected`. But
+consider:
 ```
 val x = 2
 /* use x for something */
@@ -327,11 +338,19 @@ val result = when(DB.querySomehting()) {
   else -> error("unexpected query result")
 }
 ```
-...where a programmer might want to define `x` as a new match for the content of `Success`, but ends up writing `Success.reply == 2` because they forgot that `x` was a variable in scope. The branch taken would then be the undesired `else`.
+...where a programmer might want to define `x` as a new match for the content
+of `Success`, but ends up writing `Success.reply == 2` because they forgot
+that `x` was a variable in scope. The branch taken would then be the
+undesired `else`.
 
-Some instances of this scenario can be avoided with IDE hints clever enough to report matches unlikely to ever succeed (like checking equality for different types), and enforcing exhaustive patterns when matching.
+Some instances of this scenario can be avoided with IDE hints clever enough
+to report matches unlikely to ever succeed (like checking equality for
+different types), and enforcing exhaustive patterns when matching.
 
-Even then, it is possible that the already defined identifier does have the same type as the new match, and that the `else` branch exists. Different languages handle this scenario differently, and there are a few solutions for Kotlin:
+Even then, it is possible that the already defined identifier does have the
+same type as the new match, and that the `else` branch exists. Different
+languages handle this scenario differently, and there are a few solutions for
+Kotlin:
 
 #### Shadowing <a name="shadow-match"></a>
 This would make:
@@ -343,7 +362,10 @@ when(someMapEntry) {
   is (name, x) -> ... //RHS
 }
 ```
-...valid code, but where `x` is not matched against, but redefined in the RHS. Much like shadowing an existing name in an existing scope, this is the approach [Rust](https://doc.rust-lang.org/book/ch18-03-pattern-syntax.html) takes.
+...valid code, but where `x` is not matched against, but redefined in the
+RHS. Much like shadowing an existing name in an existing scope, this is the
+approach [Rust](https://doc.rust-lang.org/book/ch18-03-pattern-syntax.html)
+takes.
 
 #### Allowing matching, implicitly <a name="implicit-match"></a>
 This would make
@@ -355,9 +377,11 @@ when(someMapEntry) {
   is (name, x) -> ... //RHS
 }
 ```
-...valid code, where we are checking whether the second argument of the pair equals `x` (already defined as being 3).
+...valid code, where we are checking whether the second argument of the pair
+equals `x` (already defined as being 3).
 
-The compiler would look for an existing `x` in the scope to decide whether we are declaring a new `x` or just matching against an existing one.
+The compiler would look for an existing `x` in the scope to decide whether we
+are declaring a new `x` or just matching against an existing one.
 
 This can lead to the issue described at the beginning of this section, but
 IDE hinting could be used to indicate the matching attempt. Indicators could
@@ -365,7 +389,9 @@ be extra colours or a symbol on the left bar (like the one currently in
 place for suspending functions).
 
 #### Allowing matching, explicitly <a name="implicit-match"></a>
-This would require an additional syntactic construct to indicate whether we wish to match the existing variable named `x`, or to extract a new variable named `x`. Such a construct could look like:
+This would require an additional syntactic construct to indicate whether we
+wish to match the existing variable named `x`, or to extract a new variable
+named `x`. Such a construct could look like:
 ```
 val x = 3
 val someMapEntry = "Bob" to 4
@@ -374,7 +400,10 @@ when(someMapEntry) {
   is (name, ==x) -> ... //RHS
 }
 ```
-...which makes it clear that we aim to test for equality between `x` and the extracted second parameter of the pair. Scala uses this approach through [stable identifiers](https://www.scala-lang.org/files/archive/spec/2.11/08-pattern-matching.html#stable-identifier-patterns). The syntactic construct presented in the example is rather arbitrary and suggestions on different ones are welcome.
+...which makes it clear that we aim to test for equality between `x` and the extracted second parameter of the pair. Scala uses this approach through [stable identifiers](https://www.scala-lang.org/files/archive/spec/2.11/08-pattern-matching.html#stable-identifier-patterns). 
+
+The syntactic construct presented in the example is rather arbitrary and
+suggestions on different ones are welcome.
 
 #### Not allowing matching existing identifiers at all <a name="no-match"></a>
 This would make
@@ -386,11 +415,19 @@ when(someMapEntry) {
   is (name, x) -> ... //RHS
 }
 ```
-...throw a semantic error at compile time, where `x` is defined twice in the same scope and cannot be redefined. This would be the most explicit way of avoiding confusing behaviour but, like shadowing, it would prevent us from matching on non literals.
+...throw a semantic error at compile time, where `x` is defined twice in the
+same scope and cannot be redefined. This would be the most explicit way of
+avoiding confusing behaviour but, like shadowing, it would prevent us from
+matching on non literals.
 
 <br />
 
-Matching existing identifiers **is part of the proposal** (preferably [explicitly](#explicit-match), possibly [implicitly](#implicit-match)), but accidental additional checks are undesired. Therefore this kind of matching can be dropped (in favour of [shadowing](#shadow-match) or [not allowing it at all](#no-match)) if consensus is not reached on its semantics. 
+Matching existing identifiers **is part of the proposal** (preferably
+[explicitly](#explicit-match), possibly [implicitly](#implicit-match)), but
+accidental additional checks are undesired. Therefore this kind of matching
+can be dropped (in favour of [shadowing](#shadow-match) or [not allowing it at
+all](#no-match), preferably with [guards](#guards)) if consensus is not reached on its
+semantics.
 
 ### <a name="tuples-syntax"></a> Destructuring tuples syntax
 
@@ -469,7 +506,10 @@ fun List<Int>.mySum2() = when(this.destructFst()) {
 }
 ```
 ## Beyond the proposal
-The discussion and specification of the actual construct this proposal aims to introduce into the language ends here. But this section covers some possible additions that could be interesting to discuss if they are popular, and are in the spirit of Kotlin's idioms.
+The discussion and specification of the actual construct this proposal aims
+to introduce into the language ends here. But this section covers some
+possible additions that could be interesting to discuss if they are popular,
+and are in the spirit of Kotlin's idioms.
 
 ### Membership matching <a name="in-match"></a>
 
@@ -488,7 +528,7 @@ val location = when(p) {
 ```
 ...where a destructured `componentN()` in `Point` is called as an argument to `in`, using the operator function `contains()`. This would allow to use pattern matching to test for membership of collections, ranges, and anything that might implement `contains()`. Swift has this idiom through the `~=` operator.
 
-### Guards
+### Guards <a name="guards"></a>
 
 A guard is an additional boolean constraint on a match, widely used in Haskell or Scala pattern matching. Consider a variation of the initial customers example:
 ```
@@ -498,6 +538,24 @@ when(elem) {
 }
 ```
 ...where the additional guard allows us to avoid a nested `if` if we only wish to contact customers that are not underage. It would also cover most cases [membership matching](#in-match) covers, and makes for very readable matching.
+
+Additionally, guards would solve the problem of matching existing identifiers. Consider this example:
+```
+val expected : String = / ...
+
+val result = when(download) {
+  is App(name, Person(author, _)) where author == expected -> "$expected's app $name"
+  is Movie(title, Person(author, _)) where author == expected-> "$expected's movie $title"
+  is App, Movie -> "Not by $expected"
+}
+```
+
+## Implementation
+> Disclaimer: contributions are welcome as the author has no background on the specifics of the Kotlin compiler, and only some on JVM bytecode.
+
+Ideally, simple matching on n constructors is O(1) and implemented with a lookup table. This might only be possible on some platforms, as the JVM for example only permits typechecks using `instanceof`, which would have to be called on each match.
+
+<!-- As discussed in [Semantics](#semantics),  -->
 
 ## Comparison to other languages
 
