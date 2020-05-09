@@ -3,7 +3,7 @@
 * **Type**: Design proposal
 * **Author**: Nicolas D'Cotta  <!-- * **Contributors**: This could be you! -->
 * **Status**: New
-<!-- * **Prototype**: A transpiler to vanilla Kotlin in the enar future -->
+<!-- * **Prototype**: A transpiler to vanilla Kotlin in the near future -->
 
 ## Synopsis
 
