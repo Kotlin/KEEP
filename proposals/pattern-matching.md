@@ -582,6 +582,25 @@ when (Some(1) to Some(2)) {
   
 This example uses `Some(1) to Some(2)` for the sake of briefness, but ideally, the compiler can infer that the matches on `None` can't ever succeed, because we are matching a `Pair<Some, Some>`.
 
+## Alternative
+
+Kotlin could do without pattern matching, as it has so far, and keep solely
+relying on accessing properties through smart casting. Hopefully some of the
+examples and potential features discussed in this KEEP help show that the
+current idiom is limited in that it forces us to write nested constructs
+inside `when`s when we want to perform additional checks.
+
+Additionally, pattern matching does not replace smart casting, but rather,
+benefits from it and makes it even more useful. Haskell and Scala often need
+to access not only things they destruct, bu also things matched on. In order
+to overcome this, they have
+[as-patterns](http://zvon.org/other/haskell/Outputsyntax/As-patterns_reference.html)
+and [pattern
+binders](https://riptutorial.com/scala/example/12230/pattern-binder----)
+respectively. Note that this KEEP does not introduce such a construct because
+a pattern can be accessed fine thanks to the smart casting idiom already
+widely popular.
+
 ## Comparison to other languages
 
 - Java is considering this (see [JEP 375](https://openjdk.java.net/jeps/375))
