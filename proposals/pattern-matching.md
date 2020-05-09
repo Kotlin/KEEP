@@ -74,7 +74,8 @@ for (p in list) {
    }
 }
 ```
-See [design decisions](tuples-syntax) for an alternative syntax for destructuring tuples without a type check.
+See [design decisions](tuples-syntax) for an alternative syntax for
+destructuring tuples without a type check.
 
 
 ## Comparisons
@@ -332,7 +333,10 @@ when(someMapEntry) {
 
 The compiler would look for an existing `x` in the scope to decide whether we are declaring a new `x` or just matching against an existing one.
 
- This can lead to the issue described at the beginning of this section, but IDE hinting could be used to indicate the matching attempt. Indicators could be extra colours or a symbol on the left bar (like the one currently in place for suspending functions).
+This can lead to the issue described at the beginning of this section, but
+IDE hinting could be used to indicate the matching attempt. Indicators could
+be extra colours or a symbol on the left bar (like the one currently in
+place for suspending functions).
 
 #### Allowing matching, explicitly <a name="implicit-match"></a>
 This would require an additional syntactic construct to indicate whether we wish to match the existing variable named `x`, or to extract a new variable named `x`. Such a construct could look like:
@@ -387,7 +391,11 @@ val something = when (pairOfOption) {
   (number, None) -> ...
 }
 ```
-Here, a full blown pattern match happens where we extract number2 from Arrow's `Option` and do an exhaustive type check on the sealed class for `Some` or `None`. In this scenario, `instanceof` typechecks happen, but no `is` keyword is present. Thus keeping `is` is favourable as it clearly indicates a type check albeit at the price of some verbosity.
+Here, a full blown pattern match happens where we extract number2 from
+Arrow's `Option` and do an exhaustive type check on the sealed class for
+`Some` or `None`. In this scenario, `instanceof` typechecks happen, but no
+`is` keyword is present. Thus keeping `is` is favourable as it clearly
+indicates a type check albeit at the price of some verbosity.
 
 
 <!--
@@ -399,11 +407,19 @@ TODO
 
 ### Matching on collections
 
-An idiom in Haskell or Scala is to pattern match on collections. This relies on the matched pattern 'changing' depending on the state of the collection. Because this proposal aims to use `componentN()` for destructuring, such a thing would not be possible in Kotlin as `componentN()` returns the Nth element of the collection (instead of its tail for some `componentN()`).
+An idiom in Haskell or Scala is to pattern match on collections. This relies
+on the matched pattern 'changing' depending on the state of the collection.
+Because this proposal aims to use `componentN()` for destructuring, such a
+thing would not be possible in Kotlin as `componentN()` returns the Nth
+element of the collection (instead of its tail for some `componentN()`).
 
-This limitation is due to the fact that in Haskell, a list is represented more similarly to how sealed classes work in Kotlin (and we can match on those).
+This limitation is due to the fact that in Haskell, a list is represented
+more similarly to how sealed classes work in Kotlin (and we can match on
+those).
 
-Pattern mathcing on collections is **not** the aim of this proposal, but such a thing *could* be achieved through additional extension functions on some interfaces with the sole purpose of matching them:
+Pattern mathcing on collections is **not** the aim of this proposal, but such
+a thing *could* be achieved through additional extension functions on some
+interfaces with the sole purpose of matching them:
 ```
 inline fun List<A> destructFst() =
  get(0) to if (size == 1) null else drop(1)
