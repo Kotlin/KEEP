@@ -596,6 +596,7 @@ val result = when(download) {
 }
 ```
 
+
 #### Component Guards <a name="component-guards"></a>
 
 Guards could be extended to allow guards on destructured components, instead of just the entire case.
@@ -619,6 +620,32 @@ This could cleaned up some by using a different, shorter syntax, but extra sytax
 However, assuming normal guards are implemented, a guard would be just as verbose, 
 it would just cover all checks at once rather than doing the check where the component is declared, which may reduce readability.
 Doing checks at the component declaration also allows for checks on non-assigned (`_`) components, as in the last case in the example.
+
+
+### Named components <a name="named-components"></a>
+
+In the existing proposal, components must be identified through order and accessed using the `componentN` functions.
+This is very limiting. Ideally, we would be able to identify components by name as well as order, like with function parameters.
+Order-based components would be limited to coming before named components, again like function parameters.
+Similairly, any unused components wouldn't have to be specified with `_`.
+
+Resolution would simply be based off of the `.` operator. 
+In the example below, anything that would resolve for `p.$componentName` would be a valid component name.
+
+The problem is that we have yet to come up with good syntax for this. For example, consider:
+```kotlin
+data class Person(val name: String, val age: Int)
+
+val p: Person = // ...
+
+when(p){
+    is Person(name: n) -> //... 
+}
+```
+
+The way we envision it, this would mean there is a variable `n` with the value of `p.name` in scope for the case's body (similar to Rust's syntax).
+However, it could be interpreted in the opposite manner and re-uses `:`, which is used for defining types.
+An arrow like operator would make this clearer (e.g. `name -> n`), but is still requires adding a new operator or reusing an existing one.
 
 ## Implementation
 > Disclaimer: contributions are welcome as the author has no background on the specifics of the Kotlin compiler, and only some on JVM bytecode.
