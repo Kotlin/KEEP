@@ -406,6 +406,8 @@ when(someMapEntry) {
 The syntactic construct presented in the example is rather arbitrary and
 suggestions on different ones are welcome.
 
+This version works well with [component guards](#component-guards), as any equality checking could be done in the guard instead of using syntax like `==x`.
+
 #### Not allowing matching existing identifiers at all <a name="no-match"></a>
 This would make
 ```kotlin
@@ -550,7 +552,7 @@ val result = when(download) {
 }
 ```
 
-#### Component Guards <a name="component_guards"></a>
+#### Component Guards <a name="component-guards"></a>
 
 Guards could be extended to allow guards on destructured components, instead of just the entire case.
 
@@ -568,7 +570,7 @@ The biggest benefit of this is allowing custom match comparisons instead of just
 It also allows for some matching on collections or other types that don't destructure well. 
 A user could define their guards in functions like `is Person(name where ::isLastNameNotHyphenated, _, _)` for more complex guards.
 
-A large drawback is the verbosity.
+A large drawback is the verbosity. Large classes with lots of guards quickly become very long.
 This could cleaned up some by using a better syntax, but extra sytax will always be added to compoment declarations.
 However, assuming normal guards are implemented, the guard would be just as verbose, 
 it would just cover all checks at once rather than doing the check where the component is declared, which may reduce readability.
