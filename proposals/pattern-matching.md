@@ -40,7 +40,7 @@ data class Prospect(val email: String, active: Boolean)
 // ...
 
 when(elem) {
-  is Customer(name, _, addr) ->
+  is Customer(name, age, addr) where { age >= 18 } ->
     Mail.send(addr, "Thanks for choosing us, $name!")
 
   is Prospect(addr, true) ->
@@ -54,12 +54,11 @@ destructuring delcaration with added equality checks. This approach is
 intuitive in that the `componentN()` operator functions are used to
 destructure a class.
 
-Then we pass an already defined expression (or it could be restricted to
-literals) to further specify the desired match (a `Prospect` wich is
-`active`, in the example above). This check can be implemented with
-`equals()`.
+Then we pass a literal to further specify the desired match (a `Prospect`
+wich is `active`, in the example above), or a [guard](#guards). A guard
+simply allows us to 'guard' against the match through a predicate.
 
-Additionally, nested patterns could further look at the members of the class
+Additionally, nested patterns could look further at the members of the class
 (or whatever `componentN()` might return).
 
 #### Destructuring without a type check
@@ -75,17 +74,13 @@ for (p in list) {
    }
 }
 ```
-See [design decisions](tuples-syntax) for an alternative syntax for
-destructuring tuples without a type check.
-
-
 ## Comparisons
 Below some examples from existing, open source Kotlin projects are listed,
 along with what they would look like if this KEEP was implemented. The aim of
 using real-world examples is to show the immediate benefit of adding the
 proposal (as it currently looks) to the language.
 
-#### From the [Arrow](https://github.com/arrow-kt/arrow-core/blob/be173c05b60471b02e04a07d246d327c2272b9a3/arrow-core/src/main/kotlin/arrow/core/extensions/option.kt) library:
+#### From the [Arrow](https://github.com/arrow-kt/arrow-core/blob/be173c05b60471b02e04a07d246d327c2272b9a3/arrow-core/src/main/kotlin/arrow/core/extensions/option.kt) library: <a name="arrow-example"></a>
 
 Without pattern matching:
 ```kotlin
@@ -138,9 +133,9 @@ fun <A> Kind<ForOption, A>.eqK(other: Kind<ForOption, A>, EQ: Eq<A>) =
 
 
 fun Ior<L, R>.eqv(other: Ior<L, R>): Boolean = when (this to other) {
-    is (Ior.Left(a), Ior.Left(b)) = EQL().run { a.eqv(b) }
+    is (Ior.Left(a), Ior.Left(b)) -> EQL().run { a.eqv(b) }
     is (Ior.Both(al, ar), Ior.Both(bl, br)) -> EQL().run { al.eqv(bl) } && EQR().run { ar.eqv(br) }
-    is (Ior.Right(a), Ior.Right(b)) = EQR().run { a.eqv(b) }
+    is (Ior.Right(a), Ior.Right(b)) -> EQR().run { a.eqv(b) }
     else -> false
 }
 ```
@@ -166,7 +161,7 @@ public val value: E get() {
     _state.loop { state ->
         when (state) {
             is Closed(valueException) -> throw valueException
-            is State<*>(== UNDEFINED) -> throw IllegalStateException("No value")
+            is State<*>(value) where { value == UNDEFINED } -> throw IllegalStateException("No value")
             is State<*>(value) -> return value as E
             else -> error("Invalid state $state")
         }
@@ -293,7 +288,7 @@ The proposed syntax is to start a new `when` line with `is PATTERN -> RHS`, wher
   - equality check of `_const` as above
   - `age` is defined in `RHS` with value `subject.component2()`
 - `Person(name)` where `name` is a __defined__ identifier
-  - see [Design decisions](#match-existing-id)
+  - a semantic error, as `name` is already defined in scope.
 - `Person(_const, PATTERN2)` where `PATTERN2` is a nested pattern
   - `_const` is checked as above, and `PATTERN2` is checked recursively, as
   if `when(subject.component2()) { is PATTERN2 }` was being called.
@@ -311,134 +306,79 @@ The proposed syntax is to start a new `when` line with `is PATTERN -> RHS`, wher
   match could succeed anyway in a scenario where two different types do
   `equals() = true` on each other.
 
-## <a name="design"></a> Design decisions
+Additionally, a line may optionally have a guard, which may ultimately make the match fail.
 
-Some of the semantics of this pattern matching are up to debate in the sense
-that there is room to decide on behaviour that may or may not be desirable.
+### Guards <a name="guards"></a>
 
-### <a name="match-existing-id"></a> Matching existing identifiers
-Consider a modified version of Jake Wharton's example:
+A guard is an additional boolean constraint on a match, widely used in Haskell, Scala, and C# pattern matching. Consider the initial customers example:
 ```kotlin
+when(elem) {
+  is Customer(name, age, addr) where { age > 18 } -> Mail.send(addr, "Thanks for choosing us, $name!")
+  is Prospect(addr, true) -> Mail.send(addr, "Please consider our product...")
+}
+```
+...where the additional guard allows us to avoid a nested `if` if we only wish to contact customers that are not underage. 
+
+Additionally, a guard predicate is just a Boolean function. 
+``` kotlin
 val expected : String = // ...
+val movieTitleIsValid = { m: Movie -> '%' !in m.title }
 
 val result = when(download) {
-  is App(name, Person(expected, _)) -> "$expected's app $name"
-  is Movie(title, Person(expected, _)) -> "$expected's movie $title"
+  is App(name, Person(author, _)) where { author == expected } -> "$expected's app $name"
+  is Movie(title, Person("Alice", _)) where movieTitleIsValid -> "Alice's movie $title"
   is App, Movie -> "Not by $expected"
 }
 ```
-It is clear that we wish to match `Person.component1()` with `expected`. But
-consider:
+
+A guard predicate is defined as a function `(T) -> Boolean`. Ideally, when
+using a lambda literal (`{autor == expected}` in the example) destructured
+components are also in scope. This is of course not encoded in the type of
+the predicate.
+
+Guards make for very powerful matching, and more possibilities are discussed in the [Component guards](#component-guards) subsection.
+
+## <a name="design"></a> Design decisions
+
+Some of the semantics of this pattern matching are up to debate in the sense
+that there is room to decide on behaviour or syntax that may or may not be desirable.
+
+### Restricting match expressions to literals <a name="literals-only"></a>
+
+This proposal argues **in favour** of only allowing literals as match expressions. This would make the following invalid code:
 ```kotlin
-val x = 2
-// use x for something
-...
-val result = when(DB.querySomehting()) {
-  is Success(x) -> "DB replied $x"
-  is Error(errorMsg) -> error(errorMsg)
-  else -> error("unexpected query result")
+// invalid code
+when ("Bob" to 4) {
+  is Pair(DB.getBobsName(), num) -> // ...
 }
 ```
-...where a programmer might want to define `x` as a new match for the content
-of `Success`, but ends up writing `Success.reply == 2` because they forgot
-that `x` was a variable in scope. The branch taken would then be the
-undesired `else`.
-
-Some instances of this scenario can be avoided with IDE hints clever enough
-to report matches unlikely to ever succeed (like checking equality for
-different types), and enforcing exhaustive patterns when matching.
-
-Even then, it is possible that the already defined identifier does have the
-same type as the new match, and that the `else` branch exists. Different
-languages handle this scenario differently, and there are a few solutions for
-Kotlin:
-
-#### Shadowing <a name="shadow-match"></a>
-This would make:
+... in favour of:
 ```kotlin
-val x = "a string!"
-val someMapEntry = "Bob" to 4
-
-when(someMapEntry) {
-  is (name, x) -> // ... RHS
+// valid code
+val expected = DB.getBobsName()
+when ("Bob" to 4) {
+  is Pair(name, num) where name == expected -> // ...
 }
 ```
-...valid code, but where `x` is not matched against, but redefined in the
-RHS. Much like shadowing an existing name in an existing scope, this is the
-approach [Rust](https://doc.rust-lang.org/book/ch18-03-pattern-syntax.html)
-takes.
+This is for the following reasons:
+  - This discourages inlining for equality checks in favour of using guards, which makes for more readable matches.
+  - It resolves the ambiguouity where a deconstructed type match looks like a class constructor.
 
-#### Allowing matching, implicitly <a name="implicit-match"></a>
-This would make
+### Specifying extraction with `val` <a name="specify-val"></a>
+
+This suggestion would require `val` when a new variable is extracted, and  would lift the [literals only](#literals-only) restriction (along with [`is` for nesting](#use-nested-is)).
+
+
+For example:
 ```kotlin
 val x = 3
 val someMapEntry = "Bob" to 4
 
-when(someMapEntry) {
-  is (name, x) -> // ... RHS
-}
-```
-...valid code, where we are checking whether the second argument of the pair
-equals `x` (already defined as being 3).
-
-The compiler would look for an existing `x` in the scope to decide whether we
-are declaring a new `x` or just matching against an existing one.
-
-This can lead to the issue described at the beginning of this section, but
-IDE hinting could be used to indicate the matching attempt. Indicators could
-be extra colours or a symbol on the left bar (like the one currently in
-place for suspending functions).
-
-#### Allowing matching, explicitly <a name="implicit-match"></a>
-This would require an additional syntactic construct to indicate whether we
-wish to match the existing variable named `x`, or to extract a new variable
-named `x`. Such a construct could look like:
-```kotlin
-val x = 3
-val someMapEntry = "Bob" to 4
-
-when(someMapEntry) {
-  is (name, ==x) -> // ... RHS
-}
-```
-...which makes it clear that we aim to test for equality between `x` and the extracted second parameter of the pair. Scala uses this approach through [stable identifiers](https://www.scala-lang.org/files/archive/spec/2.11/08-pattern-matching.html#stable-identifier-patterns). 
-
-The syntactic construct presented in the example is rather arbitrary and
-suggestions on different ones are welcome.
-
-This version works well with [component guards](#component-guards), as any equality checking could be done in the guard instead of using syntax like `==x`.
-
-#### Not allowing matching existing identifiers at all <a name="no-match"></a>
-This would make
-```kotlin
-val x = 3
-val someMapEntry = "Bob" to 4
-
-when(someMapEntry) {
-  is (name, x) -> // ... RHS
-}
-```
-...throw a semantic error at compile time, where `x` is defined twice in the
-same scope and cannot be redefined. This would be the most explicit way of
-avoiding confusing behaviour but, like shadowing, it would prevent us from
-matching on non literals.
-
-#### Specifying extraction with val <a name="specify-val"></a>
-
-This would require a `val` when a new variable is extracted, and would follow existing local variable semantics with regards to shadowing, etc.
-Example:
-```kotlin
-val x = 3
-val someMapEntry = "Bob" to 4
-
-when(someMapEntry) {
+when (someMapEntry) {
   is (val name, x) -> // ... RHS.  name is in scope here
 }
 ```
-The new variable `name` has its scope limited to the case's body.
-
-This matches current `when` statement capturing syntax.
-`var` could also be allowed to declare a mutable local variable, although this could cause issues if used with [guards](#guards).
+As with the alternative syntax, the new variable `name` has its scope limited to the case's body in the RHS.
 
 Requiring `val` will make highly nested matches a bit more verbose.  Consider:
 ```kotlin
@@ -456,7 +396,7 @@ when(p){
     ) -> // ...
 }
 ```
-vs
+...vs:
 ```kotlin
 when(p){
     is Person(
@@ -467,56 +407,47 @@ when(p){
 }
 ```
 
+### Nested patterns using `is` <a name="use-nested-is"></a>
+
+This suggestion involves re-using the keyword `is` every time a nested pattern matched is performed. Potentially, it could allow simply recursing on `when` conditions in general:
+
+Consider the original proposal syntax:
+```kotlin
+val result = when(download) {
+  is App(name, Person("Alice", _)) -> "Alice's app $name"
+  is Movie(title, Person("Alice", _)) -> "Alice's movie $title"
+  is App, Movie -> "Not by Alice"
+}
+```
+... as opposed to the alternative:
+```kotlin
+val result = when(download) {
+  is App(name, is Person("Alice", in 0..18)) -> "Alice's app $name"
+  is Movie(val title, Person("Alice", _)) -> "Alice's movie $title"
+  is App, Movie -> "Not by Alice"
+}
+```
+The argument in favour of this syntax is that the added keywords clarify any ambiguities. This proposal argues **against** this more verbose syntax for the following reasons:
+ - It lifts the [literals only](#literals-only) restriction, which would allow the user to inline things inside a pattern match (making for harder to read equality checks)
+ - It is extremely cumbersome to write for nested patterns of more than one level, or where there is a lot of inspection of destructured elements. Consider how using `is` and `val` every time would look for the [Arrow example](#arrow-example)
+
 #### Conclusion
 
-Matching existing identifiers **is part of the proposal** (preferably
-[explicitly](#explicit-match), possibly [implicitly](#implicit-match)), but
-accidental additional checks are undesired. Therefore this kind of matching
-can be dropped (in favour of [shadowing](#shadow-match) or [not allowing it at
-all](#no-match), preferably with [guards](#guards)) if consensus is not reached on its
-semantics. Resolving the abiguity by [explicitly indicating delcarations](#specify-val)
-was not part of the original proposal, but is also an option.
+There are two competing alternative syntax possibilites for pattern matching in Kotlin. While this proposal argues for one that
+- is slightly more restrictive (no nested `when` conditions)
+- is less verbose
+- encourages guards
 
-### <a name="tuples-syntax"></a> Destructuring tuples syntax
-
-An alternative to:
-```kotlin
-when(person) {
-  is ("Alice", age) -> // ...
-}
-```
-...was suggested. It would look like:
-```kotlin
-when (person) {
-  ("Alice", age) -> // ...
-}
-```
-Where `is` is omitted as no actual type check occurs in this scenario. This proposal argues for keeping `is` as a keyword necessary to pattern matching. Consider this example that uses the alternative syntax:
-```kotlin
-// A sealed class Option = Some(a) or None is in scope here
-
-val pairOfOption = 5 to Some(3)
-val something = when (pairOfOption) {
-  (number1, Some(number2)) -> // ...
-  (number, None) -> // ...
-}
-```
-Here, a full blown pattern match happens where we extract number2 from
-`Option` and do an exhaustive type check on the sealed class for
-`Some` or `None`. In this scenario, `instanceof` typechecks happen, but no
-`is` keyword is present. Thus keeping `is` is favourable as it clearly
-indicates a type check albeit at the price of some verbosity.
+...using `val` and `is` would make for a pattern mathcing that
+  - is more verbose (but offers some clarity)
+  - allows inlining for equality checking
+  - allows recursive `when` conditions (like `in 0..18`)
 
 ### Restricting matching to data classes only
 
 A possibilty suggested during the conception of this proposal was to restrict pattern matching to data classes. The argument would be to start with a samller size of 'matchable' elements in order to keep the inital proposal and feature as simple as possible, as it could be extended later down the line.
 
 This proposal argues **against** this restriction. Matching anything that implements `componentN()` has the important benefit of being able to match on 3rd party classes or interfaces that are not data classes, and to extend them for the sole purpose of matching. A notable example is `Map.Entry`, which is a Java interface.
-
-<!--
-## Implementation 
-TODO
--->
 
 ## Limitations
 
@@ -532,71 +463,28 @@ This limitation is due to the fact that in Haskell, a list is represented
 more similarly to how sealed classes work in Kotlin (and we can match on
 those).
 
-Pattern mathcing on collections is **not** the aim of this proposal, but such
+**Pattern mathcing on collections is not the aim of this proposal**, but such
 a thing *could* be achieved through additional extension functions on some
-interfaces with the sole purpose of matching them:
+interfaces with the sole purpose of matching on them:
 ```kotlin
-inline fun List<A> destructFst() =
- get(0) to if (size == 1) null else drop(1)
+inline fun List<A> destructFst() = when(size) {
+   0 -> null
+   else -> first() to drop(1)
+ }
 
 val ls = listOf(1,2,3,4)
 
 fun mySum(l: List<Int>) = when(l.destructFst()) {
-  is (head, null) -> head
+  null -> 0
   is (head, tail) -> head + mySum(tail)
 }
-
-// or:
-
-fun List<Int>.mySum2() = when(this.destructFst()) {
-  is (head, tail) -> head + tail?.mySum2()?:0
-}
 ```
+This proposal does not argue for including such extension functions in the standard library.
 ## Beyond the proposal
 The discussion and specification of the actual construct this proposal aims
 to introduce into the language ends here. But this section covers some
 possible additions that could be interesting to discuss if they are popular,
 and are in the spirit of Kotlin's idioms.
-
-### Membership matching <a name="in-match"></a>
-
-Consider:
-```kotlin
-data class Point(val x: Double, val y: Double)
-val p: Point = /...
-val max = Double.MAX_VALUE
-val min = Double.MIN_VALUE
-val location = when(p) {
-  is (in 0.0..max, in 0.0..max) -> "Top right quadrant of the graph"
-  is (in min..0.0, in 0.0..max) -> "Top left"
-  is (in min..0.0, in min..0.0) -> "Bottom left"
-  is (in 0.0..max, in min..00) -> "Bottom right"
-}
-```
-...where a destructured `componentN()` in `Point` is called as an argument to `in`, using the operator function `contains()`. This would allow to use pattern matching to test for membership of collections, ranges, and anything that might implement `contains()`. Swift has this idiom through the `~=` operator.
-
-### Guards <a name="guards"></a>
-
-A guard is an additional boolean constraint on a match, widely used in Haskell or Scala pattern matching. Consider a variation of the initial customers example:
-```kotlin
-when(elem) {
-  is Customer(name, age, addr) where age > 18 -> Mail.send(addr, "Thanks for choosing us, $name!")
-  is Prospect(addr, true) -> Mail.send(addr, "Please consider our product...")
-}
-```
-...where the additional guard allows us to avoid a nested `if` if we only wish to contact customers that are not underage. It would also cover most cases [membership matching](#in-match) covers, and makes for very readable matching.
-
-Additionally, guards would solve the problem of matching existing identifiers. Consider this example:
-``` kotlin
-val expected : String = // ...
-
-val result = when(download) {
-  is App(name, Person(author, _)) where author == expected -> "$expected's app $name"
-  is Movie(title, Person(author, _)) where author == expected-> "$expected's movie $title"
-  is App, Movie -> "Not by $expected"
-}
-```
-
 
 #### Component Guards <a name="component-guards"></a>
 
@@ -607,26 +495,33 @@ An example:
 data class Person(val name: String, val age: Int, val contacts: List<Person>)
 val p: Person = // ...
 when(p) {
-    is Person(name where { "-" !in it.substringAfterLast(" ") }, age where {it >= 18}, _) -> // ...
-    is Person(_, _, _ where {it.size >= 5}) -> // ...
+    is Person(name where { "-" !in it }, age where {it >= 18}, _) -> // ...
+    is Person(_, _, _ where { it.size >= 5 }) -> // ...
 }
 ```
 
-The biggest benefit of this is allowing custom match comparisons instead of just equality, including inequalities, regex, case-insensitive equality, etc. 
-It also allows for some matching on collections or other types that don't destructure well. 
-A user could define their guards like `is Person(name where isLastNameNotHyphenated, _, _)` through named lambdas or function references, for more complex guards.
+The biggest benefit of this is allowing custom matches on any of the destructured arguments
+It also allows for some matching on collections or other types that don't destructure well:
+```kotlin
+val ls = listOf(1,2,3,4)
+
+when("SomeList" to ls) {
+  is (_, list where Collection::isNotEmpty) -> // ... use list with the sweet relief of knowing it is not empty
+}
+```
+A user could define their guards like `is Person(name where isLastNameNotHyphenated, _, _)` through named lambdas or function references, for more complex matching. Because the guards are named, they stay readable.
 
 A large drawback is the verbosity. Large classes with lots of guards quickly become very long.
 This could cleaned up some by using a different, shorter syntax, but extra sytax will still always be added to compoment declarations.
 However, assuming normal guards are implemented, a guard would be just as verbose, 
 it would just cover all checks at once rather than doing the check where the component is declared, which may reduce readability.
-Doing checks at the component declaration also allows for checks on non-assigned (`_`) components, as in the last case in the example.
+Doing checks at the component declaration also allows for checks on non-assigned (`_`) components, as in the last case in one of the examples.
 
 
 ### Named components <a name="named-components"></a>
 
 In the existing proposal, components must be identified through order and accessed using the `componentN` functions.
-This is very limiting. Ideally, we would be able to identify components by name as well as order, like with function parameters.
+This is limiting. Ideally, we would be able to identify components by name as well as order, like with function parameters.
 Order-based components would be limited to coming before named components, again like function parameters.
 Similairly, any unused components wouldn't have to be specified with `_`.
 
@@ -644,9 +539,18 @@ when(p){
 }
 ```
 
-The way we envision it, this would mean there is a variable `n` with the value of `p.name` in scope for the case's body (similar to Rust's syntax).
-However, it could be interpreted in the opposite manner and re-uses `:`, which is used for defining types.
-An arrow like operator would make this clearer (e.g. `name -> n`), but is still requires adding a new operator or reusing an existing one.
+The way we envision it, this would mean there is a variable `n` with the
+value of `p.name` in scope for the case's body (similar to Rust's syntax).
+
+
+However, it could be interpreted in the opposite manner and re-uses `:`,
+which is used for a 'is-of-type' relationship.
+An arrow-like operator would make this clearer (e.g. `name -> n`), but is
+still requires adding a new operator or reusing an existing one.
+
+While this
+is a very desirable feature, this proposal lacks good syntax for it, so
+contributions are welcome.
 
 ## Implementation
 > Disclaimer: contributions are welcome as the author has no background on the specifics of the Kotlin compiler, and only some on JVM bytecode.
@@ -674,12 +578,22 @@ when (Some(1) to Some(2)) {
 }
 ```
 ... where `Option` is a sealed class which is either `Some(a)` or `None`.
-- In case 1, the right `Some` case has been matched, whereas on the left no case has been matched
-- In case 2, we finally match the right for `Some`. There are only 2 possible cases for `Option`, so we are waiting to match `None` for both left and right.
-- In case 3, we can make progress on matching `None` for the left, but not for the right.
-- In case 4, `None` is finally matched for both left and right, so we can infer that an `else` branch is not necessary.
+- In case 1, the right `Some` case has been matched, whereas on the left no
+case has been matched
+- In case 2, we finally match the right for `Some`. There are only 2 possible
+cases for `Option`, so we are waiting to match `None` for both left and
+right.
+- In case 3, we can make progress on matching `None` for the left, but not
+for the right.
+- In case 4, `None` is finally matched for both left and right, so we can
+infer that an `else` branch is not necessary.
   
-This example uses `Some(1) to Some(2)` for the sake of briefness, but ideally, the compiler can infer that the matches on `None` can't ever succeed, because we are matching a `Pair<Some, Some>`.
+This example uses `Some(1) to Some(2)` for the sake of briefness, but
+ideally, the compiler can infer that the matches on `None` can't ever
+succeed, because we are matching a `Pair<Some, Some>`.
+
+Note that no progress can be made with `when` clauses that use guards, unless
+contracts used by guards are taken into account by the compiler.
 
 ## Alternatives
 
@@ -701,7 +615,7 @@ widely popular.
 
 ## Comparison to other languages
 
-- Java is considering this (see [JEP 375](https://openjdk.java.net/jeps/375))
+- Java is considering this (see [JEP 375](https://openjdk.java.net/jeps/375)) without guards
 - [C# supports this](https://docs.microsoft.com/en-us/dotnet/csharp/pattern-matching) with a more verbose syntax through `case` .. `when` ..
 - In [Haskell](https://www.haskell.org/tutorial/patterns.html) pattern matching (along with guards) is a core language feature extensively used to traverse data structures and to define functions, mathcing on their arguments
 - [Rust](https://doc.rust-lang.org/book/ch18-03-pattern-syntax.html) supports pattern matching through `match` expressions
