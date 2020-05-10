@@ -423,15 +423,6 @@ same scope and cannot be redefined. This would be the most explicit way of
 avoiding confusing behaviour but, like shadowing, it would prevent us from
 matching on non literals.
 
-<br />
-
-Matching existing identifiers **is part of the proposal** (preferably
-[explicitly](#explicit-match), possibly [implicitly](#implicit-match)), but
-accidental additional checks are undesired. Therefore this kind of matching
-can be dropped (in favour of [shadowing](#shadow-match) or [not allowing it at
-all](#no-match), preferably with [guards](#guards)) if consensus is not reached on its
-semantics.
-
 #### Specifying extraction with val <a name="specify-val"></a>
 
 This would require a `val` when a new variable is extracted, and would follow existing local variable semantics with regards to shadowing, etc.
@@ -475,6 +466,16 @@ when(p){
     ) -> // ...
 }
 ```
+
+#### Conclusion
+
+Matching existing identifiers **is part of the proposal** (preferably
+[explicitly](#explicit-match), possibly [implicitly](#implicit-match)), but
+accidental additional checks are undesired. Therefore this kind of matching
+can be dropped (in favour of [shadowing](#shadow-match) or [not allowing it at
+all](#no-match), preferably with [guards](#guards)) if consensus is not reached on its
+semantics. Resolving the abiguity by [explicitly indicating delcarations](#specify-val)
+was not part of the original proposal, but is also an option.
 
 ### <a name="tuples-syntax"></a> Destructuring tuples syntax
 
