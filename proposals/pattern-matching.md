@@ -1,7 +1,8 @@
 # Pattern Matching
 
 * **Type**: Design proposal
-* **Author**: Nicolas D'Cotta  <!-- * **Contributors**: This could be you! -->
+* **Author**: Nicolas D'Cotta
+* **Contributors**: Ryan Nett
 * **Status**: New
 <!-- * **Prototype**: A transpiler to vanilla Kotlin in the near future -->
 
@@ -428,6 +429,50 @@ accidental additional checks are undesired. Therefore this kind of matching
 can be dropped (in favour of [shadowing](#shadow-match) or [not allowing it at
 all](#no-match), preferably with [guards](#guards)) if consensus is not reached on its
 semantics.
+
+#### Specifying extraction with val <a name="specify-val"></a>
+
+This would require a `val` when a new variable is extracted, and would follow existing local variable semantics with regards to shadowing, etc.
+Example:
+```kotlin
+val x = 3
+val someMapEntry = "Bob" to 4
+
+when(someMapEntry) {
+  is (val name, x) -> // ... RHS.  name is in scope here
+}
+```
+The new variable `name` has its scope limited to the case's body.
+
+This matches current `when` statement capturing syntax.
+`var` could also be allowed to declare a mutable local variable, although this could cause issues if used with [guards](#guards).
+
+Requiring `val` will make highly nested matches considerably more verbose.  Consider:
+```kotlin
+data class Name(val first: String, val middles: List<String>, val last: String)
+data class Address(val streetAddress: String, val secondLine: String, val country: String, val state: String, val city: String, val zip: String)
+data class Person(val name: Name, val address: Address, val age: Int)
+
+val p: Person = // ...
+
+when(p){
+    is Person(
+        Name(val first, _, val last),
+        Address(val streetAddress, val secondLine, val country, val state, val city, val zip),
+        _
+    ) -> 
+}
+```
+vs
+```kotlin
+when(p){
+    is Person(
+        Name(first, _, last),
+        Address(streetAddress, secondLine, country, state, city, zip),
+        _
+    ) -> 
+}
+```
 
 ### <a name="tuples-syntax"></a> Destructuring tuples syntax
 
