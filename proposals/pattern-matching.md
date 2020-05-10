@@ -1,7 +1,8 @@
 # Pattern Matching
 
 * **Type**: Design proposal
-* **Author**: Nicolas D'Cotta  <!-- * **Contributors**: This could be you! -->
+* **Author**: Nicolas D'Cotta 
+* **Contributors**: Ryan Nett
 * **Status**: New
 <!-- * **Prototype**: A transpiler to vanilla Kotlin in the near future -->
 
@@ -548,6 +549,30 @@ val result = when(download) {
   is App, Movie -> "Not by $expected"
 }
 ```
+
+#### Component Guards <a name="component_guards"></a>
+
+Guards could be extended to allow guards on destructured components, instead of just the entire case.
+
+An example:
+```kotlin
+data class Person(val name: String, val age: Int, val contacts: List<Person>)
+val p: Person = // ...
+when(p){
+    is Person(name where { "-" !in it.substringAfterLast(" ") }, age where {it >= 18}, _) -> // ...
+    is Person(_, _, _ where {it.size >= 5}) -> // ...
+}
+```
+
+The biggest benefit of this is allowing custom match comparisons instead of just equality, including inequalities, regex, case-insensitive equality, etc. 
+It also allows for some matching on collections or other types that don't destructure well. 
+A user could define their guards in functions like `is Person(name where ::isLastNameNotHyphenated, _, _)` for more complex guards.
+
+A large drawback is the verbosity.
+This could cleaned up some by using a better syntax, but extra sytax will always be added to compoment declarations.
+However, assuming normal guards are implemented, the guard would be just as verbose, 
+it would just cover all checks at once rather than doing the check where the component is declared, which may reduce readability.
+Doing checks at the component declaration also allows for checks on non-assigned (`_`) components, as in the last case in the example.
 
 ## Implementation
 > Disclaimer: contributions are welcome as the author has no background on the specifics of the Kotlin compiler, and only some on JVM bytecode.
