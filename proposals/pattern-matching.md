@@ -406,6 +406,8 @@ when(someMapEntry) {
 The syntactic construct presented in the example is rather arbitrary and
 suggestions on different ones are welcome.
 
+This version works well with [component guards](#component-guards), as any equality checking could be done in the guard instead of using syntax like `==x`.
+
 #### Not allowing matching existing identifiers at all <a name="no-match"></a>
 This would make
 ```kotlin
@@ -550,6 +552,32 @@ val result = when(download) {
 }
 ```
 
+
+#### Component Guards <a name="component-guards"></a>
+
+Guards could be extended to allow guards on destructured components, instead of just the entire case.
+
+An example:
+```kotlin
+data class Person(val name: String, val age: Int, val contacts: List<Person>)
+val p: Person = // ...
+when(p) {
+    is Person(name where { "-" !in it.substringAfterLast(" ") }, age where {it >= 18}, _) -> // ...
+    is Person(_, _, _ where {it.size >= 5}) -> // ...
+}
+```
+
+The biggest benefit of this is allowing custom match comparisons instead of just equality, including inequalities, regex, case-insensitive equality, etc. 
+It also allows for some matching on collections or other types that don't destructure well. 
+A user could define their guards like `is Person(name where isLastNameNotHyphenated, _, _)` through named lambdas or function references, for more complex guards.
+
+A large drawback is the verbosity. Large classes with lots of guards quickly become very long.
+This could cleaned up some by using a different, shorter syntax, but extra sytax will still always be added to compoment declarations.
+However, assuming normal guards are implemented, a guard would be just as verbose, 
+it would just cover all checks at once rather than doing the check where the component is declared, which may reduce readability.
+Doing checks at the component declaration also allows for checks on non-assigned (`_`) components, as in the last case in the example.
+
+
 ### Named components <a name="named-components"></a>
 
 In the existing proposal, components must be identified through order and accessed using the `componentN` functions.
@@ -574,7 +602,6 @@ when(p){
 The way we envision it, this would mean there is a variable `n` with the value of `p.name` in scope for the case's body (similar to Rust's syntax).
 However, it could be interpreted in the opposite manner and re-uses `:`, which is used for defining types.
 An arrow like operator would make this clearer (e.g. `name -> n`), but is still requires adding a new operator or reusing an existing one.
-
 
 ## Implementation
 > Disclaimer: contributions are welcome as the author has no background on the specifics of the Kotlin compiler, and only some on JVM bytecode.
