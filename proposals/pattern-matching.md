@@ -560,7 +560,7 @@ An example:
 ```kotlin
 data class Person(val name: String, val age: Int, val contacts: List<Person>)
 val p: Person = // ...
-when(p){
+when(p) {
     is Person(name where { "-" !in it.substringAfterLast(" ") }, age where {it >= 18}, _) -> // ...
     is Person(_, _, _ where {it.size >= 5}) -> // ...
 }
@@ -568,11 +568,11 @@ when(p){
 
 The biggest benefit of this is allowing custom match comparisons instead of just equality, including inequalities, regex, case-insensitive equality, etc. 
 It also allows for some matching on collections or other types that don't destructure well. 
-A user could define their guards in functions like `is Person(name where ::isLastNameNotHyphenated, _, _)` for more complex guards.
+A user could define their guards like `is Person(name where isLastNameNotHyphenated, _, _)` through named lambdas or function references, for more complex guards.
 
 A large drawback is the verbosity. Large classes with lots of guards quickly become very long.
-This could cleaned up some by using a better syntax, but extra sytax will always be added to compoment declarations.
-However, assuming normal guards are implemented, the guard would be just as verbose, 
+This could cleaned up some by using a different, shorter syntax, but extra sytax will still always be added to compoment declarations.
+However, assuming normal guards are implemented, a guard would be just as verbose, 
 it would just cover all checks at once rather than doing the check where the component is declared, which may reduce readability.
 Doing checks at the component declaration also allows for checks on non-assigned (`_`) components, as in the last case in the example.
 
