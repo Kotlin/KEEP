@@ -615,7 +615,7 @@ widely popular.
 
 ## Comparison to other languages
 
-- Java is considering this (see [JEP 375](https://openjdk.java.net/jeps/375)) without guards
+- Java is considering this (see [JEP 375](https://openjdk.java.net/jeps/375) and [JEP draft 8213076](https://openjdk.java.net/jeps/8213076)). Without guards, but the draft JEP mentions plans to add them in the future
 - [C# supports this](https://docs.microsoft.com/en-us/dotnet/csharp/pattern-matching) with a more verbose syntax through `case` .. `when` ..
 - In [Haskell](https://www.haskell.org/tutorial/patterns.html) pattern matching (along with guards) is a core language feature extensively used to traverse data structures and to define functions, mathcing on their arguments
 - [Rust](https://doc.rust-lang.org/book/ch18-03-pattern-syntax.html) supports pattern matching through `match` expressions
