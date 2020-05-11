@@ -534,7 +534,7 @@ data class Person(val name: String, val age: Int)
 
 val p: Person = // ...
 
-when(p){
+when(p) {
     is Person(name: n) -> //... 
 }
 ```
@@ -567,12 +567,12 @@ arguments, assuming all these function calls are O(1). Note this is not a
 safe assumption (the calls are user defined) but it should be by far the
 common case.
 
-While destructuring and checking for equality (with or without [guards](#guards) or [identifier matching](#match-existing-id)) should be mostly trivial, checking for exhaustiveness in nested patterns is not. The proposal suggests a naive implementation where a table is used for each level of nesting for each destructured element. For example, in order to call `when` on a `Pair` of `Option`s:
+While destructuring and checking for equality (with or without [guards](#guards) or [identifier matching](#named-components)) should be mostly trivial, checking for exhaustiveness in nested patterns is not. The proposal suggests a naive implementation where a table is used for each level of nesting for each destructured element. For example, in order to call `when` on a `Pair` of `Option`s:
 
 ```kotlin
 when (Some(1) to Some(2)) {
   is (Some(4), Some(y)) -> ...  // case 1
-  is (Some(x), None) -> ...     // case 2
+  is (Some(x), Some(y)) -> ...  // case 2
   is (None, Some(3)) -> ...     // case 3
   is (_, None) -> ...           // case 4
 }
@@ -580,7 +580,7 @@ when (Some(1) to Some(2)) {
 ... where `Option` is a sealed class which is either `Some(a)` or `None`.
 - In case 1, the right `Some` case has been matched, whereas on the left no
 case has been matched
-- In case 2, we finally match the right for `Some`. There are only 2 possible
+- In case 2, we finally match the left for any `Some`. There are only 2 possible
 cases for `Option`, so we are waiting to match `None` for both left and
 right.
 - In case 3, we can make progress on matching `None` for the left, but not
