@@ -75,6 +75,8 @@ for (p in list) {
 }
 ```
 ## Comparisons
+
+### Existing code
 Below some examples from existing, open source Kotlin projects are listed,
 along with what they would look like if this KEEP was implemented. The aim of
 using real-world examples is to show the immediate benefit of adding the
@@ -182,7 +184,6 @@ infix fun Expression<Boolean>.and(op: Expression<Boolean>): Op<Boolean> = when {
     })
     else -> AndOp(listOf(this, op))
 }
-
 ```
 
 With pattern matching:
@@ -196,9 +197,60 @@ infix fun Expression<Boolean>.and(op: Expression<Boolean>): Op<Boolean> = when(t
     })
   else -> AndOp(listOf(this, op))
 }
-
 ```
 
+#### From [TornadoFX](https://github.com/edvin/tornadofx/blob/facf7e8dd904e66a5516f2283538c12da55a085e/src/main/java/tornadofx/Rest.kt):
+
+(in `fun one()`)
+
+Without pattern matching:
+```kotlin
+return when (val json = Json.createReader(StringReader(content)).use { it.read() }) {
+    is JsonArray -> {
+        if (json.isEmpty())
+            return Json.createObjectBuilder().build()
+        else
+            return json.getJsonObject(0)
+    }
+    is JsonObject -> json
+    else -> throw IllegalArgumentException("Unknown json result value")
+```
+
+With pattern matching:
+
+```kotlin
+return when (val json = Json.createReader(StringReader(content)).use { it.read() }) {
+    is JsonArray where { it.isEmpty() } -> Json.createObjectBuilder().build()
+    is JsonArray -> json.getJsonObject(0)
+    is JsonObject -> json
+    else -> throw IllegalArgumentException("Unknown json result value")
+```
+
+#### From [dokka](https://github.com/Kotlin/dokka/blob/de2f32d91fb6f564826ddd7644940452356e2080/core/src/main/kotlin/Samples/DefaultSampleProcessingService.kt):
+
+Without pattern matching:
+
+```kotlin
+fun processSampleBody(psiElement: PsiElement): String = when (psiElement) {
+    is KtDeclarationWithBody -> {
+        val bodyExpression = psiElement.bodyExpression
+        when (bodyExpression) {
+            is KtBlockExpression -> bodyExpression.text.removeSurrounding("{", "}")
+            else -> bodyExpression!!.text
+        }
+    }
+    else -> psiElement.text
+}
+```
+With pattern matching:
+
+```kotlin
+fun processSampleBody(psiElement: PsiElement): String = when (psiElement) {
+    is KtDeclarationWithBody(KtBlockExpression(text)) -> text.removeSurrounding("{", "}")
+    is KtDeclarationWithBody(body) -> body!!.text
+    else -> psiElement.text
+}
+````
 ### More textbook comparisons
 
 #### From [Jake Wharton at KotlinConf '19](https://youtu.be/te3OU9fxC8U?t=2528)
@@ -218,7 +270,7 @@ val result = when(download) {
     val (name, dev) = download
     when(dev) {
       is Person -> 
-        if(dev.name == "Alice") "Alice's app $name" else "Not by Alice"
+        if (dev.name == "Alice") "Alice's app $name" else "Not by Alice"
       else -> "Not by Alice"
     }
   }
