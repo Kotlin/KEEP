@@ -427,13 +427,40 @@ val result = when(download) {
   is App, Movie -> "Not by Alice"
 }
 ```
-The argument in favour of this syntax is that the added keywords clarify any ambiguities. This proposal argues **against** this more verbose syntax for the following reasons:
- - It lifts the [literals only](#literals-only) restriction, which would allow the user to inline things inside a pattern match (making for harder to read equality checks)
- - It is extremely cumbersome to write for nested patterns of more than one level, or where there is a lot of inspection of destructured elements. Consider how using `is` and `val` every time would look for the [Arrow example](#arrow-example)
+The argument in favour of this syntax is that the added keywords clarify any
+ambiguities. This proposal argues **against** this more verbose syntax for
+the following reasons:
+ - It lifts the [literals only](#literals-only) restriction, which would
+ allow the user to inline things inside a pattern match (making for harder to
+ read equality checks)
+ - It is much more verbose to write for nested patterns of more than one
+ level, or where there is a lot of inspection of destructured elements.
+ Consider how using `is` and `val` every time would look for the 
+ [Arrow example](#arrow-example), which does not even make use of
+more than 1 level of nesting nor guards:
+  
+```kotlin
+fun <A> Kind<ForOption, A>.eqK(other: Kind<ForOption, A>, EQ: Eq<A>) =
+    when(this.fix() to other.fix()) {
+        is (is Some(val a), is Some(val b)) -> EQ.run { a.eqv(b) }
+        is (is None, is None) -> true
+        else -> false
+    }
+
+
+fun Ior<L, R>.eqv(other: Ior<L, R>): Boolean = when (this to other) {
+    is (is Ior.Left(val a), is Ior.Left(val b)) -> EQL().run { a.eqv(b) }
+    is (is Ior.Both(val al, val ar), is Ior.Both(val bl, val br)) ->
+      EQL().run { al.eqv(bl) } && EQR().run { ar.eqv(br) }
+    is (is Ior.Right(val a), is Ior.Right(val b)) -> EQR().run { a.eqv(b) }
+    else -> false
+}
+```
 
 #### Conclusion
 
-There are two competing alternative syntax possibilites for pattern matching in Kotlin. While this proposal argues for one that
+There are two competing alternative syntax possibilites for pattern matching
+in Kotlin. While this proposal argues for one that
 - is slightly more restrictive (no nested `when` conditions)
 - is less verbose
 - encourages guards
