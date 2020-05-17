@@ -409,7 +409,7 @@ when ("Bob" to 4) {
 // valid code
 val expected = DB.getBobsName()
 when ("Bob" to 4) {
-  is Pair(name, num) where name == expected -> // ...
+  is Pair(name, num) where { name == expected } -> // ...
 }
 ```
 This is for the following reasons:
