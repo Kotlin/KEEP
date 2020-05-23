@@ -542,7 +542,7 @@ This limitation is due to the fact that in Haskell, a list is represented
 more similarly to how sealed classes work in Kotlin (and we can match on
 those).
 
-**Pattern mathcing on collections is not the aim of this proposal**, but such
+**Pattern matching on collections is not the aim of this proposal**, but such
 a thing *could* be achieved through additional extension functions on some
 interfaces with the sole purpose of matching on them:
 ```kotlin
