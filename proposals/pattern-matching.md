@@ -50,7 +50,7 @@ when(elem) {
 
 The syntax proposed uses the already existing `is` construct to check the
 type of the subject, but adds what semantically looks a lot like a
-destructuring delcaration with added equality checks. This approach is
+destructuring declaration with added equality checks. This approach is
 intuitive in that the `componentN()` operator functions are used to
 destructure a class.
 
