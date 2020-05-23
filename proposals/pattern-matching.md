@@ -517,7 +517,7 @@ in Kotlin. While this proposal argues for one that
 - is less verbose
 - encourages guards
 
-...using `val` and `is` would make for a pattern mathcing that
+...using `val` and `is` would make for a pattern matching that
   - is more verbose (but offers some clarity)
   - allows inlining for equality checking
   - allows recursive `when` conditions (like `in 0..18`)
