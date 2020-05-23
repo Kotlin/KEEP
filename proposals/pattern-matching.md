@@ -524,7 +524,7 @@ in Kotlin. While this proposal argues for one that
 
 ### Restricting matching to data classes only
 
-A possibilty suggested during the conception of this proposal was to restrict pattern matching to data classes. The argument would be to start with a samller size of 'matchable' elements in order to keep the inital proposal and feature as simple as possible, as it could be extended later down the line.
+A possibility suggested during the conception of this proposal was to restrict pattern matching to data classes. The argument would be to start with a smaller size of 'matchable' elements in order to keep the initial proposal and feature as simple as possible, as it could be extended later down the line.
 
 This proposal argues **against** this restriction. Matching anything that implements `componentN()` has the important benefit of being able to match on 3rd party classes or interfaces that are not data classes, and to extend them for the sole purpose of matching. A notable example is `Map.Entry`, which is a Java interface.
 
