@@ -130,7 +130,8 @@ fun <A> Kind<ForOption, A>.eqK(other: Kind<ForOption, A>, EQ: Eq<A>) =
     when(this.fix() to other.fix()) {
         is (Some(a), Some(b)) -> EQ.run { a.eqv(b) }
         is (None, None) -> true
-        else -> false
+        is (Some, None), is (None, Some) -> false
+        // Note all cases are checked
     }
 
 
@@ -388,7 +389,54 @@ using a lambda literal (`{autor == expected}` in the example) destructured
 components are also in scope. This is of course not encoded in the type of
 the predicate.
 
-Guards make for very powerful matching, and more possibilities are discussed in the [Component guards](#component-guards) subsection.
+#### Alternative `if`  syntax <a name="if-guards"></a>
+
+The syntax for guards discussed so far focuses in expecting a function, in
+order to easily compose and define custom guards. A possible alternative
+could be the more familiar `if` syntax, which instead uses an
+expression:
+
+``` kotlin
+val expected : String = // ...
+fun movieTitleIsValid(m: Movie) = '%' !in m.title
+
+val result = when(download) {
+  is App(name, Person(author, _)) if (author == expected) -> "$expected's app $name"
+  is Movie(title, Person("Alice", _))
+    if (movieTitleIsValid(download)) -> "Alice's movie $title"
+  is App, Movie -> "Not by $expected"
+}
+```
+  > Note that indentation and the choice of line breaks are merely a suggestion
+
+Additionally, this could be combined with the already common `else if`
+construct in order to chain guards:
+
+```kotlin
+sealed class Elem
+data class Customer(val name: String, val age: Int, val email: String) : Elem()
+data class Prospect(val homeAddress: Location, val email: String, active: Boolean) : Elem()
+// ...
+
+val text = when(elem) {
+  is Customer(name, age, _) 
+    if (age >= 18) -> "Thanks for choosing us, $name!"
+    else -> error("We should not have underage customers")
+  is Prospect(addr, _, _)
+    if (addr in Countries.Spanish) -> "Considere la compra de nuestro producto..."
+    // maybe `else if` instead?
+    if (addr in Countries.French) -> "Veulliez considérer l'achat de notre produit"...
+    else -> "Please consider buying our product..."
+}
+```
+
+This is a common idiom in
+[Haskell](https://www.futurelearn.com/courses/functional-programming-haskell/0/steps/27226). While this form of guards may look very similar to a nested `if` expression, note that it is different as an `else` entry is not necessarily required if exhaustiveness is achieved.
+
+<br>
+
+Guards make for very powerful matching, and more possibilities are discussed
+in the [Component guards](#component-guards) subsection.
 
 ## <a name="design"></a> Design decisions
 
@@ -475,7 +523,7 @@ val result = when(download) {
 ```kotlin
 val result = when(download) {
   is App(name, is Person("Alice", in 0..18)) -> "Alice's app $name"
-  is Movie(val title, Person("Alice", _)) -> "Alice's movie $title"
+  is Movie(val title, is Person("Alice", _)) -> "Alice's movie $title"
   is App, Movie -> "Not by Alice"
 }
 ```
@@ -585,7 +633,8 @@ It also allows for some matching on collections or other types that don't destru
 val ls = listOf(1,2,3,4)
 
 when("SomeList" to ls) {
-  is (_, list where Collection::isNotEmpty) -> // ... use list with the sweet relief of knowing it is not empty
+  is (_, list where Collection::isNotEmpty) -> 
+     // ... use list with the sweet relief of knowing it is not empty
 }
 ```
 A user could define their guards like `is Person(name where isLastNameNotHyphenated, _, _)` through named lambdas or function references, for more complex matching. Because the guards are named, they stay readable.
@@ -712,3 +761,5 @@ The author has experience with only some of these languages so additional commen
 [JEP 375](https://openjdk.java.net/jeps/375)
 
 [Scala specification on pattern matching](https://www.scala-lang.org/files/archive/spec/2.11/08-pattern-matching.html)
+
+[Haskell.org pattern atching tutorial](https://www.haskell.org/tutorial/patterns.html)
