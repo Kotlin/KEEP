@@ -1005,7 +1005,7 @@ class <anonymous_for_state_machine> extends SuspendLambda<...> {
       L0:
         x = 0
       LOOP:
-        if (x > 10) goto END
+        if (x >= 10) goto END
         label = 1
         result = nextNumber().await(this) // 'this' is passed as a continuation 
         if (result == COROUTINE_SUSPENDED) return // return if await had suspended execution
