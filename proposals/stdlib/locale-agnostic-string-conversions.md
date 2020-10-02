@@ -1,0 +1,159 @@
+# Locale-agnostic text processing by default
+
+* **Type**: Standard Library API proposal
+* **Author**: Abduqodiri Qurbonzoda
+* **Status**: Submitted
+* **Prototype**: Implemented
+
+## Summary
+
+Make text processing API locale-agnostic by default.
+
+## Current API review
+
+Currently, standard library provides following Common extension functions: 
+* `fun String.toLowerCase(): String`
+* `fun String.toUpperCase(): String`
+* `fun String.capitalize(): String`
+* `fun String.decapitalize(): String`
+
+The functions above convert letters of the receiver `String` using the rules of the default locale.
+
+Kotlin/JVM additionally provides overloads to specify the locale to be used:
+* `fun String.toLowerCase(locale: Locale): String`
+* `fun String.toUpperCase(locale: Locale): String`
+* `fun String.capitalize(locale: Locale): String`
+* `fun String.decapitalize(locale: Locale): String`
+
+`Char` has following locale-agnostic extension functions:
+* `fun Char.toLowerCase(): Char` - Common
+* `fun Char.toUpperCase(): Char` - Common
+* `fun Char.toTitleCase(): Char` - Kotlin/JVM
+
+## Motivation
+
+Our researches show that people often use locale-sensitive functions mentioned above without realizing the fact that their code behaves differently 
+in different geographies/platform locale settings. To combat the issue we would like to deprecate current API and introduce new locale-agnostic functions.
+
+## Description
+
+* Introduce locale-agnostic function `String.uppercase(): String` to replace locale-sensitive `String.toUpperCase(): String`
+* Introduce locale-agnostic function `String.lowercase(): String` to replace locale-sensitive `String.toLowerCase(): String`
+* Introduce locale-agnostic function `String.capitalizeFirst(): String` to replace locale-sensitive `String.capitalize(): String`
+* Introduce locale-agnostic function `String.decapitalizeFirst(): String` to replace locale-sensitive `String.decapitalize(): String`
+
+```kotlin
+/**
+ * Returns a copy of this string converted to upper case using the rules of the default locale.
+ */
+@Deprecated("Please use locale-insensitive alternative `uppercase()`", ReplaceWith("uppercase()"))
+public expect fun String.toUpperCase(): String
+
+/**
+ * Returns a copy of this string converted to upper case using Unicode mapping rules of the invariant locale.
+ */
+public expect fun String.uppercase(): String
+
+/**
+ * Returns a copy of this string converted to lower case using the rules of the default locale.
+ */
+@Deprecated("Please use locale-insensitive alternative `lowercase()`", ReplaceWith("lowercase()"))
+public expect fun String.toLowerCase(): String
+
+/**
+ * Returns a copy of this string converted to lower case using Unicode mapping rules of the invariant locale.
+ */
+public expect fun String.lowercase(): String
+
+/**
+ * Returns a copy of this string having its first letter titlecased using the rules of the default locale,
+ * or the original string if it's empty or already starts with a title case letter.
+ */
+@Deprecated("Please use locale-insensitive alternative `capitalizeFirst()`", ReplaceWith("capitalizeFirst()"))
+public expect fun String.capitalize(): String
+
+/**
+ * Returns a copy of this string having its first letter titlecased using Unicode mapping rules of the invariant locale,
+ * or the original string if it's empty or already starts with a title case letter.
+ */
+public expect fun String.capitalizeFirst(): String
+
+/**
+ * Returns a copy of this string having its first letter lowercased using the rules of the default locale,
+ * or the original string if it's empty or already starts with a lower case letter.
+ */
+@Deprecated("Please use locale-insensitive alternative `decapitalizeFirst()`", ReplaceWith("decapitalizeFirst()"))
+public expect fun String.decapitalize(): String
+
+/**
+ * Returns a copy of this string having its first letter lowercased using Unicode mapping rules of the invariant locale,
+ * or the original string if it's empty or already starts with a lower case letter.
+ */
+public expect fun String.decapitalizeFirst(): String
+```
+
+The new namings will also affect following functions:
+
+* Rename `String.toLowerCase(locale: Locale): String` to `String.lowercase(locale: Locale): String`
+* Rename `String.toUpperCase(locale: Locale): String` to `String.uppercase(locale: Locale): String`
+* Rename `String.capitalize(locale: Locale): String` to `String.capitalizeFirst(locale: Locale): String`
+* Rename `String.decapitalize(locale: Locale): String` to `String.decapitalizeFirst(locale: Locale): String`
+* Rename `Char.toLowerCase(): Char` to `Char.lowercase(): Char`
+* Rename `Char.toUpperCase(): Char` to `Char.uppercase(): Char`
+* Rename `Char.toTitleCase(): Char` to `Char.titlecase(): Char`
+
+```kotlin
+@Deprecated("This function has been renamed to `lowercase`", ReplaceWith("lowercase(locale)"))
+public fun String.toLowerCase(locale: java.util.Locale): String = lowercase(locale)
+
+public fun String.lowercase(locale: java.util.Locale): String = (this as java.lang.String).toLowerCase(locale)
+
+@Deprecated("This function has been renamed to `uppercase`", ReplaceWith("uppercase(locale)"))
+public fun String.toUpperCase(locale: java.util.Locale): String = uppercase(locale)
+
+public fun String.uppercase(locale: java.util.Locale): String = (this as java.lang.String).toUpperCase(locale)
+
+@Deprecated("This function has been renamed to `lowercase()`", ReplaceWith("lowercase()"))
+public fun Char.toLowerCase(): Char = lowercase()
+
+public expect fun Char.lowercase(): Char
+
+@Deprecated("This function has been renamed to `uppercase()`", ReplaceWith("uppercase()"))
+public fun Char.toUpperCase(): Char = uppercase()
+
+public expect fun Char.uppercase(): Char
+
+@Deprecated("This function has been renamed to `titlecase()`", ReplaceWith("titlecase()"))
+public fun Char.toTitleCase(): Char = titlecase()
+
+public fun Char.titlecase(): Char = Character.toTitleCase(this)
+```
+
+By renaming the functions we get rid of Java legacy names. 
+In Kotlin functions starting with preposition `to` convert receiver to instance of another type.
+
+## Dependencies
+
+No additional dependencies are needed.
+
+## Placement
+
+- module `kotlin-stdlib`
+- package `kotlin.text`
+
+## Reference implementation
+
+The reference implementation is provided in the pull request [PR #3780](https://github.com/JetBrains/kotlin/pull/3780).
+
+## Naming
+
+Alternative naming suggestions are welcome.
+
+## Compatibility impact
+
+The deprecated functions will go through standard deprecation cycle.
+
+### Receiver types
+
+The operations could be introduced for `StringBuilder` too, but that is out of this proposal.
+
