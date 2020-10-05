@@ -98,6 +98,10 @@ public fun String.lowercase(locale: java.util.Locale): String
 
 public fun String.uppercase(locale: java.util.Locale): String
 
+public fun String.capitalizeFirst(locale: java.util.Locale): String
+
+public fun String.decapitalizeFirst(locale: java.util.Locale): String
+
 public expect fun Char.lowercase(): Char
 
 public expect fun Char.uppercase(): Char
