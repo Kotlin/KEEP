@@ -127,7 +127,7 @@ Alternative naming suggestions are welcome.
 
 ## Compatibility impact
 
-The deprecated functions will go through standard deprecation cycle.
+The deprecated functions will go through [the standard deprecation cycle](https://kotlinlang.org/foundation/language-committee-guidelines.html#incompatible-changes-to-the-libraries).
 
 ### Receiver types
 
