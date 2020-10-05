@@ -61,21 +61,9 @@ To combat the issue we would like to deprecate current API and introduce new loc
 
 ```kotlin
 /**
- * Returns a copy of this string converted to upper case using the rules of the default locale.
- */
-@Deprecated("Please use locale-insensitive alternative `uppercase()`", ReplaceWith("uppercase()"))
-public expect fun String.toUpperCase(): String
-
-/**
  * Returns a copy of this string converted to upper case using Unicode mapping rules of the invariant locale.
  */
 public expect fun String.uppercase(): String
-
-/**
- * Returns a copy of this string converted to lower case using the rules of the default locale.
- */
-@Deprecated("Please use locale-insensitive alternative `lowercase()`", ReplaceWith("lowercase()"))
-public expect fun String.toLowerCase(): String
 
 /**
  * Returns a copy of this string converted to lower case using Unicode mapping rules of the invariant locale.
@@ -83,24 +71,10 @@ public expect fun String.toLowerCase(): String
 public expect fun String.lowercase(): String
 
 /**
- * Returns a copy of this string having its first letter titlecased using the rules of the default locale,
- * or the original string if it's empty or already starts with a title case letter.
- */
-@Deprecated("Please use locale-insensitive alternative `capitalizeFirst()`", ReplaceWith("capitalizeFirst()"))
-public expect fun String.capitalize(): String
-
-/**
  * Returns a copy of this string having its first letter titlecased using Unicode mapping rules of the invariant locale,
  * or the original string if it's empty or already starts with a title case letter.
  */
 public expect fun String.capitalizeFirst(): String
-
-/**
- * Returns a copy of this string having its first letter lowercased using the rules of the default locale,
- * or the original string if it's empty or already starts with a lower case letter.
- */
-@Deprecated("Please use locale-insensitive alternative `decapitalizeFirst()`", ReplaceWith("decapitalizeFirst()"))
-public expect fun String.decapitalize(): String
 
 /**
  * Returns a copy of this string having its first letter lowercased using Unicode mapping rules of the invariant locale,
@@ -120,28 +94,13 @@ The new namings will also affect following functions:
 * Rename `Char.toTitleCase(): Char` to `Char.titlecase(): Char`
 
 ```kotlin
-@Deprecated("This function has been renamed to `lowercase`", ReplaceWith("lowercase(locale)"))
-public fun String.toLowerCase(locale: java.util.Locale): String = lowercase(locale)
-
 public fun String.lowercase(locale: java.util.Locale): String = (this as java.lang.String).toLowerCase(locale)
-
-@Deprecated("This function has been renamed to `uppercase`", ReplaceWith("uppercase(locale)"))
-public fun String.toUpperCase(locale: java.util.Locale): String = uppercase(locale)
 
 public fun String.uppercase(locale: java.util.Locale): String = (this as java.lang.String).toUpperCase(locale)
 
-@Deprecated("This function has been renamed to `lowercase()`", ReplaceWith("lowercase()"))
-public fun Char.toLowerCase(): Char = lowercase()
-
 public expect fun Char.lowercase(): Char
 
-@Deprecated("This function has been renamed to `uppercase()`", ReplaceWith("uppercase()"))
-public fun Char.toUpperCase(): Char = uppercase()
-
 public expect fun Char.uppercase(): Char
-
-@Deprecated("This function has been renamed to `titlecase()`", ReplaceWith("titlecase()"))
-public fun Char.toTitleCase(): Char = titlecase()
 
 public fun Char.titlecase(): Char = Character.toTitleCase(this)
 ```
