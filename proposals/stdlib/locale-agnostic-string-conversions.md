@@ -94,15 +94,15 @@ The new namings will also affect following functions:
 * Rename `Char.toTitleCase(): Char` to `Char.titlecase(): Char`
 
 ```kotlin
-public fun String.lowercase(locale: java.util.Locale): String = (this as java.lang.String).toLowerCase(locale)
+public fun String.lowercase(locale: java.util.Locale): String
 
-public fun String.uppercase(locale: java.util.Locale): String = (this as java.lang.String).toUpperCase(locale)
+public fun String.uppercase(locale: java.util.Locale): String
 
 public expect fun Char.lowercase(): Char
 
 public expect fun Char.uppercase(): Char
 
-public fun Char.titlecase(): Char = Character.toTitleCase(this)
+public fun Char.titlecase(): Char
 ```
 
 By renaming the functions we get rid of Java legacy names. 
