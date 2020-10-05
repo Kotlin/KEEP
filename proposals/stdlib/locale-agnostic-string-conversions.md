@@ -33,7 +33,24 @@ Kotlin/JVM additionally provides overloads to specify the locale to be used:
 ## Motivation
 
 Our researches show that people often use locale-sensitive functions mentioned above without realizing the fact that their code behaves differently 
-in different geographies/platform locale settings. To combat the issue we would like to deprecate current API and introduce new locale-agnostic functions.
+in different geographies/platform locale settings. 
+
+[The caution from Java team](https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/lang/String.html#toUpperCase()) highlights significance of the issue:
+>Note: This method is locale sensitive, and may produce unexpected results if used for strings that are intended to be interpreted locale independently. 
+>Examples are programming language identifiers, protocol keys, and HTML tags. For instance, "title".toUpperCase() in a Turkish locale returns "T\u0130TLE", 
+>where '\u0130' is the LATIN CAPITAL LETTER I WITH DOT ABOVE character. To obtain correct results for locale insensitive strings, use toUpperCase(Locale.ROOT).
+
+Bug report related to the caution: https://bugs.java.com/bugdatabase/view_bug.do?bug_id=6208680 
+
+However, documentation doesn't always prevent misuse. See bug reports related to this issue in big projects:
+* https://issues.apache.org/jira/browse/SPARK-20156
+* https://github.com/gradle/gradle/issues/1506
+
+Related blog posts:
+* https://lotusnotus.com/lotusnotus_en.nsf/dx/dotless-i-tolowercase-and-touppercase-functions-use-responsibly.htm
+* https://javapapers.com/core-java/javas-tolowercase-has-got-a-surprise-for-you/
+
+To combat the issue we would like to deprecate current API and introduce new locale-agnostic functions.
 
 ## Description
 
