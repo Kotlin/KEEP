@@ -131,7 +131,8 @@ Alternative naming suggestions are welcome.
 
 ## Compatibility impact
 
-The deprecated functions will go through [the standard deprecation cycle](https://kotlinlang.org/foundation/language-committee-guidelines.html#incompatible-changes-to-the-libraries).
+The introduced functions will be marked with `@ExperimentalStdlibApi` until the next major release of Kotlin, 1.5.
+With release of Kotlin 1.5 the new functions will cease to be experimental, and the old functions will become deprecated.
 
 ### Receiver types
 
