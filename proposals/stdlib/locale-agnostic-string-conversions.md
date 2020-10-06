@@ -85,13 +85,13 @@ public expect fun String.decapitalizeFirst(): String
 
 The new namings will also affect following functions:
 
-* Rename `String.toLowerCase(locale: Locale): String` to `String.lowercase(locale: Locale): String`
-* Rename `String.toUpperCase(locale: Locale): String` to `String.uppercase(locale: Locale): String`
-* Rename `String.capitalize(locale: Locale): String` to `String.capitalizeFirst(locale: Locale): String`
-* Rename `String.decapitalize(locale: Locale): String` to `String.decapitalizeFirst(locale: Locale): String`
-* Rename `Char.toLowerCase(): Char` to `Char.lowercase(): Char`
-* Rename `Char.toUpperCase(): Char` to `Char.uppercase(): Char`
-* Rename `Char.toTitleCase(): Char` to `Char.titlecase(): Char`
+* Deprecate existing function `String.toLowerCase(locale: Locale): String` and introduce `String.lowercase(locale: Locale): String` as a replacement
+* Deprecate existing function `String.toUpperCase(locale: Locale): String` and introduce `String.uppercase(locale: Locale): String` as a replacement
+* Deprecate existing function `String.capitalize(locale: Locale): String` and introduce `String.capitalizeFirst(locale: Locale): String` as a replacement
+* Deprecate existing function `String.decapitalize(locale: Locale): String` and introduce `String.decapitalizeFirst(locale: Locale): String` as a replacement
+* Deprecate existing function `Char.toLowerCase(): Char` and introduce `Char.lowercase(): Char` as a replacement
+* Deprecate existing function `Char.toUpperCase(): Char` and introduce `Char.uppercase(): Char` as a replacement
+* Deprecate existing function `Char.toTitleCase(): Char` and introduce `Char.titlecase(): Char` as a replacement
 
 ```kotlin
 public fun String.lowercase(locale: java.util.Locale): String
