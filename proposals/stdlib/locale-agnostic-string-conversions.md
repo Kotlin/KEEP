@@ -59,6 +59,8 @@ To combat the issue we would like to deprecate current API and introduce new loc
 * Deprecate existing locale-dependent function `String.capitalize(): String` and introduce locale-agnostic function `String.capitalizeFirst(): String` as a replacement 
 * Deprecate existing locale-dependent function `String.decapitalize(): String` and introduce locale-agnostic function `String.decapitalizeFirst(): String` as a replacement 
 
+While the replacements are not equivalent to the existing functions, most likely they are ones that were originally needed.
+
 The new namings will also affect following functions:
 
 * Deprecate existing function `String.toLowerCase(locale: Locale): String` and introduce `String.lowercase(locale: Locale): String` as a replacement
