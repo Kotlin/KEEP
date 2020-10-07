@@ -59,30 +59,6 @@ To combat the issue we would like to deprecate current API and introduce new loc
 * Deprecate existing locale-dependent function `String.capitalize(): String` and introduce locale-agnostic function `String.capitalizeFirst(): String` as a replacement 
 * Deprecate existing locale-dependent function `String.decapitalize(): String` and introduce locale-agnostic function `String.decapitalizeFirst(): String` as a replacement 
 
-```kotlin
-/**
- * Returns a copy of this string converted to upper case using Unicode mapping rules of the invariant locale.
- */
-public expect fun String.uppercase(): String
-
-/**
- * Returns a copy of this string converted to lower case using Unicode mapping rules of the invariant locale.
- */
-public expect fun String.lowercase(): String
-
-/**
- * Returns a copy of this string having its first letter titlecased using Unicode mapping rules of the invariant locale,
- * or the original string if it's empty or already starts with a title case letter.
- */
-public expect fun String.capitalizeFirst(): String
-
-/**
- * Returns a copy of this string having its first letter lowercased using Unicode mapping rules of the invariant locale,
- * or the original string if it's empty or already starts with a lower case letter.
- */
-public expect fun String.decapitalizeFirst(): String
-```
-
 The new namings will also affect following functions:
 
 * Deprecate existing function `String.toLowerCase(locale: Locale): String` and introduce `String.lowercase(locale: Locale): String` as a replacement
@@ -92,22 +68,6 @@ The new namings will also affect following functions:
 * Deprecate existing function `Char.toLowerCase(): Char` and introduce `Char.lowercase(): Char` as a replacement
 * Deprecate existing function `Char.toUpperCase(): Char` and introduce `Char.uppercase(): Char` as a replacement
 * Deprecate existing function `Char.toTitleCase(): Char` and introduce `Char.titlecase(): Char` as a replacement
-
-```kotlin
-public fun String.lowercase(locale: java.util.Locale): String
-
-public fun String.uppercase(locale: java.util.Locale): String
-
-public fun String.capitalizeFirst(locale: java.util.Locale): String
-
-public fun String.decapitalizeFirst(locale: java.util.Locale): String
-
-public expect fun Char.lowercase(): Char
-
-public expect fun Char.uppercase(): Char
-
-public fun Char.titlecase(): Char
-```
 
 By renaming the functions we get rid of Java legacy names. 
 In Kotlin functions starting with preposition `to` convert receiver to instance of another type.
