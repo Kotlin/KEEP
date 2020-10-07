@@ -134,6 +134,8 @@ Alternative naming suggestions are welcome.
 The introduced functions will be marked with `@ExperimentalStdlibApi` until the next major release of Kotlin, 1.5.
 With release of Kotlin 1.5 the new functions will cease to be experimental, and the old functions will become deprecated.
 
+Previously compiled programs that use deprecated functions will still run with Kotlin 1.5.
+
 ### Receiver types
 
 The operations could be introduced for `StringBuilder` too, but that is out of this proposal.
