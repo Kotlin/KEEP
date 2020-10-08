@@ -12,7 +12,7 @@ Make text processing API locale-agnostic by default.
 
 ## Current API review
 
-Currently, standard library provides following Common extension functions: 
+Currently, the standard library provides the following сommon extension functions: 
 * `fun String.toLowerCase(): String`
 * `fun String.toUpperCase(): String`
 * `fun String.capitalize(): String`
@@ -102,4 +102,3 @@ Previously compiled programs that use deprecated functions will still run with K
 ### Receiver types
 
 The operations could be introduced for `StringBuilder` too, but that is out of this proposal.
-
