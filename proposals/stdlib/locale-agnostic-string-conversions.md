@@ -4,6 +4,7 @@
 * **Author**: Abduqodiri Qurbonzoda
 * **Status**: Submitted
 * **Prototype**: Implemented
+* **Discussion**: https://github.com/Kotlin/KEEP/issues/223
 
 ## Summary
 
@@ -72,7 +73,7 @@ The new namings will also affect following functions:
 * Deprecate existing function `Char.toTitleCase(): Char` and introduce `Char.titlecase(): Char` as a replacement
 
 By renaming the functions we get rid of Java legacy names. 
-In Kotlin functions starting with preposition `to` convert receiver to instance of another type.
+In Kotlin functions starting with preposition `to` typically convert the receiver to an instance of another type.
 
 ## Dependencies
 
