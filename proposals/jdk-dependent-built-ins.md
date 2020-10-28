@@ -84,17 +84,17 @@ It's possible to achieve a similar effect through adding some synthetic supertyp
 
 The third solution (loading additional methods from JDK classes on the class-path) was chosen both because of it's flexibility and implementation simplicity.
 
-### Black/White Method lists
+### Visible/Hidden Method lists
 Some methods in JDK classes are undesirable in Kotlin built-ins (e.g. a lot of String methods or List.sort(), because there are Kotlin analogues with better signatures already defined).
 
 Also for Kotlin containers with mutable analogues it's unknown whether given additional method should belong to a mutable or read-only version of the interface.
 
 Thus, to provide some level of control it's proposed to maintain predefined lists in the compiler describing what to do with listed members:
-* *White list* defines the set of methods that are allowed to be visible at Kotlin call-sites,
-* *Black list* defines the set of method that are prohibited from being visible at Kotlin call-sites. At the same time such methods are still available for overriding and `super`-qualified calls
+* *Visible list* defines the set of methods that are allowed to be visible at Kotlin call-sites,
+* *Hidden list* defines the set of method that are prohibited from being visible at Kotlin call-sites. At the same time such methods are still available for overriding and `super`-qualified calls
 * *Mutable methods list* defines the set of methods that should be added to a mutable interface. By default, such methods go to the read-only interface.
 
-All methods not listed in *White* nor in *Black* lists are available for calls, but such usages should be marked with a warning because it may become unresolved in the next language version.
+All methods not listed in *Visible* nor in *Hidden* lists are available for calls, but such usages should be marked with a warning because it may become unresolved in the next language version.
 
 ### Additional member method list
 * Let `X` be some Kotlin built-in class
