@@ -155,7 +155,7 @@ Support of `sealed interface` means the following adjustments in the behavior of
 * [KClass.isSealed](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin.reflect/-k-class/is-sealed.html)
   will return `true` for a `sealed interface`. 
 * [KClass.sealedSubclasses](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin.reflect/-k-class/sealed-subclasses.html)
-  will return a list of the corresponding subcalsses of a `sealed interface`.
+  will return a list of the corresponding subclasses of a `sealed interface`.
   
 ## Open issues and future opportunities
 
