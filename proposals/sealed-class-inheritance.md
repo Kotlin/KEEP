@@ -3,8 +3,7 @@
 * **Type**: Design proposal
 * **Author**: Stanislav Erokhin
 * **Contributors**: Andrey Breslav, Alexander Udalov
-* **Status**: Under consideration
-* **Prototype**: Implemented
+* **Status**: Implemented since Kotlin 1.1
 
 ## Feedback 
 
