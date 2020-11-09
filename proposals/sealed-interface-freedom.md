@@ -118,7 +118,7 @@ classes and interfaces enjoy.
 Mixed sealed hierarchies between Java and Kotlin will not be supported. All subclasses of a sealed Kotlin class or 
 interface must be defined in Kotlin and all subclasses of a Java sealed classes or interface must be defined in Java.
      
-> We do expect this to be too restrictive in practice, since the whole sealed hierarchy must be colocated 
+> We do not expect this to be too restrictive in practice, since the whole sealed hierarchy must be colocated 
 > in the same module and package anyway, so it can be converted from Java to Kotlin as a whole if needed.
         
 ### Legacy JVM ABI (pre 15)
@@ -141,7 +141,7 @@ extend or implement a sealed Kotlin interface.
  
 ### New JVM ABI (JDK 15+)
 
-On a target JVM starting from version 15 the proposal is to emit `RestrictedSubclasses` JVM attribute for  
+On a target JVM starting from version 15 the proposal is to emit `PermittedSubclasses` JVM attribute for  
 Kotlin sealed interfaces and classes, getting rid of synthetic constructor protection scheme
 for sealed classes that is explained above.
 
