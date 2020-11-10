@@ -64,8 +64,10 @@ functional conversion that creates anonymous instances, too.
 > and an API compatibility validator.
 
 An `interface` in Kotlin is `open` by default. Among the class _modalities_ supported by Kotlin 
-(`open`, `sealed`, `abstract`, and `final`) only `open` have been allowed to be (redundantly) specified for an interface 
-and this proposal adds support for a `sealed` modality. Specifying both `sealed` and `open` modalities together is an error.
+(`open`, `sealed`, `abstract`, and `final`) only `abstract` have been allowed to be (redundantly) specified for an interface 
+(with `open` currently being a warning) and this proposal adds support for a `sealed` modality. 
+`sealed` modality takes precedence over `abstract` 
+(just like with classes) and whether it is an error or warning is TBD.
 
 > Unlike Java, Kotlin subclasses of a sealed interface don't have special rules for their modality. An implementing 
 > class is `final` by default and extending interface is `abstract` by default, just like otherwise normal Kotlin class
