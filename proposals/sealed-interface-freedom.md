@@ -98,7 +98,7 @@ Because of potential multiple inheritance of interfaces, it entails that the rec
 now forms a directed acyclic graph (DAG). Also, there is a possibility that enum classes 
 implement sealed interfaces. In this case, all the enum entries of the corresponding enum class are included as a part 
 of this DAG (effectively treating `enum class` and a special case of a `sealed class` with object-only subclasses). 
-The algorithm will cover `is T` type tests (when `T` is a part of this DAG) and instance euqality tests for 
+The algorithm will cover `is T` type tests (when `T` is a part of this DAG) and instance equality tests for 
 objects and enum entries that are part of this DAG.
 
 > Note, that we _do not_ propose to add support for non-sealed interfaces and classes into the exhaustiveness analysis
