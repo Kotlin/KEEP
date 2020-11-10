@@ -4,6 +4,8 @@
 * **Author**: Roman Elizarov
 * **Status**: Under consideration
 
+Discussion of this proposal is held in [KEEP-226](https://github.com/Kotlin/KEEP/issues/226).
+
 ## Introduction and motivation
 
 Kotlin has the concept of a `sealed class` since its first version. Initially, it was only allowed to write inheriting
