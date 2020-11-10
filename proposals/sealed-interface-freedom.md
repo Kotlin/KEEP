@@ -27,8 +27,8 @@ Java language features, Kotlin needs to introduce the matching concepts
 
 The goals of this proposal are:
 
-- Introduce the concept of `sealed interface`.
-- Allow more freedom to `sealed class`, unify both `sealed interface` and `sealed class` as the same concept.
+- Introduce the concept of a `sealed interface`.
+- Allow more freedom to a `sealed class`, unify a `sealed interface` and a `sealed class` as the same concept.
 - Seamlessly interoperate with JDK 15+ sealed classes and interfaces.
 
 ## Design of sealed interfaces
@@ -56,7 +56,7 @@ functional conversion that creates anonymous instances, too.
 > on sealed classes that are introduced by JVM specification.
 >
 > Unlike Java, Kotlin does not require any kind of `permits` annotation even when subclasses are specified in another 
-> file, which honors Kotlin tradition of avoiding source-code repetition of information that could be interred by 
+> file, which honors Kotlin tradition of avoiding source-code repetition of information that could be inferred by 
 > the compiler. Just like return types of functions are optionally specified, we do reserve a possibility that, 
 > in the future, we might add an optional way to specify some kind of `permits` list, but we are reluctant to do this 
 > from day one due to the lack of evidence that this will significantly help to substantiate additional syntactic 
@@ -99,7 +99,7 @@ This algorithm is extended to support `sealed interface` type of a `when` subjec
 Because of potential multiple inheritance of interfaces, it entails that the recursive hierarchy of its sealed subclasses  
 now forms a directed acyclic graph (DAG). Also, there is a possibility that enum classes 
 implement sealed interfaces. In this case, all the enum entries of the corresponding enum class are included as a part 
-of this DAG (effectively treating `enum class` and a special case of a `sealed class` with object-only subclasses). 
+of this DAG (effectively treating `enum class` as a special case of a `sealed class` with object-only subclasses). 
 The algorithm will cover `is T` type tests (when `T` is a part of this DAG) and instance equality tests for 
 objects and enum entries that are part of this DAG.
 
@@ -133,13 +133,13 @@ by source code in Java (since Java does not resolve `synthetic` declarations). T
 with relaxed restrictions on sealed classes.
 
 For a `sealed interface` this proposal is not to attempt any protection scheme, but just compile an interface
-as if it was not sealed. Instead, we would implement only an IDE checker for the Java code that is attempting to
+as if it was not sealed. We will introduce an IDE checker for the Java code that is attempting to
 extend or implement a sealed Kotlin interface.
 
 > We've considered at least two protection schemes: mangling the JVM name of a sealed interface and adding 
 > synthetic members that are not implementable in Java to it. We've found both schemes to be quite disruptive with 
 > lots of problems that do not balance relatively minor inconvenience of accidentally implementing a Kotlin sealed 
->interface from Java code.
+> interface from Java code.
  
 ### New JVM ABI (JDK 15+)
 
