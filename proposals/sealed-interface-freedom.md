@@ -59,7 +59,7 @@ functional conversion that creates anonymous instances, too.
 > in the future, we might add an optional way to specify some kind of `permits` list, but we are reluctant to do this 
 > from day one due to the lack of evidence that this will significantly help to substantiate additional syntactic 
 > feature in the language.  We plan to address the needs of seeing the list of subclasses by other tools, such as IDE 
-> and  an API compatibility validator.
+> and an API compatibility validator.
 
 An `interface` in Kotlin is `open` by default. Among the class _modalities_ supported by Kotlin 
 (`open`, `sealed`, `abstract`, and `final`) only `open` have been allowed to be (redundantly) specified for an interface 
