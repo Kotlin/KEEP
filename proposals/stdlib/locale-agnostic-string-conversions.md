@@ -58,8 +58,10 @@ To combat the issue we would like to deprecate current API and introduce new loc
 
 * Deprecate existing locale-dependent function `String.toUpperCase(): String` and introduce locale-agnostic function `String.uppercase(): String` as a replacement 
 * Deprecate existing locale-dependent function `String.toLowerCase(): String` and introduce locale-agnostic function `String.lowercase(): String` as a replacement 
-* Deprecate existing locale-dependent function `String.capitalize(): String` and introduce locale-agnostic function `String.capitalizeFirst(): String` as a replacement 
-* Deprecate existing locale-dependent function `String.decapitalize(): String` and introduce locale-agnostic function `String.decapitalizeFirst(): String` as a replacement 
+* Deprecate existing locale-dependent function `String.capitalize(): String` without replacement
+* Deprecate existing locale-dependent function `String.decapitalize(): String` without replacement
+* Introduce `String.replaceFirstChar(transform: (Char) -> Char): String`
+* Introduce `String.replaceFirstChar(transform: (Char) -> CharSequence): String`
 
 While the replacements are not equivalent to the existing functions, most likely they are ones that were originally needed.
 
@@ -67,11 +69,14 @@ The new namings will also affect following functions:
 
 * Deprecate existing function `String.toLowerCase(locale: Locale): String` and introduce `String.lowercase(locale: Locale): String` as a replacement
 * Deprecate existing function `String.toUpperCase(locale: Locale): String` and introduce `String.uppercase(locale: Locale): String` as a replacement
-* Deprecate existing function `String.capitalize(locale: Locale): String` and introduce `String.capitalizeFirst(locale: Locale): String` as a replacement
-* Deprecate existing function `String.decapitalize(locale: Locale): String` and introduce `String.decapitalizeFirst(locale: Locale): String` as a replacement
-* Deprecate existing function `Char.toLowerCase(): Char` and introduce `Char.lowercase(): Char` as a replacement
-* Deprecate existing function `Char.toUpperCase(): Char` and introduce `Char.uppercase(): Char` as a replacement
-* Deprecate existing function `Char.toTitleCase(): Char` and introduce `Char.titlecase(): Char` as a replacement
+* Deprecate existing function `String.capitalize(locale: Locale): String` without replacement
+* Deprecate existing function `String.decapitalize(locale: Locale): String` without replacement
+* Deprecate existing function `Char.toLowerCase(): Char` and introduce `Char.lowercaseChar(): Char` as a replacement
+* Deprecate existing function `Char.toUpperCase(): Char` and introduce `Char.uppercaseChar(): Char` as a replacement
+* Deprecate existing function `Char.toTitleCase(): Char` and introduce `Char.titlecaseChar(): Char` as a replacement
+* Introduce `Char.lowercase(): String`
+* Introduce `Char.uppercase(): String`
+* Introduce `Char.titlecase(): String`
 
 By renaming the functions we get rid of Java legacy names. 
 In Kotlin functions starting with preposition `to` typically convert the receiver to an instance of another type.
