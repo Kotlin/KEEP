@@ -38,7 +38,7 @@ Add support for `sealed` modality on `interface` type with any visibility.
 
 Other classes or interfaces  _in the same compilation unit_ and _in the package_ may implement or extend the sealed interface, 
 forming a set of direct subclasses that is closed for further extension and is known at compile-time. 
-Direct subclasses may be top-level or nested inside any number of other named classes, named interfaces, or named objects in the same package,
+Direct subclasses may be top-level or nested inside any number of other named classes, named interfaces, or named objects in the same package.
 Subclass of a sealed interface can be `enum class`, but `annotation class` subclass is not allowed. 
 
 > Kotlin `annotation class` is not allowed to implement any interfaces whatsoever.  
