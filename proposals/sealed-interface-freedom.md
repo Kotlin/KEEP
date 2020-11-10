@@ -68,7 +68,7 @@ An `interface` in Kotlin is `open` by default. Among the class _modalities_ supp
 and this proposal adds support for a `sealed` modality. Specifying both `sealed` and `open` modalities together is an error.
 
 > Unlike Java, Kotlin subclasses of a sealed interface don't have special rules for their modality. An implementing 
-> class is `final` by default and extending interface is `open` by default, just like otherwise normal Kotlin class
+> class is `final` by default and extending interface is `abstract` by default, just like otherwise normal Kotlin class
 > or interface.       
 
 ## More freedom for sealed classes
