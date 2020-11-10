@@ -26,7 +26,7 @@ Java language features, Kotlin needs to introduce the matching concepts
 The goals of this proposal are:
 
 - Introduce the concept of `sealed interface`.
-- Allow more freedom to `sealed class`, unify both `selead interface` and `sealed class` as the same concept.
+- Allow more freedom to `sealed class`, unify both `sealed interface` and `sealed class` as the same concept.
 - Seamlessly interoperate with JDK 15+ sealed classes and interfaces.
 
 ## Design of sealed interfaces
