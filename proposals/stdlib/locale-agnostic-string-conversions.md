@@ -60,8 +60,8 @@ To combat the issue we would like to deprecate current API and introduce new loc
 * Deprecate existing locale-dependent function `String.toLowerCase(): String` and introduce locale-agnostic function `String.lowercase(): String` as a replacement 
 * Deprecate existing locale-dependent function `String.capitalize(): String` without replacement
 * Deprecate existing locale-dependent function `String.decapitalize(): String` without replacement
-* Introduce `String.replaceFirstChar(transform: (Char) -> Char): String`
-* Introduce `String.replaceFirstChar(transform: (Char) -> CharSequence): String`
+* Introduce `String.replaceFirstChar(transform: (Char) -> Char): String` as a more general way to transform the first character
+* Introduce `String.replaceFirstChar(transform: (Char) -> CharSequence): String` as a more general way to transform the first character
 
 While the replacements are not equivalent to the existing functions, most likely they are ones that were originally needed.
 
@@ -74,9 +74,11 @@ The new namings will also affect following functions:
 * Deprecate existing function `Char.toLowerCase(): Char` and introduce `Char.lowercaseChar(): Char` as a replacement
 * Deprecate existing function `Char.toUpperCase(): Char` and introduce `Char.uppercaseChar(): Char` as a replacement
 * Deprecate existing function `Char.toTitleCase(): Char` and introduce `Char.titlecaseChar(): Char` as a replacement
-* Introduce `Char.lowercase(): String`
-* Introduce `Char.uppercase(): String`
-* Introduce `Char.titlecase(): String`
+* Introduce `Char.lowercase(): String` to support one-to-many lower case mappings
+* Introduce `Char.uppercase(): String` to support one-to-many upper case mappings
+* Introduce `Char.titlecase(): String` to support one-to-many title case mappings
+
+Note that functions accepting `Locale` are available only in Kotlin/JVM.
 
 By renaming the functions we get rid of Java legacy names. 
 In Kotlin functions starting with preposition `to` typically convert the receiver to an instance of another type.
