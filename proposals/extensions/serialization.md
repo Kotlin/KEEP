@@ -2,7 +2,7 @@
 
 * **Type**: Design proposal
 * **Authors**: Leonid Startsev, Roman Elizarov, Vsevolod Tolstopyatov
-* **Status**: Implemented in 1.4 as a compiler plugin.
+* **Status**: Implemented in 1.4 as a compiler plugin and standalone library.
 * **Discussion**: [KEEP-149](https://github.com/Kotlin/KEEP/issues/149)
 
 ## Feedback
