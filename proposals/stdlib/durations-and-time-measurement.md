@@ -297,7 +297,9 @@ Different platforms provide different sources of monotonic time:
 - Kotlin/JVM: [`System.nanoTime()`](https://docs.oracle.com/javase/8/docs/api/java/lang/System.html#nanoTime--)
 - Kotlin/JS (Node.js): [`process.hrtime()`](https://nodejs.org/api/process.html#process_process_hrtime_time)
 - Kotlin/JS (Browser): [`window.performance.now()`](https://www.w3.org/TR/hr-time/#sec-performance) or `Date.now()`
-- Kotlin/Native: [`std::chrono::high_resolution_clock`](https://en.cppreference.com/w/cpp/chrono/high_resolution_clock)
+- Kotlin/Native: [`std::chrono::high_resolution_clock`](https://en.cppreference.com/w/cpp/chrono/high_resolution_clock), 
+  falling back to [`std::chrono::steady_clock`](https://en.cppreference.com/w/cpp/chrono/steady_clock) 
+  in case if the high resolution clock is not steady.
 
 In Android environment a better way to measure time intervals is to use [`SystemClock.elapsedRealtimeNanos`](https://developer.android.com/reference/android/os/SystemClock.html#elapsedRealtimeNanos())
 rather than `System.nanoTime()` because the former continues running when the device goes into a deep sleep. 
