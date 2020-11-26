@@ -346,7 +346,7 @@ the standard libraries that govern their semantics.
     For example, blocks of code in curly braces following `launch`, `future`, and `sequence` functions,
     as shown in [use cases](#use-cases), are suspending lambdas.
 
-    > Note: Suspending lambdas may invoke suspending functions in all places of their code where a 
+    > Note: Regular lambdas may invoke suspending functions in all places of their code where a 
     [non-local](https://kotlinlang.org/docs/reference/returns.html) `return` statement
     from this lambda is allowed. That is, suspending function calls inside inline lambdas 
     like [`apply{}` block](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/apply.html) are allowed,
