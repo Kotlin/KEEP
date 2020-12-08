@@ -125,7 +125,7 @@ No additional dependencies are needed.
 
 ## Reference implementation
 
-The reference implementation is provided in the pull request [PR #3965](https://github.com/JetBrains/kotlin/pull/3965).
+The reference implementation is provided in the pull request [PR #3969](https://github.com/JetBrains/kotlin/pull/3969).
 
 ## Naming
 
