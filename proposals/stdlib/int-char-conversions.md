@@ -9,11 +9,11 @@
 
 ## Summary
 
-Deprecate existing number to/from Char conversion functions and introduce new ones to make conversions unambiguous.
+Deprecate existing number to/from char conversion functions and introduce new ones to make conversions unambiguous.
 
 ## Similar API review
 
-Currently, the `Char` provides the following member functions in standard library: 
+Currently, `Char` provides the following member functions in standard library: 
 * `fun Char.toByte(): Byte`
 * `fun Char.toShort(): Short`
 * `fun Char.toInt(): Int`
@@ -112,7 +112,7 @@ fun Char.digitToIntOrNull(radix: Int = 10): Int?
 fun Int.digitToChar(radix: Int = 10): Char
 ```
 
-`isDigit` is considered to be `true` for a `Char` if the chars Unicode general category is "Nd" (`CharCategory.DECIMAL_DIGIT_NUMBER`).
+`isDigit` is considered to be `true` for a `Char` if the Unicode general category of the `Char` is "Nd" (`CharCategory.DECIMAL_DIGIT_NUMBER`).
 
 ## Dependencies
 
