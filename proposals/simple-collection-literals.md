@@ -8,7 +8,7 @@ from [KEEP 112](https://github.com/Kotlin/KEEP/pull/112).
 * **Status**: Under consideration
 * **Prototype**: Not started
 
-Discussion of this proposal is held in [KEEP #TODO](https://github.com/Kotlin/KEEP/issues/TODO).
+Discussion of this proposal is held in [KEEP issue #230](https://github.com/Kotlin/KEEP/issues/230).
 
 
 ## Goal ##
@@ -29,7 +29,7 @@ understand.
 
 ## Feedback ##
 
-Discussion of this proposal is held in [this issue](https://github.com/Kotlin/KEEP/issues/TODO).
+Discussion of this proposal is held in [KEEP issue #230](https://github.com/Kotlin/KEEP/issues/230).
 
 Regrettably I have very little time to respond to feedback, so I offer this proposal mainly as a draft for others to
 develop.  
