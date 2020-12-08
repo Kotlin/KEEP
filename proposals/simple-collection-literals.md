@@ -100,17 +100,147 @@ These restrictions could be removed or relaxed in future if desired.
 
 ## Use Cases ##
 
-TODO
+### Common Project-Wide Choice ###
 
-* What if I want to create nested collections of multiple different types at different levels?
+I expect that in many cases developers will want to use the same implementations throughout a module or multi-module
+project.  Within a single module, or even for a multi-module application (not library) this could be achieved with an
+internal "proxying" definition in the default package as follows.
 
-  * TODO: Use wrapper or extension functions.  Or, define overloads of the functions.
+```Kotlin
+import some.other.pkg.literalCollectionOf as otherLiteralCollectionOf 
+import some.other.pkg.literalMapOf as otherLiteralMapOf
 
-* What if I want to use the same literal creation functions throughout my module, or throughout a multi-module
-application?
+inline fun <T> literalCollectionOf(vararg ts: T): Set<T> = otherLiteralCollectionOf(*ts)
+inline fun <K, V> literalMapOf(vararg pairs : Pair<K, V>) : Map<K, V> = otherLiteralMapOf(*pairs)
+```
 
-  * TODO: Within a module, you could create internal callable bindings in the default package.
+In the case of multiple modules built for re-use as libraries, it doesn't make sense to put public definitions in the
+default pacakge as that could clash when used together with other libraries.  Instead each file would have to import
+the same definition, and might do so via "proxying" definitions like the above to reinforce standardisation.
 
+### Static Variation ###
+
+This proposal allows for the construction of literals in a given scope to vary depending on the number or type of the
+arguments.  For example, you might want sets which are "sorted if possible", as follows.
+
+```Kotlin
+fun <T : Comparable<T>> literalCollectionOf(vararg ts: T): SortedSet<T> = sortedSetOf(*ts)
+fun <T> literalCollectionOf(vararg ts: T): Set<T> = setOf(*ts)
+fun <T> literalCollectionOf(): Set<T> = emptySet()
+``` 
+
+### Dynamic Variation ###
+
+It is also possible to have the construction be intentionally variable at runtime.  For example, the following
+definitions would allow some or all tests to modify behaviour of production code to use a less space-efficient map
+implementation, to have predictable ordering when running tests. 
+
+```Kotlin
+@RequiresOptIn(message = "This API is experimental. It may be changed in the future without notice.")
+@Retention(AnnotationRetention.BINARY)
+@Target(AnnotationTarget.PROPERTY)
+annotation class TestParameter
+
+@TestParameter
+val useOrderedMaps = true
+
+@OptIn(TestParameter::class)
+fun <K, V> literalMapOf(vararg pairs : Pair<K, V>) : Map<K, V> {
+    return if (useOrderedMaps) {
+        mapOf(*pairs)
+    } else {
+        linkedMapOf(*pairs)
+    }
+}
+```
+
+Of course, testing behaviour in a way which differs from production is generally a bad idea, but this is just an
+example.  You might want to configure the type created based on integrations with third-party libraries, or performance
+considerations in different deployments, etc.
+
+### Nested Variation ###
+
+Although it's not a goal of the proposal, it allows for the same literal syntax to create different types of
+collection at different levels of nesting, provided the types at each level can always be inferred based on the
+innermost level.  In the following example, the type of `data` would be `List<Set<Any>>`.   
+
+```Kotlin
+fun <T, S : Set<T>> literalCollectionOf(vararg ts: S): List<S> = listOf(*ts)
+fun <T> literalCollectionOf(vararg ts: T): Set<T> = setOf(*ts)
+
+val data = [
+    [1, 2, 3],
+    ["one", "two", "three"],
+    [1.0, 2.0, 3.0],
+]
+```
+
+If this is deemed too confusing, it could be avoided by having the compiler require all overloads to accept the same
+argument type, even if there are overloads with different numbers of arguments.  In that case, a similar effect could 
+
+
+### Creating Non-Collection Types ###
+
+Unless further restrictions are added to the proposal, it allows creating objects which are not collections; for
+example, data class instances for use in test data.
+
+```Kotlin
+data class Employee(val name: String, val id: UInt)
+data class Department(val name: String, val manager: Employee, val members: List<Employee>)
+data class Company(val name: String, val units: List<Department>)
+
+fun literalCollectionOf(name: String, id: UInt) = Employee(name, id)
+fun literalCollectionOf(name: String, manager: Employee, members: List<Employee>) =
+    Department(name, manager, members)
+fun literalCollectionOf(name: String, units: List<Department>) =
+    Company(name, units)
+fun <T> literalCollectionOf(vararg ts: T) = listOf(*ts)
+
+val data = ["MyCorp", [
+    ["Sales",
+        ["Noriko", 44u],
+        [
+            ["Barb", 21u],
+            ["Jim", 34u],
+        ]
+    ],
+    ["Dev",
+        ["Angus", 104u],
+        [
+            ["Paolo", 2u],
+            ["Mika", 99u]
+        ]
+    ]
+]]
+```
+
+I found it confusing to construct this example, so I imagine it could be confusing in use.  A simpler approach which
+would be almost as terse would be to define local properties with very short names, bound to constructor references.   
+
+```Kotlin
+val E = ::Employee
+val D = ::Department
+val C = ::Company
+val data2 = C("MyCorp", [
+    D("Sales",
+        E("Noriko", 44u),
+        [
+            E("Barb", 21u),
+            E("Jim", 34u),
+        ]
+    ),
+    D("Dev",
+        E("Angus", 104u),
+        [
+            E("Paolo", 2u),
+            E("Mika", 99u),
+        ]
+    )
+])
+```
+
+It is an Open Question (below) as to whether the compiler should prevent this.  It still has some uses which might be
+very helpful in some domains, for example for 3D vector literals in tests, if they are represented by a data class. 
 
 ## Syntax ##
 
@@ -124,27 +254,27 @@ This builds on the formal Kotlin grammar in
 (* Changes to Existing Grammar *)
 
 collectionLiteral
-    : sequenceLiteral
-    : dictionaryLiteral
+    : listLikeLiteral
+    : mapLikeLiteral
     ;
 
 
-(* Sequence Literals *)
+(* List-like Literals *)
 
-sequenceLiteral
+listLikeLiteral
     : '[' expression (',' expression)* '.'? ']'
     : '[' ']'
     ;
 
 
-(* Dictionary Literals *)
+(* Map-like Literals *)
 
-dictionaryLiteral
-    : '[' dictionaryItem (',' dictionaryItem)* '.'? ']'
+mapLikeLiteral
+    : '[' mapItem (',' mapItem)* '.'? ']'
     : '[' ':' ']'
     ;
 
-dictionaryItem
+mapItem
     : expression ":" expression
     ;
 ```
@@ -213,9 +343,28 @@ there is specifically an overload of `literalCollectionOf` in scope which takes 
 argument positions, and not any supertype.  (I considered having an alternative syntax for map-like literals, e.g.,
 `#[ ... ]` to make the difference more obvious but that doesn't prevent the above error.)
 
+OQ:CollectionLiteral.PreventMixedTypeOverloads: As discussed above, it might be desirable to have the compiler issue
+a warning or error if either special name is bound to something with overloads which have different argument types, as
+opposed to just different numbers of arguments.  
+
+OQ:CollectionLiteral.PreventMixedParamTypes: As discussed above, it might be desirable to have the compiler issue a
+warning or error if any function value or overload bound to either special name has different types for different
+arguments within a single function value or overload.  
+
+OQ:CollectionLiteral.ReturnTypeConstraint: As discussed above, it might be desirable to have the compiler issue a
+warning or error if any function value or overload bound to either special name returns a type which is not a
+collection type.
+
 OQ:CollectionLiteral.ReturnTypeConstraint.Variance: If it is deemed desirable to restrict the return type of callable
 definitions of the special names, I'm not sure if or how the variance of the generic arguments of the return type
 ought to be restricted.
+
+OQ:CollectionLiteral.EnforceImportPackage: To enforce use of the same definitions across a project, it might be
+desirable to have a compiler option to produce a warning or error if these special names are imported from or defined
+outside a given package hierarchy prefix.  This could be particularly useful in the context of IntelliJ, where its
+ability to automatically add imports for unresolved imports sometimes results in importing the symbol from an
+unintended source.  That might furthermore need some option (perhaps an annotation) to escape from the restriction in
+individual files, for example.
  
 
 ## Alternatives Considered ##
