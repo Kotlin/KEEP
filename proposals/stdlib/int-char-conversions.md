@@ -133,7 +133,7 @@ Alternative naming suggestions are welcome.
 
 ## Compatibility impact
 
-The introduced functions will be marked with `@ExperimentalStdlibApi` until the major release of Kotlin 1.6.
-With release of Kotlin 1.6 the new functions will cease to be experimental, and the old Number <-> Char functions will become deprecated.
+The introduced functions will be marked with `@ExperimentalStdlibApi` until the next major release of Kotlin, 1.5.
+With release of Kotlin 1.5 the new functions will cease to be experimental, and the old Number <-> Char functions will become deprecated.
 
-Previously compiled programs that use deprecated functions will still run with Kotlin 1.6.
+Previously compiled programs that use deprecated functions will still run with Kotlin 1.5.
