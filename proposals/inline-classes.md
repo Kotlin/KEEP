@@ -2,8 +2,8 @@
 
 * **Type**: Design proposal
 * **Author**: Mikhail Zarechenskiy
-* **Contributors**: Andrey Breslav, Denis Zharkov, Dmitry Petrov, Ilya Gorbunov, Roman Elizarov, Stanislav Erokhin
-* **Status**: Under consideration
+* **Contributors**: Andrey Breslav, Denis Zharkov, Dmitry Petrov, Ilya Gorbunov, Roman Elizarov, Stanislav Erokhin, Ilmir Usmanov
+* **Status**: Beta since 1.4.30
 * **Prototype**: Implemented in Kotlin 1.2.30
 
 Discussion of this proposal is held in [this issue](https://github.com/Kotlin/KEEP/issues/104).
@@ -16,6 +16,11 @@ but the use of such classes would require additional heap allocations, which can
 We propose to support identityless inline classes that would allow to introduce wrappers for values without additional overhead related 
 to additional heap allocations.
 
+Inline classes are a subset of value-based classes, which are classes without identity and hold values only.
+
+Inline classes behave like primitive types. Like primitive types, passing inline class to function or returning from it does not
+require a wrapper with a few exceptions, described in the relevant section.
+
 ## Motivation / use cases
 
 Inline classes allow creating wrappers for a value of a certain type and such wrappers would be fully inlined. 
@@ -25,10 +30,14 @@ Use cases:
 
 - Unsigned types
 ```kotlin
-inline class UInt(private val value: Int) { ... }
-inline class UShort(private val value: Short) { ... }
-inline class UByte(private val value: Byte) { ... }
-inline class ULong(private val value: Long) { ... }
+@JvmInline
+value class UInt(private val value: Int) { ... }
+@JvmInline
+value class UShort(private val value: Short) { ... }
+@JvmInline
+value class UByte(private val value: Byte) { ... }
+@JvmInline
+value class ULong(private val value: Long) { ... }
 ```
 
 - Native types like `size_t` for Kotlin/Native
@@ -38,7 +47,8 @@ inline class ULong(private val value: Long) { ... }
     
     Example:
     ```kotlin
-    inline enum class Foo(val x: Int) {
+    @JvmInline
+    enum class Foo(val x: Int) {
         A(0), B(1);
         
         fun example() { ... }
@@ -57,7 +67,8 @@ class A {
 }
 
 
-inline class InlinedDelegate<T>(var node: T) {
+@JvmInline
+value class InlinedDelegate<T>(var node: T) {
     operator fun setValue(thisRef: A, property: KProperty<*>, value: T) {
         if (node !== value) {
             thisRef.notify(node, value)
@@ -74,8 +85,10 @@ inline class InlinedDelegate<T>(var node: T) {
 - Inline wrappers
     - Typed wrappers
     ```kotlin
-    inline class Name(private val s: String)
-    inline class Password(private val s: String)
+    @JvmInline
+    value class Name(private val s: String)
+    @JvmInline
+    value class Password(private val s: String)
     
     fun foo() {
         var n = Name("n") // no actual instantiation, on JVM type of `n` is String
@@ -93,25 +106,34 @@ inline class InlinedDelegate<T>(var node: T) {
     }
     
     // Kotlin
-    inline class RefinedFoo(val f: Foo) {
+    @JvmInline
+    value class RefinedFoo(val f: Foo) {
         inline fun <T> array(): Array<T> = f.objects() as Array<T>
     }
     ``` 
 
 ## Description
 
-Inline classes are declared using soft keyword `inline` and must have a single property:
+Inline classes are declared using soft keyword `value` and must have a single property:
 ```kotlin
-inline class Foo(val i: Int)
+value class Foo(val i: Int)
 ```
-Property `i` defines type of the underlying runtime representation for inline class `Foo`, while at compile time type will be `Foo`.
+In Kotlin/JVM, however, they should be annotated with additional `@JvmInline` annotation:
+```kotlin
+@JvmInline
+value class Foo(val i: Int)
+```
+In Kotlin/Native and Kotlin/JS, because of the closed-world model, value-based classes with single read-only property are inline classes.
+
+The property `i` defines type of the underlying runtime representation for inline class `Foo`, while at compile time type will be `Foo`.
 
 From language point of view, inline classes can be considered as restricted classes, they can declare various members, operators, 
 have generics. 
 
 Example:
 ```kotlin
-inline class Name(val s: String) : Comparable<Name> {
+@JvmInline
+value class Name(val s: String) : Comparable<Name> {
     override fun compareTo(other: Name): Int = s.compareTo(other.s)
     
     fun greet() {
@@ -129,65 +151,34 @@ fun greet() {
 
 Currently, inline classes must satisfy the following requirements:
 
-- Inline class must have a public primary constructor with a single value parameter
+- Inline class must have a primary constructor with a single value parameter
 - Inline class must have a single read-only (`val`) property as an underlying value, which is defined in primary constructor
 - Underlying value cannot be of the same type that is containing inline class
 - Inline class with undefined (recursively defined) generics, e.g. generics with an upper bound equal to the class, is prohibited
     ```kotlin
-    inline class A<T : A<T>>(val x: T) // error
+    @JvmInline
+    value class A<T : A<T>>(val x: T) // error
     ```
-- Inline class cannot have `init` block
 - Inline class must be final
 - Inline class can implement only interfaces
 - Inline class cannot have backing fields
     - Hence, it follows that inline class can have only simple computable properties (no lateinit/delegated properties)
-- Inline class must be a toplevel class 
+- Inline class must be a toplevel or a nested class. Local and inner inline classes are not allowed.
+- Inline classes cannot have `var` properties as well as extension `var` properties.
 
-Sidenotes:
-
-- Let's elaborate requirement of having public primary constructor and restriction of `init` blocks.
-For example, we want to have an inline class for some bounded value:
-    ```kotlin
-    inline class Positive(val value: Int) {
-        init { 
-            assert(value > 0) "Value isn't positive: $value" 
-        }
-    }
-  
-    fun foo(p: Positive) {}
-    ```
-    
-    Because of inlining, method `foo` has parameter of type `int` from Java point of view, so it's possible to pass any number as an argument
-    and there will be no assertion as `init` block isn't evaluated at this moment. Since it's impossible to control behaviour of `init` block 
-    execution, we restrict it for inline classes.
-    
-    Unfortunately, it's not enough as `init` blocks can be emulated via factory methods:
-    ```kotlin
-    inline class Positive private constructor(val value: Int) {
-        companion object {
-            fun create(x: Int) {
-                assert(x > 0) "Value isn't positive: x"
-                return Positive(x)  
-            }  
-        }
-    }
-  
-    fun foo(p: Positive) {}
-    ```
-    
-    Again, method `foo` has parameter of type `int` from Java point of view, so it's possible to create values of type `Positive`
-    implicitly, even with the presence of private constructor.
-    
-    To make behaviour more predictable and consistent with Java, we demand public primary constructor and restrict `init` blocks.
+Let us explain the rationale behind the last limitation. We want the `value.properties = 1` syntax to change the value of value-based
+class: instead of generating `value.setProperty(1)` the compiler will generate something like `value = value.clone(property = 1)`.
+So, we reserve the syntax of mutating property to mutate the class in the future.
 
 ### Other restrictions
 
 The following restrictions are related to the usages of inline classes:
 
-- Referential equality (`===`) is prohibited for inline classes
+- Referential equality (`===`) is prohibited for all value-based classes, including inline classes
 - vararg of inline class type is prohibited
 ```
-inline class Foo(val s: String)
+@JvmInline
+value class Foo(val s: String)
 
 fun test(vararg foos: Foo) { ... } // should be an error  
 ```
@@ -203,7 +194,8 @@ Examples:
 ```kotlin
 interface I
 
-inline class Foo(val i: Int) : I
+@JvmInline
+value class Foo(val i: Int) : I
 
 fun asInline(f: Foo) {}
 fun <T> asGeneric(x: T) {}
@@ -232,7 +224,8 @@ extra boxing/unboxing operations.
 ##### Inline classes over primitive types
 Consider the following example:
 ```kotlin
-inline class ICPrimitive(val x: Int)
+@JvmInline
+value class ICPrimitive(val x: Int)
 
 fun foo(i: ICPrimitive) {}
 fun bar(i: ICPrimitive?) {}
@@ -252,7 +245,8 @@ So,
 
 Now, let's consider an inline class over some reference type:
 ```kotlin
-inline class ICReference(val s: String)
+@JvmInline
+value class ICReference(val s: String)
 
 fun foo(i: ICReference) {}
 fun bar(i: ICReference?) {}
@@ -270,7 +264,8 @@ So,
 
 Now, what if inline class is declared over some nullable reference type?
 ```kotlin
-inline class ICNullable(val s: String?)
+@JvmInline
+value class ICNullable(val s: String?)
 
 fun foo(i: ICNullable) {}
 fun bar(i: ICNullable?) {}
@@ -299,8 +294,10 @@ So,
 
 Besides these cases, inline class can also be declared over some other inline class:
 ```kotlin
-inline class IC2(val i: IC)
-inline class IC2Nullable(val i: IC?)
+@JvmInline
+value class IC2(val i: IC)
+@JvmInline
+value class IC2Nullable(val i: IC?)
 ```
 
 Mapping rules for `IC2Nullable` are simple:
@@ -317,10 +314,13 @@ Rationale for these rules is the same as in the previous steps: for nullable typ
 `null` and distinguish `nulls` from inline classes over `nulls`. 
 
 Example, let's consider the following hierarchy of inline classes:
-```
-inline class IC1(val s: String)
-inline class IC2(val ic1: IC1?)
-inline class IC3(val ic2: IC2)
+```kotlin
+@JvmInline
+value class IC1(val s: String)
+@JvmInline
+value class IC2(val ic1: IC1?)
+@JvmInline
+value class IC3(val ic2: IC2)
 
 fun foo(i: IC3) {}
 fun bar(i: IC3?) {} 
@@ -335,7 +335,8 @@ If inline class type is used in generic position, then its boxed type will be us
 ```
 // Kotlin: sample.kt
 
-inline class Name(val s: String)
+@JvmInline
+value class Name(val s: String)
 
 fun generic(names: List<Name>) {} // generic signature will have `List<Name>` as for parameters type
 fun simple(): Name = Name("Kt")
@@ -355,7 +356,8 @@ This is needed to preserve information about inline classes at runtime.
 
 Consider the following sample:
 ```kotlin
-inline class Generic<T>(val x: T)
+@JvmInline
+value class Generic<T>(val x: T)
 
 fun foo(g: Generic<Int>) {}
 ```
@@ -364,7 +366,8 @@ Now, type `Generic<Int>` can be mapped either to `java.lang.Integer`, `java.lang
 
 Same question arises with arrays:
 ```kotlin
-inline class GenericArray<T>(val y: Array<T>)
+@JvmInline
+value class GenericArray<T>(val y: Array<T>)
 
 fun foo(g: GenericArray<Int>) {} // `g` has type `Integer[]` or `Object[]`?
 ``` 
@@ -373,14 +376,16 @@ Therefore, because of this ambiguity, such cases are going to be forbidden in th
 
 * Sidenote: maybe it's worth to consider inline classes with reified generics:
     ```kotlin
-    inline class Reified<reified T>(val x: T)
+    @JvmInline
+    value class Reified<reified T>(val x: T)
     
     fun foo(a: Reified<Int>, b: Reified<String>) // a has type `Int`, b has type `String`
     ``` 
 
 Generic inline classes with underlying value not of type that defined by type parameter or generic array are mapped as usual generics:
 ```kotlin
-inline class AsList<T>(val ls: List<T>)
+@JvmInline
+value class AsList<T>(val ls: List<T>)
 
 fun foo(param: AsList<String>) {}
 ```
@@ -395,7 +400,8 @@ _Note: this functionality is added in Kotlin 1.3.20._
 Class literals and `javaClass` property are available for expressions of inline class types.
 In both cases resulting `KClass` or `java.lang.Class` object will represent wrapper for used inline class:
 ```kotlin
-inline class Duration(val seconds: Int)
+@JvmInline
+value class Duration(val seconds: Int)
 
 fun test(duration: Duration) {
     // the following expressions are translated into class objects for "Duration" class
@@ -410,7 +416,8 @@ fun test(duration: Duration) {
 
 Also, it's possible to use `call`/`callBy` for functions that have inline class types in their signatures:
 ```kotlin
-inline class S(val value: String) {
+@JvmInline
+value class S(val value: String) {
     operator fun plus(other: S): S = S(this.value + other.value)
 }
 
@@ -454,7 +461,8 @@ Methods from `Any` (`toString`, `hashCode`, `equals`) can be useful for a user-d
 Methods `toString` and `hashCode` can be overridden as usual methods from `Any`. For method `equals` we're going to introduce new operator 
 that represents "typed" `equals` to avoid boxing for inline classes:
 ```kotlin
-inline class Foo(val s: String) {
+@JvmInline
+value class Foo(val s: String) {
     operator fun equals(other: Foo): Boolean { ... }
 }
 ```
@@ -467,12 +475,14 @@ By default, compiler will automatically generate `equals`, `hashCode` and `toStr
 
 Consider the following inline class:
 ```kotlin
-inline class Foo(val x: Int)
+@JvmInline
+value class Foo(val x: Int)
 ``` 
 
 To represent array of unboxed values of `Foo` we propose using new inline class `FooArray` over an array:
 ```kotlin
-inline class FooArray(private val storage: IntArray): Collection<Foo> {
+@JvmInline
+value class FooArray(private val storage: IntArray): Collection<Foo> {
     operator fun get(index: Int): UInt = Foo(storage[index])
     ...
 }
@@ -535,21 +545,22 @@ associate vararg of inline class type with the corresponding array type. For exa
 
 To declare expect inline class one can use `expect` modifier:
 ```kotlin
-expect inline class Foo(val prop: String)
+expect value class Foo(val prop: String)
 ```
 
 Note that we allow to declare property with backing field (`prop` here) for expect inline class, which is different for usual classes.
 Also, since each inline class must have exactly one value parameter we can relax rules for actual inline classes:
 ```kotlin
 // common module
-expect inline class Foo(val prop: String)
+expect value class Foo(val prop: String)
 
 // platform-specific module
-actual inline class Foo(val prop: String)
+@JvmInline
+actual value class Foo(val prop: String)
 ```
 For actual inline classes we don't require to write `actual` modifier on primary constructor and value parameter.
 
-Currently, expect inline class requires actual inline and vice versa. 
+Currently, expect value class requires actual value and vice versa. 
 
 ## Overloads, private constructors and initialization blocks
 
@@ -559,14 +570,17 @@ Let's consider several most important issues that appear in the current implemen
 
 Signatures with inline classes that are erased to the same type on the same position will be conflicting:
 ```kotlin
-inline class UInt(val u: Int)
+@JvmInline
+value class UInt(val u: Int)
 
 // Conflicting overloads
 fun compute(i: Int) { ... }
 fun compute(u: UInt) { ... }
 
-inline class Login(val s: String)
-inline class UserName(val s: String)
+@JvmInline
+value class Login(val s: String)
+@JvmInline
+value class UserName(val s: String)
 
 // Conflicting overloads
 fun foo(x: Login) {}
@@ -579,11 +593,12 @@ implementation details.
     
 *Non-public constructors and initialization blocks*
 
-Current restrictions for inline classes require having a public primary constructor without `init` blocks in order 
+Before 1.4.30, inline classes required having a public primary constructor without `init` blocks in order 
 to have clear initialization semantics. This is needed because of values that can come from Java:
 ```
 // Kotlin
-inline class Foo(val x: Int) 
+@JvmInline
+value class Foo(val x: Int) 
 
 fun kotlinFun(f: Foo) {}
 
@@ -594,25 +609,26 @@ static void test() {
 }
 ```
     
-As a result, it's impossible to encapsulate underlying value or create an inline class that will represent some constrained values:
+As a result, it was impossible to encapsulate underlying value or create an inline class that will represent some constrained values:
 ```kotlin
-inline class Negative(val x: Int) {
+@JvmInline
+value class Negative(val x: Int) {
     init {
         require(x < 0) { ... }
     }
 }
 ```
 
-Note that these problems can go away if we'll use inline classes (which is a Kotlin-only feature) only in Kotlin:
-there are no problems with initialization, so we can add non-public constructors with `init` blocks, for overloads 
-we can use different names on JVM.
+Note that these problems were fixed with mangling of constructors and functions, accepting inline classes. Thus, since 1.4.30
+we lift the restrictions.
 
 ### Mangling
 
 To mitigate described problems, we propose introducing mangling for declarations that have top-level inline class types in their signatures.
 Example:
 ```kotlin
-inline class UInt(val x: Int)
+@JvmInline
+value class UInt(val x: Int)
 
 fun compute(x: UInt) {}
 fun compute(x: Int) {}
@@ -655,7 +671,8 @@ interface Base {
     fun base(s: String): Int
 }
 
-inline class IC(val u: Int) : Base {
+@JvmInline
+value class IC(val u: Int) : Base {
     fun simple(y: String) {}
     fun icInParameter(ic: IC, y: String) {}
     
@@ -732,7 +749,8 @@ Note that member-constructor (`<init>`) is synthetic, this is needed because wit
 they will be evaluated in `constructor-impl`. Therefore we should hide it to avoid creating non-initialized values from Java. 
 To make it more clear, consider the following situation:
 ```kotlin
-inline class WithInit(val u: Int) {
+@JvmInline
+value class WithInit(val u: Int) {
     init { ... }
 }
 
@@ -747,9 +765,12 @@ fun foo(): List<WithInit> {
 
 Note that declarations that have inline class types in parameters not on top-level will not be mangled:
 ```
-inline class IC(val u: Int)
+@JvmInline
+value class IC(val u: Int)
 
 fun foo(ls: List<IC>) {}
 ```
 
 Function `foo` will have name `foo` in the bytecode.
+
+To disable mangling, one can use `@JvmName` annotation.
