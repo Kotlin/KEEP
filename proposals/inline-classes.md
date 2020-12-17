@@ -124,6 +124,8 @@ In Kotlin/JVM, however, they should be annotated with additional `@JvmInline` an
 value class Foo(val i: Int)
 ```
 In Kotlin/Native and Kotlin/JS, because of the closed-world model, value-based classes with single read-only property are inline classes.
+In Kotlin/JVM we require the annotation for inline classes, since we are going to support value-based classes, which are a superset of
+inline classes, and they are binary incompatible with inline classes. Thus, adding and removing the annotation will be a breaking change.
 
 The property `i` defines type of the underlying runtime representation for inline class `Foo`, while at compile time type will be `Foo`.
 
