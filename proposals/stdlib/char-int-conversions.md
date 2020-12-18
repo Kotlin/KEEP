@@ -1,19 +1,22 @@
-# Unambiguous number to/from char conversions
+# Straighten Char-to-code and Char-to-digit conversions out
 
 * **Type**: Standard Library API proposal
-* **Author**: Abduqodiri Qurbonzoda
-* **Status**: Submitted
+* **Authors**: Ilya Gorbunov, Abduqodiri Qurbonzoda
+* **Status**: Under consideration
 * **Prototype**: Implemented
-* **Discussion**: https://github.com/Kotlin/KEEP/issues/227
+* **Discussion**: [KEEP-227](https://github.com/Kotlin/KEEP/issues/227)
+* **Related issues**: [KT-23451](https://youtrack.jetbrains.com/issue/KT-23451)
 
 
 ## Summary
 
-Deprecate existing number to/from char conversion functions and introduce new ones to make conversions unambiguous.
+Deprecate the existing `Char`<=>`Number` conversion functions and introduce new ones to avoid incorrect usages caused
+by confusion from the conversion function names.
 
-## Similar API review
+## Existing API review
 
-Currently, `Char` provides the following member functions in standard library: 
+Currently, `Char` type has the following conversion functions in the standard library: 
+
 * `fun Char.toByte(): Byte`
 * `fun Char.toShort(): Short`
 * `fun Char.toInt(): Int`
@@ -21,8 +24,9 @@ Currently, `Char` provides the following member functions in standard library:
 * `fun Char.toFloat(): Float`
 * `fun Char.toDouble(): Double`
 
-The functions above return the UTF-16 code unit of the receiver `Char` converted to the return number type. 
-The returned value from `Char.toN()` is essentially equal to `Char.toInt().toN()` for a particular number type `N`.
+The functions above return the integer value of the `Char` code (the UTF-16 code unit) converted to the specified 
+numeric type with either widening, or narrowing conversion.
+For the particular numeric type `N`, the value returned from `Char.toN()` is essentially equal to `Char.toInt().toN()`.
 
 Also, there are inverse operations to get the `Char` corresponding to the specified UTF-16 code unit:
 * `abstract fun Number.toChar(): Char`
@@ -33,7 +37,7 @@ Also, there are inverse operations to get the `Char` corresponding to the specif
 * `fun Float.toChar(): Char`
 * `fun Double.toChar(): Char`
 
-The returned value from `N.toChar()` is essentially equal to `N.toInt().toChar()` for a particular number type `N`.
+The value returned from `N.toChar()` is essentially equal to `N.toInt().toChar()` for the particular numeric type `N`.
 Note that `Int.toChar()` uses the least significant 16 bits of the receiver `Int` value to represent the resulting `Char`. 
 
 ## Motivation
@@ -43,7 +47,8 @@ similar to how `String.toInt()` works. Reverse conversions like `Double.toChar()
 and it would be more clear if the intent was expressed explicitly by converting the number to `Int` first 
 and then getting the character corresponding to that `Int` code.
 
-Some examples of confusion:
+Some examples of the confusion:
+
 * https://discuss.kotlinlang.org/t/convert-char-to-byte-gives-wrong-result/11548
 * https://stackoverflow.com/questions/47592167/how-do-i-convert-a-char-to-int
 * https://stackoverflow.com/questions/51961220/what-happens-with-toint
@@ -53,17 +58,22 @@ Some examples of confusion:
 * https://stackoverflow.com/questions/61712411/converting-big-number-into-string-and-then-splitting-into-single-digits-results
 * https://blog.jdriven.com/2019/10/converting-char-to-int-in-kotlin/
 
-To combat the issue we would like to make the changes described in the chapter below.
+To alleviate the confusion, we would like to deprecate the conversion functions above 
+and introduce new ones with the names that make it clear what the function purpose is. 
 
 ## Description
 
 For each `N` type where `N` is `Int`, `Short`, `Long`, `Byte`, `Double`, `Float`
+we are going to:
 
 * Deprecate `Char.toN()` functions
 * Deprecate `N.toChar()` functions
-* Deprecate `Number.toChar()` function, change its modality from `abstract` to `open`, provide a default implementation = `toInt().toChar()`
+  
+We also need to deprecate `Number.toChar()` function, change its modality from `abstract` to `open`, and provide 
+the default implementation of this function, `toInt().toChar()`.
 
-Introduce functions to convert `Char` to `Int` based on its code:
+* Introduce functions to get the integer code of a `Char` and to construct a `Char` from the given code.
+
 ```kotlin
 /**
  * Creates a Char with the specified [code], or throws an exception if the [code] is out of `Char.MIN_VALUE.code..Char.MAX_VALUE.code`.
@@ -77,8 +87,19 @@ fun Char(code: Int): Char
  */
 val Char.code: Int
 ```
+These functions will be proposed as replacements for the deprecated conversions above.
+For example: 
+```kotlin
+char.toInt() -> char.code
+char.toShort() -> char.code.toShort()
 
-Introduce functions to convert `Char` to the numeric value of the digit it represents:
+int.toChar() -> Char(int and 0xFFFF)
+short.toChar() -> Char(short.toInt() and 0xFFFF) 
+```
+See the open concern about performance of the `Chat(Int)` replacement: [Q:CodeToCharUnchecked](#CodeToCharUnchecked)
+
+- Introduce functions to convert a `Char` to the numeric value of the digit it represents:
+
 ```kotlin
 /**
  * Returns the numeric value of the digit that this Char represents in the specified [radix].
@@ -101,6 +122,12 @@ fun Char.digitToInt(radix: Int = 10): Int
  *  - The Char is one of the lowercase Latin letters 'a' through 'z' and its [code] is less than `radix + 'a'.code - 10`. In this case, `this.code - 'a'.code + 10` is returned.
  */
 fun Char.digitToIntOrNull(radix: Int = 10): Int?
+```
+
+- Introduce an extension function for `Int` to covert the non-negative single digit it represents
+to the corresponding `Char` representation.
+
+```kotlin
 
 /**
  * Returns the Char that represents this numeric digit value in the specified [radix].
@@ -116,7 +143,10 @@ fun Int.digitToChar(radix: Int = 10): Char
 
 ## Dependencies
 
-No additional dependencies are needed.
+- The correct implementation of `Char.digitToInt` relies on knowing all digit ranges among the supported
+`Char` values, see the issues [KT-30652](https://youtrack.jetbrains.com/issue/KT-30652) and [KT-39177](https://youtrack.jetbrains.com/issue/KT-39177).
+
+- Deprecating `Number.toChar()` and changing its modality will require a special support in the compiler.
 
 ## Placement
 
@@ -131,9 +161,15 @@ The reference implementation is provided in the pull request [PR #3969](https://
 
 Alternative naming suggestions are welcome.
 
+## Open questions 
+
+- <a id="CodeToCharUnchecked">Q:CodeToCharUnchecked</a>: Do we need a function making `Char` from the given `code` that doesn't check the code being in range,
+  but instead truncates it to 16-bit unsigned number, like the current `Int.toChar()` does?
+  Without such function some intense character decoding loops can suffer in performance.
+
 ## Compatibility impact
 
 The introduced functions will be marked with `@ExperimentalStdlibApi` until the next major release of Kotlin, 1.5.
-With release of Kotlin 1.5 the new functions will cease to be experimental, and the old Number <-> Char functions will become deprecated.
+With the release of Kotlin 1.5 the new functions will become stable, and the old Number <-> Char functions will become deprecated.
 
-Previously compiled programs that use deprecated functions will still run with Kotlin 1.5.
+Previously compiled programs and libraries that used deprecated functions will still be able to run with Kotlin 1.5 and further.
