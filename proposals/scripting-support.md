@@ -139,7 +139,7 @@ settings. If things need to be configured explicitly, the code would look like:
 val scriptingHost = KotlinScriptingHost(configurationParams...)
 scriptingHost.eval(File("path/to/script.kts"), compilationConfiguration, evaluationConfiguration)
 ```
-This would also allows the developer to control the lifetime of the scripting host.
+This would also allow the developer to control the lifetime of the scripting host.
 
 In cases then there is more control needed for the compilation and evaluation process, the direct use of the script
 compiler and evaluator could be desirable:
