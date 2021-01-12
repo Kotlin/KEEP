@@ -650,6 +650,97 @@ Simple functions with inline class type parameters are mangled as `<name>-<hash>
 and `<hash>` is a mangling suffix for the signature. Mangling suffix can contain upper case and lower case Latin letters, digits, `_` and `-`. 
 This scheme applies to property getters and setters as well.
 
+The suffix calculating algorithm has changed in 1.4.30.
+
+In 1.4.30 it is the following:
+1. Collect function signature, concatenating parameter string representations,
+   where
+
+   1.1. Inline class is represented by its ASM-like descriptor, for example
+   `UInt`'s descriptor is `Lkotlin/UInt;`
+
+   1.2. If the inline class is nullable, it has '?' before ';' in the
+   descriptor, to distinguish nullable from not-null inline classes, since
+   change in nullability should be incompatible change, just like primitives,
+   so, `UInt?` turns into `Lkotlin/UInt?;`
+
+   1.3. Everything else is replaced with "_".
+
+   1.4. The signature is wrapped in parentheses, so `foo(UInt, Int)`'s signature
+   is `(Lkotlin/UInt;_)`
+
+   1.5. If the function is a method, returning inline class, ":$descriptor" is
+   appended
+
+2. The signature's hash is computed.
+
+In a Kotlin-like pseudocode the algorithm looks like
+```kotlin
+// parameters contain all value parameters, including receiver
+fun calculateSuffix(parameters: List<ValueParameter>): String =
+   "-" + md5base64(collectSignature(parameters))
+
+fun collectSignature(parameters: List<ValueParameter>): String =
+   parameters.joinToString { it.type.getSignatureElement() }
+
+fun Type.getSignatureElement() =
+   """
+   L${it.type.erasedUpperBound()}${
+    if (it.isInlineClass() && it.type.isNullable()) "?" else ""
+   };
+   """
+
+// Take a String, compute its MD5, take first 6 bytes of the result,
+// and represents it as base64 using RFC4648_URLSAFE encoder without
+// padding (effectively using 'a'..'z', 'A'..'Z', '0'..'9', '-', and '_').
+fun md5base64(signature: String): String =
+   base64(md5(signature.toByteArray()).copyOfRange(0, 5))
+```
+where `erasedUpperBound` is
+```kotlin
+fun Type.erasedUpperBound() =
+  if (this is Class)
+    if (this.isInlineClass()) fqName else "_"
+  else (this as TypeParameter).erasedUpperBound()
+
+fun TypeParameter.erasedUpperBound() =
+  superTypes.find { it !is Interface && it !is Annotation }
+    ?: superTypes.first().erasedUpperBound()
+
+```
+
+Before 1.4.30, however, the algorithm was different:
+
+1. Collect function signature, joining parameter representations to string with
+   a comma with a space as a delimiter, where
+
+   1.1. Parameter is represented by its ASM-like descriptor for its Kotlin
+   class. For example, if the parameter type is `Int`, its representation is
+   `Lkotlin/Int;`
+
+   1.2. If the parameter is nullable, it has '?' before ';' in the
+   descriptor, so, `Int?` is turned into `Lkotlin/Int?;`
+
+   1.4. The signature is wrapped in parentheses, so `foo(UInt, Int)`'s signature
+   is `(Lkotlin/UInt;, Lkotlin/Int;)`
+
+   1.5. If the function is a method, returning inline class, ":$descriptor" is
+   appended
+
+2. The signature's hash is computed.
+
+By default, the compiler uses the new scheme when generating mangled functions.
+This, however, leads to ABI changes, so the old compilers would not be able to
+compile against newly compiled bytecode. One can use
+`-Xuse-14-inline-classes-mangling-scheme` compiler flag to force the compiler
+to use 1.4.0 mangling scheme and preserve binary compatibility.
+
+The compiler, however, is able to link against both new and old mangling
+schemes: if it does not find a function with new mangled suffix it uses the old
+one.
+
+1.4.30 standard library uses the old scheme to preserve binary compatibility.
+
 *Constructors* 
 
 Constructors with inline class type parameters are marked as private, and have a public synthetic accessor with additional marker parameter. 
