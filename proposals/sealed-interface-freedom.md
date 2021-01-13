@@ -20,8 +20,9 @@ A need to be able to define `sealed interface` has repeatedly showed up during t
 (see [KT-20423](https://youtrack.jetbrains.com/issue/KT-20423) and [KT-22286](https://youtrack.jetbrains.com/issue/KT-22286)).
 
 These issues have been augmented by the Java language and JVM which are gaining first-class support of 
-sealed classes and sealed interfaces &mdash; experimentally since JDK 15 (see [JEP 360](https://openjdk.java.net/jeps/360)), 
-tentatively planning to become stable in JDK 16 or later. In order to properly interoperate with the corresponding
+sealed classes and sealed interfaces &mdash; experimentally since JDK 15 (see [JEP 360](https://openjdk.java.net/jeps/360)
+for the initial preview and [JEP 397](https://openjdk.java.net/jeps/397) for the second preview in JDK 16), 
+which might become stable in JDK 17 or later. In order to properly interoperate with the corresponding
 Java language features, Kotlin needs to introduce the matching concepts
 (the corresponding issue is [KT-42433](https://youtrack.jetbrains.com/issue/KT-42433)).
 
@@ -29,7 +30,7 @@ The goals of this proposal are:
 
 - Introduce the concept of a `sealed interface`.
 - Allow more freedom to a `sealed class`, unify a `sealed interface` and a `sealed class` as the same concept.
-- Seamlessly interoperate with JDK 15+ sealed classes and interfaces.
+- Seamlessly interoperate with JDK 17+ sealed classes and interfaces when they become stable.
 
 ## Design of sealed interfaces
 
@@ -115,9 +116,10 @@ objects and enum entries that are part of this DAG.
 
 ## JVM compilation strategy and interoperability
 
-Kotlin shall recognize JVM classes and interfaces with a `PermittedSubclasses` attribute in their classfile as
-the `sealed` class or interface, enabling all the exhaustive matching features that Kotlin sealed 
-classes and interfaces enjoy.
+Kotlin shall recognize JVM classes and interfaces with a `PermittedSubclasses` attribute 
+(the attribute name is tentative as of the second preview in JDK 16) in their classfile when it becomes 
+a stable JVM feature. It shall treat the corresponding Java class or interface as `sealed`, 
+enabling all the exhaustive matching features that Kotlin sealed classes and interfaces enjoy.
 
 Mixed sealed hierarchies between Java and Kotlin will not be supported. All subclasses of a sealed Kotlin class or 
 interface must be defined in Kotlin and all subclasses of a Java sealed classes or interface must be defined in Java.
@@ -125,9 +127,10 @@ interface must be defined in Kotlin and all subclasses of a Java sealed classes 
 > We do not expect this to be too restrictive in practice, since the whole sealed hierarchy must be colocated 
 > in the same module and package anyway, so it can be converted from Java to Kotlin as a whole if needed.
         
-### Legacy JVM ABI (pre 15)
+### Legacy JVM ABI
 
-On a target JVM version before 15 the compilation strategy of a `sealed class` is going to stay the same
+On a target JVM version before the stable support for sealed classes/interface (JDK 17 or later - TBD) 
+the compilation strategy of a `sealed class` is going to stay the same
 as it is now. The strategy is to compile all constructors of such a class as `private` in JVM, while 
 adding a corresponding `public synthetic` constructor with an additional `kotlin.jvm.internal.DefaultConstructorMarker`
 parameter as means of protection from its inheritance 
@@ -143,9 +146,10 @@ extend or implement a sealed Kotlin interface.
 > lots of problems that do not balance relatively minor inconvenience of accidentally implementing a Kotlin sealed 
 > interface from Java code.
  
-### New JVM ABI (JDK 15+)
+### New JVM ABI
 
-On a target JVM starting from version 15 the proposal is to emit `PermittedSubclasses` JVM attribute for  
+On a target JVM with the stable support for sealed classes/interface (JDK 17 or later - TBD)   
+the proposal is to emit `PermittedSubclasses` JVM attribute for  
 Kotlin sealed interfaces and classes, getting rid of synthetic constructor protection scheme
 for sealed classes that is explained above.
 
