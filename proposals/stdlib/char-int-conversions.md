@@ -118,7 +118,7 @@ short.toChar() -> Char(short.toUShort())
  *  - The Char is one of the uppercase Latin letters 'A' through 'Z' and its [code] is less than `radix + 'A'.code - 10`. In this case, `this.code - 'A'.code + 10` is returned.
  *  - The Char is one of the lowercase Latin letters 'a' through 'z' and its [code] is less than `radix + 'a'.code - 10`. In this case, `this.code - 'a'.code + 10` is returned.
  */
-fun Char.digitToInt(radix: Int = 10): Int
+fun Char.digitToInt(radix: Int): Int
 
 /**
  * Returns the numeric value of the digit that this Char represents in the specified [radix], or `null` if this Char is not a valid digit in the specified [radix].
@@ -129,8 +129,10 @@ fun Char.digitToInt(radix: Int = 10): Int
  *  - The Char is one of the uppercase Latin letters 'A' through 'Z' and its [code] is less than `radix + 'A'.code - 10`. In this case, `this.code - 'A'.code + 10` is returned.
  *  - The Char is one of the lowercase Latin letters 'a' through 'z' and its [code] is less than `radix + 'a'.code - 10`. In this case, `this.code - 'a'.code + 10` is returned.
  */
-fun Char.digitToIntOrNull(radix: Int = 10): Int?
+fun Char.digitToIntOrNull(radix: Int): Int?
 ```
+
+`isDigit` is considered to be `true` for a `Char` if the Unicode general category of the `Char` is "Nd" (`CharCategory.DECIMAL_DIGIT_NUMBER`).
 
 - Introduce an extension function for `Int` to covert the non-negative single digit it represents
 to the corresponding `Char` representation.
@@ -144,10 +146,15 @@ to the corresponding `Char` representation.
  * If this value is less than `10`, the decimal digit Char with code `'0'.code + this` is returned.
  * Otherwise, the uppercase Latin letter with code `'A'.code + this - 10` is returned.
  */
-fun Int.digitToChar(radix: Int = 10): Char
+fun Int.digitToChar(radix: Int): Char
 ```
 
-`isDigit` is considered to be `true` for a `Char` if the Unicode general category of the `Char` is "Nd" (`CharCategory.DECIMAL_DIGIT_NUMBER`).
+We will also introduce an overload with no arguments having implicit `radix = 10`:
+- `fun Char.digitToInt(): Int`
+- `fun Char.digitToIntOrNull(): Int?`
+- `fun Int.digitToChar(): Char`
+
+Having overloads and not a default argument will be consistent with `String.toInt/toIntOrNull()` functions.
 
 ## Dependencies
 
