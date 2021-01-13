@@ -77,8 +77,17 @@ the default implementation of this function, `toInt().toChar()`.
 ```kotlin
 /**
  * Creates a Char with the specified [code], or throws an exception if the [code] is out of `Char.MIN_VALUE.code..Char.MAX_VALUE.code`.
+ * 
+ * If the program that calls this function is written in a way that only valid [code] is passed as the argument,
+ * using the overload that takes a [UShort] argument is preferable (`Char(intValue.toUShort())`).
+ * That overload doesn't check validity of the argument, and may improve program performance when the function is called routinely inside a loop.
  */
 fun Char(code: Int): Char
+
+/**
+ * Creates a Char with the specified [code].
+ */
+fun Char(code: UShort): Char
 
 /**
  * Returns the code of this Char.
@@ -93,10 +102,9 @@ For example:
 char.toInt() -> char.code
 char.toShort() -> char.code.toShort()
 
-int.toChar() -> Char(int and 0xFFFF)
-short.toChar() -> Char(short.toInt() and 0xFFFF) 
+int.toChar() -> Char(int.toUShort())
+short.toChar() -> Char(short.toUShort()) 
 ```
-See the open concern about performance of the `Chat(Int)` replacement: [Q:CodeToCharUnchecked](#CodeToCharUnchecked)
 
 - Introduce functions to convert a `Char` to the numeric value of the digit it represents:
 
@@ -160,12 +168,6 @@ The reference implementation is provided in the pull request [PR #3969](https://
 ## Naming
 
 Alternative naming suggestions are welcome.
-
-## Open questions 
-
-- <a id="CodeToCharUnchecked">Q:CodeToCharUnchecked</a>: Do we need a function making `Char` from the given `code` that doesn't check the code being in range,
-  but instead truncates it to 16-bit unsigned number, like the current `Int.toChar()` does?
-  Without such function some intense character decoding loops can suffer in performance.
 
 ## Compatibility impact
 
