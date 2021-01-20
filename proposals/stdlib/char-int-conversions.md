@@ -105,6 +105,7 @@ char.toShort() -> char.code.toShort()
 int.toChar() -> Char(int.toUShort())
 short.toChar() -> Char(short.toUShort()) 
 ```
+Currently experimental `UShort` will also become stable in Kotlin 1.5, making the proposed replacements safe.
 
 - Introduce functions to convert a `Char` to the numeric value of the digit it represents:
 
