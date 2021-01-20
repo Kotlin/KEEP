@@ -150,12 +150,10 @@ to the corresponding `Char` representation.
 fun Int.digitToChar(radix: Int): Char
 ```
 
-We will also introduce an overload with no arguments having implicit `radix = 10`:
+Similarly to `String.toInt/toIntOrNull()` functions, we will introduce overloads with no arguments as well defaulting `radix` to 10:
 - `fun Char.digitToInt(): Int`
 - `fun Char.digitToIntOrNull(): Int?`
 - `fun Int.digitToChar(): Char`
-
-Having overloads and not a default argument will be consistent with `String.toInt/toIntOrNull()` functions.
 
 ## Dependencies
 
