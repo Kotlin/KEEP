@@ -2,9 +2,10 @@
 
 * **Type**: Standard Library API proposal
 * **Author**: Abduqodiri Qurbonzoda
-* **Status**: Submitted
+* **Status**: Under consideration
 * **Prototype**: Implemented
-* **Discussion**: https://github.com/Kotlin/KEEP/issues/223
+* **Discussion**: [KEEP-223](https://github.com/Kotlin/KEEP/issues/223)
+* **Related issues**: [KT-43023](https://youtrack.jetbrains.com/issue/KT-43023)
 
 ## Summary
 
