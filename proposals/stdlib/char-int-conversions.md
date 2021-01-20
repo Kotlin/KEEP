@@ -165,7 +165,9 @@ Similarly to `String.toInt/toIntOrNull()` functions, we will introduce overloads
 ## Placement
 
 - module `kotlin-stdlib`
-- package `kotlin.text`
+- packages
+    - `kotlin` for `fun Char(code: Int): Char`, `fun Char(code: UShort): Char` and `val Char.code: Int`
+    - `kotlin.text` for digit-to-int and digit-to-char conversion functions
 
 ## Reference implementation
 
