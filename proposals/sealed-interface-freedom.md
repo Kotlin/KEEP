@@ -2,7 +2,7 @@
 
 * **Type**: Design proposal
 * **Author**: Roman Elizarov
-* **Status**: Under consideration
+* **Status**: Prototyped in Kotlin 1.4.30 as a preview for Kotlin 1.5 language version
 
 Discussion of this proposal is held in [KEEP-226](https://github.com/Kotlin/KEEP/issues/226).
 
@@ -171,6 +171,17 @@ The concept of a `sealed interface` makes it conceptually possible to support `i
 to aid in the design of interface-based APIs that have the functions that are needed for their implementation details
 hidden from their clients (see comments in [KT-22286](https://youtrack.jetbrains.com/issue/KT-22286)).   
  
+## Prototype status
 
+Prototype implementation is available since Kotlin 1.4.30-RC as a preview for Kotlin 1.5 language version.
+For Gradle KTS build you can configure it with:
 
+```kotlin
+tasks.withType<KotlinCompile> { // In Groovy: compileKotlin {
+    kotlinOptions {
+        languageVersion = "1.5"
+        apiVersion = "1.5"
+    }
+}
+```
   
