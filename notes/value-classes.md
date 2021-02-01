@@ -4,6 +4,7 @@
 * **Author**: Roman Elizarov
 * **Contributors**: Alexander Udalov, Andrey Breslav, Dmitry Petrov, Ilmir Usmanov, Ilya Gorbunov, Marat Akhin, Maxim Shafirov, Mikhail Zarechenskiy, Stanislav Erokhin  
 * **Status**: Under consideration
+* **Discussion and feedback**: [KEEP-237](https://github.com/Kotlin/KEEP/issues/237)
 
 This is not a design document, but an exploratory description of the current state of value classes in Kotlin and potential ways for their future evolution. The purpose of this document is to define a common terminology, provide some insight into potential avenues for features that are based on value classes, and thus establish a channel for discussion with the Kotlin community on use-cases for these features, their potential syntax, impact on existing Kotlin code, etc.
 
