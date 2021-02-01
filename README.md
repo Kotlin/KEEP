@@ -1,7 +1,7 @@
 # KEEP - Kotlin Evolution and Enhancement Process
 
 This repository contains proposals for the [Kotlin Programming Language](https://kotlinlang.org), including 
-draft designs and discussions for in-progress proposals as well as
+draft design notes and discussions for in-progress proposals as well as
 the design documentation on the changes that were already implemented. 
 
 The proposals themselves are colloquially referred to as KEEPs. 
@@ -14,7 +14,14 @@ the [Kotlin Source Code Repository](https://github.com/JetBrains/kotlin).
 
 * Current in-progress KEEPs are listed in [issues](https://github.com/Kotlin/KEEP/issues).
 * New KEEPs and additions to current KEEPs are submitted as [pull requests](https://github.com/Kotlin/KEEP/pulls).
-* When KEEPs are implemented, the corresponding design documents are merged into this repository.
+* When KEEPs are implemented, the corresponding design documents are merged into this repository and stored in a [proposals](proposals) directory.
+
+### Design notes
+
+Some feature ideas that are being discussed for Kotlin represent important directions of potential enhancement, but 
+are not complete to call them design proposals, yet they still need to be discussed
+with the Kotlin community to gather use-cases for these features, their potential syntax, impact on existing Kotlin code, etc.
+They are called "design notes" and are stored in a separate [notes](notes) directory.
 
 ## How to contribute to the design process
 
