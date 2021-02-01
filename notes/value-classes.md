@@ -21,7 +21,7 @@ language design rule.  Any new feature in the language has to clear a high bar o
   * [Deep immutability vs shallow immutability](#deep-immutability-vs-shallow-immutability)
   * [Compiling value classes: the single-field restriction](#compiling-value-classes-the-single-field-restriction)
   * [Project Valhalla](#project-valhalla)
-  * [Multi-field value classes before Valhalla](#multi-field-value-classes-before-valhalla)
+  * [Multifield value classes before Valhalla](#multifield-value-classes-before-valhalla)
   * [Value classes vs structs](#value-classes-vs-structs)
 * [Immutability and value classes](#immutability-and-value-classes)
   * [Updating immutable classes](#updating-immutable-classes)
@@ -49,7 +49,7 @@ language design rule.  Any new feature in the language has to clear a high bar o
   * [Arrays of inline value classes](#arrays-of-inline-value-classes)
   * [Valhalla arrays](#valhalla-arrays)
   * [Reified value arrays](#reified-value-arrays)
-* [Boxed value arrays](#boxed-value-arrays)
+  * [Boxed value arrays](#boxed-value-arrays)
   * [Unifying arrays of references and values](#unifying-arrays-of-references-and-values)
   * [Efficient generic collections](#efficient-generic-collections)
 * [Name-based construction of classes](#name-based-construction-of-classes)
@@ -144,6 +144,8 @@ Inline classes
 were experimentally implemented in Kotlin since 1.2.30 and are, in fact, **user-defined value classes**. 
 Their primary feature is that they explicitly disavow identity and reference equality operator (`===`) for them is not available (produces a compilation error). This allows a compiler to optimize representation of Kotlin inline classes, storing their underlying value instead of a box in many cases.
 
+> The umbrella issue for Kotlin inline value classes is [KT-23338](https://youtrack.jetbrains.com/issue/KT-23338).
+
 The original proposal was to use the `inline` modifier before the `class` keyword. That was discovered to be confusing, because users who are familiar with inline functions in Kotlin find that `inline class` is quite a different concept. In particular:
 
 * The functions of inline class are not inline.
@@ -209,9 +211,11 @@ The `@JvmInline` annotation makes it explicit that something special with this c
 
 Why not the reverse? Why not a use a plain value class now, and add some `@Valhalla` value class in the future? The answer is that, so far, Valhalla promises to be the right way to implement value classes on JVM and Kotlin’s key design principle in choosing defaults is such that “the right thing”, the thing that developers will be using most of the time, should correspond to the shorter code. Ultimately, with the Project Valhalla, it will be the right thing to compile a default (non-annotated) value class with Valhalla, so it means that we must require an annotation now, with pre-Valhalla value classes, to avoid breaking changes for stable Kotlin libraries in the future.
 
-### Multi-field value classes before Valhalla
+### Multifield value classes before Valhalla
 
 Even when Valhalla-capable JVM becomes available, it will not be widely adopted very fast. At what point and under what conditions the Kotlin language should support user-defined value classes with more than one underlying field?
+
+> The issue for multifield value classes is [KT-1179](https://youtrack.jetbrains.com/issue/KT-1179).
 
 It is not right to make an important Kotlin language feature like “support for value class with multiple fields” dependent on a specific backend. The Kotlin’s multiplatform philosophy is that all Kotlin language features (with as few exceptions as possible) should be supported by all its backends. The compilation strategy and performance on different backends could be different (and is different for many existing Kotlin features), so it is fine if multi-field value classes work for all Kotlin platforms (JVM, JS, Native), but might not be as efficiently compiled when targeting pre-Valhalla JVM.
 
@@ -343,6 +347,8 @@ The meaning of this `var` (since it is written inside the `value` class) is that
 > The similar syntactic option is chosen by Swift, whose structs are likewise immutable value types. Swift has `var` (mutable) and `let` (immutable) properties and uses `var` to denote properties of structs that can be mutated to get the new value of the struct. This Swift’s feature is the main inspiration for looking into the similar syntactic feature in Kotlin.
 
 On the surface, this looks like a stretch for the usual meaning of `var` property, but if you take a closer look at the example of how those mutable properties are updated in the source code (just like mutable `var` properties of mutable classes), then this does not look like a stretch anymore.
+
+> The corresponding issue for convenient update convention for immutable value classes is [KT-44653](https://youtrack.jetbrains.com/issue/KT-44653).
 
 ### Compiling mutable properties on JVM
 
@@ -971,6 +977,8 @@ That is the actual approach that is currently taken by the standard library to s
 
 Obviously, this approach to arrays of value classes does not scale to user-defined types. Even support for the unsigned integer types this way is already a stretch, since it expands the number of additional function copies that the standard library has to have for various functions that work on arrays. So, for now, arrays of unsigned integer types will be experimental until a better way to support them is implemented.
 
+> The issue for varargs of inline value classes is [KT-33565](https://youtrack.jetbrains.com/issue/KT-33565).
+
 ### Valhalla arrays
 
 Project Valhalla promises to unify arrays of JVM primitives (both built-in and user-defined ones) so that they can be used in a generic fashion by generic code. However, at the time of writing, the plan on how exactly this will be achieved and, more importantly, what exactly will happen to legacy `int[]` types with respect to their unification with Valhalla arrays of primitives in not clear. The other challenge is that the timeline for Valhalla is not clear either, but the problem with arrays needs to be solved for value classes in Kotlin regardless of Valhalla.
@@ -978,6 +986,8 @@ Project Valhalla promises to unify arrays of JVM primitives (both built-in and u
 ### Reified value arrays
 
 A potential solution is to rethink the approach of arrays of values in Kotlin. Instead of separate, unrelated, primitive array types like `IntArray`, `LongArray`, etc we can introduce of a new unified type for storing arrays of values `VArray<T>`. The goal of this type is to efficiently store values (unlike `Array<T>` that uses inefficient storage for values). This type will have the following key constraint: `T` can only refer to a **reified type**. It means you can only use it with a concrete type like `VArray<Int>` or in the context of an `inline` function with a `reified` type parameter. This is quite a serious constraint, meaning that you cannot use `VArray<T>` as a field in a class, yet it still solves many important use-cases.
+
+> The issue for reified value arrays is [KT-44654](https://youtrack.jetbrains.com/issue/KT-44654).
 
 During compilation on JVM `VArray<Int>` gets represented as `int[]`, `VArray<Long>` as `long[]`, etc. Moreover, value arrays of user-defined inline value classes get represented as primitive arrays of the corresponding carrier types, so `VArray<Color`> compiles to `int[]`. For reference types `VArray<T>` gets mapped to `Array<T>`.
 
@@ -1015,7 +1025,7 @@ Some functions might need to return new instances of `VArray<T>`. This would be 
 
 The introduction of `VArray<T>` also solves the issue of efficient support for varargs of user-defined inline value classes. The function with `vararg colors: Color` parameter will get `colors` of the type `VArray<Color>` that gets compiled on JVM as `int[]`. At the same time, a generic function with non-reified type parameter `T` and `vararg a: T` will continue to be based on `Array<T>`.
 
-## Boxed value arrays
+### Boxed value arrays
 
 There will be cases when value arrays need to be boxed, just like it happens with all value classes. For example, in the following code:
 
@@ -1224,3 +1234,5 @@ val user = run {
     User(__id, __builder) // create instance when all props are DA
 }
 ```
+
+> The issue for support of uninitialized properties with automatic builder generation for them is [KT-44655](https://youtrack.jetbrains.com/issue/KT-44655). 
