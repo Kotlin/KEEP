@@ -21,7 +21,7 @@ the [Kotlin Source Code Repository](https://github.com/JetBrains/kotlin).
 Some feature ideas that are being discussed for Kotlin represent important directions of potential enhancement, but 
 are not yet complete to call them design proposals, yet they still need to be discussed
 with the Kotlin community to gather use-cases for these features, their potential syntax, impact on existing Kotlin code, etc.
-They are called "desing notes" and a stored in a separate [notes](notes) directory.
+They are called "design notes" and are stored in a separate [notes](notes) directory.
 
 ## How to contribute to the design process
 
