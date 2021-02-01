@@ -8,7 +8,7 @@
 This is not a design document, but an exploratory description of the current state of value classes in Kotlin and potential ways for their future evolution. The purpose of this document is to define a common terminology, provide some insight into potential avenues for features that are based on value classes, and thus establish a channel for discussion with the Kotlin community on use-cases for these features, their potential syntax, impact on existing Kotlin code, etc.
 
 We, in the Kotlin team, are aware of and try to follow 
-[minus 100 points](https://gist.github.com/stuartd/a100fb315f2e5ca9ed17551d8b538a60)
+[minus 100 points](https://docs.microsoft.com/en-us/archive/blogs/ericgu/minus-100-points)
 language design rule.  Any new feature in the language has to clear a high bar on utility it brings to compensate for the complexity it will entail. This document lists a lot of ideas that are complex both conceptually and in terms of implementing them in the compiler. The decision on whether they are that much useful to be added into the language is still to be made.
 
 **Table of contents**
