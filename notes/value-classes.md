@@ -19,7 +19,7 @@ language design rule.  Any new feature in the language has to clear a high bar o
   * [Built-in primitive value classes](#built-in-primitive-value-classes)
   * [Inline classes are user-defined value classes](#inline-classes-are-user-defined-value-classes)
   * [Deep immutability vs shallow immutability](#deep-immutability-vs-shallow-immutability)
-  * [Compiling value classes: the single-field restriction](#compiling-value-classes:-the-single-field-restriction)
+  * [Compiling value classes: the single-field restriction](#compiling-value-classes-the-single-field-restriction)
   * [Project Valhalla](#project-valhalla)
   * [Multi-field value classes before Valhalla](#multi-field-value-classes-before-valhalla)
   * [Value classes vs structs](#value-classes-vs-structs)
