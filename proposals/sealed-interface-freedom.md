@@ -3,8 +3,7 @@
 * **Type**: Design proposal
 * **Author**: Roman Elizarov
 * **Status**: Prototyped in Kotlin 1.4.30 as a preview for Kotlin 1.5 language version
-
-Discussion of this proposal is held in [KEEP-226](https://github.com/Kotlin/KEEP/issues/226).
+* **Discussion and feedback**: [KEEP-226](https://github.com/Kotlin/KEEP/issues/226).
 
 ## Introduction and motivation
 
