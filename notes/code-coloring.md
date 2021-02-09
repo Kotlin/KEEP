@@ -124,7 +124,7 @@ include
 
 ## Definition
 With the examples out of the way, let us define what code coloring is exactly. 
-It is an umbrella of issues techniques where there are two or more contexts in 
+It is an umbrella of issues and techniques where there are two or more contexts in 
 one file. The context can be either run-time or compile-time. There can be a 
 context switch, but its existence is not required. Syntactically, the context 
 switch can be represented as:
@@ -224,11 +224,11 @@ in this particular case, keeping in mind other cases, for example, web-workers.
 
 ### Sharing mutable state
 Sometimes we might want to disallow sharing mutable state. For example, in 
-compose, we do not want to allow
+JetPack Compose, we do not want to allow
 capturing mutable state, since the engine does not track the changes in the
-mutable variables. Intended use is to use `by state`. Analogously, in coroutines
+mutable variables. Intended way is to use `by state`. Analogously, in coroutines
 sharing mutable state leads to hard to debug errors due to the nature of
-asyncronous programming.
+asynchronous programming.
 
 ### Composability
 Not every pair of contexts is and should be composable. For example, while it 
@@ -259,13 +259,14 @@ inline fun gpu(block: GPU.() -> Unit) = error("Intrinsic")
 and disallow any function unless it is marked somehow to run on a GPU, either 
 using `GPU` as a receiver or with a modifier or annotation.
 
-I took `@RestrictsSuspension` as an example, since there is no other example
+I based the example on `@RestrictsSuspension` annotation, since there is no
+other example
 in Kotlin yet. Ideally, a user should be able to extend supported API by either
 extending the interface or, like in `@RestrictsSuspension`, by declaring new
 functions. This might become tedious for huge API surface. So, the solution
 might be to allow whole packages or even modules.
 
-However, in web-workers, we should limit only a subset of API, for example, DOM 
+However, in web-workers, we want to blacklist a subset of API, for example, DOM 
 access API. So, we do not want to replace context entirely, just to subtract 
 from it. Thus, we might end up with something like
 ```kotlin
