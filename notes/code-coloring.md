@@ -37,8 +37,7 @@ a logger or memory allocator.
 On the topic of additional parameters, upcoming <b>multiple receivers</b> 
 prototype can be 
 viewed as an example of code coloring as well. If a user marks a function with 
-the `with<Type>` modifier (we might change the modifier to annotation-like 
-`@with` or use a different word), the `Type` will be treated as a receiver of the 
+the `context(Type)` modifier, where the `Type` will be treated as a receiver of the 
 function. To call it, `Type` should be `this` is the calling context. They are 
 a replacement for the beforementioned coeffects as well as typeclasses.
 
