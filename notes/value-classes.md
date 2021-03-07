@@ -199,7 +199,7 @@ is promising to bring user-defined primitive classes to JVM
 
 > The state of Valhalla document still calls them “inline classes”, but JEP draft is calling them “primitive classes”. It looks like JVM design team is inclining to name them primitive classes in the end. This name has changed multiple times (the original name was “value classes”), and the name may still change again before the final release.
 
-In the future, in a Valhalla-capable JVM, JVM primitive classes will enable efficient representation of Kotlin value classes with an arbitrary number of underlying fields on JVM. However, the exiting, limited implementation of Kotlin value classes with a single underlying field has a lot of use-cases and an enormous community demand. We cannot wait to make it stable until Valhalla becomes available in some unclear future. That was a motivation to require a `@JvmInline` annotation on all Kotlin/JVM value classes even as we currently have only a single compilation strategy for them on JVM. It means that in Kotlin 1.5 value classes for Kotlin/JVM are declared like this:
+In the future, in a Valhalla-capable JVM, JVM primitive classes will enable efficient representation of Kotlin value classes with an arbitrary number of underlying fields on JVM. However, the existing, limited implementation of Kotlin value classes with a single underlying field has a lot of use-cases and an enormous community demand. We cannot wait to make it stable until Valhalla becomes available in some unclear future. That was a motivation to require a `@JvmInline` annotation on all Kotlin/JVM value classes even as we currently have only a single compilation strategy for them on JVM. It means that in Kotlin 1.5 value classes for Kotlin/JVM are declared like this:
 
 ```kotlin
 @JvmInline
@@ -390,7 +390,7 @@ The intermediate `State` object does not escape the local scope and would be opt
 state = state.with$LastUpdate$Tags$internal(now(), state.tags + tag)
 ```
 
-> Here we explicitly use the identiless-ness of value classes. Because an identity of a value class is not important the compiler is free to split or combine sequence of updates to value classes in any way. It is even possible to temporarily keep updated properties of value classes in local variables up to the moment when an instance of a value class is needed to pass it to some other function and only then create an actual, updated, value class instance.
+> Here we explicitly use the identityless-ness of value classes. Because an identity of a value class is not important the compiler is free to split or combine sequence of updates to value classes in any way. It is even possible to temporarily keep updated properties of value classes in local variables up to the moment when an instance of a value class is needed to pass it to some other function and only then create an actual, updated, value class instance.
 
 Even the basic variant of this optimization would provide efficient and reliable mass-mutation for value classes. For cases when such mutation should be performed from another class or module, abstraction mutation into functions will help. See the next section.
 
@@ -465,7 +465,7 @@ So a mutating function can be seen as a function with a `ref this`. Does support
 
 From day one Kotlin was designed to encourage good programming practices. Drawing its inspiration from Java, Kotlin had added common idioms and widely accepted design patterns as language features as well as removed features and capabilities that often serve as source of bugs or otherwise produce hard to understand code.
 
-In a world of mutable classes it considered normal to write methods that are called with a receiver of a certain mutable class and mutate the corresponding instance they are called for. It is also a good practice to name such method with a verb that brings attention to their mutating nature, for example:
+In a world of mutable classes it is considered normal to write methods that are called with a receiver of a certain mutable class and mutate the corresponding instance they are called for. It is also a good practice to name such method with a verb that brings attention to their mutating nature, for example:
 
 ```kotlin
 account.updateBalance(transferDetails)
@@ -948,7 +948,7 @@ In light of addition of the `value class` concept we run into the conundrum of p
 
 However, times change. As distributed backends, asynchronous code, and reactive UIs become widespread, modelling user-defined business-related data-structures with immutable value classes becomes more popular. We often find ourselves in a situation where we’d rather see a short name, for example, a `User`, referring to an immutable class that we can safely pass around without risk of it being accidentally mutated by mistake. Support for value classes gives us that, while support for mutating functions and mutable properties on them still allows convenient updates of those values in the isolated pieces of code that need to do it, without any concessions in convenience compared to mutable classes.
 
-However, declaring those immutable classes is going to require extra thought. By default, the `class` keyword means “a potentially mutable thing with identity”, while opting out of identity with the `value class` requires an extra effort from a developer. Is this the right choice? It is not clear without an extra research. If we see evidence that immutable value classes are increasingly dominating in the design of real-life Kotlin code, then we can gradually flip the default by asking developers to add some an `identity` modifier before regular classes. Existing `data class` could be implicitly treated as `identity class`, easing this migration process. This explicitness in declaring an identity-capable class would open a road to flipping the default and making `value` modifier optional for immutable classes in the far away future. Anyway, right now it is all too early to speculate about.
+However, declaring those immutable classes is going to require extra thought. By default, the `class` keyword means “a potentially mutable thing with identity”, while opting out of identity with the `value class` requires an extra effort from a developer. Is this the right choice? It is not clear without an extra research. If we see evidence that immutable value classes are increasingly dominating in the design of real-life Kotlin code, then we can gradually flip the default by asking developers to add an `identity` modifier before regular classes. Existing `data class` could be implicitly treated as `identity class`, easing this migration process. This explicitness in declaring an identity-capable class would open a road to flipping the default and making `value` modifier optional for immutable classes in the far away future. Anyway, right now it is all too early to speculate about.
 
 ## Value classes and arrays
 
@@ -966,7 +966,7 @@ val a = listOf(1, 2, 3).toTypedArray() // Array<Int>
 
 There is no straightforward way on JVM to have a generic method that produces an efficient array type (`int[]`) for primitives. These array types on primitives are not assignment-compatible to arrays of reference types (`Object[]`).
 
-In order to get an efficient `IntArray`, one has to explicitly use a special function `toIntArray()`. These functions are specialized for all thee 8 primitive array types in JVM: `BooleanArray`, `CharArray`, `ByteArray`, `ShortArray`, `IntArray`, `LongArray`, `FloatArray`, `DoubleArray` using a source-code-generator as a part of the standard library build process. Moreover, since these arrays are all mutually incompatible in JVM method signatures, all the extensions for various operations on those arrays have to be generated in 8 copies &mdash; one for each of those arrays, in addition to a generic version that works for any `Array<T>` (the one that inefficiently stores JVM primitive types).
+In order to get an efficient `IntArray`, one has to explicitly use a special function `toIntArray()`. These functions are specialized for all the 8 primitive array types in JVM: `BooleanArray`, `CharArray`, `ByteArray`, `ShortArray`, `IntArray`, `LongArray`, `FloatArray`, `DoubleArray` using a source-code-generator as a part of the standard library build process. Moreover, since these arrays are all mutually incompatible in JVM method signatures, all the extensions for various operations on those arrays have to be generated in 8 copies &mdash; one for each of those arrays, in addition to a generic version that works for any `Array<T>` (the one that inefficiently stores JVM primitive types).
 
 ### Arrays of inline value classes
 
@@ -982,7 +982,7 @@ Obviously, this approach to arrays of value classes does not scale to user-defin
 
 ### Valhalla arrays
 
-Project Valhalla promises to unify arrays of JVM primitives (both built-in and user-defined ones) so that they can be used in a generic fashion by generic code. However, at the time of writing, the plan on how exactly this will be achieved and, more importantly, what exactly will happen to legacy `int[]` types with respect to their unification with Valhalla arrays of primitives in not clear. The other challenge is that the timeline for Valhalla is not clear either, but the problem with arrays needs to be solved for value classes in Kotlin regardless of Valhalla.
+Project Valhalla promises to unify arrays of JVM primitives (both built-in and user-defined ones) so that they can be used in a generic fashion by generic code. However, at the time of writing, the plan on how exactly this will be achieved and, more importantly, what exactly will happen to legacy `int[]` types with respect to their unification with Valhalla arrays of primitives is not clear. The other challenge is that the timeline for Valhalla is not clear either, but the problem with arrays needs to be solved for value classes in Kotlin regardless of Valhalla.
 
 ### Reified value arrays
 
