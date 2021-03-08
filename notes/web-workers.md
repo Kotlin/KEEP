@@ -297,7 +297,7 @@ $worker_0.postMessage({
   $captured: {foo: foo, bar: bar}
 })
 ```
-I will leave `error`'s event listener in later examples, since its content is
+I will omit `error`'s event listener in later examples, since its content is
 always the same.
 
 ### Captured Variables
@@ -759,64 +759,7 @@ signal in their `invokeSuspend` method, thus, bridging the gap between main and
 worker threads from the caller side, telling the worker or the master to resume
 coroutines.
 
-## Other Questions
-
-### IDE Support
-While implicit code coloring requires whole program analysis, IDE works on
-per-module basis. Thus, analysing whole program, including klibs, will hinder
-IDE experience. How can we help IDE in this case?
-
-One possible solution might be to color the call graph bottom-up, from leaf
-functions to callers and save worker-safeness in metadata. In this case, the IDE
-can color code of the module, without requiring whole program analysis every
-time, as long as other modules are colored as well. This
-also works well with incremental compilation, since we do not need to analyse
-the whole call-graph every time, which we would need to do, if we started from
-`worker` blocks and go up-to-bottom through the call graph.
-
-However, due to implicit nature of the coloring, even the smallest change in
-one function (like adding `alert` call for debugging purposes) might recolor
-the whole program, leading to unpleasant developer experience.
-
-Bottom-up analysis also helps with the next problem.
-
-### Color changes
-Color changes can be not transparent to the user, if, for example, a library
-starts using worker-unsafe API.
-
-If we color the graph bottom-up, worker changes will become apparent during
-library update. So, a user would need to either wrap call of the wrong color
-with `master` call and wait until the library author fixes the issue.
-
-However, color changes in overridden functions require some work. If some
-override changes its color, or an override of wrong color is added, the
-color of its super method also changes. Thus, we need to analyse all the
-overrides and store safest color in the super method. If override changes its
-color, the color of super method should also be changed, and the change should
-be reflected in metadata.
-
-In explicit API mode we might require to explicitly annotate `@WorkerSafe`
-functions, just like we require `public` keyword. This way, even if a user
-breaks worker-safety by overriding super method with a worker-unsafe override,
-the compiler/IDE will warn about broken contract.
-
-### Error Reporting
-Adding salt to injury, it might be difficult in bottom-up approach to report,
-which function breaks worker-safeness and how the user can fix it. We can,
-however, easily fix the issue, if, in addition to two colors - worker-safe and
-worker-unsafe, we introduce a third one, which basically says, that the function
-itself does not use unsupported API or operations, but one of its callees does.
-So, the compiler or the IDE, upon seeing the third colored function, recursively
-checks its callees, filtering out safe ones until it reaches unsafe functions
-and reports them, along the call-chain on how to reach them from `worker` block.
-Since the call-graph is cyclical, and we will likely to cache all non-worker-safe
-callees, the analysis becomes fix-point analysis, which might be quite slow and
-not suited for usage in the IDE.
-This approach has the advantage of bottom-up approach (IDE support and
-incremental compilation), and, by adding an up-to-bottom analysis, we can report
-precise errors.
-
 ## Open Questions
-`then` and `catch` look ugly for me. We cannot, however, simply assume, that
+`then` and `catch` look ugly to me. We cannot, however, simply assume, that
 we should wait for the worker to finish its executions - it beats the whole
 purpose of web workers.
