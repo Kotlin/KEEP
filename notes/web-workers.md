@@ -5,7 +5,7 @@
 * **Contributors**: Anton Banykh, Zalim Bashorov, Ilya Gorbunov,
   Svyatoslav Kuzmich, Roman Elizarov.
 * **Status**: Under consideration
-* **Discussion and feedback**: TBD
+* **Discussion and feedback**: https://github.com/Kotlin/KEEP/issues/241
 
 ## The Problem
 While other Kotlin back-ends support multithreading natively, Kotlin/JS does
