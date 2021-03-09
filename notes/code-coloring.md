@@ -5,7 +5,7 @@
 * **Contributors**: Roman Elizarov, Anton Banykh, Mikhail Zarechenskii,
   Sergey Rostov, Andrey Breslav, Zalim Bashorov, Mikhail Belyaev
 * **Status**: Under consideration
-* **Discussion and feedback**: TBD
+* **Discussion and feedback**: https://github.com/Kotlin/KEEP/issues/240
 
 While discussing new features, we, as Kotlin Language Research Team, are
 constantly running into cases when the context of one block of code is different 
