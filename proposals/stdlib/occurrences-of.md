@@ -2,7 +2,7 @@
 
 * **Type**: Standard Library API proposal
 * **Author**: Christian Brüggemann
-* **Status**: Submitted
+* **Status**: Declined
 * **Prototype**: Implemented
 * **Discussion**: [KEEP-20](https://github.com/Kotlin/KEEP/issues/20)
 
