@@ -990,7 +990,7 @@ A potential solution is to rethink the approach of arrays of values in Kotlin. I
 
 > The issue for reified value arrays is [KT-44654](https://youtrack.jetbrains.com/issue/KT-44654).
 
-During compilation on JVM `VArray<Int>` gets represented as `int[]`, `VArray<Long>` as `long[]`, etc. Moreover, value arrays of user-defined inline value classes get represented as primitive arrays of the corresponding carrier types, so `VArray<Color`> compiles to `int[]`. For reference types `VArray<T>` gets mapped to `Array<T>`.
+During compilation on JVM `VArray<Int>` gets represented as `int[]`, `VArray<Long>` as `long[]`, etc. Moreover, value arrays of user-defined inline value classes get represented as primitive arrays of the corresponding carrier types, so `VArray<Color`> compiles to `Color[]`. For reference types `VArray<T>` gets mapped to `Array<T>`.
 
 Primitive array types in stdlib can be declared as type-aliases to the corresponding value array types, so we have
 `typealias IntArray = VArray<Int>`, etc. So, in the core language, the number of distinct array types will be down from 9 (or 13 if you count unsigned integers) to just two: `Array<T>` (storing references) and `VArray<T>` (storing values).
