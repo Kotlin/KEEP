@@ -1,0 +1,1 @@
+The proposal was renamed. See the actual version in [locale-agnostic-case-conversions.md](locale-agnostic-case-conversions.md).
