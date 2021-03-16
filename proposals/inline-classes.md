@@ -166,11 +166,7 @@ Currently, inline classes must satisfy the following requirements:
 - Inline class cannot have backing fields
     - Hence, it follows that inline class can have only simple computable properties (no lateinit/delegated properties)
 - Inline class must be a toplevel or a nested class. Local and inner inline classes are not allowed.
-- Inline classes cannot have `var` properties as well as extension `var` properties.
-
-Let us explain the rationale behind the last limitation. We want the `value.properties = 1` syntax to change the value of value-based
-class: instead of generating `value.setProperty(1)` the compiler will generate something like `value = value.clone(property = 1)`.
-So, we reserve the syntax of mutating property to mutate the class in the future.
+- Inline classes cannot have `var` properties with backing fields.
 
 ### Other restrictions
 
