@@ -355,7 +355,7 @@ Private and local properties of `Result`  type were allowed as long as they did 
 private var foo: Result<Int> // Ok
 ```
 
-The use of Kotlin null-safety operators `.?`, `?:` and `!!` was not allowed on both nullable and non-null `Result` types:
+The use of Kotlin null-safety operators `?.`, `?:` and `!!` was not allowed on both nullable and non-null `Result` types:
 
 ```kotlin
 val r: Result<String?> = runCatching { readLine() }
