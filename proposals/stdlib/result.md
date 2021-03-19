@@ -749,5 +749,5 @@ that provide the corresponding utilities.
 
 * **Kotlin 1.5**
   * Allow returning the `Result` type from functions.
-  * Allow Kotlin null-safety operators `.?`, `?:` and `!!` on both nullable and non-null `Result` types.
+  * Allow Kotlin null-safety operators `?.`, `?:` and `!!` on both nullable and non-null `Result` types.
   * Text updated to replace `inline class` with `@JvmInline value class`.
