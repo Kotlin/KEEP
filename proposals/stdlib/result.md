@@ -565,21 +565,21 @@ and all of them are purely tentative.
 
 ### Representing as a sealed class
 
-Kotlin `inline` classes cannot be currently used with `sealed class` construct. 
+Kotlin `@JvmInline value` classes cannot be currently used with `sealed class` construct. 
 If that is supported in the future, then we could change implementation of 
 `Result` without affecting its public APIs and binary interfaces in the following way:
 
 ```kotlin
-sealed inline class Result<T> {
-    inline class Success<T>(val value: T) : Result<T>()
+@JvmInline sealed value class Result<T> {
+    @JvmInline class Success<T>(val value: T) : Result<T>()
     class Failure<T>(val exception: Throwable) : Result<T>()
 }
 ``` 
 
-> Notice, that only `Success` case is marked with `inline` modifier here. That is the case that should be
-represented without boxing. In general, if `inline sealed` classes are allowed in the future,
-then Kotlin compiler could only support `inline` modifier on a set of subclasses with pairwise non-intersecting 
-types of their primary constructor properties. In particular, both `Success` and `Failure` cannot be `inline` 
+> Notice, that only `Success` case is marked with `@JvmInline` annotation here. That is the case that should be
+represented without boxing. In general, if `@JvmInline sealed value` classes are allowed in the future,
+then Kotlin compiler could only support `@JvmInline` annotation on a set of subclasses with pairwise non-intersecting 
+types of their primary constructor properties. In particular, both `Success` and `Failure` cannot be `@JvmInline` 
 at the same time, since we would not be able to distinguish `Success(Exception(...))` from 
 `Failure(Exception(...))` at run time.
 
@@ -682,7 +682,6 @@ runCatching { d.await() }.map { it.doSomethingCatching() } // : Result<Result<Da
 Functional code that uses `Try` monad gets quickly polluted
 with `flatMap` invocations. To make such code manageable, a functional programming language is usually extended 
 with monad comprehension syntax to hide those `flatMap` invocations.  
-However, writing functions that return `Result` is not allowed in Kotlin. 
 
 Take a look at the following example code that
 uses monad comprehension over `Try` monad 
@@ -733,7 +732,7 @@ corresponding extension functions that enable more fine-grained control. When a 
 as its result type, it means that this function can make a fine-grained decision on which failures are encapsulated
 and which failures are thrown up the call stack.       
 
-If your code needs fine-grained exception handling policy, we'd recommend to design your code in such a way, that
+If your code needs fine-grained exception handling policy, we'd recommend designing your code in such a way, that
 exceptions are not used at all for any kinds of locally-handled failures 
 (see section on [style](#error-handling-style-and-exceptions) for example code
 with nullable types and sealed data classes). In the context of this appendix, `parseURL` could return a nullable
