@@ -164,6 +164,28 @@ Support of `sealed interface` means the following adjustments in the behavior of
 * [KClass.sealedSubclasses](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin.reflect/-k-class/sealed-subclasses.html)
   will return a list of the corresponding subclasses of a `sealed interface`.
   
+## Expect sealed in multiplatform
+
+Kotlin multiplatform adds a concept of an `expect interface` and an `expect class` which can be _actualized_ in
+another module with an `actual interface`, an `actual class`, or an `actual typealias`. Their interaction with
+sealed classes and interfaces is explained below.
+
+* Any code that sees an `expect sealed` interface or class but does not see the corresponding `actual` declaration 
+does not follow the rules of [Exhaustive when matches](#exhaustive-when-matches), that is, it does not consider the
+corresponding declaration sealed.
+                                                                                                                 
+* Subclasses for an `expect sealed` declaration are allowed in all modules on the dependency path between 
+the `expect sealed` declaration and the corresponding `actual sealed` declaration, including both these declaring
+modules.
+
+Conceptually, a declaration becomes fully sealed in the module with the corresponding `actual sealed` declaration.
+As a consequence of the above rule, any other module that sees an `actual sealed` declaration cannot declare 
+subclasses for a `sealed classes`.
+
+> The rationale is that turning a Kotlin library into a multiplatform code shall not make a difference from the
+> standpoint of users of the library, both in how they can use exhaustive when matches on the corresponding
+> sealed declaration and the prohibition of adding more subclasses.
+ 
 ## Open issues and future opportunities
 
 The concept of a `sealed interface` makes it conceptually possible to support `internal` functions in such interfaces
