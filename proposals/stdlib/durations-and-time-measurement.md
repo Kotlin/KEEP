@@ -118,18 +118,17 @@ from unrelated time sources in a single expression and get nonsense in the resul
 It is proposed to represent duration values with an inline class `Duration` that wraps a primitive value. 
 
 ```kotlin
-inline class Duration internal constructor(internal val value: Double) : Comparable<Duration>
+inline class Duration internal constructor(internal val value: Long) : Comparable<Duration>
 ```
 
-The property `value` stores a `Double` number denoting the number of nanoseconds in this time interval. 
+The property `value` stores a `Long` number encoding either the number of nanoseconds, or the number of milliseconds 
+in this time interval.
 
-Such internal representation is a good compromise between having high precision for very small durations and good enough 
-precision for very big durations. For example, nanoseconds can be stored precisely for durations up to 104 days, and seconds
-for up to 146 years. Though that is not a goal, `Duration` type can store both the Planck time (5.39×10<sup>-44</sup> s) and
-the age of the Universe (13.8×10<sup>9</sup> years at the time of writing).
+Such internal representation allows storing durations up to ~146 years with a nanosecond precision and 
+durations up to ~146 million years with a millisecond precision.
 
-The `Duration` arithmetic operators working with `Double` underlying values have more efficient implementation in Kotlin/JS, where
-`Double` values are supported natively and `Long` values are emulated with a class implementation.
+The `Duration` arithmetic operators working with `Long` underlying values have an efficient implementation 
+in Kotlin/JVM and Kotlin/Native, but less efficient in Kotlin/JS, where `Long` values are emulated with a class implementation.
 
 A `Duration` value can be infinite, which is useful for representing infinite timeout values.
 
@@ -139,18 +138,18 @@ A `Duration` value can be negative.
 
 The primary constructor of `Duration` is internal. 
 A `Duration` value can be constructed from a numeric value (`Int`, `Long` or `Double`) and 
-a unit of duration. If the unit is known in advance and constant, the extension properties provide the most expressive 
-way to construct a duration, e.g. `1.5.minutes`, `30.seconds`, `500.milliseconds`. Otherwise, the extension function 
+a unit of duration. If the unit is known in advance and constant, the functions of `Duration` companion object can 
+be used to construct a duration, e.g. `Duration.minutes(1.5)`, `Durations.seconds(30)`, `Duration.milliseconds(500)`. Otherwise, the extension function 
 `numericValue.toDuration(unit)` can be used.
 
 #### Conversions
 
 A `Duration` value can be retrieved back as a number with:
-- the properties `inNanoseconds`, `inSeconds`, `inHours`, etc, that return a double duration value expressed in the specified fixed unit;
+- the properties `inWholeNanoseconds`, `inWholeSeconds`, `inWholeHours`, etc, that return the duration value rounded to 
+  a long number in the specified fixed unit;
 - the functions `toDouble(unit)`, `toLong(unit)`, `toInt(unit)` that return a number of the particular `Double`, `Long` or `Int` type
-expressed in the unit specified with the parameter `unit`;
-- two shortcut functions returning a number of milliseconds or nanoseconds as `Long` values: `toLongMilliseconds()`, `toLongNanoseconds()`.
-
+expressed in the unit specified with the parameter `unit`.
+  
 #### Operators
 
 `Duration` values support the following operations:
@@ -170,15 +169,15 @@ The equality of Duration is defined so that two duration values representing tim
 are equal, no matter which numeric types and duration units were used to construct these durations, e.g.:
 
 ```kotlin
-1.days == 24.hours
-1.5.minutes == 90.seconds
+Duration.days(1) == Duration.hours(24)
+Duration.minutes(1.5) == Duration.seconds(90)
 ```
 
 `compareTo` operation is implemented in a similar way:
 
 ```kotlin
-1.hours < 65.minutes  // true
-0.5.hours > 40.minutes // false
+Duration.hours(1) < Duration.minutes(65)  // true
+Duration.hours(0.5) > Duration.minutes(40) // false
 ```
 
 #### Components
@@ -238,8 +237,8 @@ of decimal places, with the exceptions:
 3. The operation `toIsoString()` returns an ISO-8601 based string representation of a duration. Only `H`, `M` and `S` components are used.
    For example: 
    
-   - `2.days.toIsoString() == "PT48H"` 
-   - `(-82850.4).seconds.toIsoString() == "-PT23H0M50.400S"`
+   - `Duration.days(2).toIsoString() == "PT48H"` 
+   - `Duration.seconds(-82850.4).toIsoString() == "-PT23H0M50.400S"`
 
 ### DurationUnit
 
@@ -276,7 +275,7 @@ abstract class TimeMark {
 `hasPassedNow` and `hasNotPassedNow` functions are useful for checking whether a deadline or expiration `TimeMark` has been reached:
 
 ```kotlin
-val timeout: Duration = 5.minutes
+val timeout: Duration = Duration.minutes(5)
 val expirationMark = timeSource.markNow() + timeout
 // later
 if (expirationMark.hasPassedNow()) {
@@ -366,7 +365,7 @@ at all, the API depending on it should fail with an exception.
 
 It's proposed to provide this API in the common Kotlin Standard Library in a new package: `kotlin.time`.
 
-To gather early adoption feedback, the new API can be released in the experimental status in the coming Kotlin 1.3.x release. 
+To gather early adoption feedback, the new API was released in the experimental status in the coming Kotlin 1.3.x release. 
 To mark the experimental status of this API we provide the annotation `@kotlin.time.ExperimentalTime`.
 
 However, we can't deprecate the existing stable API that is going to be replaced with the new API, such as `measureTimeMillis`, 
@@ -375,9 +374,6 @@ before the new API goes stable.
 The experimental status of `Duration` and consequently almost all API in `kotlin.time` cannot be lifted without graduating
 `Inline classes` feature to stable first.
 
-## Unresolved questions
-
-* Are the shortcut functions `toLongMilliseconds` and `toLongNanoseconds` short enough for their use cases?
 
 ## Future advancements
 
@@ -401,10 +397,3 @@ val systemTimeStampFrequency: Long
 ```
 
 They shall return the value of some system-wide ticking counter and its frequency in Hz respectively.
-
-### Platform dependent internal representation of Duration
-
-In some Kotlin/Native target platforms `Long` type can have more efficient implementation than `Double`. 
-`Duration` could have another actual implementation for these platforms, having the internal value stored as `Long`.
-
-However, it's unclear how to satisfy the expectations of duration precision at the nanosecond scale then.
