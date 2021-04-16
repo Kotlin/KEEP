@@ -737,6 +737,15 @@ one.
 
 1.4.30 standard library uses the old scheme to preserve binary compatibility.
 
+Note, that functions without inline class parameter, except `Result`, and 
+top-level functions, returning `Result`, are not mangled. We do not mangle 
+functions with `Result` parameters to preserve binary compatibility, since
+`Result` is a stable inline class since 1.3 and changes in mangling algorithm 
+would break binary compatibility.
+However, we did not allow returning `Result` from functions until 1.5.0, so
+mangling methods returning `Result` is not a problem. We mangle methods only,
+since we do not mangle top-level functions, returning inline classes.
+
 *Constructors* 
 
 Constructors with inline class type parameters are marked as private, and have a public synthetic accessor with additional marker parameter. 

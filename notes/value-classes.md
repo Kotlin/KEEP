@@ -45,7 +45,7 @@ language design rule.  Any new feature in the language has to clear a high bar o
   * [Strings and other value-based classes](#strings-and-other-value-based-classes)
   * [Augmented updating assignment operator](#augmented-updating-assignment-operator)
   * [Copying functions naming convention](#copying-functions-naming-convention)
-  * [Shall class immutability be the default?](#shall-class-immutability-be-the-default?)
+  * [Shall class immutability be the default?](#shall-class-immutability-be-the-default)
 * [Value classes and arrays](#value-classes-and-arrays)
   * [Arrays of inline value classes](#arrays-of-inline-value-classes)
   * [Valhalla arrays](#valhalla-arrays)
