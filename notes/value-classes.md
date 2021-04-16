@@ -20,31 +20,31 @@ language design rule.  Any new feature in the language has to clear a high bar o
   * [Built-in primitive value classes](#built-in-primitive-value-classes)
   * [Inline classes are user-defined value classes](#inline-classes-are-user-defined-value-classes)
   * [Deep immutability vs shallow immutability](#deep-immutability-vs-shallow-immutability)
-  * [Compiling value classes: the single-field restriction](#compiling-value-classes-the-single-field-restriction)
+  * [Compiling value classes: the single-field restriction](#compiling-value-classes:-the-single-field-restriction)
   * [Project Valhalla](#project-valhalla)
   * [Multifield value classes before Valhalla](#multifield-value-classes-before-valhalla)
   * [Value classes vs structs](#value-classes-vs-structs)
 * [Immutability and value classes](#immutability-and-value-classes)
   * [Updating immutable classes](#updating-immutable-classes)
-  * [Mutable properties of immutable types](#mutable-properties-of-immutable-types)
-  * [Compiling mutable properties on JVM](#compiling-mutable-properties-on-jvm)
-  * [Abstracting mutation into functions](#abstracting-mutation-into-functions)
-  * [Var this as a ref (inout) parameter in disguise](#var-this-as-a-ref-inout-parameter-in-disguise)
-  * [Updating properties with mutating setters](#updating-properties-with-mutating-setters)
+  * [Copyable properties of immutable types](#copyable-properties-of-immutable-types)
+  * [Compiling copyable properties on JVM](#compiling-copyable-properties-on-jvm)
+  * [Abstracting updates into functions](#abstracting-updates-into-functions)
+  * [Copyable this as a ref (inout) parameter in disguise](#copyable-this-as-a-ref-inout-parameter-in-disguise)
+  * [Updating properties with copying setters](#updating-properties-with-copying-setters)
   * [Extension receiver vs dispatch receiver](#extension-receiver-vs-dispatch-receiver)
   * [Deep mutations](#deep-mutations)
-  * [Call-site syntactic indicator of mutation](#call-site-syntactic-indicator-of-mutation)
+  * [Call-site syntactic indicator of copying](#call-site-syntactic-indicator-of-copying)
   * [Value interfaces](#value-interfaces)
   * [Read-only collections vs immutable collections](#read-only-collections-vs-immutable-collections)
-  * [Mutating functions returning a value](#mutating-functions-returning-a-value)
-  * [Mutating operators](#mutating-operators)
-  * [Mutating function types and lambdas](#mutating-function-types-and-lambdas)
-  * [Mutating scope functions](#mutating-scope-functions)
+  * [Copying functions returning a value](#copying-functions-returning-a-value)
+  * [Copying operators](#copying-operators)
+  * [Copying function types and lambdas](#copying-function-types-and-lambdas)
+  * [Copying scope functions](#copying-scope-functions)
 * [Legacy and migration](#legacy-and-migration)
   * [Migrating built-in primitive types to value classes](#migrating-built-in-primitive-types-to-value-classes)
   * [Strings and other value-based classes](#strings-and-other-value-based-classes)
-  * [Augmented mutating assignment operator](#augmented-mutating-assignment-operator)
-  * [Mutating functions naming convention](#mutating-functions-naming-convention)
+  * [Augmented updating assignment operator](#augmented-updating-assignment-operator)
+  * [Copying functions naming convention](#copying-functions-naming-convention)
   * [Shall class immutability be the default?](#shall-class-immutability-be-the-default)
 * [Value classes and arrays](#value-classes-and-arrays)
   * [Arrays of inline value classes](#arrays-of-inline-value-classes)
@@ -57,17 +57,17 @@ language design rule.  Any new feature in the language has to clear a high bar o
   * [An example with a mutable class](#an-example-with-a-mutable-class)
   * [Uninitialized properties](#uninitialized-properties)
   * [DSL-style initialization blocks for mutable classes](#dsl-style-initialization-blocks-for-mutable-classes)
-  * [Flexible initialization for readonly properties](#flexible-initialization-for-readonly-properties)
-  * [Flexible initialization for mutable properties of value classes](#flexible-initialization-for-mutable-properties-of-value-classes)
+  * [Flexible initialization for read-only properties](#flexible-initialization-for-read-only-properties)
+  * [Flexible initialization for copyable properties of value classes](#flexible-initialization-for-copyable-properties-of-value-classes)
   * [ABI strategy for uninitialized properties](#abi-strategy-for-uninitialized-properties)
 
 <!--- END -->
  
 ## Introduction
 
-Instances of all user-defined classes in Kotlin have an identity and the corresponding 
-[referential equality operator](https://kotlinlang.org/docs/reference/equality.html) (`===`).
-It is a vital concept for mutable classes. When you have two references that point to the same instance, then modification that had happened though one reference are visible through the other reference because, in fact, the single underlying object instance is being modified
+Instances of all user-defined classes in Kotlin have an identity, the corresponding 
+[referential equality operator](https://kotlinlang.org/docs/reference/equality.html) (`===`), and are passed around _by reference_.
+Identify is a vital concept for mutable classes. When you have two references that point to the same instance, then modification that had happened though one reference are visible through the other reference because, in fact, the single underlying object instance is being modified
 ([playground](https://pl.kotl.in/JqL2vR0ES)):
 
 ```kotlin
@@ -85,7 +85,8 @@ fun main() {
 ```
 
 For immutable classes, though, the concept of identity does not have much use. Take a `String` class, for example. 
-`String` instances are immutable, so you cannot pull the same trick as with the mutable `Project` class above. Any operation that modifies a string returns a new instance of a string and cannot have any effect on the original one. Moreover, to modify an immutable class like `String` we have to declare the corresponding reference to it as `var`
+`String` instances are immutable, so you cannot pull the same trick as with the mutable `Project` class above. Any operation that modifies a string returns a new instance of a string and cannot have any effect on the original one. Even though a `String` has an identity, it is passed around _by value_. 
+Moreover, to modify an immutable class like `String` we have to declare the corresponding reference to it as `var`
 ([playground](https://pl.kotl.in/0Qtt8mivq)):
 
 ```kotlin
@@ -168,7 +169,7 @@ Combining all of that, the decision was reached to rename the `inline` modifier 
 
 ### Deep immutability vs shallow immutability
 
-When we say that “value classes are immutable”, we mean a _shallow immutability_ where we only guarantee in the language that direct fields of the corresponding value class cannot be mutated. When we want to highlight this difference and bring attention to the fact that value class immutability is only shallow, we can say they are _readonly classes_. However, Kotlin value classes are designed to be used to represent truly deeply immutable data-structures. We expect that developers will be usually writing value classes that only contain other immutable classes in their fields, and so we would be calling them simply immutable classes most of the time.
+When we say that “value classes are immutable”, we mean a _shallow immutability_ where we only guarantee in the language that direct fields of the corresponding value class cannot be mutated. When we want to highlight this difference and bring attention to the fact that value class immutability is only shallow, we can say they are _read-only classes_. However, Kotlin value classes are designed to be used to represent truly deeply immutable data-structures. We expect that developers will be usually writing value classes that only contain other immutable classes in their fields, and so we would be calling them simply immutable classes most of the time.
 
 > It is important, though, to always refer to Kotlin collection interface types like List as read-only collections. They are different from immutable collections. See a separate section on “Read-only collections vs immutable collections”.
 
@@ -255,7 +256,7 @@ The concept of a value class serves as a solid basis to embrace immutable data. 
 (see more discussion in [Immutability We can Afford](https://elizarov.medium.com/immutability-we-can-afford-10c0dcb8351d) by Roman Elizarov).
 The story of immutability ties especially well into Kotlin coroutines.
 
-However, Kotlin still treats immutable classes as somewhat second-class. Kotlin has symmetric support for mutable `var` and readonly `val` properties, but this symmetry is skin-deep. Consider the following code that maintains a mutable state and periodically distributes updates to it.
+However, Kotlin still treats immutable classes as somewhat second-class. Kotlin has symmetric support for mutable `var` and read-only `val` properties, but this symmetry is skin-deep. Consider the following code that maintains a mutable state and periodically distributes updates to it.
 
 ```kotlin
 data class State(
@@ -330,41 +331,62 @@ First, enabling this syntax for regular classes or data classes would be confusi
 
 > Things like `var list: MutableList<T>` (where you have a mutable property storing a reference to an instance of a mutable type) are allowed in Kotlin now, but are quite error-prone and are generally considered bad code style. We don’t want to make it worse by adding new ways to create a copy of a mutable type.
 
-That is where the concept of _immutable identity-less value class_ comes into play. For a value class like `State` the statement` state.lastUpdate = now()` cannot have any other meaning, but to create a copy with a different value for `lastUpdate`. If a `state` is not declared as `var`, then this code will not compile at all. It is safe to allow this short-hand mutation syntax for value types as there will be no confusion on what it does. The style of this code fits the Kotlin vision for fun in development &mdash; we can work with immutable classes without any ceremony.
+That is where the concept of _immutable identity-less value class_ comes into play. For a value class like `State` the statement` state.lastUpdate = now()` cannot have any other meaning, but to create a copy with a different value for `lastUpdate`. If a `state` is declared as `val`, then this code will not compile at all. It is safe to allow this short-hand updating syntax for value types as there will be no confusion on what it does. The style of this code fits the Kotlin vision for fun in development &mdash; we can work with immutable classes without any ceremony.
 
-### Mutable properties of immutable types
+### Copyable properties of immutable types
 
-To support `state.lastUpdate = now()` syntax for value types, we need to be able to declare `lastUpdate` property of the immutable value class `State` as a _mutable property_. One option is to invent a new keyword, in addition to `val` and `var` that means “immutable property that can be updated by creating a new value of the containing class behind the scenes”.  However, we can see that value classes, being immutable, cannot have regular `var` (mutable) properties anyway, so we can safely reuse `var` keyword for this purpose. That is, when we write:
+To support `state.lastUpdate = now()` syntax for value types, we need to be able to declare `lastUpdate` property of the immutable value class `State` as a _copyable property_.
+We designate such properties as `copy var` &mdash; the `var` path highlights that the property can be updated, the `copy` modifier signifies that it works similarly to 
+the `copy()` function.
+
+> We can also invent a new keyword, in addition to `val` and `var` that means “immutable property that can be updated by creating a new copy of the containing class behind the scenes”.
+> We might end up adding a such new keyword in the future. The best candidate for now is `cov` (a shortening of `copy var`). 
+> For now, in this document, we will be using a longer and more explicit `copy var` form.
 
 ```kotlin
 value class State(
-    var lastUpdate: Instant,
+    copy var lastUpdate: Instant,
     // ...
 }
 ```
 
-The meaning of this `var` (since it is written inside the `value` class) is that you can use `state.lastUpdate = now()` statement when state itself is `var` (mutable). To make sure this syntactic option is not blocked in the future, we now forbid definition of any kind of `var` properties (including extension properties) in value classes.
+The meaning of this `copy var` is that you can use `state.lastUpdate = now()` statement when `state` itself is `var` (mutable). 
+For the reasons described in the previous section (to avoid implicit identity changes), the `copy var` is limited to `value class` declarations, 
+that is, you cannot declare a `copy var` inside a regular `class` declaration.   
 
-> The similar syntactic option is chosen by Swift, whose structs are likewise immutable value types. Swift has `var` (mutable) and `let` (immutable) properties and uses `var` to denote properties of structs that can be mutated to get the new value of the struct. This Swift’s feature is the main inspiration for looking into the similar syntactic feature in Kotlin.
+> The original idea was to reuse the `var` keyword, so that a `var` inside the `value class` is implicitly interpreted as `copy var`. 
+> The reasoning was that a regular `var` with a backing field is not allowed on a `value class` anyway, so it will cause no harm.
+> However, it turns out to be problematic for extension properties and for member properties without backing fields (properties with getters and setters).
+> There are a perfectly valid use-cases when a `value class` represents an immutable handle into the underlying mutable data structure with 
+> regular `var` properties that mutate this underlying data structure. In this case `instance.property = value` syntax has its usual mutating (non-copying) meaning.
+> So, a `value class` can end having both copyable properties and regular (mutable) properties and the same time.
+> Under this light, the context-dependent nature of `var` would be confusing. We're also realized that the concept of the `copy var` itself is quite 
+> novel, so it makes total sense, at least initially, to be verbose and explicit about it, explicitly writing `copy var` even when
+> declaring primary constructor properties of a `value class`.
 
-On the surface, this looks like a stretch for the usual meaning of `var` property, but if you take a closer look at the example of how those mutable properties are updated in the source code (just like mutable `var` properties of mutable classes), then this does not look like a stretch anymore.
+> Note, that `struct` in the Swift programming language is a very similar concept. Swift has `var` (mutable) and `let` (immutable) properties and uses 
+> `var` to denote properties of structs that produce the new copy of the struct on update.  
+> This Swift’s feature is the main inspiration for looking into the similar syntactic feature in Kotlin.
+> However, extension properties are unique to Kotlin and their presence had motivated us to prefer a more explicit `copy var` syntax in Kotlin.
+
+On the surface, this looks like a stretch for the usual meaning of `var` property, but if you take a closer look at the example of how these copyable properties are updated in the source code (just like mutable `var` properties of mutable classes), then this does not look like a stretch anymore.
 
 > The corresponding issue for convenient update convention for immutable value classes is [KT-44653](https://youtrack.jetbrains.com/issue/KT-44653).
 
-### Compiling mutable properties on JVM
+### Compiling copyable properties on JVM
 
-The simple implementation for mutable properties of immutable value classes on JVM could be done via existing approach like `copy(...)` function for data classes. However, the `copy` function has a problem with respect to separate compilation and stable ABI. Adding more properties to a class breaks ABI of the `copy` function for all its previously compiled clients.
+The simple implementation for copyable properties of immutable value classes on JVM could be done via existing approach like `copy(...)` function for data classes. However, the `copy` function has a problem with respect to separate compilation and stable ABI. Adding more properties to a class breaks ABI of the `copy` function for all its previously compiled clients.
 
 > See a detailed explanation in [Public API challenges in Kotlin](https://jakewharton.com/public-api-challenges-in-kotlin/) by Jake Wharton.
 
 Mutable classes do not have a similar problem. You don’t have to use `copy` function with mutable classes and usually you don’t. Properties of mutable classes are compiled to a pair of `getXxx` and `setXxx` methods on JVM and are stable with respect to the natural evolution of the corresponding mutable classes. New properties can be added to mutable classes while preserving binary compatibility with respect to the clients that were compiled against an older version of the corresponding class. The goal of 1st-class support for immutable classes (on par with mutable classes) motivates us to look for a better solution.
 
-A mutable property `var lastUpdate: Instant` of a value class `State` can be desugared for Java/JVM into the following two methods:
+A copyable property `copy var lastUpdate: Instant` of a value class `State` can be desugared for Java/JVM into the following two methods:
 
 ```java
 class State {
     Instant getLastUpdate(); // a usual Kotlin getter
-    State withLastUpdate(Instant value); // a "wither" to mutate an immutable class
+    State withLastUpdate(Instant value); // a "wither" to copy an immutable class with new lastUpdate value
 }
 ```
 
@@ -392,13 +414,13 @@ state = state.with$LastUpdate$Tags$internal(now(), state.tags + tag)
 
 > Here we explicitly use the identityless-ness of value classes. Because an identity of a value class is not important the compiler is free to split or combine sequence of updates to value classes in any way. It is even possible to temporarily keep updated properties of value classes in local variables up to the moment when an instance of a value class is needed to pass it to some other function and only then create an actual, updated, value class instance.
 
-Even the basic variant of this optimization would provide efficient and reliable mass-mutation for value classes. For cases when such mutation should be performed from another class or module, abstraction mutation into functions will help. See the next section.
+Even the basic variant of this optimization would provide efficient and reliable mass-update for value classes. For cases when such update should be performed from another class or module, abstraction updates into functions will help. See the next section.
 
-For a closed-world compilation (like in Kotlin/Native) we can make sure that chained mutations of value classes are always optimized and do not perform unnecessary allocations.
+For a closed-world compilation (like in Kotlin/Native) we can make sure that chained updates of value classes are always optimized and do not perform unnecessary allocations.
 
-### Abstracting mutation into functions
+### Abstracting updates into functions
 
-It is not enough just to support short-hand copying convention like `state.lastUpdate = now()`. You should be able to abstract these kinds of operations on value classes into functions without losing syntactic convenience, just like you do for mutable classes. Let us see how you can write a “mutating” method for an immutable class `State` in the current version of Kotlin:
+It is not enough just to support short-hand copying convention like `state.lastUpdate = now()`. You should be able to abstract these kinds of operations on value classes into functions without losing syntactic convenience, just like you do for mutable classes. Let us see how you can write an updating method for an immutable class `State` in the current version of Kotlin:
 
 ```kotlin
 fun State.updatedNow(): State =
@@ -412,7 +434,7 @@ We have to write functions that update immutable classes in a “wither style”
 
 It is not that bad if you have few such functions, but for a big data model it quickly becomes tenuous without some kind of code generation or without a language feature that we will be talking about here.
 
-With support for mutable properties in value classes the body of this function might be changed to:
+With support for copyable properties in value classes the body of this function might be changed to:
 
 ```kotlin
 fun State.updatedNow(): State {
@@ -422,37 +444,40 @@ fun State.updatedNow(): State {
 }
 ```
 
-This gives no improvement and is still far cry from the simplicity of working with mutable classes. So, members and extensions of value classes should support a mechanism to declare a function with a mutable receiver, that is, a function that exposes `this` receiver reference as `var` and implicitly returns the updated value of `this`. The best way to achieve it is via a modifier for a function declaration:
+This gives no improvement and is still far cry from the simplicity of working with mutable classes. So, members and extensions of value classes should support a mechanism to declare a function with a copyable receiver, that is, a function that exposes `this` receiver reference as `copy var` and implicitly returns the updated value of `this`. The best way to achieve it is via a modifier for a function declaration:
 
 ```kotlin
-mutating fun State.updateNow() { // implicitly returns new State
+copy fun State.updateNow() { // implicitly returns new State
     lastUpdate = now() // this.lastUpdate = is possible because of var this
 }
 ```
 
-> Swift uses `mutating` modifier for this purpose and that is why it is used as a tentative name for this feature. It is a well-fitting name for Kotlin, too.
+> Swift uses `mutating` modifier for this purpose. However, we've found that using the term "mutation" for such a feature is confusing, 
+> because it rings similarity to mutable classes and regular in-place mutation of their properties. We are striving here for the same syntactic concision,
+> but the underlying mechanics are quite different, as the `State` object is being copied with this function, not being mutated in place,
+> hence the choice of the `copy` modifier.
 
-A _mutating function_ for an immutable value class returns new value behind the scenes, without having to explicitly repeat the receiver type as the result type in the signature of the function declaration.
+A _copying function_ for an immutable value class returns new value behind the scenes, without having to explicitly repeat the receiver type as the result type in the signature of the function declaration.
 
-As you can see, this way we start a conceptual process of flipping defaults in favor of immutability for user-defined classes. This is not novel in Kotlin. In the standard library the shorter-named `List` is readonly (hence immutable if its element type is immutable), and a longer name of `MutableList` is explicitly used when mutability is needed. This implicitly makes immutability a default choice, which is great, since immutability is safer. In the same fashion, it is consistent and safe to forbid regular functions from modifying objects of value classes unless they explicitly opt-in with the dedicated `mutating` keyword.
+As you can see, this way we start a conceptual process of flipping defaults in favor of immutability for user-defined classes. This is not novel in Kotlin. In the standard library the shorter-named `List` is read-only (hence immutable if its element type is immutable), and a longer name of `MutableList` is explicitly used when mutability is needed. This implicitly makes immutability a default choice, which is great, since immutability is safer. In the same fashion, it is consistent and safe to forbid regular functions from updating objects of value classes unless they explicitly opt-in with the dedicated `copy` keyword.
 
-Mutating functions also bring small niceties to other corners of the language with the appropriate support from the standard library. E.g. this kind repetitive code:
+Copying functions also bring small niceties to other corners of the language with the appropriate support from the standard library. E.g. this kind repetitive code:
 
 ```kotlin
 myVeryLongBooleanFlag = !myVeryLongBooleanFlag
 ```
 
-could become straightforward and repetition-avoiding with`mutating fun Boolean.toggle()` that might be added to the standard library in the future:
+could become straightforward and repetition-avoiding with`copy fun Boolean.toggle()` that might be added to the standard library in the future:
 
 ```kotlin
 myVeryLongBooleanFlag.toggle()
 ```
 
-> The name of `Boolean.toggle()` mutating extension function is inspired by the corresponding function from Swift.
+> The name of `Boolean.toggle()` copying extension function is inspired by the corresponding function from Swift.
 
-### Var this as a ref (inout) parameter in disguise
+### Copyable this as a ref (inout) parameter in disguise
 
-One can argue that mutating functions essentially bring 
+One can argue that copying functions essentially bring 
 [C#-style `ref` parameters](https://docs.microsoft.com/en-us/dotnet/csharp/language-reference/keywords/ref#passing-an-argument-by-reference)
 to Kotlin, also known as [`inout` parameters in Swift](https://docs.swift.org/swift-book/LanguageGuide/Functions.html).
 
@@ -461,7 +486,7 @@ If the Kotlin had `ref` parameters, then it would be fitting to mark it on a cal
 
 > For example, in C# the call to a method with an `ref` parameter looks like `toggle(ref myVeryLongBooleanFlag)`. while in Swift the syntax for calling a function with an `inout` parameter is `toggle(&myVeryLongBooleanFlag)`.
 
-So a mutating function can be seen as a function with a `ref this`. Does support for mutating functions mean Kotlin starts on the road of adding `ref` parameters in the future? Let us see.
+So a copying function can be seen as a function with a `ref this`. Does support for copying functions mean Kotlin starts on the road of adding `ref` parameters in the future? Let us see.
 
 From day one Kotlin was designed to encourage good programming practices. Drawing its inspiration from Java, Kotlin had added common idioms and widely accepted design patterns as language features as well as removed features and capabilities that often serve as source of bugs or otherwise produce hard to understand code.
 
@@ -473,7 +498,7 @@ account.updateBalance(transferDetails)
 
 However, it is considered a bad practice to mutate objects that were passed to a method as its arguments, even when it references an instance of a mutable class. A programmer reading the above code naturally expects that `transferDetails` object is not changed. If it does change, that would be surprising.
 
-It makes sense to codify this practice into the language itself, by only allowing mutation on the function receiver. In this case, when both `account` and `transferDetails` are represented with immutable value classes, then above call can only mutate the `account` instance. There will be no way to write surprising code that mutates its immutable parameter.
+It makes sense to codify this practice into the language itself, by only allowing mutation on the function receiver. In this case, when both `account` and `transferDetails` are represented with immutable value classes, then above call can only update the `account` instance. There will be no way to write surprising code that updates its immutable parameter.
 
 However, even in the Kotlin standard library we can find exceptions to the “no parameter mutation” rule. Consider the following function signature (a simplified version of the actual Kotlin stdlib function):
 
@@ -494,13 +519,13 @@ val result = persistentList.update { dest ->
 }
 ```
 
-Here, when updating a `PersistentCollection` (which is an immutable data structure) we perform its update in a batch for efficiency reasons using its `update` function. It represents its updatable view inside the `update` function block with a `MutableList` interface. Here, again, a mutable interface is used. So, there seems to be no compelling need for `ref` parameters beyond a special case of mutating functions that update their receiver.
+Here, when updating a `PersistentCollection` (which is an immutable data structure) we perform its update in a batch for efficiency reasons using its `update` function. It represents its updatable view inside the `update` function block with a `MutableList` interface. Here, again, a mutable interface is used. So, there seems to be no compelling need for `ref` parameters beyond a special case of copying functions that update their receiver.
 
 > There is a fringe case of functions like C#-style `swap(ref x, ref y)` that flips two variables, which is indeed useful when writing certain low-level algorithms. However, designing a `ref` parameters language feature just for the sake of few such functions is not prudent.
 
-### Updating properties with mutating setters
+### Updating properties with copying setters
 
-In light of mutating functions, the special approach to mutable (`var`) properties of value classes can be seen as support for mutating setters. A regular mutable property of a regular mutable class has a getter and a setter:
+In light of copying functions, the special support for copyable properties (`copy var`) of value classes can be seen as support for copying setters. A regular mutable property of a regular mutable class has a getter and a setter:
 
 ```kotlin
 class State { // mutable
@@ -510,27 +535,29 @@ class State { // mutable
 }
 ```
 
-An immutable class instance cannot be modified, but we can still write setters for it if the setters are marked as mutating:
+An immutable class instance cannot be modified, but we can still write setters for it if the setters are marked as copying:
 
 ```kotlin
 value class State { // immutable
-    var lastUpdate: Instant
+    copy var lastUpdate: Instant
         get() { /* getter returning Instant */ }
-        /*mutating*/ set(value: Instant) { /* setter mutating State */ }
+        /*copy*/ set(value: Instant) { /* setter updates State */ }
 }
 ```
 
-We don’t have to require explicitly writing this `mutating` modifier on a value class setter. As was shown previously, it would be confusing to support regular non-mutating setters with value classes anyway (their instances are immutable and cannot be directly updated in the usual sense), so all setters for `var` properties of value classes can be implicitly considered mutating.
+We don’t have to require explicitly writing this `copy` modifier on a copying setter. 
+The setter is copying (`copy set`) because the corresponding property is copyable (`copy var`).
 
-This makes declaration of user-defined properties without backing fields with value classes just as concise as the corresponding code for mutable classes. For example, a `State` class can expose its `lastUpdate: Instant` property as a string and support its update with the same amount of code that would be written for a mutable class:
+This way, it becomes possible to declare updatable properties on value classes without having a backing field for them. 
+For example, a `State` class can expose its `lastUpdate: Instant` property as a string and support its update.
 
 ```kotlin
 value class State { // immutable value class
-    var lastUpdate: Instant // mutable property with a backing field
+    copy var lastUpdate: Instant // copyable property with a backing field
 
-    var lastUpdateString: String // computed mutable property
+    copy var lastUpdateString: String // computed copyable property
         get() = lastUpdate.toString()
-        set(s: String) { // This is mutating function with var this
+        set(s: String) { // This is copying function with copyable var this
             lastUpdated = Instant.parse(s);
         }
 }
@@ -540,15 +567,17 @@ value class State { // immutable value class
 
 Kotlin functions can have two receivers and there is work in progress to introduce ability to add more receivers 
 (see [KT-10468](https://youtrack.jetbrains.com/issue/KT-10468) Multiple receivers on extension functions/properties). 
-Let us see how they interact with mutating functions.
+Let us see how they interact with copying functions.
 
 ```kotlin
 class Dispatch {
-    mutating fun Extension.doSomething()
+    copy fun Extension.doSomething()
 }
 ```
 
-The `doSomething` function has an _extension receiver_ `Extension` and a _dispatch receiver_ `Dispatch`. The intent of this declaration is to enable `extension.doSomething()` call in the context of a `Dispatch` receiver instance. Here the extension receiver is the _primary_ one as it is explicitly specified in the call-site usage of this function:
+The `doSomething` function has an _extension receiver_ `Extension` and a _dispatch receiver_ `Dispatch`. 
+The intent of this declaration is to enable `extension.doSomething()` call in the _context_ of a `Dispatch` receiver instance. 
+Here the extension receiver is the indented _object of an action_ explicitly specified in the call-site usage of this function:
 
 ```kotlin
 with(dispatch) { // dispatch receiver must be in the call context
@@ -556,7 +585,7 @@ with(dispatch) { // dispatch receiver must be in the call context
 }
 ```
 
-From the section on `ref` parameters we can see that modifying the dispatch context from the `doSomething` function is a bad style. It is not even explicitly passed as an argument to the function. In the rare case when it might be needed, it can be achieved using a mutable dispatch receiver class. This leads us to conclude that the `mutating` modifier should apply only to the extension receiver of the function in this case. We can use the same analysis if Kotlin gets support for more receivers.
+From the section on `ref` parameters we can see that modifying the dispatch context from the `doSomething` function is a bad style. It is not even explicitly passed as an argument to the function. In the rare case when it might be needed, it can be achieved using a mutable dispatch receiver class. This leads us to conclude that the `copy` modifier should apply only to the extension receiver of the function in this case. We can use the same analysis when Kotlin gets support for more receivers.
 
 ### Deep mutations
 
@@ -588,25 +617,27 @@ The difference between the code for an immutable value and the syntactically-sam
 
 The same consideration applies to invocation of mutation function in the deep chain of accesses as in `order.delivery.status.isComplete.toggle()`.
 
-### Call-site syntactic indicator of mutation
+### Call-site syntactic indicator of copying
 
-The previous example with deep mutations serves as a good illustration that it is not very helpful to try to add some kind of call-site indication as to which variable in this chain is “actually mutated” and which part “is copied”. From the viewpoint of the developer who writes this kind of business code it is irrelevant. As long as the domain model that the developer is working with is mostly immutable (which is a common practice, for example, in highly asynchronous systems), object identity is not used, there is no reason to bring attention to this difference. Mutating value classes is safe. There’s no risk of accidentally mutating some object that might be also referenced from another piece of code.
+The previous example with deep mutations serves as a good illustration that it is not very helpful to try to add some kind of call-site indication as to which variable in this chain is “actually mutated” and which part “is copied”. From the viewpoint of the developer who writes this kind of business code it is irrelevant. As long as the domain model that the developer is working with is mostly immutable (which is a common practice, for example, in highly asynchronous systems), object identity is not used, there is no reason to bring attention to this difference. 
 
 However, mutating regular mutable classes is dangerous and is a source of countless bugs. That is why IntelliJ IDEA brings extra attention to all mutable state in an application by underlying mutable variables by default. So, in fact, when working with `var order: Order`, then example from the previous section will be rendered like this:
 
 <code><u>order</u>.delivery.status.message = updatedMessage</code>
 
-An order, being a variable, will be underlined in this code. This brings attention to the fact that any other code that works with this `var order` will see its change. There is no need to underline any of the `delivery`, `status`, or `message` properties if they are `var` properties of the immutable value classes. Updating a mutable property of a value class is safe. It cannot affect any other piece of code that might have kept a reference to the same object. An update of a mutable property of a value class produces a new value object, previous value object, which other code could have potentially referenced, remains intact.
+An order, being a variable, will be underlined in this code. This brings attention to the fact that any other code that works with this `var order` will see its change. 
 
-Likewise, there is no immediate benefit in requiring extra call-side syntax for calls to mutating functions on value classes. They are just as safe as assignments. They are less error-prone than regular mutating methods on mutable classes.
+There is no need to underline any of the `delivery`, `status`, or `message` properties if they are `copy var` properties of the immutable value classes. Updating a copyable property of a value class is safe. It cannot affect any other piece of code that might have kept a reference to the same object. An update of a copyable property of a value class produces a new value object copy, previous value object, which other code could have potentially referenced, remains intact.
 
-It would be great if we can figure out a way to distinguish (and, at least, underline in an IDE) mutating methods of regular, mutable classes. However, unlike value classes, where non-mutating methods and mutating methods are clearly distinct (by the virtue of the `mutating` modifier), there is no such clear distinction in the world of mutable classes. Developers can only rely on naming conventions and deep knowledge of libraries they use to avoid various mutation-related pitfalls.
+Likewise, there is no immediate benefit in requiring extra call-side syntax for calls to copying functions on value classes. They are just as safe as assignments. They are less error-prone than regular mutating methods on mutable classes.
+
+It would be great if we can figure out a way to distinguish (and, at least, underline in an IDE) mutating methods of regular, mutable classes. However, unlike value classes, where read-only methods and copying methods are clearly distinct (by the virtue of the `copy` modifier), there is no such clear distinction in the world of mutable classes. Developers can only rely on naming conventions and deep knowledge of libraries they use to avoid various mutation-related pitfalls.
 
 > We’d also like to explore potential approaches to explicitly marking mutating methods of mutable classes in the future, so they are distinct from read-only methods of mutable classes. It is a simple concept, that C++, for example, supports in the form of `const` methods. However, from a standpoint of modern software development practices, it is quite clear that C++ had chosen the wrong default. The default should be for the absence of mutation, while the ability to mutate an object should be explicit. Anyway, this thought avenue is out of the scope of this document that is focused on immutable value classes.
 
 ### Value interfaces
 
-As value classes with mutable properties and mutating functions become used the need for further abstractions will quickly arise. For example, one would like to have multiple implementations of immutable lists sharing a common `ImmutableList<T>` interface. However, as we saw before, mutating functions and mutating properties will be supported only on value classes. It means that while value classes can implement interfaces, working with those interfaces will not be as syntactically convenient when they need to be mutated. For example, if an `ImmutableList` is declared like this:
+As value classes with copyable properties and copying functions become used the need for further abstractions will quickly arise. For example, one would like to have multiple implementations of immutable lists sharing a common `ImmutableList<T>` interface. However, as we saw before, copying functions and copyable properties will be supported only on value classes. It means that while value classes can implement interfaces, working with those interfaces will not be as syntactically convenient when they need to be updated. For example, if an `ImmutableList` is declared like this:
 
 ```kotlin
 interface ImmutableList<T> {
@@ -615,23 +646,23 @@ interface ImmutableList<T> {
 ```
 
 Then working with it is quite verbose and repetitive as in `myListOfItems = myListOfItems.add(newItem)`.
-To bring the power of value classes to interfaces we can introduce the concept of value interfaces. They will support mutating functions and their `var` properties will implicitly have mutating setters.
+To bring the power of value classes to interfaces we can introduce the concept of value interfaces. They will support copying functions and can declare `copy var` properties. 
 
 
 ```kotlin
 value interface ImmutableList<T> {
-    mutating fun add(element: T) // no more return-type boilerplate
+    copy fun add(element: T) // no more return-type boilerplate
 }
 
 var myListOfItems: ImmutableList<Item>
 myListOfItems.add(newItems) // now without repetition
 ```
 
-The `value interface` declaration will guarantee that all its implementing classes are value classes that have no identity and thus creating copies of their instances whenever needed for mutating operations is fine.
+The `value interface` declaration will guarantee that all its implementing classes are value classes that have no identity and thus creating copies of their instances whenever needed for updating operations is fine.
 
-> Mutating functions on interfaces implicitly return the "self" type &mdash; a new value of the same type that the operation was called for, so that can be applied to `var` properties of any type that extends or implements the corresponding this value interface. This is more restricted than the general-purpose [KT-6494](https://youtrack.jetbrains.com/issue/KT-6494) Self types supports.
+> Copying functions on interfaces implicitly return the "self" type &mdash; a new value of the same type that the operation was called for. They can be applied to `var` properties of any type that extends or implements the corresponding value interface. This is more restricted than the general-purpose [KT-6494](https://youtrack.jetbrains.com/issue/KT-6494) Self types supports.
 
-A standard library will need to define some root interface, which we can tentatively call `AnyValue` that will be implemented by all value classes and extended by value interfaces. This would allow using `AnyValue` interface in generic parameter constraints to define functions that can be only applied to value classes. Thus, generic mutating extension functions can be defined. Some use-cases for such functions will be shown later.
+A standard library will need to define some root interface, which we can tentatively call `AnyValue` that will be implemented by all value classes and extended by value interfaces. This would allow using `AnyValue` interface in generic parameter constraints to define functions that can be only applied to value classes. Thus, generic copying extension functions can be defined. Some use-cases for such functions will be shown later.
 
 > JVM Project Valhalla plans to introduce a similar JVM `PrimitiveObject` interface that can be used to enforce the requirement for being implemented only by JVM primitive classes. However, for Kotlin we’ll need to support a migration strategy where some legacy values are compiled before Valhalla, while newer ones use Valhalla, so the actual design must be more complicated than simply making `AnyValue` interface extend JVM `PrimitiveObject`.
 
@@ -639,7 +670,7 @@ Note, that marking an interface or class as `value` adds additional restrictions
 
 ### Read-only collections vs immutable collections
 
-Kotlin has mutable collection types (e.g. `MutableList`) and read only collection types (e.g. `List`), and we always make a point of calling them _read only_ as opposed to _immutable_ collections (e.g. like the ones provided by [kotlinx.collections.immutable](https://github.com/Kotlin/kotlinx.collections.immutable) library). The difference is subtle, but an important one.
+Kotlin has mutable collection types (e.g. `MutableList`) and read-only collection types (e.g. `List`), and we always make a point of calling them _read-only_ as opposed to _immutable_ collections (e.g. like the ones provided by [kotlinx.collections.immutable](https://github.com/Kotlin/kotlinx.collections.immutable) library). The difference is subtle, but an important one.
 
 Consider an instance of the `ArrayList` class. This object can be referenced both via a `MutableList` interface and via a read-only `List` interface. Thus, any pieces of code that holds a reference via a read-only `List` type cannot be sure that it will not be mutated at the next moment through some other reference of a mutable type. It simply cannot happen with immutable values. An object of an immutable value class cannot be mutated. An immutable collection cannot meaningfully implement `MutableList` interface. A code holding an instance reference via an `ImmutableList` interface type cannot see it change.
 
@@ -649,24 +680,24 @@ We cannot reuse the read-only `List` type from the Kotlin standard library in th
 
 > It is also worth noting, that there is a lot of existing research into this kind of type-lattices with mutable, read-only, and immutable types, including a number of research and experimental languages supporting them. Some of those systems provide means that allow creation of mutable instances in the limited scope of construction and, somehow ensuring those instance did not escape the construction code via a mutable type, upgrade those instances to an immutable type without having to copy them. We might be able to adapt some of that research for Kotlin, too, further narrowing the gap between mutable and immutable data types, but that’s a separate topic. Here we focus on enhancing the story of immutable value types in Kotlin.
 
-### Mutating functions returning a value
+### Copying functions returning a value
 
-There are compelling use-cases to support mutating functions that return a value in addition to modifying their receiver. In particular, there are operations on collections that will benefit from such a feature. For example, it is helpful for a `remove` operation on persistent (immutable) set to return a Boolean value indicating if the element was present (and likewise for `add`):
+There are compelling use-cases to support copying functions that return a value in addition to modifying their receiver. In particular, there are operations on collections that will benefit from such a feature. For example, it is helpful for a `remove` operation on persistent (immutable) set to return a Boolean value indicating if the element was present (and likewise for `add`):
 
 ```kotlin
-mutating fun <T> ImmutableList<T>.remove(value: T): Boolean
+copy fun <T> ImmutableList<T>.remove(value: T): Boolean
 ```
 
-This makes an immutable-collection API that is based on mutating functions more efficient and more pleasant to use than “wither style” functions that are chained with dot-call. You can naturally use and update immutable collections that are stored as fields in value classes:
+This makes an immutable-collection API that is based on copying functions more efficient and more pleasant to use than “wither style” functions that are chained with dot-call. You can naturally use and update immutable collections that are stored as fields in value classes:
 
 ```kotlin
 value class State(
-    var tags: ImmutableList<String>, // mutable property
-    var madePendingAt: Instant?,
+    copy var tags: ImmutableList<String>, // copyable property
+    copy var madePendingAt: Instant?,
     // ...
 )
 
-mutating fun State.makePending() {
+copy fun State.makePending() {
     if (tags.add("pending")) {
         madePendingAt = now()
     }
@@ -677,9 +708,9 @@ Support for writing this kind of business logic in a direct imperative style, pr
 
 > You can see clear parallels here with how Kotlin coroutines, that enabled writing asynchronous code in direct imperative style, lowered entry barrier into otherwise challenging field.
 
-It will not be possible to efficiently compile mutating functions returning a value on a pre-Valhalla JVM. Behind the scenes the corresponding JVM function will have to return a pair with its result and an updated receiver value. However, this pair will be a temporary object that does not escape outside the caller context, so we can expect that the existing JVM escape analysis will perform quite well to optimize the corresponding code and eliminate temporary allocations.
+It will not be possible to efficiently compile copying functions returning a value on a pre-Valhalla JVM. Behind the scenes the corresponding JVM function will have to return a pair with its result and an updated receiver value. However, this pair will be a temporary object that does not escape outside the caller context, so we can expect that the existing JVM escape analysis will perform quite well to optimize the corresponding code and eliminate temporary allocations.
 
-### Mutating operators
+### Copying operators
 
 Kotlin has a number of [conventions for operator overloading](https://kotlinlang.org/docs/reference/operator-overloading.html)
 and they need to take into account immutable value classes.
@@ -691,29 +722,29 @@ and they need to take into account immutable value classes.
 
 **Augmented assignments** (`plusAssign`, etc) mutate their receiver, but are supported via the corresponding binary operations and work for immutable values via them, so they need no special treatment either.
 
-**Indexed access operator** (`get`) does not perform any mutation, but **indexed assignment operator** (`set`) will have to be tweaked to support ergonomic operation on immutable collections. A mutating indexed assignment operator can be supported:
+**Indexed access operator** (`get`) does not perform any mutation, but **indexed assignment operator** (`set`) will have to be tweaked to support ergonomic operation on immutable collections. A copying indexed assignment operator can be supported:
 
 ```kotlin
-mutating operator fun ImmutableList<T>.set(index: Int, value: T)
+copy operator fun ImmutableList<T>.set(index: Int, value: T)
 ```
 
-With this operator, modifying even deeply nested immutable data structures with collections becomes easier:
+With this operator, update even deeply nested immutable data structures with collections becomes easier:
 
 ```kotlin
 order.delivery.addressLines[0] = updatedFirstLine
 ```
 
-Delegate convention (`by`) will need to be likewise tweaked to support value-mutating setters (“withers”).
+Delegate convention (`by`) will need to be likewise tweaked to support copying setters (“withers”).
 
-### Mutating function types and lambdas
+### Copying function types and lambdas
 
-To make a language feature complete, every new kind of function shall have the corresponding functional type, so that any piece of code can be property extracted into a lambda and repeating pieces of boilerplate code can be refactored into higher-order functions. This motivates support for mutating functional type 
-`mutating R.(P1, P2, ... ) -> T`.
+To make a language feature complete, every new kind of function shall have the corresponding functional type, so that any piece of code can be property extracted into a lambda and repeating pieces of boilerplate code can be refactored into higher-order functions. This motivates support for copying functional type 
+`copy R.(P1, P2, ... ) -> T`.
 
-Mutating functional types allow extraction of common logic over value classes. For example, consider the following code:
+Copying functional types allow extraction of common logic over value classes. For example, consider the following code:
 
 ```kotlin
-mutating fun State.addTag(tag: String) {
+copy fun State.addTag(tag: String) {
     tags += tag
     // ... some other business-driven updates here
     lastUpdate = now()    
@@ -723,7 +754,7 @@ mutating fun State.addTag(tag: String) {
 When updating `Status` class like this we might want to ensure that its `lastUpdate` is set to `now()` only when the state was actually changed:
 
 ```kotlin
-mutating fun State.addTag(tag: String) {
+copy fun State.addTag(tag: String) {
     val prevState = this
     tags += tag
     // ... some other business-driven updates here
@@ -731,11 +762,11 @@ mutating fun State.addTag(tag: String) {
 }
 ```
 
-If this logic is needed in different functions that mutate `State`, it can be extracted to a higher-order function with the help of mutating functional type:
+If this logic is needed in different functions that update `State`, it can be extracted to a higher-order function with the help of copying functional type:
 
 
 ```kotlin
-inline mutating fun State.update(block: mutating State.() -> Unit) {
+inline copy fun State.update(block: copy State.() -> Unit) {
     val prevState = this
     block()
     if (this != prevState) lastUpdate = now()    
@@ -745,15 +776,15 @@ inline mutating fun State.update(block: mutating State.() -> Unit) {
 Which is used like this:
 
 ```kotlin
-mutating fun State.addTag(tag: String) = update {
+copy fun State.addTag(tag: String) = update {
     tags += tag
     // ... some other business-driven updates here
 }
 ```
 
-### Mutating scope functions
+### Copying scope functions
 
-A mutating function does not explicitly return a new value, so, just like functions on a mutable class they cannot be directly chained. If you perform a sequence of mutations on some mutable `val state: MutableState`, or on some immutable `var state: State`, you could write them in imperative do-style:
+A copying function does not explicitly return a new value, so, just like mutating functions on mutable classes they cannot be directly chained. If you perform a sequence of updates on some mutable `val state: MutableState`, or on some immutable `var state: State`, you could write them in imperative do-style:
 
 ```kotlin
 state.doFirst()
@@ -762,7 +793,7 @@ state.doThird()
 val outcome = state.getResult()
 ```
 
-When `state` is mutable we can use Kotlin scope function run to avoid repetition of the common `state.` prefix:
+When `state` is mutable we can use Kotlin scope function `run` to avoid repetition of the common `state.` prefix:
 
 ```kotlin
 val outcome = state.run { // this = state here
@@ -773,36 +804,35 @@ val outcome = state.run { // this = state here
 }
 ```
 
-However, for a value class `State` this code will not compile. Inside the `run { ... }` block the reference to `this` is not modifiable and mutating functions cannot be called on it. With the help of mutating functional types we can define a dedicated scope function `runMutating` for this case in the standard library:
+However, for a value class `State` this code will not compile. Inside the `run { ... }` block the reference to `this` is not modifiable and copying functions cannot be called on it. With the help of copying functional types we can define a dedicated scope function `runUpdate` for this case in the standard library:
 
 ```kotlin
-mutating inline fun <T : AnyValue, R> T.runMutating(block: mutating T.() -> R): R {
-    return block() // mutates this and returns block's result
+copy inline fun <T : AnyValue, R> T.runUpdate(block: copy T.() -> R): R {
+    return block() // updates this and returns block's result
 }
 ```
 
-Now, changing `state.run { ... }` to `state.runMutating { ... }` in the above code will make it work as expected for an immutable value class `State`. The downside of this approach is that developer will have to take an extra effort to use immutable classes and various standard library functions will have to come in separate mutating versions.
+Now, changing `state.run { ... }` to `state.runUpdate { ... }` in the above code will make it work as expected for an immutable value class `State`. The downside of this approach is that developer will have to take an extra effort to use immutable classes and various standard library functions will have to come in separate copying versions.
 
-As you can see, the actual code of this `runMutating` function is the same as its run cousin, with the only difference that it is restricted to work on `AnyValue` and has a `mutating` modifier both for itself and for its lambda. We can use a different approach. We can allow marking `inline` generic functions with `mutating` modifier even when they are defined as extensions on an arbitrary type `T`, which is not necessarily a value class:
+As you can see, the actual code of this `runUpdate` function is the same as its `run` cousin, with the only difference that it is restricted to work on `AnyValue` and has a `copy` modifier both for itself and for its lambda. We can use a different approach. We can allow marking `inline` generic functions with `copy` modifier even when they are defined as extensions on an arbitrary type `T`, which is not necessarily a value class:
 
 ```kotlin
-mutating inline fun <T, R> T.run(block: mutating T.() -> R): R {
-    return block() // can mutate this if T is a value class
+copy inline fun <T, R> T.run(block: copy T.() -> R): R {
+    return block() // can update this if T is a value class
 }
 ```
 
 > This is roughly analogous with how inline functions can be implicitly used in suspending context.
 
-The meaning of this `mutating` function and the corresponding functional type of its parameter is that it is allowed to mutate its receiver when `T` is a value class (and thus can have mutating functions) and is not allowed to mutate it when `T` is a regular (non-value) class. So, in a sense, it is conditionally mutating depending on valueness of its receiver. With this feature all the appropriate scope functions from the standard library will simply be marked as `mutating` and will work in a familiar way without having to invent new names for them.
+The meaning of this `copy` function and the corresponding functional type of its parameter is that it is allowed to update its receiver when `T` is a value class (and thus can have copying functions) and is not allowed to update it when `T` is a regular (non-value) class. So, in a sense, it is conditionally copying depending on valueness of its receiver. With this feature all the appropriate scope functions from the standard library will simply be marked as `copy` and will work in a familiar way without having to invent new names for them.
 
-In particular, this would also allow us to retrofit `apply` function so that it serves a double-duty of chaining mutations. Let’s modify `apply` function from the standard library so that it can have mutating operations in its body and will return an updated version of the value, without being mutating function itself. Unlike `run`, we’ll have to change the body of its code a bit, too (but it will not affect its semantics for regular mutable classes):
-
+In particular, this would also allow us to retrofit `apply` function so that it serves a double-duty of chaining updates. Let’s modify `apply` function from the standard library so that it can have copying operations in its body and will return an updated version of the value, without being copying function itself. Unlike `run`, we’ll have to change the body of its code a bit, too (but it will not affect its semantics for regular mutable classes):
 
 ```kotlin
-// Note that it is not mutating itself, it returns mutated result instead
-inline fun <T> T.apply(block: mutating T.() -> Unit): T {
-    var receiver = this // copy receiver into a variable
-    receiver.block() // call potentially mutating block on the receiver
+// Note that it is not copying itself, it returns updated result instead
+inline fun <T> T.apply(block: copy T.() -> Unit): T {
+    var receiver = this // save receiver into a variable
+    receiver.block() // call potentially coping block on the receiver
     return receiver // return updated receiver
 }
 ```
@@ -813,7 +843,7 @@ Now consider, for example, a `states: Flow<State>`. If we have `State.updatedNow
 val updatedStates = states.map { it.updatedNow() }
 ```
 
-When we start modelling our domain using mutating functions we no longer define `updatedNow()` function, we have mutating `updateNow()` function instead (note how the verb in the name changed its form). So we cannot just call `it.updateNow()`, since it is not mutable inside the map. Here is where the mutation-supporting version of `apply` can be used to adapt the world of mutating functions to the world of “functions that expect a new value to be returned from a wither-style function” (like `map`) so that we can use mutating functions with them:
+When we start modelling our domain using copying functions we no longer define `updatedNow()` function, we have copying `updateNow()` function instead (note how the verb in the name changed its form). So we cannot just call `it.updateNow()`, since `it` property is read-only inside the map. Here is where the copying-supporting version of `apply` can be used to adapt the world of copying functions to the world of “functions that expect a new value to be returned from a wither-style function” (like `map`) so that we can use copying functions with them:
 
 ```kotlin
 val updatedStates = states.map { it.apply { updateNow() } }
@@ -829,23 +859,13 @@ While the goal of first-class support for immutable value classes is noble, the 
 
 ### Migrating built-in primitive types to value classes
 
-As noted in the introduction, primitive built-in classes like `Int`, `Long`, `Double`, etc from the Kotlin standard library are already value-like and don’t support identity. We could declare them as value classes in the standard library. However, the future of value classes calls for special treatment of mutable `var` properties and there could be some code that already defines extension var properties for primitive built-in classes, e.g. the following code is allowed in Kotlin now:
+As noted in the introduction, primitive built-in classes like `Int`, `Long`, `Double`, etc from the Kotlin standard library are already value-like and don’t support identity. We could declare them as value classes in the standard library. 
+
+Moreover, we can start introducing new copying properties for the old value classes. 
+For example, with migration of `Int` class to become a `value class`, its `Int.sign` extension can be upgraded from a read-only property (`val`) to copying property (`copy var`):
 
 ```kotlin
-var Int.extension
-    get() { /* do something */ }
-    set(value: Int) { /* do something else */ }
-```
-
-We can argue that this code is unquestionably bad style. It is conceptually unreasonable to have this mutable property on an immutable class, since it cannot mutate the instance it is being called on anyway. However, this code still could be there, so we cannot just break it. We can only deprecate such code and gradually make it illegal according to 
-[the principles of Kotlin Evolution](https://kotlinlang.org/docs/reference/evolution/kotlin-evolution.html).
-
-This calls for some kind of `@DeprecatedVarProperties` annotation that one can put on such a class (either before or after turning it into a value class) to give an advance warning to future breaking of such code. It can also have an optional `DeprecationLevel` (`WARNING` or `ERROR`). Only after such legacy `var` properties were given enough time to be gone from the Kotlin code bases, we can change the meaning of `var` properties for them to mutating properties.
-
-However, we don’t have to wait for this migration cycle to complete before we start introducing new mutating properties for the old value classes. The only syntactic inconvenience is that we have to be explicitly marking them with `mutating` modifier in the source code. For example, with migration of `Int` class to become a `value class`, its `Int.sign` extension can be upgraded from readonly (`val`) property to mutating (`var`) property:
-
-```kotlin
-mutating var Int.sign: Int // has to be explicitly marked mutating due to legacy
+copy var Int.sign: Int
     get() = when {
         this < 0 -> -1
         this > 0 -> 1
@@ -882,7 +902,7 @@ fun main() {
 
 If, for example, Kotlin/Native starts optimizing short strings as values and strips them of stable identity, then the above code might start producing `false` result of comparison. However, there is no way we can detect this kind of code and start warning that its behavior will be changing in the future, since this code performs an allowed reference comparison of two instances of type `Any` and the actual comparison can be buried deeply in the library code (as in the case of `IdentityHashMap`).
 
-There are two approaches to this breaking change. One is to just make it in a major Kotlin version and live with it, while trying a combination of heuristics to identify and warn on as much potentially broken code as possible in advance. We can start marking all identity-dependent types (like `IdentityHashMap`) and functions with a special annotation and warn on all attempts to pass a `@DeprecatedIdentity` classes to them. Given relatively rare use on identity-sensitive operations in the general Kotlin code, this approach could be fruitful in cleaning up Kotlin code of potentially-broken-in-future identity-sensitive operations without producing too much false negative noise.
+There are two approaches to this breaking change. One is to just make it in a major Kotlin version and live with it, while trying a combination of heuristics to identify and warn on as much potentially broken code as possible in advance. We can start marking all identity-dependent types (like `IdentityHashMap`) and functions with a special annotation and warn on all attempts to pass a `@DeprecatedIdentity` classes to them. Given relatively rare use of identity-sensitive operations in the general Kotlin code, this approach could be fruitful in cleaning up Kotlin code of potentially-broken-in-future identity-sensitive operations without producing too much false negative noise.
 
 The other is to use the approach of JVM Project Valhalla to reference comparisons. Valhalla plans to implement reference comparisons between JVM primitives by comparing the underlying values. This way, the actual identity of the boxed value classes will never be visible to the user code. With Valhalla, JVM will be free to optimize allocations and copies of its primitive (value) classes without affecting runtime semantics of any kind of user code. However, the Valhalla approach still does not support non-breaking migration of plain immutable classes to Valhalla primitive (value) classes. The nature of a breaking change is different, though. Modifying a bit the code that was shown in the introduction, this code today sees two strings with the same value but having different identity ([playground](https://pl.kotl.in/sQkVU6vy2)):
 
@@ -900,9 +920,9 @@ If `String` is turned into a `value class` and runtime system strips away its id
 
 So, it seems that turning existing immutable classes into value classes to enable their performance optimization will necessitate acceptance of some form of a breaking change in behavior for the existing code that relies on the identity of those existing immutable classes. Don’t write this kind of code.
 
-### Augmented mutating assignment operator
+### Augmented updating assignment operator
 
-Without 1st-class support for mutating functions, working with immutable data requires some boilerplate code. Today, a typical mutation operation on an immutable data structure, like `copy()` function in a data class, is declared to return an updated version of the data. Lots of operations on collections and other values are declared like that. Some of them, like arithmetic operators (`plus`, `minus`, etc), enjoy the benefits of Kotlin operator overloading. For example `BigInteger` instances (which are immutable) can be conveniently updated like this:
+Without 1st-class support for copying functions, working with immutable data requires some boilerplate code. Today, a typical updating operation on an immutable data structure, like `copy()` function in a data class, is declared to return an updated version of the data. Lots of operations on collections and other values are declared like that. Some of them, like arithmetic operators (`plus`, `minus`, etc), enjoy the benefits of Kotlin operator overloading. For example `BigInteger` instances (which are immutable) can be conveniently updated like this:
 
 ```kotlin
 myBigValue += increment // DRY shortcut to myBigValue = myBigValue + increment
@@ -924,7 +944,7 @@ myBigValue = .and(mask)
 
 > This syntax is also consistent with [KT-21661](https://youtrack.jetbrains.com/issue/KT-21661) Allow calling Boolean functions and properties in 'when' branches syntax that likewise proposes syntactic shorting from full form of `when { x.name() -> ... }` to a shorter version of `when(x) { .name() -> ... }`.
 
-### Mutating functions naming convention
+### Copying functions naming convention
 
 Kotlin coding conventions have the following advice on 
 [choosing good names](https://kotlinlang.org/docs/reference/coding-conventions.html#choosing-good-names):
@@ -935,9 +955,9 @@ Kotlin standard library generally follows this naming convention that allows to 
 
 This makes it easy to figure a naming convention for immutable collections. We can take functions for mutable collections and declare the corresponding mutating functions with the same name on immutable collections, making learning curve for switching from mutable to immutable collections as straightforward as possible. A `collection.sort()` call would do conceptually the same thing both for mutable and for immutable collections.
 
-However, this naming convention is not consistent. Fully-immutable classes, like `String`, that could not have any kind of mutating methods now, do not usually follow it. For example, `String.replace(...)` uses quite an imperative verb in its name, but it does not update the string it is called on. Instead, it is returning a copy of the string with replacement. If we were designing the `String` class from scratch, we might have called the corresponding function `replaced()`, reserving the name `replace()` for a mutating function that updates its receiver. However, this ship has sailed. Changing these names would be too big of a breakage for Kotlin ecosystem to swallow. We’ll have to live with it and find some other approach to naming helpful mutating function in those cases.
+However, this naming convention is not consistent. Fully-immutable classes, like `String`, that could not have any kind of mutating methods now, do not usually follow it. For example, `String.replace(...)` uses quite an imperative verb in its name, but it does not mutate the string it is called on. Instead, it is returning a copy of the string with replacement. If we were designing the `String` class from scratch, we might have called the corresponding function `replaced()`, reserving the name `replace()` for a copying function that updates its receiver. However, this ship has sailed. Changing these names would be too big of a breakage for Kotlin ecosystem to swallow. We’ll have to live with it and find some other approach to naming helpful copying functions in those cases.
 
-There’s always a backup plan of not introducing mutating functions for the legacy immutable classes at all, but to rely on mutation operator from the previous section. Instead of repetitive `myString = myString.replace('-', '_')` we can write `myString = .replace('-', '_')` to avoid repetition, thus alleviating the need for mutating functions.
+There’s always a backup plan of not introducing copying functions for the legacy immutable classes at all, but to rely on updating assignment operator from the previous section. Instead of repetitive `myString = myString.replace('-', '_')` we can write `myString = .replace('-', '_')` to avoid repetition, thus alleviating the need for copying functions.
 
 ### Shall class immutability be the default?
 
@@ -946,7 +966,7 @@ In light of addition of the `value class` concept we run into the conundrum of p
 * `val` and `var` keywords in Kotlin are equally short and conceptually close, too, which makes it easy for developers to express intent on not modifying the values they declare in their functions, but does not put a penalty on having to work with mutable variable in all kinds of contexts, since a substantial fraction of modern industry-scale code (of the kind the Kotlin is designed to support well) is written around mutable data structures.
 * For collections, for example, `MutableList`, is longer and more explicit, by design, than a read-only `List`, since typical code usually passes read-only collections around.
 
-However, times change. As distributed backends, asynchronous code, and reactive UIs become widespread, modelling user-defined business-related data-structures with immutable value classes becomes more popular. We often find ourselves in a situation where we’d rather see a short name, for example, a `User`, referring to an immutable class that we can safely pass around without risk of it being accidentally mutated by mistake. Support for value classes gives us that, while support for mutating functions and mutable properties on them still allows convenient updates of those values in the isolated pieces of code that need to do it, without any concessions in convenience compared to mutable classes.
+However, times change. As distributed backends, asynchronous code, and reactive UIs become widespread, modelling user-defined business-related data-structures with immutable value classes becomes more popular. We often find ourselves in a situation where we’d rather see a short name, for example, a `User`, referring to an immutable class that we can safely pass around without risk of it being accidentally mutated by mistake. Support for value classes gives us that, while support for copying functions and copyable properties on them still allows convenient updates of those values in the isolated pieces of code that need to do it, without any concessions in convenience compared to mutable classes.
 
 However, declaring those immutable classes is going to require extra thought. By default, the `class` keyword means “a potentially mutable thing with identity”, while opting out of identity with the `value class` requires an extra effort from a developer. Is this the right choice? It is not clear without an extra research. If we see evidence that immutable value classes are increasingly dominating in the design of real-life Kotlin code, then we can gradually flip the default by asking developers to add an `identity` modifier before regular classes. Existing `data class` could be implicitly treated as `identity class`, easing this migration process. This explicitness in declaring an identity-capable class would open a road to flipping the default and making `value` modifier optional for immutable classes in the far away future. Anyway, right now it is all too early to speculate about.
 
@@ -1109,7 +1129,7 @@ inline fun User(builder: User.() -> Unit): User = User().apply(builder)
 
 Now you can write `User { id = 123; name = "foo" }` to construct a class having all the flexibility in how its properties are initialized.
 
-This approach also works for immutable value classes that support mutable (`var`) properties if mutating functional type is used for the builder, but it would stretch their implementation strategy. Business entities can have lots of fields and can get initialized from a different module. Altogether it will produce code with many temporary allocations that will be harder to eliminate after the fact.
+This approach also works for immutable value classes that support copyable properties (`copy var`) if copying functional type is used for the builder, but it would stretch their implementation strategy. Business entities can have lots of fields and can get initialized from a different module. Altogether it will produce code with many temporary allocations that will be harder to eliminate after the fact.
 
 Additional downsides of this approach are:
 
@@ -1160,9 +1180,9 @@ inline fun User(builder: User.() -> Unit): User = User().apply(builder)
 
 > The compiler-generated builder function shall have a lower priority in case there is a user-defined one for backwards compatibility.
 
-### Flexible initialization for readonly properties
+### Flexible initialization for read-only properties
 
-Read only (`val`) fields can be initialized this way, too. This is not currently possible with user-defined one-liner at all and this provides a major improvement in usability for immutable classes with read only fields:
+Read-only properties (`val`) can be initialized this way, too. This is not currently possible with user-defined one-liner at all and this provides a major improvement in usability for immutable classes with read-only properties:
 
 ```kotlin
 class User { // immutable
@@ -1179,16 +1199,16 @@ User {
 }
 ```
 
-> Not having to add `initonly` to every such property (like in C#) is important to lowering barrier for immutable classes and making them 1st-class things, providing smoother transition from classes with mutable fields to classes with immutable fields and to value classes with mutable properties.
+> Not having to add `initonly` to every such property (like in C#) is important to lowering barrier for immutable classes and making them 1st-class things, providing smoother transition from classes with mutable fields to classes with immutable fields and to value classes with copyable properties.
 
-### Flexible initialization for mutable properties of value classes
+### Flexible initialization for copyable properties of value classes
 
-With support for uninitialized fields, an immutable value class that defines mutable (`var`) properties is liberated from the burden of having to always specify them in the constructor or provide them with a default when they are defined in the body. A value class will be able to have uninitialized mutable properties and could be declared without committing to a specific constructor order of its properties.
+With support for uninitialized fields, an immutable value class that defines copyable properties (`copy var`) is liberated from the burden of having to always specify them in the constructor or provide them with a default when they are defined in the body. A value class will be able to have uninitialized copyable properties and could be declared without committing to a specific constructor order of its properties.
 
 ```kotlin
 value class User { // immutable value class
-    var id: Int // uninitialized mutable property
-    var name: String
+    copy var id: Int // uninitialized copyable property
+    copy var name: String
     // ...
 }
 
