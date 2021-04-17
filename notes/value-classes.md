@@ -621,7 +621,7 @@ The same consideration applies to invocation of mutation function in the deep ch
 
 The previous example with deep mutations serves as a good illustration that it is not very helpful to try to add some kind of call-site indication as to which variable in this chain is “actually mutated” and which part “is copied”. From the viewpoint of the developer who writes this kind of business code it is irrelevant. As long as the domain model that the developer is working with is mostly immutable (which is a common practice, for example, in highly asynchronous systems), object identity is not used, there is no reason to bring attention to this difference. 
 
-However, mutating regular mutable classes is dangerous and is a source of countless bugs. That is why IntelliJ IDEA brings extra attention to all mutable state in an application by underlying mutable variables by default. So, in fact, when working with `var order: Order`, then example from the previous section will be rendered like this:
+However, mutating regular mutable classes is dangerous and is a source of countless bugs. That is why IntelliJ IDEA brings extra attention to all mutable state in an application by underlining mutable variables by default. So, in fact, when working with `var order: Order`, then example from the previous section will be rendered like this:
 
 <code><u>order</u>.delivery.status.message = updatedMessage</code>
 
