@@ -2,7 +2,7 @@
 
 * **Type**: Standard Library API proposal
 * **Authors**: Ilya Gorbunov, Abduqodiri Qurbonzoda
-* **Status**: Under consideration
+* **Status**: Implemented in Kotlin 1.5
 * **Prototype**: Implemented
 * **Discussion**: [KEEP-227](https://github.com/Kotlin/KEEP/issues/227)
 * **Related issues**: [KT-23451](https://youtrack.jetbrains.com/issue/KT-23451)
@@ -72,6 +72,8 @@ we are going to:
 We also need to deprecate `Number.toChar()` function, change its modality from `abstract` to `open`, and provide 
 the default implementation of this function, `toInt().toChar()`.
 
+> **Update:** Deprecation of `Int.toChar()` and `Number.toChar()` is postponed to future versions.
+
 * Introduce functions to get the integer code of a `Char` and to construct a `Char` from the given code.
 
 ```kotlin
@@ -99,13 +101,10 @@ val Char.code: Int
 These functions will be proposed as replacements for the deprecated conversions above.
 For example: 
 ```kotlin
+val char: Char = ...
 char.toInt() -> char.code
 char.toShort() -> char.code.toShort()
-
-int.toChar() -> Char(int.toUShort())
-short.toChar() -> Char(short.toUShort()) 
 ```
-Currently experimental `UShort` will also become stable in Kotlin 1.5, making the proposed replacements safe.
 
 - Introduce functions to convert a `Char` to the numeric value of the digit it represents:
 
