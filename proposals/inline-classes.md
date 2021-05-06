@@ -3,7 +3,7 @@
 * **Type**: Design proposal
 * **Author**: Mikhail Zarechenskiy
 * **Contributors**: Andrey Breslav, Denis Zharkov, Dmitry Petrov, Ilya Gorbunov, Roman Elizarov, Stanislav Erokhin, Ilmir Usmanov
-* **Status**: Beta since 1.4.30
+* **Status**: Stable since 1.5.0
 * **Prototype**: Implemented in Kotlin 1.2.30
 
 Discussion of this proposal is held in [this issue](https://github.com/Kotlin/KEEP/issues/104).
