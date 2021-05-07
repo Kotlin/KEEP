@@ -3,7 +3,7 @@
 * **Type**: Design proposal
 * **Authors**: Ilya Gorbunov, Mikhail Zarechenskiy
 * **Contributors**: Andrey Breslav, Roman Elizarov, Nikolay Igotti
-* **Status**: Experimental in Kotlin 1.3
+* **Status**: Partially stable in 1.5, see details in the [Status](#status) section.
 * **Prototype**: Implemented
 * **Related issues**: [KT-191](https://youtrack.jetbrains.com/issue/KT-191)
 * **Discussion**: [KEEP-135](https://github.com/Kotlin/KEEP/issues/135)
@@ -406,3 +406,13 @@ How to call the operation that shifts an unsigned integer right:
 #### Bitwise operations for `UByte` and `UShort`
 
 These operations are experimental for `Byte` and `Short`: we haven't decided yet on their contract.
+
+
+## Status
+
+- Unsigned types were introduced as experimental in Kotlin 1.3 and graduated to Beta in Kotlin 1.4.
+- Since Kotlin 1.5, the `UInt`, `ULong`, `UByte`, `UShort` unsigned integer types are stable. 
+  The same goes for operations on these types, ranges, and progressions of them. 
+  Unsigned arrays, varargs, and operations on them remain in Beta.
+  
+
