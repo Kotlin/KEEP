@@ -67,7 +67,7 @@ language design rule.  Any new feature in the language has to clear a high bar o
 
 Instances of all user-defined classes in Kotlin have an identity, the corresponding 
 [referential equality operator](https://kotlinlang.org/docs/reference/equality.html) (`===`), and are passed around _by reference_.
-Identify is a vital concept for mutable classes. When you have two references that point to the same instance, then modification that had happened though one reference are visible through the other reference because, in fact, the single underlying object instance is being modified
+Identity is a vital concept for mutable classes. When you have two references that point to the same instance, then modification that had happened through one reference is visible through the other reference because, in fact, the single underlying object instance is being modified
 ([playground](https://pl.kotl.in/JqL2vR0ES)):
 
 ```kotlin
@@ -84,7 +84,7 @@ fun main() {
 }
 ```
 
-For immutable classes, though, the concept of identity does not have much use. Take a `String` class, for example. 
+For immutable classes though, the concept of identity does not have much use. Take a `String` class for example. 
 `String` instances are immutable, so you cannot pull the same trick as with the mutable `Project` class above. Any operation that modifies a string returns a new instance of a string and cannot have any effect on the original one. Even though a `String` has an identity, it is passed around _by value_. 
 Moreover, to modify an immutable class like `String` we have to declare the corresponding reference to it as `var`
 ([playground](https://pl.kotl.in/0Qtt8mivq)):
@@ -137,14 +137,14 @@ fun main() {
 **Values classes are immutable classes that disavow the concept of identity for their instances.** 
 Two instances of a value class with the same contents (fields) are indistinguishable for all purposes.
 
-This allows compiler and runtime to freely choose their actual representation. If their instances are small enough, they can be directly stored inside other objects and passed between functions by embedding their value. If they occupy a lot of memory then it is more efficient to pass around a reference to a memory location that contains their value (aka a box). Moreover, when a value class is boxed, a compiler is free to copy it at any time and create a box with a new identity as needed.
+This allows the compiler and runtime to freely choose their actual representation. If their instances are small enough, they can be directly stored inside other objects and passed between functions by embedding their value. If they occupy a lot of memory then it is more efficient to pass around a reference to a memory location that contains their value (aka a box). Moreover, when a value class is boxed, a compiler is free to copy it at any time and create a box with a new identity as needed.
 
 ### Inline classes are user-defined value classes
 
 Inline classes 
 (see the corresponding [Inline Classes KEEP](https://github.com/Kotlin/KEEP/blob/master/proposals/inline-classes.md)) 
 were experimentally implemented in Kotlin since 1.2.30 and are, in fact, **user-defined value classes**. 
-Their primary feature is that they explicitly disavow identity and reference equality operator (`===`) for them is not available (produces a compilation error). This allows a compiler to optimize representation of Kotlin inline classes, storing their underlying value instead of a box in many cases.
+Their primary feature is that they explicitly disavow the identity and reference equality operator (`===`). For them,this is not available (produces a compilation error). This allows a compiler to optimize representation of Kotlin inline classes, storing their underlying value instead of a box in many cases.
 
 > The umbrella issue for Kotlin inline value classes is [KT-23338](https://youtrack.jetbrains.com/issue/KT-23338).
 
@@ -163,7 +163,7 @@ The very meaning of the word “inline” seems to indicate that the developer i
 A good mental model for Kotlin is:
 
 * **Step 1:** I, as a developer, declare that this is a value class, and I’m not going to rely on a stable identity of its objects.
-* **Step 2:** Now compiler can safely optimize away boxing whenever it can.
+* **Step 2:** Now the compiler can safely optimize away boxing whenever it can.
 
 Combining all of that, the decision was reached to rename the `inline` modifier to `value`.
 
@@ -171,7 +171,7 @@ Combining all of that, the decision was reached to rename the `inline` modifier 
 
 When we say that “value classes are immutable”, we mean a _shallow immutability_ where we only guarantee in the language that direct fields of the corresponding value class cannot be mutated. When we want to highlight this difference and bring attention to the fact that value class immutability is only shallow, we can say they are _read-only classes_. However, Kotlin value classes are designed to be used to represent truly deeply immutable data-structures. We expect that developers will be usually writing value classes that only contain other immutable classes in their fields, and so we would be calling them simply immutable classes most of the time.
 
-> It is important, though, to always refer to Kotlin collection interface types like List as read-only collections. They are different from immutable collections. See a separate section on “Read-only collections vs immutable collections”.
+> It is important though, to always refer to Kotlin collection interface types like List as read-only collections. They are different from immutable collections. See a separate section on “Read-only collections vs immutable collections”.
 
 The ability to write a value class that is still mutable (because it references some mutable class) is pragmatic. For example, if we need to lazily store a result of some computation, we can just add `Lazy<T>` field to a value class. This is allowed, despite the fact that `Lazy` is technically a mutable class.
 
@@ -181,9 +181,9 @@ There are certain domains where there needs to be a guarantee of deep immutabili
 
 Kotlin is multiplatform and has different compiler backends with different compilation models.
 
-**Kotlin/Native** has _closed world_ compilation. In the closed world compiler knows all the classes that will be run at runtime and is free to choose the underlying ABI (application binary interface) for objects of value classes (whether they should be boxed or not) based on the whole-program analysis, without having to get any hints from the developer. Kotlin/Native can support value classes with multiple fields. Moreover, Kotlin/Native, being based on LLVM, could be passing around and storing value objects with multiple underlying fields without boxing them with relative ease.
+**Kotlin/Native** has _closed world_ compilation. In the closed world, the compiler knows all the classes that will be run at runtime and is free to choose the underlying ABI (application binary interface) for objects of value classes (whether they should be boxed or not) based on the whole-program analysis, without having to get any hints from the developer. Kotlin/Native can support value classes with multiple fields. Moreover, Kotlin/Native being based on LLVM, could be passing around and storing value objects with multiple underlying fields without boxing them with relative ease.
 
-**Kotlin/JS** is moving to a closed-world model, too, with a new IR-based backend, and has quite a number of compilation strategies to choose from, but returning multiple values from a JS function will still require boxing.
+**Kotlin/JS** is moving to a closed-world model too, with a new IR-based backend, and has quite a number of compilation strategies to choose from, but returning multiple values from a JS function will still require boxing.
 
 However, with **Kotlin/JVM** the story is different. First, Kotlin/JVM compiles code in an _open world_ model. Every public Kotlin/JVM function can be called by an arbitrary separately-compiled JVM code that is known only at run-time, so public Kotlin/JVM functions must have a stable ABI which has to be statically selected based on the signature of the function that is being compiled.
 
@@ -198,7 +198,7 @@ Java Project Valhalla
 is promising to bring user-defined primitive classes to JVM 
 (see also [the draft JEP for primitive classes](https://openjdk.java.net/jeps/8251554) by Dan Smith).
 
-> The state of Valhalla document still calls them “inline classes”, but JEP draft is calling them “primitive classes”. It looks like JVM design team is inclining to name them primitive classes in the end. This name has changed multiple times (the original name was “value classes”), and the name may still change again before the final release.
+> The state of Valhalla document still calls them “inline classes”, but JEP draft is calling them “primitive classes”. It looks like the JVM design team is inclined to name them primitive classes in the end. This name has changed multiple times (the original name was “value classes”), and the name may still change again before the final release.
 
 In the future, in a Valhalla-capable JVM, JVM primitive classes will enable efficient representation of Kotlin value classes with an arbitrary number of underlying fields on JVM. However, the existing, limited implementation of Kotlin value classes with a single underlying field has a lot of use-cases and an enormous community demand. We cannot wait to make it stable until Valhalla becomes available in some unclear future. That was a motivation to require a `@JvmInline` annotation on all Kotlin/JVM value classes even as we currently have only a single compilation strategy for them on JVM. It means that in Kotlin 1.5 value classes for Kotlin/JVM are declared like this:
 
@@ -209,7 +209,7 @@ value class Color(val rgb: Int)
 
 The `@JvmInline` annotation makes it explicit that something special with this class is going on in JVM, and it enables us to support non-annotated value class in the future Valhalla JVM by compiling them using the capabilities of the Project Valhalla.
 
-> The key design driver to naming the annotation `@JvmInline` was conceptual continuity for early adopters of Kotlin value/inline classes. This naming move is still risky, since it assumes that the corresponding Valhalla concept will indeed get named a “primitive class”. If Valhalla matures to a release with “inline class” naming then we’ll have to deprecate Kotlin `@JvmInline` annotation and find another name for it to avoid confusion with a stable Valhalla JVM release.
+> The key design driver to naming the annotation `@JvmInline` was conceptual continuity for early adopters of Kotlin value/inline classes. This naming move is still risky, since it assumes that the corresponding Valhalla concept will indeed get named a “primitive class”. If Valhalla matures to a release with “inline class” naming, then we’ll have to deprecate Kotlin `@JvmInline` annotation and find another name for it to avoid confusion with a stable Valhalla JVM release.
 
 Why not the reverse? Why not a use a plain value class now, and add some `@Valhalla` value class in the future? The answer is that, so far, Valhalla promises to be the right way to implement value classes on JVM and Kotlin’s key design principle in choosing defaults is such that “the right thing”, the thing that developers will be using most of the time, should correspond to the shorter code. Ultimately, with the Project Valhalla, it will be the right thing to compile a default (non-annotated) value class with Valhalla, so it means that we must require an annotation now, with pre-Valhalla value classes, to avoid breaking changes for stable Kotlin libraries in the future.
 
@@ -238,7 +238,7 @@ What is important, is that passing `Complex` values into functions and storing t
 
 ### Value classes vs structs
 
-A number of languages, like C++, C#, Rust, Go, Swift, and others have a concept of a `struct`.
+A number of languages like C++, C#, Rust, Go, Swift, and others have a concept of a `struct`.
 
 > C++ `struct` is just a `class` that defaults to public visibility for its members, so the discussion below is also relevant to C++ classes. However, modern languages that have both `class` and `struct` keywords tend to give them quite different semantics unlike C++.
 
