@@ -4,12 +4,13 @@
 * **Author**: Roman Elizarov
 * **Contributors**: Andrey Breslav, Ilya Gorbunov
 * **Status**: Implemented in Kotlin 1.3
+* **Revisions**: Updated in Kotlin 1.5, see [revision history](#revision-history).  
 * **Related issues**: [KT-18608](https://youtrack.jetbrains.com/issue/KT-18608) 
-* **Discussion**: [KEEP-127](https://github.com/Kotlin/KEEP/issues/127)
+* **Original discussion**: [KEEP-127](https://github.com/Kotlin/KEEP/issues/127)
 
 ## Summary
 
-Kotlin language provides exceptions that are used to represent an arbitrary failure of a function and include 
+Kotlin provides exceptions that are used to represent an arbitrary failure of a function and include 
 ability to attach additional information pertaining to this failure. Exceptions are sequential in nature and work 
 great in any kind of sequential code, including code for a single coroutine or in other case where one piece 
 of work in being sequentially decomposed. Exceptions ensure that the first failure in a sequentially performed work
@@ -21,11 +22,12 @@ We'd like to introduce a type in the Kotlin standard library that is effectively
 and failed outcome of execution of Kotlin function &mdash; `Success T | Failure Throwable`, 
 where `Success T` represents a successful result of some type `T` 
 and `Failure Throwable` represents a failure with any `Throwable` exception. 
-For the purpose of efficiency, we would model it as a generic `inline class Result<T>` 
+For the purpose of efficiency, we would model it as a generic `@JvmInline value class Result<T>` 
 in the standard library. 
 
-**NOTE: This `Result` class cannot be used directly as a return type of Kotlin functions.
-See [limitations](#limitations) section for details.
+**NOTE: In Kotlin 1.3 till 1.5 this `Result` could not be used directly as a return type of Kotlin functions.
+This restriction was lifted in Kotlin 1.5.
+See [limitations](#limitations-legacy) section for details.
 See also [style and exceptions](#error-handling-style-and-exceptions) and 
 [use cases](#use-cases) below on how `Result` is designed to be used.** 
 
@@ -78,7 +80,7 @@ fun readFileData(file: File): Data
 ```
 
 This reading function throws exception if file is not found or parsing of a file had somehow failed. Normally that would
-be fine and the first failure of this kind would terminate the whole program with a stacktrace and explanatory message. 
+be fine, and the first failure of this kind would terminate the whole program with a stacktrace and explanatory message. 
 However, for `readFiles` we'd explicitly like to be able to continue after the failure to collect and report all failures.
 Moreover, we'd like to be able to have a functional implementation of `readFiles` like this:
 
@@ -191,7 +193,7 @@ interface Continuation<in T> {
 }
 ```  
 
-This solution was tried in experimental version of coroutines and the following problems were identified:
+This solution was tried in the experimental version of Kotlin coroutines and the following problems were identified:
 
 * All implementations have to implement both methods and there is no easy shortcut to provide a builder with
   a lambda like `Continuation { ... body ... }`.
@@ -264,7 +266,7 @@ if (success)
 The following snippet gives summary of all the public APIs:
 
 ```kotlin
-class Result<out T> /* internal constructor */ {
+@JvmInline value class Result<out T> /* internal constructor */ {
     val isSuccess: Boolean
     val isFailure: Boolean
     fun getOrNull(): T?
@@ -295,7 +297,7 @@ inline fun <T> Result<T>.onSuccess(action: (value: T) -> Unit): Result<T>
 inline fun <T> Result<T>.onFailure(action: (exception: Throwable) -> Unit): Result<T>
 ```
 
-All of the functions have self-explanatory consistent names that follow established tradition in Kotlin Standard library
+The functions have self-explanatory consistent names that follow established tradition in the Kotlin Standard library
 and establish the following additional conventions:
 
 * Functions that can throw previously suppressed (captured) exception are named 
@@ -317,12 +319,12 @@ naturally for the result type, comparing the corresponding values or exceptions.
 ## Dependencies
 
 This library depends on 
-[`inline class`](https://github.com/kotlin/KEEP/blob/master/proposals/inline-classes.md) 
+[`@JvmInline value class`](https://github.com/kotlin/KEEP/blob/master/proposals/inline-classes.md) 
 language feature for its efficient implementation. 
 
-## Limitations
+## Limitations (legacy)
 
-`Result<T>` cannot be used as a direct result type of Kotlin functions, properties of 
+In versions before Kotlin 1.5 `Result<T>` cannot be used as a direct result type of Kotlin functions, properties of 
 `Result` type are also restricted:
 
 ```kotlin
@@ -333,7 +335,7 @@ var foo: Result<Int> // ERROR
 ```
 
 However, functions that use `Result` type in generic containers or receive result as a parameter type 
-are allowed:
+were allowed:
 
 ```kotlin
 fun findIntResults(): List<Result<Int>> // Ok
@@ -347,30 +349,32 @@ Functions that declare generic result types may, in fact, return values of `Resu
 private val first: Result<Int> = findIntResults().first() // Ok, even though `first` is of type Result<Int>
 ```
 
-Private and local properties of `Result`  type are allowed as long as they don't have custom getters:
+Private and local properties of `Result`  type were allowed as long as they did not have custom getters:
 
 ```kotlin
 private var foo: Result<Int> // Ok
 ```
 
-The use of Kotlin null-safety operators `.?`, `?:` and `!!` is not allowed on both nullable and non-null `Result` types:
+The use of Kotlin null-safety operators `?.`, `?:` and `!!` was not allowed on both nullable and non-null `Result` types:
 
 ```kotlin
 val r: Result<String?> = runCatching { readLine() }
 println(r!!) // ERROR
 ```
  
-The rationale behind these limitations is that future versions of Kotlin may expand and/or change semantics
+The rationale behind these limitations was that future versions of Kotlin might wish to expand and/or change semantics
 of functions that return `Result` type and null-safety operators may change their semantics when used
 on values of `Result` type. In order to avoid breaking existing code in the future releases of Kotlin and leave door open 
-for those changes, the corresponding uses produce an error now. Exceptions to this rule are made for carefully-reviewed
+for those changes, the corresponding uses produced an error. Exceptions to this rule were made for carefully-reviewed
 declarations in the standard library that are part of the `Result` type API itself. 
 
-See [Future advancements](#future-advancements) for details.
+**UPDATE**: These limitations are lifted since Kotlin 1.5.  
+
+See [Future advancements](#future-advancements) for details on specific plans on updates on them.
 
 ## Binary contract and implementation details
 
-`Result<T>` is implemented by an `inline class` and is optimized for a successful case. Success is stored as
+`Result<T>` is implemented by an `@JvmInline value class` and is optimized for a successful case. Success is stored as
 a value of type `T` directly, without additional boxing, while failure exception is wrapped into an internal 
 `Result.Failure` class that is not exposed through binary interface and may be changed later. 
 
@@ -378,7 +382,7 @@ a value of type `T` directly, without additional boxing, while failure exception
 represent its binary interface on JVM in addition to its public [API](#api-details):
 
 ```kotlin
-inline class Result<out T> @PublishedApi internal constructor(
+@JvmInline value class Result<out T> @PublishedApi internal constructor(
     @PublishedApi internal val value: Any? // internal value -- either T or Failure
 ) : Serializable
 
@@ -388,8 +392,10 @@ inline class Result<out T> @PublishedApi internal constructor(
 
 ## Error-handling style and exceptions
 
-The `Result` class is not designed to be used directly as the result type of general functions and
-such use produces an error (see [Limitations](#limitations)). 
+The `Result` class is designed to capture generic failures of Kotlin functions for their latter processing and
+should be used in general-purpose API like futures, etc, that deal with invocation of Kotlin code blocks and
+must be able to represent both a successful and a failed result of execution. The `Result` class is not
+designed to represent domain-specific error conditions.
 
 In general, if some API requires its callers to handle failures locally (immediately around or next to the invocation), 
 then it should use nullable types, when these failures do not carry additional business meaning, 
@@ -559,21 +565,21 @@ and all of them are purely tentative.
 
 ### Representing as a sealed class
 
-Kotlin `inline` classes cannot be currently used with `sealed class` construct. 
+Kotlin `@JvmInline value` classes cannot be currently used with `sealed class` construct. 
 If that is supported in the future, then we could change implementation of 
 `Result` without affecting its public APIs and binary interfaces in the following way:
 
 ```kotlin
-sealed inline class Result<T> {
-    inline class Success<T>(val value: T) : Result<T>()
+@JvmInline sealed value class Result<T> {
+    @JvmInline class Success<T>(val value: T) : Result<T>()
     class Failure<T>(val exception: Throwable) : Result<T>()
 }
 ``` 
 
-> Notice, that only `Success` case is marked with `inline` modifier here. That is the case that should be
-represented without boxing. In general, if `inline sealed` classes are allowed in the future,
-then Kotlin compiler could only support `inline` modifier on a set of subclasses with pairwise non-intersecting 
-types of their primary constructor properties. In particular, both `Success` and `Failure` cannot be `inline` 
+> Notice, that only `Success` case is marked with `@JvmInline` annotation here. That is the case that should be
+represented without boxing. In general, if `@JvmInline sealed value` classes are allowed in the future,
+then Kotlin compiler could only support `@JvmInline` annotation on a set of subclasses with pairwise non-intersecting 
+types of their primary constructor properties. In particular, both `Success` and `Failure` cannot be `@JvmInline` 
 at the same time, since we would not be able to distinguish `Success(Exception(...))` from 
 `Failure(Exception(...))` at run time.
 
@@ -599,8 +605,15 @@ additional information, `Result` instances also carry additional information and
 always handled in some way. Making `Result` an integral part of the language also requires a 
 considerable effort on improving Kotlin type system to ensure proper handling of encapsulated exceptions.
 
+**UPDATE**: We have reached a decision of not following this road for a foreseeable future and will not pursue integration
+of any special constructions into the language that are tied to the `Result` type. As a part of the standard library 
+a `Result` type will stay narrowly-focused on the use-cases that are described at the beginning of this document, 
+abandoning ambitions to become any kind of universal error-handling primitive. We are working in other directions
+of making signalling error handling more pleasant to use in Kotlin. 
+The text below is left for historical reasons. 
+
 One potential direction is to allow  return value of `Result` type, 
-so that with paremetrization by the base error type one can write:
+so that with parametrization by the base error type one can write:
 
 ```kotlin
 fun findUserByName(name: String): Result<User, IOException>
@@ -633,6 +646,11 @@ exception inside and catching it outside, on the caller side, so no boxing will 
 results. "Rethrowing" exceptions with `!!` can be transparent in JVM bytecode in the same way as it
 happens in Java programs using exceptions.
 
+> **Update note**: This proves virtually impossible to implement correctly, as there would be no way to distinguish
+> a domain-specific error that needs to be represented in the `Result` type for handling it by the caller from the 
+> logic error in the code (a crash) that shall still be represented as exception to be handled in a centralized place
+> of the application for logging, etc.
+
 All in all, it could provide a safe replacement for checked exceptions on JVM and open a path to a better
 integration with JVM APIs that rely on checked exceptions. However, details of this interoperability will have to 
 be worked out as there are lots of problems down this path. We cannot just lift all Java functions with `throws` into
@@ -664,7 +682,6 @@ runCatching { d.await() }.map { it.doSomethingCatching() } // : Result<Result<Da
 Functional code that uses `Try` monad gets quickly polluted
 with `flatMap` invocations. To make such code manageable, a functional programming language is usually extended 
 with monad comprehension syntax to hide those `flatMap` invocations.  
-However, writing functions that return `Result` is not allowed in Kotlin. 
 
 Take a look at the following example code that
 uses monad comprehension over `Try` monad 
@@ -715,7 +732,7 @@ corresponding extension functions that enable more fine-grained control. When a 
 as its result type, it means that this function can make a fine-grained decision on which failures are encapsulated
 and which failures are thrown up the call stack.       
 
-If your code needs fine-grained exception handling policy, we'd recommend to design your code in such a way, that
+If your code needs fine-grained exception handling policy, we'd recommend designing your code in such a way, that
 exceptions are not used at all for any kinds of locally-handled failures 
 (see section on [style](#error-handling-style-and-exceptions) for example code
 with nullable types and sealed data classes). In the context of this appendix, `parseURL` could return a nullable
@@ -726,3 +743,10 @@ if that is needed for some business function
 In cases when you need to distinguish between different kinds of failures and these approaches do not work for you, 
 you are welcome to write your own utility libraries or use libraries like [Arrow](https://arrow-kt.io) 
 that provide the corresponding utilities.    
+
+## Revision history
+
+* **Kotlin 1.5**
+  * Allow returning the `Result` type from functions.
+  * Allow Kotlin null-safety operators `?.`, `?:` and `!!` on both nullable and non-null `Result` types.
+  * Text updated to replace `inline class` with `@JvmInline value class`.
