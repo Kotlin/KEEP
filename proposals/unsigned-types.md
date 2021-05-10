@@ -81,7 +81,7 @@ First, even in these cases using signed integers helps to detect accidental over
 such as `List.lastIndex` being -1 for an empty list or `List.indexOf` returning -1 when an element is not found in the list.
 
 Second, unsigned integers cannot be treated as a range-limited version of signed ones because their range of values 
-is not a subset of the signed integers range, i.e. neither signed, nor unsigned integers are not subtype of each other.
+is not a subset of the signed integers range, i.e. neither signed, nor unsigned integers are subtypes of each other.
 
 To reiterate, the main use case of unsigned numbers is when you need to utilize the full bit range of an integer to
 represent positive values.
