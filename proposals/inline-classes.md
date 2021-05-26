@@ -256,7 +256,7 @@ can hold `null` values on JVM and can be safely used as a mapped type.
 
 So, 
 - not-null inline class types over reference types are mapped directly to the underlying reference type
-- not-null inline class types over not-null reference types are mapped directly to the underlying reference type
+- nullable inline class types over not-null reference types are mapped directly to the underlying reference type
 
 ##### Inline classes over nullable reference types
 
