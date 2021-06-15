@@ -56,6 +56,9 @@ We would appreciate hearing your feedback on this proposal in the (LINK TO KEEP 
   * [Contextual classes and contextual constructors](#contextual-classes-and-contextual-constructors)
   * [Future decorators](#future-decorators)
   * [Unified context properties](#unified-context-properties)
+* [Open issues and concerns](#open-issues-and-concerns)
+  * [Context receivers abuse and scope pollution](#context-receivers-abuse-and-scope-pollution)
+  * [Methods from Any in top-level functions](#methods-from-any-in-top-level-functions)
 
 <!--- END -->
 
@@ -1158,3 +1161,69 @@ fun authenticate() {
 Also, `suspend` and `@Composable` functions can be retrofitted to work as if they are declared with
 `context(PropertiesScope)` modifier and so will pass a set of current context properties via their calls,
 ensuring interoperability of the corresponding mechanisms.
+                               
+## Open issues and concerns
+
+This section lists known issue with this proposal that should be mitigated or accepted and weighted against
+the benefits this proposal brings.
+
+### Context receivers abuse and scope pollution
+
+Kotlin code may suffer from proliferation of implicit receivers in code. In the worst case, all implicit receivers 
+have to be checked to resolve the call during compilation. With many implicit receivers in scope human readers
+might also find it hard to figure it out where the declaration that code is using comes from. 
+
+```kotlin
+class AClass { // this: AClass 
+    fun Extension.doSomething() { // this: Extension
+       dsl1 { // this: Builder1
+           dsl2 { // this: Builder2
+               foo() // where this function is declared? 
+           }
+       }    
+    }    
+}
+```
+
+Currently, a single pair of nested curly braces `{...}`, being it a class, function, or a lambda, may add at 
+most one implicit receiver into scope. This naturally limits proliferation of implicit receivers. You can have at
+most as many implicit receivers in scope as the nesting level of your code.
+
+Introducing context receivers makes it possible to add multiple implicit receivers into scope per one nesting level,
+removing this natural limitation. If abused, this will make compilation slow (by having to scan move implicit receivers)
+and understanding code harder.
+
+The [contexts and coding style](#contexts-and-coding-style) section gives some naming rules and other advice
+designed to mitigate potential abuse of context receivers.
+
+### Methods from Any in top-level functions
+
+Counterintuitively, the following code will compile in this design:
+
+```kotlin
+context(LoggingContext)
+fun weirdToString(): String = toString() // OK
+```
+
+However, the following code will not compile (due to resolution ambiguity):
+
+```kotlin
+context(LoggingContext, Transaction)
+fun weirdToString(): String = toString() // ERROR
+```
+                                                              
+This is an effect of treating context receivers more or less like all other implicit receivers in Kotlin, 
+but bundling them into a single group in the [Resolution algorithm](#resolution-algorithm).
+
+All the methods defined on [`Any`](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-any/) type 
+(like `toString`, `equals`, `hashCode`) are available on any Kotlin class and 
+thus are also available in any function with receiver, for example:
+
+```kotlin
+fun LoggingContext.weirdToString(): String = toString() // also OK
+```
+
+Context receivers do not create an entirely new problem here, but make an existing problem more pronounced. 
+Once can find legal use-cases for `Any` methods on an extension receiver, but we don't know any
+sensible use-cases with context receivers, so their availability is an unwanted side effect for top-level 
+contextual functions. 
