@@ -140,7 +140,8 @@ This proposal introduces the syntax for defining context-dependent declarations 
 This feature overcomes highlighted limitations and covers a variety of use cases.
 
 The context here is not directly related to the action but is used by the action. It can provide additional operations,
-configuration, or execution context. A good example of context would be `Logger`, `Comparator`, or `CoroutineScope`.
+configuration, or execution context. A good example of context would be `Comparator`, `CoroutineScope`, some kind of
+`Transaction` or `LoggingContext` (see [use-cases](#use-cases) for details).
 A simple **contextual function** is declared like this:
 
 ```kotlin
@@ -411,12 +412,15 @@ An assortment of use-cases is presented below.
 
 > Most of the use cases are from the [original discussion](https://youtrack.jetbrains.com/issue/KT-10468).
 
-
 * Injecting loggers and other contextual information into functions and classes
   ```kotlin
-  context(Logger)
+  interface LoggingContext {
+      val log: Logger // this context provides reference to logger  
+  }
+  
+  context(LoggingContext)
   fun performSomeBusinessOperation(withParams: Params) {
-      info("Operation has started")
+      log.info("Operation has started")
   }
   ```
   
@@ -690,14 +694,14 @@ Prefer interfaces to classes for context receivers. This would help you later on
 of carrying a number of different contexts in your top-level functions as in:
 
 ```kotlin
-context(TimeSource, TransactionContext, Logger, ...) // BAD: Too many separate contexts
+context(TimeSource, TransactionContext, LoggingContext, ...) // BAD: Too many separate contexts
 fun doSomeTopLevelOperation() { ... }
 ```
 
 You'll have an option of combining multiple contexts into a single meaningfully named interface:
 
 ```kotlin
-interface TopLevelContext : TimeSource, TransactionContext, Logger, ...
+interface TopLevelContext : TimeSource, TransactionContext, LoggingContext, ...
 
 context(TopLevelContext) // GOOD: A combined context
 fun doSomeTopLevelOperation() { ... }
@@ -845,27 +849,27 @@ before being declared.
 We've considered a number of alternative keywords.
 
 * `with` (save as scope function to introduce receiver into scope)
-    * Note: reusing the same name will make it confusing in discussions
+  * Note: reusing the same name will make it confusing in discussions
 * `using` (Scala name, but in Kotlin may clash with use)
 * `given` (will be confusing as Scala uses it for an opposite thing)
 * `implicit` (very different thing in Scala)
 * Meaning "inside of the additional receiver class or its context/scope"
-    * `within`
-    * `inside`
-    * Note: functions with additional receivers are not really inside, they don't see private
+  * `within`
+  * `inside`
+  * Note: functions with additional receivers are not really inside, they don't see private
 * Meaning "in the context/scope of the receiver class"
-    * `incontext`
-    * `inscope`
-    * **`context` — our choice**
-    * `receiver`
-    * Highlights implicitness & the fact that they are required
+  * `incontext`
+  * `inscope`
+  * **`context` — our choice**
+  * `receiver`
+  * Highlights implicitness & the fact that they are required
 * Meaning "requiring/getting instance of the receiver class"
-    * `having`
-    * `receiving`
-    * `taking`
-    * `utilizing`
-    * `obtaining`
-    * `including`
+  * `having`
+  * `receiving`
+  * `taking`
+  * `utilizing`
+  * `obtaining`
+  * `including`
 
 The choice of `context` was largely driven by its clear use in the prose, as it is quite natural to talk about
 "contextual functions" and other contextual abstractions, hence the keyword also fits well.
@@ -980,10 +984,10 @@ Support for callable references to contextual functions will need a resolution a
 references to global functions are resolved, and unlike references to functions with receiver:
 
 ```kotlin
-context(Logger)
+context(LoggingContext)
 fun performSomeBusinessOperation(withParams: Params) { ... }
 
-::performSomeBusinessOperation // Will have type of context(Logger) (Params) -> Unit
+::performSomeBusinessOperation // Will have type of context(LoggingContext) (Params) -> Unit
 ```
 
 Currently, we don't have compelling use cases and plans to support special syntax for bound references to
@@ -991,7 +995,7 @@ contextual functions (similarly to functions with receiver). One can always use 
 
 ```kotlin
 val op: (Params) -> Unit =
-    { params -> with(logger) { performSomeBusinessOperation(params) } }
+    { params -> with(createLoggingContext()) { performSomeBusinessOperation(params) } }
 ```
 
 ### Removing context receiver from the scope with DslMarker
@@ -1014,12 +1018,11 @@ a scope with the regular property declaration syntax using `with` as a new keywo
 
 ```kotlin
 class Service {
-  with val logger = createLogger() // Introduce the scope property logger
+    with val serviceContext = createServiceContext() // Introduce the scope property with the service context
 
-  fun doSomething() {
-      // logger is a context receiver inside the scope of the class, need not be named explicitly
-      info("Operation has started")
-  }
+    fun doSomething() {
+        // serviceContext is a context receiver inside the scope of the class, need not be named explicitly
+    }
 }
 ```
 
@@ -1028,8 +1031,7 @@ annonymous receivers into the scope in a class:
 
 ```kotlin
 class Service {
-    with createLogger() // Introduce anonymous scope property
-    // ... the rest as before  
+    with createServiceContext() // Introduce anonymous scope property
 }
 ```
 
@@ -1063,15 +1065,15 @@ With the [scope properties](#scope-properties) in mind, the above declaration wi
 
 ```kotlin
 class Service
-   // Constructor is contextual, needs ServiceContext when it is being invoked
-   context(ServiceContext) 
-   constructor() {} 
+     // Constructor is contextual, needs ServiceContext when it is being invoked
+     context(ServiceContext) 
+     constructor() {} 
 
-   with this@ServiceScope // capture constructor's param into a scope property
+     with this@ServiceContext // capture constructor's param into a scope property
 
-   fun doSomething() {
-       // declarations from ServiceContext are available here
-   }
+     fun doSomething() {
+         // declarations from ServiceContext are available here
+     }
 }
 ```
 
@@ -1105,7 +1107,7 @@ and mark all the functions in our app with `context(ConfigurationScope)`.
 
 ```kotlin
 interface ConfigurationScope {
-  val configuration: Configuration
+    val configuration: Configuration
 }
 ```
 
