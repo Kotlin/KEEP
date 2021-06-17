@@ -10,7 +10,7 @@
 ## Abstract
 
 This is a design proposal for support of context-dependent declarations in Kotlin. 
-It covers a large variety of use-cases and was previously known and requested under the name of
+It covers a large variety of use cases and was previously known and requested under the name of
 "multiple receivers", see [KT-10468](https://youtrack.jetbrains.com/issue/KT-10468).
 
 We would appreciate hearing your feedback on this proposal in the (LINK TO KEEP ISSUE).
@@ -348,7 +348,7 @@ Candidates with context requirements are considered to be _more specific_ for th
 than the same candidates without context requirements.
 
 > Currently, we don't define specificity relation between candidates having different sets of context parameters
-> for the lack of compelling use-cases for doing so. It can be introduced later in a backwards-compatible way
+> for the lack of compelling use cases for doing so. It can be introduced later in a backwards-compatible way
 > if needed.
 
 Further details of this algorithm will be presented as a part of Kotlin specification revision.
@@ -411,7 +411,7 @@ public class TestF {
 ## Use cases
 
 Context receivers can be useful in many domains and applications. 
-An assortment of use-cases is presented below.
+An assortment of use cases is presented below.
 
 > Most of the use cases are from the [original discussion](https://youtrack.jetbrains.com/issue/KT-10468).
 
@@ -836,7 +836,7 @@ before being declared.
   }
   ```
   The nice part of it that is serves a double-duty of addressing the extension grouping request from
-  [KT-5670](https://youtrack.jetbrains.com/issue/KT-5670), but it is quite verbose for all the contextual use-cases,
+  [KT-5670](https://youtrack.jetbrains.com/issue/KT-5670), but it is quite verbose for all the contextual use cases,
   forcing an additional indentation level.
 
 * Context on the right-hand side of function declaration
@@ -1142,7 +1142,7 @@ the context around:
   are passed down the call-chain only via `suspend` functions.
 
 When you call a regular function, the context is lost. When you call a suspending function from a composable function,
-for example, then the context is lost, too. However, there are use-cases where it is convenient to have a unified
+for example, then the context is lost, too. However, there are use cases where it is convenient to have a unified
 `ThreadLocal`-like approach to context properties that can be passed though different types of functions.
 
 A potential future solution is to declare a unified context properties framework in the Kotlin standard library, so that,
@@ -1224,6 +1224,6 @@ fun LoggingContext.weirdToString(): String = toString() // also OK
 ```
 
 Context receivers do not create an entirely new problem here, but make an existing problem more pronounced. 
-Once can find legal use-cases for `Any` methods on an extension receiver, but we don't know any
-sensible use-cases with context receivers, so their availability is an unwanted side effect for top-level 
+Once can find legal use cases for `Any` methods on an extension receiver, but we don't know any
+sensible use cases with context receivers, so their availability is an unwanted side effect for top-level 
 contextual functions. 
