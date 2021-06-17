@@ -5,6 +5,7 @@
 * **Contributors**: Denis Zharkov, Marat Akhin, Mikhail Belyaev, Ilya Gorbunov, Ilmir Usmanov, Simon Ogorodnik,
   Dmitriy Novozhilov, Mikhail Glukhikh
 * **Status**: Proposed
+* **Discussion**: [KEEP-259](https://github.com/Kotlin/KEEP/issues/259)
 * **Prototype**: In Progress
 
 ## Abstract
@@ -13,7 +14,7 @@ This is a design proposal for support of context-dependent declarations in Kotli
 It covers a large variety of use cases and was previously known and requested under the name of
 "multiple receivers", see [KT-10468](https://youtrack.jetbrains.com/issue/KT-10468).
 
-We would appreciate hearing your feedback on this proposal in the (LINK TO KEEP ISSUE).
+We would appreciate hearing your feedback on this proposal in the [KEEP-259](https://github.com/Kotlin/KEEP/issues/259).
 
 ## Table of Contents
 
@@ -947,7 +948,7 @@ unqualified `this` expression.
 ## Future work
 
 This section lists enhancements that are being prototyped, discussed, or otherwise being considered and are potentially
-possible in the future. Feel free to share your ideas in discussion (LINK TO KEEP ISSUE).
+possible in the future. Feel free to share your ideas in discussion [KEEP-259](https://github.com/Kotlin/KEEP/issues/259).
 
 ### Reflection design
 
