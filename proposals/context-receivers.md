@@ -144,7 +144,7 @@ This feature overcomes highlighted limitations and covers a variety of use cases
 
 The context here is not directly related to the action but is used by the action. It can provide additional operations,
 configuration, or execution context. A good example of context would be `Comparator`, `CoroutineScope`, some kind of
-`Transaction` or `LoggingContext` (see [use-cases](#use-cases) for details).
+`Transaction` or `LoggingContext` (see [Use cases](#use-cases) for details).
 A simple **contextual function** is declared like this:
 
 ```kotlin
@@ -173,7 +173,7 @@ Moreover, there can be multiple context receivers. See [Detailed design](#detail
 * Separate the concepts of extension and dispatch receivers from the concept of context receivers
     * Context receivers should not change the meaning of unqualified `this` expression
     * Multiple contexts should not be ordered during resolution, resolution ambiguities shall be reported
-* Design a scalabe resolution algorithm with respect to the number of receivers
+* Design a scalable resolution algorithm with respect to the number of receivers
     * Call resolution should not be exponential in the number of context receivers
 
 ## Detailed design
@@ -203,12 +203,12 @@ of them is allowed to have a subtype relation between them.
 ### Contextual functions and property accessors
 
 For functions and property accessors, context receivers are additional **context parameters** of those
-declarations. They differ from regular parameters in that they are annonymous and are passed
+declarations. They differ from regular parameters in that they are anonymous and are passed
 implicitly just like receivers. 
 In the body of the corresponding function or property accessor they bring the corresponding arguments 
 into the body scope as implicit receiver for further calls.
 
-The a look at the following example.
+Take a look at the following example.
 
 ```kotlin
 context(Comparator<T>)
@@ -311,14 +311,14 @@ The current Kotlin call resolution algorithm is documented in the [Kotlin specif
 
 For the purpose of call resolution, context receivers in the scope are considered with all the other implicit receivers in scope. However, they don't have a total hierarchy like other implicit receivers that come from nested syntactic structures.
 Instead, they form non-overlapping groups according to the affected scope. 
-There is no  actual order inside groups, but groups themselves are sorted in the scope order: 
+There is no actual order inside groups, but groups themselves are sorted in the scope order: 
 from the innermost to the outermost.
 
 When selecting a candidate of the call, the context parameters of the candidates are initially ignored. Only extension
 and dispatch receivers participate in the algorithm of candidate selection.
 
 > This and other features explained below ensure that the algorithm is not exponential 
-> with respect to the number of contextual receivers in the function declaration.
+> with respect to the number of context receivers in the function declaration.
 
 When looking for candidates, the whole group of context receivers is processed.
 Multiple applicable candidates in the same group result in ambiguity. If a suitable candidate is found in some group, name resolution ends. In the initially proposed
