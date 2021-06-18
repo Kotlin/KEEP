@@ -44,6 +44,7 @@ We would appreciate hearing your feedback on this proposal in the [KEEP-259](htt
 * [Alternative approaches and design tradeoffs](#alternative-approaches-and-design-tradeoffs)
   * [Alternative syntax options](#alternative-syntax-options)
   * [Alternative keywords](#alternative-keywords)
+  * [Parentheses vs angle brackets](#parentheses-vs-angle-brackets)
   * [Context keyword ambiguities](#context-keyword-ambiguities)
   * [Named context receivers](#named-context-receivers)
   * [Multiple receivers with decorators](#multiple-receivers-with-decorators)
@@ -98,7 +99,7 @@ or [apply](https://kotlinlang.org/docs/scope-functions.html#apply), to bring it 
 
 ```kotlin
 with(scope) {
-  entity.doAction()
+    entity.doAction()
 }
 ```
 
@@ -878,11 +879,47 @@ We've considered a number of alternative keywords.
 The choice of `context` was largely driven by its clear use in the prose, as it is quite natural to talk about
 "contextual functions" and other contextual abstractions, hence the keyword also fits well.
 
+### Parentheses vs angle brackets
+
+One of the big decisions around design was choosing between parentheses `context(Ctx)` and angle brackets `context<Ctx>`.
+Here is the summary of benefits we've found for these two options:
+
+* `context<Ctx>` syntax is consistent with how types are passed as arguments in Kotlin calls. 
+  If you have a `Type`, then you pass the corresponding type argument in angle brackets as in 
+  `foo<Type>()`, compare this to passing a class in `foo(Type::class)`. The same is true in annotations,
+  although annotations with type parameters are rarely used in Kotlin code due to their JVM interop limitations.
+  The notable exception is [Android Parcelize](https://developer.android.com/kotlin/parcelize) where you
+  could find annotations like`@TypeParceler<ExternalClass, ExternalClassParceler>()`. Angle brackets 
+  make this analogy of using a type stand out.
+* `context(Ctx)` syntax is consistent with Kotlin parameter declarations. When a you declare a function
+  with a context receiver, as in `context(Ctx) fun foo(param: Param)`, you actually declare and additional 
+  anonymous parameter to a function of type `Ctx`. This analogy become especially notable when you 
+  consider that the functional type of this declaration, as explained in [Functional types](#functional-types) section,  
+  is equivalent to `(Ctx, Param) -> Unit`. Parentheses make this analogy of declaring a parameter stand out. 
+
+> Another advantage of angle brackets syntax is that is makes [Backwards compatibility](#backwards-compatibility) 
+> concerns go away completely, but they are so minor for parentheses anyway, that we did not pay much attention to
+> this difference.
+
+By themselves, these differences do not conclusively point to a choice of which syntactic option is better. 
+In the end, the decision was swayed in favor of parentheses, 
+because this syntax leaves more doors open for potential future extensions and refinements:
+
+* If we find compelling use-cases, we can naturally add support for named context receivers via 
+  `context(name: Ctx)` syntax similarly to named function parameters. 
+* If we ever find "type parameter use before declaration" problematic in practice, as explained in 
+  the beginning of [Alternative approaches and design tradeoffs](#alternative-approaches-and-design-tradeoffs) section, 
+  the parentheses syntax lends itself to support type parameter introduction before its use
+  directly in the `context` parameter declaration as `context<T>(Monoid<T>)`.
+* If we ever find the need to support modifiers on context receivers, they will most likely be shared with 
+  parameters, due to parameter-like nature of context receivers, as in hypothetical `context(inline Ctx)`.
+
 ### Context keyword ambiguities
 
-To avoid potential [Backwards compatibility](#backwards-compatibility) problems in the future we've considered making
-new syntax unambiguous everywhere (including function bodies), like `@context(Ctx)`,  `context:(Ctx)`,  `context@(Ctx)`, or
-`context.(Ctx)`. None of the alternatives looked nice or natural.
+To avoid potential [Backwards compatibility](#backwards-compatibility) problems in the future with parentheses 
+we've considered making new syntax unambiguous everywhere (including function bodies) via additional syntax, 
+like `@context(Ctx)`,  `context:(Ctx)`,  `context@(Ctx)`, or `context.(Ctx)`. 
+None of the alternatives looked nice or natural.
 
 ### Named context receivers
 
