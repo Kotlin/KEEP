@@ -646,7 +646,11 @@ someObject {
 
 This builder pattern uses a functional type with an extension receiver `SomeObjectBuilder.() -> Unit` for good and shall
 continue doing so. Conceptually, code inside `someObject { ... }` block performs an action upon `SomeObjectBuilder` instance
-and using extension receiver for this is in style. Context receivers shall not be used for such builders.
+and using extension receiver for this is in style. We do not recommend using context receivers for such simple builders.
+
+However, context receivers make it possible to define _contextual operators_ &mdash; operators that are available 
+only in the context of the corresponding builder, as shown in "Creating JSONs" example in the [Use cases](#use-cases) section.
+This is a legitimate use-case of context receivers for builders. 
 
 ### Other Kotlin DSLs
 
