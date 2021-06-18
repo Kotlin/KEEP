@@ -1222,7 +1222,7 @@ User {
 
 ### ABI strategy for uninitialized properties
 
-To solve the ABI evolution problem the following backwards-compatible compilation strategy can be used:
+To solve the ABI evolution problem, the following backwards-compatible compilation strategy can be used:
 
 * If (and only if) a class has uninitialized properties, then automatically generate a synthetic `xxx.Builder` class that has all the uninitialized properties of this class as simple mutable fields and an additional parameter with an instance of this builder class to ABI of all the constructors.
 * The DSL-builder block assigns all the values to the corresponding properties and, as soon as they all DA, calls the constructor of the original class.
