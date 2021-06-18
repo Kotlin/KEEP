@@ -105,7 +105,7 @@ with(scope) {
 
 We say that an extension receiver defines an **object of an action**, while a dispatch receiver effectively serves as
 an implicit parameter that must be present in the caller's scope but cannot be specified explicitly. Thus, a member
-extension function can be called context-dependent function, and a dispatch receiver represents a **context of an action**.
+extension function can be called a context-dependent function, and a dispatch receiver represents the **context of an action**.
 
 The context-oriented approach has many applications in the design of idiomatic Kotlin APIs (for example, see
 ["An introduction to context-oriented programming in Kotlin" by Alexander Nozik](https://proandroiddev.com/an-introduction-context-oriented-programming-in-kotlin-2e79d316b0a2))
@@ -117,7 +117,7 @@ The key one is that a **member extension cannot be declared on a third-party cla
 modularize and structure APIs in larger applications. The only way to introduce a context-dependent `Entity.doAction`
 extension is to write it as a member of a `Scope`, which is not always appropriate from a modularity standpoint.
 
-> For example, in `kotlinx.coroutines` library, it would be inappropriate to declare a `Flow.launchFlow()` extension as
+> For example, in the `kotlinx.coroutines` library, it would be inappropriate to declare a `Flow.launchFlow()` extension as
 > a member of `CoroutineScope`, because `CoroutineScope` is a more general concept and its declaration shall not depend
 > on a more specific concept like `Flow`.
 
@@ -129,8 +129,8 @@ a specific context in scope.
 
 > Use cases for that come a lot. For example, it would be helpful to be able to define a `TransactionScope` and have
 > syntax to declare transactional functions that have a requirement of being called only in a `TransactionScope`, but
-> forbit explicit `transaction.doSomething()` call, since they do not work **on** transaction, but **in the context of**
-> transaction. 
+> forbit explicit `transaction.doSomething()` call, since they do not work **on** a transaction, but **in the context of**
+> a transaction. 
 
 The final limitation of providing context with a member extension is that **only one receiver can represent a context**.
 It limits composability of various abstractions, as we cannot declare a function that must be called only within two
@@ -339,7 +339,7 @@ class A {
 }
 ```
 
-When candidate target of a call has context requirements itself, those requirements are resolved greedily.
+When the candidate target of a call has context requirements itself, those requirements are resolved greedily.
 For each context parameter of a candidate, the first implicit receiver with a suitable type is considered to be used as 
 a context argument of the corresponding call. If a type of a declared context parameter of a candidate uses a generic
 type whose value is not determined yet, then the corresponding type constraints are added to the 
@@ -353,7 +353,7 @@ than the same candidates without context requirements.
 > for the lack of compelling use cases for doing so. It can be introduced later in a backwards-compatible way
 > if needed.
 
-Further details of this algorithm will be presented as a part of Kotlin specification revision.
+Further details of this algorithm will be presented as a part of the Kotlin specification revision.
 
 ### Backwards compatibility
 
@@ -378,8 +378,8 @@ properties. To support them in the future we'll have to deprecate such ambiguous
 However, we could not find any real Kotlin code that will be affected, so a potential impact of such deprecation is
 extremely low.
 
-> We don't need to turn context into a hard keyword and forbid using it as a function or property name. It will be
-> a soft-keyword and will stay to be allowed for use as an identifier.
+> We don't need to turn `context` into a hard keyword and forbid using it as a function or property name. It will be
+> a soft-keyword and remain allowed for use as an identifier.
 
 ### JVM ABI and Java compatibility
 
@@ -542,12 +542,12 @@ just like the names of the top-level declarations, must be unambiguous to the ma
 of the resulting code.
 
 In practice, it means that very few existing classes or interfaces in a typical Kotlin codebase would fit a role of
-a context receiver. A typical class is designed with `instance.member` call-side usage in mind, as in `user.name`.  
+a context receiver. A typical class is designed with `instance.member` call-site usage in mind, as in `user.name`.  
 On the other hand, top-level declarations are designed to be used by their short name without a qualifier.
 
 ### Performing an action on an object
 
-When writing a code that performs an action on an object it is customary in Kotlin to refer to their members
+When writing code that performs an action on an object it is customary in Kotlin to refer to their members
 and extensions by their short name. It is possible to be explicit using `this.`, but it is not recommended in Kotlin
 to write in cases when there are no ambiguities. For example, this is how members and extensions are implemented in
 a typical class:
@@ -565,8 +565,8 @@ class User(
 
 To ensure readability it is important to write code so that there is always a single object on which the action
 is performed upon and pass all additional information in explicitly named parameters. This practice is enforced by the
-Kotlin syntax that allows definition of only a single extension receiver in a function declaration. So, when writing
-extension that perform an action on an object **don't do this**:
+Kotlin syntax that allows the definition of only a single extension receiver in a function declaration. So, when writing
+extensions that perform an action on an object **don't do this**:
 
 ```kotlin
 context(User)
@@ -583,7 +583,7 @@ fun User.updateNow() {
 }
 ```
 
-Even though both declarations are similar in many aspects, and their bodies look similarly, the declaration of
+Even though both declarations are similar in many aspects, and their bodies look similar, the declaration of
 `fun User.updateNow()` is explicit about the intent to perform an action on the `User` object.
 
 ### Providing additional parameters to an action
@@ -609,7 +609,7 @@ fun User.recordLastLogin() {
 
 ### Providing additional context for an action
 
-Context receivers shall be used to provide additional, ubiquitous context for actions. As a litmus test ask a question
+Context receivers shall be used to provide additional, ubiquitous context for actions. As a litmus test, ask a question
 if that information might have been provided via a global top-level scope in a smaller application
 with a simpler architecture. If the answer is yes, then it might be a good idea to provide it via a context receiver.
 For example, it is a good idea to inject the source of the current time into various time-dependent functions,
@@ -726,8 +726,8 @@ Scala 2 introduced the first implementation of contextual abstractions with "imp
 classes, and parameters. In Scala 3, "implicits" were redesigned and turned into given instances, using clauses and
 extension methods. Using clauses have a lot in common with context receivers.
 
-`using` always works together with some `given`. Given instance defines a value of a certain type, which compiler can
-further use to generate an implicit argument for calls with context parameter of this type.
+`using` always works together with some `given`. Given instance defines a value of a certain type, which the compiler can
+further use to generate an implicit argument for calls with a context parameter of this type.
 Meanwhile, a context parameter is defined with a `using` clause.
 
 ```scala
@@ -735,7 +735,7 @@ Meanwhile, a context parameter is defined with a `using` clause.
 def printPersons(s: Seq[Person])(using ord: Ordering[Person]) = ...
 ```
 
-Context parameters are quite close to context receivers we're describing in this proposal — they also consume a context
+Context parameters are quite close to the context receivers we're describing in this proposal — they also consume a context
 from a caller scope. So the example above can be easily translated into Kotlin, preserving its semantics:
 
 ```kotlin
@@ -781,8 +781,8 @@ limited form of typed (checked) effects.
 
 Coeffects constitute a dual approach to modelling the same behavior as with effects. Instead of looking at effects
 that a function has, we can look at the context in which the function can be run (see
-[Thomas Petricek's work for details](http://tomasp.net/coeffects/)). Kotlin context receivers is a limited form of typed
-(checked) coffect system. We can rewrite the declaration of `hello` function with `emit` effect to Kotlin as a
+[Thomas Petricek's work for details](http://tomasp.net/coeffects/)). Kotlin context receivers are a limited form of a typed
+(checked) coffect system. We can rewrite the declaration of the `hello` function with an `emit` effect to Kotlin as a
 function that requires an `Emit` context:
 
 ```kotlin
@@ -849,7 +849,7 @@ before being declared.
   ```kotlin
   fun <T> List<T>.sum(): T context(Monoid<T>) = ...
   ```
-  This placement would be consistent with Kotiln's `where` clause, but it is not consistent with receivers being specified
+  This placement would be consistent with Kotlin's `where` clause, but it is not consistent with receivers being specified
   before the function name. Moreover, Kotlin has a syntactic tradition of matching declaration syntax and call-site syntax
   and a context on a call-site is established before the function is invoked.
 
@@ -895,13 +895,13 @@ Here is the summary of benefits we've found for these two options:
   The notable exception is [Android Parcelize](https://developer.android.com/kotlin/parcelize) where you
   could find annotations like`@TypeParceler<ExternalClass, ExternalClassParceler>()`. Angle brackets 
   make this analogy of using a type stand out.
-* `context(Ctx)` syntax is consistent with Kotlin parameter declarations. When a you declare a function
+* `context(Ctx)` syntax is consistent with Kotlin parameter declarations. When you declare a function
   with a context receiver, as in `context(Ctx) fun foo(param: Param)`, you actually declare and additional 
   anonymous parameter to a function of type `Ctx`. This analogy become especially notable when you 
-  consider that the functional type of this declaration, as explained in [Functional types](#functional-types) section,  
+  consider that the functional type of this declaration, as explained in the [Functional types](#functional-types) section,  
   is equivalent to `(Ctx, Param) -> Unit`. Parentheses make this analogy of declaring a parameter stand out. 
 
-> Another advantage of angle brackets syntax is that is makes [Backwards compatibility](#backwards-compatibility) 
+> Another advantage of the angle brackets syntax is that is makes [Backwards compatibility](#backwards-compatibility) 
 > concerns go away completely, but they are so minor for parentheses anyway, that we did not pay much attention to
 > this difference.
 
@@ -912,7 +912,7 @@ because this syntax leaves more doors open for potential future extensions and r
 * If we find compelling use-cases, we can naturally add support for named context receivers via 
   `context(name: Ctx)` syntax similarly to named function parameters. 
 * If we ever find "type parameter use before declaration" problematic in practice, as explained in 
-  the beginning of [Alternative approaches and design tradeoffs](#alternative-approaches-and-design-tradeoffs) section, 
+  the beginning of the [Alternative approaches and design tradeoffs](#alternative-approaches-and-design-tradeoffs) section, 
   the parentheses syntax lends itself to support type parameter introduction before its use
   directly in the `context` parameter declaration as `context<T>(Monoid<T>)`.
 * If we ever find the need to support modifiers on context receivers, they will most likely be shared with 
@@ -932,7 +932,7 @@ for [Referencing specific context receiver](#referencing-specific-context-receiv
 considered was `context(name: Type)` similarly to named function parameters.
 
 However, we did not find enough compelling use cases yet to support such naming, as context receivers are explicitly
-designed for something that should be brought into the context, as opposed to declaration that should be explicitly
+designed for something that should be brought into the context, as opposed to a declaration that should be explicitly
 referred to by name. Moreover, we do support disambiguation of multiple context receivers using a type-alias if needed.
 For cases where you need to bring a named thing into the context there is a workaround.
 
@@ -974,10 +974,10 @@ fun updateUserSession() {
 }
 ```
 
-This way, decorator also introduces additional receiver into the function body and thus can serve as a syntax for
+This way, the decorator also introduces an additional receiver into the function body and thus can serve as a syntax for
 functions with multiple receivers.
 
-However, semantics of declaration-only decorators (e.g. when `fun updateUserSesssion()` is a part of an interface) are
+However, semantics of declaration-only decorators (e.g. when `fun updateUserSession()` is a part of an interface) are
 harder to define consistently. A generic decorator, that would support brining any context receiver into scope
 (e.g. `with` decorator function) will result in harder-to-read use code (something like
 `@with<Transaction> fun updateUserSession` was considered). Moreover, brining additional receivers into scope via
@@ -1021,12 +1021,12 @@ val userName by TransactionalVariable<String>()
 The current design excludes local functions and properties, because they add technical complications without bringing
 substantial benefits. However, supporting them would be a natural future extension. We'll have to design a plan for
 dealing with minor [Backwards compatibility](#backwards-compatibility) problems that would arise, some existing uses
-of context name will have to be deprecated.
+of the context name will have to be deprecated.
 
 ### Callable references to contextual functions
 
 Support for callable references to contextual functions will need a resolution algorithm that is similar to how
-references to global functions are resolved, and unlike references to functions with receiver:
+references to global functions are resolved, and unlike references to functions with a receiver:
 
 ```kotlin
 context(LoggingContext)
@@ -1036,7 +1036,7 @@ fun performSomeBusinessOperation(withParams: Params) { ... }
 ```
 
 Currently, we don't have compelling use cases and plans to support special syntax for bound references to
-contextual functions (similarly to functions with receiver). One can always use a lambda, e.g.
+contextual functions (similarly to functions with a receiver). One can always use a lambda, e.g.
 
 ```kotlin
 val op: (Params) -> Unit =
@@ -1045,7 +1045,7 @@ val op: (Params) -> Unit =
 
 ### Removing context receiver from the scope with DslMarker
 
-Kotlin has [`@DslMarker`](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-dsl-marker/) annotation designed for DSLs.
+Kotlin has a [`@DslMarker`](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-dsl-marker/) annotation designed for DSLs.
 It is mainly designed to work with [Kotlin builders](#kotlin-builders) which should still be written using extension
 receivers as opposed to contextual receivers. However, it might be potentially useful to support `@DslMarker` annotations
 on contextual receivers for [Other Kotlin DSLs](#other-kotlin-dsls) if the corresponding use cases arise in the future.
@@ -1094,7 +1094,7 @@ The detailed design for scope properties is to be presented later.
 
 ### Contextual classes and contextual constructors
 
-Contextual classes and contextual constructors are another yet natural future extension of this proposal.
+Contextual classes and contextual constructors are yet another natural future extension of this proposal.
 They can be used to require some context to be present for instantiating the class, which has a bunch of use cases.
 
 ```kotlin
@@ -1106,7 +1106,7 @@ class Service {
 }
 ```
 
-With the [scope properties](#scope-properties) in mind, the above declaration will get desugared to:
+With the [scope properties](#scope-properties) feature in mind, the above declaration will get desugared to:
 
 ```kotlin
 class Service
@@ -1124,7 +1124,7 @@ class Service
 
 ### Future decorators
 
-While we've decided to not rely on decorators for the core support of multiple receivers as explained in
+While we've decided to not rely on decorators for the core support of multiple receivers as explained in the
 [Multiple receivers with decorators](#multiple-receivers-with-decorators) section, the very concept of decorators in
 a useful one with its own use cases. Moreover, the concept of context receiver and the corresponding changes to the resolution
 rules to account for them is an important building block for decorators in the future.
@@ -1144,7 +1144,7 @@ inside of it. The concept of context receiver is such a mechanism.
 
 ### Unified context properties
 
-Frameworks, libraries, and applications sometimes need to pass various ad-hock local properties throughout the function
+Frameworks, libraries, and applications sometimes need to pass various ad hoc local properties throughout the function
 call-chains. When a property is used by many functions in the call-chain, then it makes sense to define a dedicated
 context interface and explicitly declare all affected functions as contextual. For example, if most functions in our
 application need and use some kind of global configuration property, then we can declare the corresponding interface
@@ -1156,7 +1156,7 @@ interface ConfigurationScope {
 }
 ```
 
-The situation is different when application uses lots of properties like that, but each function typically uses none or
+The situation is different when an application uses lots of properties like that, but each function typically uses none or
 a few. Examples include authentication information, distributed call tracing, styling properties, etc. 
 
 If we model each property as a separate context interface, then the `context(...)` declarations will quickly get
@@ -1169,7 +1169,7 @@ A popular modular solution to pass such context properties is to use
 [ThreadLocal](https://docs.oracle.com/javase/8/docs/api/java/lang/ThreadLocal.html) variables. However, thread-locals
 are bound to a thread, so any framework whose execution context spans multiple threads must introduce its own solution,
 like [CoroutineContext](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin.coroutines/-coroutine-context/) in Kotlin coroutines,
-[CompositionLocal](https://developer.android.com/reference/kotlin/androidx/compose/runtime/CompositionLocal) in JetPack Compose,
+[CompositionLocal](https://developer.android.com/reference/kotlin/androidx/compose/runtime/CompositionLocal) in Jetpack Compose,
 [Context](https://projectreactor.io/docs/core/release/api/reactor/util/context/Context.html) in Project Reactor, etc.
 This is challenging for any code that uses several such frameworks together as it is not trivial to ensure preservation
 of the context properties when execution spans multiple frameworks. It can also get verbose in the frameworks themselves,
@@ -1206,7 +1206,7 @@ ensuring interoperability of the corresponding mechanisms.
                                
 ## Open issues and concerns
 
-This section lists known issue with this proposal that should be mitigated or accepted and weighted against
+This section lists known issues with this proposal that should be mitigated or accepted and weighed against
 the benefits this proposal brings.
 
 ### Context receivers abuse and scope pollution
@@ -1266,6 +1266,6 @@ fun LoggingContext.weirdToString(): String = toString() // also OK
 ```
 
 Context receivers do not create an entirely new problem here, but make an existing problem more pronounced. 
-Once can find legal use cases for `Any` methods on an extension receiver, but we don't know any
+One can find legal use cases for `Any` methods on an extension receiver, but we don't know any
 sensible use cases with context receivers, so their availability is an unwanted side effect for top-level 
 contextual functions. 
