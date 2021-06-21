@@ -32,6 +32,7 @@ We would appreciate hearing your feedback on this proposal in the [KEEP-259](htt
   * [JVM ABI and Java compatibility](#jvm-abi-and-java-compatibility)
 * [Use cases](#use-cases)
 * [Contexts and coding style](#contexts-and-coding-style)
+  * [Overloading by the presence of context](#overloading-by-the-presence-of-context)
   * [Performing an action on an object](#performing-an-action-on-an-object)
   * [Providing additional parameters to an action](#providing-additional-parameters-to-an-action)
   * [Providing additional context for an action](#providing-additional-context-for-an-action)
@@ -544,6 +545,54 @@ of the resulting code.
 In practice, it means that very few existing classes or interfaces in a typical Kotlin codebase would fit a role of
 a context receiver. A typical class is designed with `instance.member` call-site usage in mind, as in `user.name`.  
 On the other hand, top-level declarations are designed to be used by their short name without a qualifier.
+
+### Overloading by the presence of context
+
+It is tempting to give functions in contextual receivers the same names as the names existing top-level functions, 
+so that their behavior changes in the specific context. For example, the Kotlin standard library has a top-level
+[`println`](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin.io/println.html) function, so you can write:
+
+```kotlin
+fun hello() {
+    println("Hello")
+}
+```
+
+The `println` function is also declared in [`java.io.PrintWriter`](https://docs.oracle.com/javase/8/docs/api/java/io/PrintWriter.html) class.
+By adding `context(PrintWriter)` to the `hello` function declaration, you can change it to 
+start printing to `PrintWriter` without otherwise changing a single line of code inside it:
+
+```kotlin
+context(PrintWriter)
+fun hello() {
+    println("Hello")
+}
+```
+
+It might be a neat trick for a small application, but it is a very error-prone practice for a larger code. It becomes 
+all too easy to call other functions from `hello` which also call `println` themselves and to forget about `context(PrintWriter)`:
+
+```kotlin
+context(PrintWriter)
+fun hello() {
+    println("Hello")
+    world()
+}
+
+// forgot the context
+fun world() {
+    println("World")
+}
+```
+
+The above code still compiles (because there is a top-level `println` function) but it does not do what 
+you likely intended it to do. **Don't do this**. 
+
+A rule of thumb is that the names of functions available on the context receivers should be distinct from the 
+functions available on the top-level in your application.
+
+> For the same reason, it is a bad idea to add language support for any kind of default values for contextual receivers,
+as it will make a similar mistake (of forgetting to pass the context along) undetectable during compilation.
 
 ### Performing an action on an object
 
