@@ -26,7 +26,7 @@ We would appreciate hearing your feedback on this proposal in the [KEEP-259](htt
 * [Detailed design](#detailed-design)
   * [Contextual functions and property accessors](#contextual-functions-and-property-accessors)
   * [Functional types](#functional-types)
-  * [Referencing specific context receiver](#referencing-specific-context-receiver)
+  * [Referencing specific receiver](#referencing-specific-receiver)
   * [Resolution algorithm](#resolution-algorithm)
   * [Backwards compatibility](#backwards-compatibility)
   * [JVM ABI and Java compatibility](#jvm-abi-and-java-compatibility)
