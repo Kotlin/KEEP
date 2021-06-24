@@ -278,11 +278,12 @@ signature of the functional type replicates the textual order in which every arg
   }
   ```
 
-### Referencing specific context receiver
+### Referencing specific receiver
 
 Context receivers can never be referenced using a plain `this` expression and never change the meaning of `this`.
-However, both context and extension receivers can be referenced via the [labeled `this` expression](https://kotlinlang.org/docs/reference/grammar.html#THIS_AT).
-The compiler generates the label from the name of receiver type with the following rules:
+However, this proposal introduces another option to reference a receiver of any type, including context one, via the
+[labeled `this` expression](https://kotlinlang.org/docs/reference/grammar.html#THIS_AT).
+For every receiver in the scope, the compiler generates the label from the name of its type with the following rules:
 
 * If the receiver type is parenthesized, parentheses are omitted
 * If the receiver type is nullable, the question mark is omitted
@@ -298,14 +299,31 @@ fun userInfo(name: String): Storage.Info<User> {
 }
 ```
 
-If multiple context receivers have the same generated label, none of them can be referenced with the qualified `this`.
-In all cases where the label cannot be generated or referenced, a workaround is to use a type alias.
+If multiple receivers have the same generated label, none of them can be referenced with the qualified `this`.
+In cases where the label cannot be generated or referenced, a workaround is to use a type alias.
 
 ```kotlin
 typealias IterableClass<C, T> = (C) -> Iterator<T>
 
 context(IterableClass<C, T>)
 inline operator fun <C, T> C.iterator(): Iterator<T> = this@IterableClass.invoke(this)
+```
+
+Using labeled `this` may come in handy even without context receivers. If multiple receivers in a nested scope can be 
+addressed via plain `this`, the use of it becomes ambiguous and decreases a readability. Using a bare type name rather 
+than a function name for a label looks more natural since the object type describes the object better than the scope it 
+belongs to ([KT-21387](https://youtrack.jetbrains.com/issue/KT-21387)).
+
+```kotlin
+fun List<Int>.decimateEveryEvenThird() = buildSequence {
+    var counter = 1
+    for (e in this@List) {
+        if (e % 2 == 0 && counter % 3 == 0) {
+            yield(e)
+        }
+        counter += 1
+    }
+}
 ```
 
 ### Resolution algorithm
