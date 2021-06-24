@@ -104,7 +104,7 @@ with(scope) {
 }
 ```
 
-We say that an extension receiver defines an **object of an action**, while a dispatch receiver effectively serves as
+We say that an extension receiver defines the **object of an action**, while a dispatch receiver effectively serves as
 an implicit parameter that must be present in the caller's scope but cannot be specified explicitly. Thus, a member
 extension function can be called a context-dependent function, and a dispatch receiver represents the **context of an action**.
 
@@ -125,12 +125,12 @@ extension is to write it as a member of a `Scope`, which is not always appropria
 Another limitation is that **a member extension is always the extension**. An extension function in Kotlin has an option
 of being called with qualified syntax as in `entity.doAction()`. This is a stylistically appropriate syntax when an
 action is performed on an entity. However, some functions don't operate on a specific entity and should not be declared
-as such. There is no way to declare a top-level function, to be called as `doAction()` that would require a presence of
+as such. There is no way to declare a top-level function, to be called as `doAction()` that would require the presence of
 a specific context in scope.
 
 > Use cases for that come a lot. For example, it would be helpful to be able to define a `TransactionScope` and have
 > syntax to declare transactional functions that have a requirement of being called only in a `TransactionScope`, but
-> forbit explicit `transaction.doSomething()` call, since they do not work **on** a transaction, but **in the context of**
+> forbid an explicit `transaction.doSomething()` call, since they do not work **on** a transaction, but **in the context of**
 > a transaction. 
 
 The final limitation of providing context with a member extension is that **only one receiver can represent a context**.
@@ -200,7 +200,7 @@ The following types of declarations can be contextual:
 The types listed as context receivers of a declaration are not allowed to repeat, and no pair
 of them is allowed to have a subtype relation between them.
 
-> This constraint comes from the greedy nature of [Resolution algorithm](#resolution-algorithm) and absence
+> This constraint comes from the greedy nature of the [Resolution algorithm](#resolution-algorithm) and absence
 > of any way to explicitly pass context arguments into a call. 
 
 ### Contextual functions and property accessors
@@ -209,7 +209,7 @@ For functions and property accessors, context receivers are additional **context
 declarations. They differ from regular parameters in that they are anonymous and are passed
 implicitly just like receivers. 
 In the body of the corresponding function or property accessor they bring the corresponding arguments 
-into the body scope as implicit receiver for further calls.
+into the body scope as implicit receivers for further calls.
 
 Take a look at the following example.
 
@@ -249,7 +249,7 @@ class Circle : Shape {
 
 ### Functional types
 
-The functional type of contextual function can be denoted with the same modifier `context(...)`, which
+The functional type of a contextual function can be denoted with the same modifier `context(...)`, which
 should be present at the beginning of the functional type signature.
 
 ```kotlin
@@ -281,7 +281,7 @@ signature of the functional type replicates the textual order in which every arg
 ### Referencing specific context receiver
 
 Context receivers can never be referenced using a plain `this` expression and never change the meaning of `this`.
-However, both context and extension receivers can be referenced via [labeled `this` expression](https://kotlinlang.org/docs/reference/grammar.html#THIS_AT).
+However, both context and extension receivers can be referenced via the [labeled `this` expression](https://kotlinlang.org/docs/reference/grammar.html#THIS_AT).
 The compiler generates the label from the name of receiver type with the following rules:
 
 * If the receiver type is parenthesized, parentheses are omitted
@@ -350,7 +350,7 @@ without trying to substitute different implicit receivers available in the conte
 Candidates with context requirements are considered to be _more specific_ for the purpose of call resolution
 than the same candidates without context requirements.
 
-> Currently, we don't define specificity relation between candidates having different sets of context parameters
+> Currently, we don't define a specificity relation between candidates having different sets of context parameters
 > for the lack of compelling use cases for doing so. It can be introduced later in a backwards-compatible way
 > if needed.
 
@@ -374,8 +374,8 @@ fun foo() {
 }
 ```
 
-It is not a concern in the initially proposed implementation, which does not support local contextual function and
-properties. To support them in the future we'll have to deprecate such ambiguous uses of user-defined `context` function.
+It is not a concern in the initially proposed implementation, which does not support local contextual functions and
+properties. To support them in the future we'll have to deprecate such ambiguous uses of user-defined `context` functions.
 However, we could not find any real Kotlin code that will be affected, so a potential impact of such deprecation is
 extremely low.
 
@@ -548,7 +548,7 @@ On the other hand, top-level declarations are designed to be used by their short
 
 ### Overloading by the presence of context
 
-It is tempting to give functions in contextual receivers the same names as the names existing top-level functions, 
+It is tempting to give functions in contextual receivers the same names as the names of existing top-level functions, 
 so that their behavior changes in the specific context. For example, the Kotlin standard library has a top-level
 [`println`](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin.io/println.html) function, so you can write:
 
@@ -558,7 +558,7 @@ fun hello() {
 }
 ```
 
-The `println` function is also declared in [`java.io.PrintWriter`](https://docs.oracle.com/javase/8/docs/api/java/io/PrintWriter.html) class.
+The `println` function is also declared in the [`java.io.PrintWriter`](https://docs.oracle.com/javase/8/docs/api/java/io/PrintWriter.html) class.
 By adding `context(PrintWriter)` to the `hello` function declaration, you can change it to 
 start printing to `PrintWriter` without otherwise changing a single line of code inside it:
 
@@ -589,7 +589,7 @@ The above code still compiles (because there is a top-level `println` function) 
 you likely intended it to do. **Don't do this**. 
 
 A rule of thumb is that the names of functions available on the context receivers should be distinct from the 
-functions available on the top-level in your application.
+functions available at the top-level in your application.
 
 > For the same reason, it is a bad idea to add language support for any kind of default values for contextual receivers,
 as it will make a similar mistake (of forgetting to pass the context along) undetectable during compilation.
@@ -658,7 +658,7 @@ fun User.recordLastLogin() {
 
 ### Providing additional context for an action
 
-Context receivers shall be used to provide additional, ubiquitous context for actions. As a litmus test, ask a question
+Context receivers shall be used to provide additional, ubiquitous context for actions. As a litmus test, ask yourself
 if that information might have been provided via a global top-level scope in a smaller application
 with a simpler architecture. If the answer is yes, then it might be a good idea to provide it via a context receiver.
 For example, it is a good idea to inject the source of the current time into various time-dependent functions,
@@ -694,8 +694,8 @@ someObject {
 ```
 
 This builder pattern uses a functional type with an extension receiver `SomeObjectBuilder.() -> Unit` for good and shall
-continue doing so. Conceptually, code inside `someObject { ... }` block performs an action upon `SomeObjectBuilder` instance
-and using extension receiver for this is in style. We do not recommend using context receivers for such simple builders.
+continue doing so. Conceptually, the code inside `someObject { ... }` block performs an action upon the `SomeObjectBuilder` instance
+and using an extension receiver for this is in style. We do not recommend using context receivers for such simple builders.
 
 However, context receivers make it possible to define _contextual operators_ &mdash; operators that are available 
 only in the context of the corresponding builder, as shown in "Creating JSONs" example in the [Use cases](#use-cases) section.
@@ -729,7 +729,7 @@ withVirtualTimeSource {
 ```
 
 This is not only stylistically better, as it clearly shows an intent to provide contextual information. 
-It is also better in larger codebase, because the contextual lambda in `withVirtualTimeSource { ... }` does not
+It is also better in a larger codebase, because the contextual lambda in `withVirtualTimeSource { ... }` does not
 change the meaning of `this` reference, for example:
 
 ```kotlin
@@ -860,7 +860,7 @@ fun helloToConsole() {
 
 This section describes some alternatives that were considered during design.
 
-The main tradeoff we had to make with the proposed syntax is that in case when context is generic, then the use of the
+The main tradeoff we had to make with the proposed syntax is that in cases when the context is generic, then the use of the
 generic parameter happens before its declaration, e.g (from [Use cases](#use-cases) section):
 
 ```kotlin
@@ -945,12 +945,12 @@ Here is the summary of benefits we've found for these two options:
   could find annotations like`@TypeParceler<ExternalClass, ExternalClassParceler>()`. Angle brackets 
   make this analogy of using a type stand out.
 * `context(Ctx)` syntax is consistent with Kotlin parameter declarations. When you declare a function
-  with a context receiver, as in `context(Ctx) fun foo(param: Param)`, you actually declare and additional 
-  anonymous parameter to a function of type `Ctx`. This analogy become especially notable when you 
+  with a context receiver, as in `context(Ctx) fun foo(param: Param)`, you actually declare an additional 
+  anonymous parameter to a function of type `Ctx`. This analogy becomes especially notable when you 
   consider that the functional type of this declaration, as explained in the [Functional types](#functional-types) section,  
   is equivalent to `(Ctx, Param) -> Unit`. Parentheses make this analogy of declaring a parameter stand out. 
 
-> Another advantage of the angle brackets syntax is that is makes [Backwards compatibility](#backwards-compatibility) 
+> Another advantage of the angle brackets syntax is that it makes [Backwards compatibility](#backwards-compatibility) 
 > concerns go away completely, but they are so minor for parentheses anyway, that we did not pay much attention to
 > this difference.
 
@@ -976,14 +976,14 @@ None of the alternatives looked nice or natural.
 
 ### Named context receivers
 
-We've looked at various ways to add names to the context receives as an alternative to the qualified this syntax
+We've looked at various ways to add names to the context receives as an alternative to the qualified `this` syntax
 for [Referencing specific context receiver](#referencing-specific-context-receiver). The leading syntactic option
 considered was `context(name: Type)` similarly to named function parameters.
 
 However, we did not find enough compelling use cases yet to support such naming, as context receivers are explicitly
 designed for something that should be brought into the context, as opposed to a declaration that should be explicitly
 referred to by name. Moreover, we do support disambiguation of multiple context receivers using a type-alias if needed.
-For cases where you need to bring a named thing into the context there is a workaround.
+For cases where you need to bring a named thing into the context, there is a workaround.
 
 Consider an example where you want to bring some `callParameters: Map<String, String>` property into the context of
 certain functions in your backend application. If using `context(callParameters: Map<String, String>)` was supported,
@@ -1027,10 +1027,10 @@ This way, the decorator also introduces an additional receiver into the function
 functions with multiple receivers.
 
 However, semantics of declaration-only decorators (e.g. when `fun updateUserSession()` is a part of an interface) are
-harder to define consistently. A generic decorator, that would support brining any context receiver into scope
+harder to define consistently. A generic decorator, that would support bringing any context receiver into scope
 (e.g. `with` decorator function) will result in harder-to-read use code (something like
-`@with<Transaction> fun updateUserSession` was considered). Moreover, brining additional receivers into scope via
-decorators does lend itself to clean separation from the regular extension receiver and to tweaks in
+`@with<Transaction> fun updateUserSession` was considered). Moreover, bringing additional receivers into scope via
+decorators does lend itself to clean separation from the regular extension receiver and to tweaks in the
 [Resolution algorithm](#resolution-algorithm) for those additional receivers, such as declaring multiple contexts
 without introducing order between them and making sure that context receivers do not otherwise affect the meaning of
 unqualified `this` expression.
@@ -1306,9 +1306,9 @@ fun weirdToString(): String = toString() // ERROR
 This is an effect of treating context receivers more or less like all other implicit receivers in Kotlin, 
 but bundling them into a single group in the [Resolution algorithm](#resolution-algorithm).
 
-All the methods defined on [`Any`](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-any/) type 
+All the methods defined on the [`Any`](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-any/) type 
 (like `toString`, `equals`, `hashCode`) are available on any Kotlin class and 
-thus are also available in any function with receiver, for example:
+thus are also available in any function with a receiver, for example:
 
 ```kotlin
 fun LoggingContext.weirdToString(): String = toString() // also OK
