@@ -125,7 +125,7 @@ extension is to write it as a member of a `Scope`, which is not always appropria
 Another limitation is that **a member extension is always the extension**. An extension function in Kotlin has an option
 of being called with qualified syntax as in `entity.doAction()`. This is a stylistically appropriate syntax when an
 action is performed on an entity. However, some functions don't operate on a specific entity and should not be declared
-as such. There is no way to declare a top-level function, to be called as `doAction()` that would require the presence of
+as such. There is no way to declare a top-level function to be called as `doAction()` that would require the presence of
 a specific context in scope.
 
 > Use cases for that come a lot. For example, it would be helpful to be able to define a `TransactionScope` and have
@@ -272,7 +272,7 @@ signature of the functional type replicates the textual order in which every arg
   fun function(context: Context, receiver: Receiver, p: Param) {}
   
   fun main() {
-      var g: context(Context) Receiver.(Param) → Unit
+      var g: context(Context) Receiver.(Param) -> Unit
       g = ::function      // OK
       g = Context::method // OK 
   }
