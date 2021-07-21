@@ -122,15 +122,17 @@ in the Kotlin standard library does not specify its behavior with respect to ret
 
 ### Built-in primitive value classes
 
-Since its inception, Kotlin has a number of primitive built-in standard library classes `Int`, `Long`, `Double`, etc that don’t have a stable identity at all. They behave like regular classes for all the purposes with the exception that they don’t have the very concept of identity, and the reference equality operator (`===`) for them is deprecated (and will be removed in the future). They are prime examples of _value classes_. To see that they don’t have a stable identity you can cast them to a reference-based `Any` type. This forces a value class to be boxed, creating a temporary identity object. Having done that, you can apply a reference equality operation to the result
-([playground](https://pl.kotl.in/pq8ftp4mZ)):
+Since its inception, Kotlin has a number of primitive built-in standard library classes `Int`, `Long`, `Double`, etc that don’t have a stable identity at all. They behave like regular classes for all the purposes with the exception that they don’t have the very concept of identity, and the reference equality operator (`===`) for them is deprecated (and will be removed in the future). They are prime examples of _value classes_. To see that they don’t have a stable identity you can coerce them to a reference-based `Any` type. This forces a value class to be boxed, creating a temporary identity object. Having done that, you can apply a reference equality operation to the result
+([playground](https://pl.kotl.in/gIhIZS4d0)):
 
 ```kotlin
 fun main() {
     val a = 2021
     val b = a
-    println(a == b) // true -- same value
-    println((a as Any) === (b as Any)) // false -- different instance
+    val aRef: Any = a // coerce a value to Any
+    val bRef: Any = b // coerce b value to Any
+    println(aRef == bRef) // true -- same value
+    println(aRef === bRef) // false -- different instance
 }
 ```
 
