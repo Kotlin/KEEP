@@ -62,7 +62,7 @@ Thus we arrive at the following basic requirements:
 
 The proposal that solves all of this is as follows:
 
-* Annotating an annotation with `@kotlin.annotation.Repeatable` makes it repeatable both in Kotlin and in Java. For Java, the compiler generates `@java.lang.annotation.Repeatable` with an automatically generated **implicit synthetic** container class named **`Container`** declared inside the annotation.
+* Annotating an annotation with `@kotlin.annotation.Repeatable` makes it repeatable both in Kotlin and in Java. For Java, the compiler generates `@java.lang.annotation.Repeatable` with an automatically generated **implicit** container class named **`Container`** declared inside the annotation.
 * If you need to specify a **custom name** for the container annotation, you can override this behavior by **explicitly annotating** the annotation with `@kotlin.jvm.JvmRepeatable(Container::class)`. The compiler will not generate an implicit container class in this case.
 * `kotlin.jvm.JvmRepeatable` is just a typealias for `java.lang.annotation.Repeatable`.
 
@@ -75,13 +75,15 @@ In addition to this, the compiler will also **treat all Java-repeatable annotati
    annotation class Tag(val name: String)
    ```
 
-	Here, Kotlin automatically generates an **implicit** synthetic container annotation class `Tag.Container`, and marks `@Tag` as `@java.lang.annotation.Repeatable` in the bytecode, so that it’s repeatable in Java as well. Repeating usages of `@Tag` are generated in the JVM bytecode as values in `@Tag.Container`. For example:
+	Here, Kotlin automatically generates an **implicit** container annotation class `Tag.Container`, and marks `@Tag` as `@java.lang.annotation.Repeatable` in the bytecode, so that it’s repeatable in Java as well. Repeating usages of `@Tag` are generated in the JVM bytecode as values in `@Tag.Container`. For example:
 
    ```kotlin
    // JVM bytecode: @Tag.Container(value = {@Tag("lorem"), @Tag("ipsum")})
    @Tag("lorem") @Tag("ipsum")
    fun test() = ...
    ```
+
+    The container class can be accessed from Java sources as `Tag.Container`.
 
 2) ```kotlin
    @Repeatable 
@@ -118,6 +120,8 @@ Marking an annotation repeatable in Java results in additional constraints for t
 
 The compiler will report an error if any of these constraints is not met.
 
+Also, the compiler will report an error if a non-`SOURCE`-retained annotation is repeated when JVM target bytecode version 1.6 is used.
+
 In case of an implicit container class, it’s generated with the required property `value`, and both the same retention and target as the annotation class. Also, for reasons explained in the next section, it’s annotated with an internal annotation `@kotlin.jvm.internal.RepeatableContainer`:
 
 ```kotlin
@@ -130,19 +134,19 @@ annotation class Tag(val name: String) {
     // @Target(CLASS, FUNCTION)
     // @Retention(BINARY)
     // @kotlin.jvm.internal.RepeatableContainer
-    // /* synthetic */ annotation class Container(val value: Array<Tag>)
+    // public annotation class Container(val value: Array<Tag>)
 }
 ```
 
-Another error is introduced in case the container annotation is applied manually at the same time as the contained annotation:
+Another error is introduced in case the container annotation is applied manually at the same time as the contained annotation, if the latter is repeated:
 
 ```kotlin
 @Tags(["lorem"]) // error!
-@Tag("ipsum")
+@Tag("ipsum") @Tag("dolor")
 fun test() = ...
 ```
 
-Note that for some reason in Java this error is reported only if the repeating annotation is applied *more than once*, meaning that the above sample compiles in Java (and `getAnnotationByType(Tag.class)` returns only the “lorem” value!). It doesn’t seem valuable to support such case in Kotlin, so it will be disallowed.
+Note that there will be no error if the contained annotation (`@Tag` in this example) is applied not more than once, because such code was allowed since Kotlin 1.0.
 
 ## Reflection
 
@@ -155,7 +159,7 @@ The following changes in `kotlin-reflect` are needed:
 * Existing member function `KAnnotatedElement.annotations` will behave as follows:
     * For Java repeatable annotations, as well as for Kotlin repeatable annotations with *explicit* container, it works as `getAnnotations` in Java reflection: returns the container annotation type. Manual unpacking/flattening of its value is required to get all the repeated entries.
     * For Kotlin repeatable annotations with *implicit* container, it will **automatically flatten** the values and return repeated annotation entries as they are declared in the source code.
-        * The reason for this behavior is that we don’t want to expose the implicit synthetic class
+        * The reason for this behavior is that we don’t want to expose the implicit container class, which is an implementation detail from the Kotlin's point of view
         * Checking that each annotation needs to be unwrapped is costly, so we’re going to optimize implicit container detection via name (its name is always `"Container"`) and whether it’s annotated via `@kotlin.jvm.internal.RepeatableContainer`
 
 ## Timeline
