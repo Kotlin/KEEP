@@ -484,7 +484,7 @@ An assortment of use cases is presented below.
 * Working with mathematical abstractions
   ```kotlin
   context(Monoid<T>)
-  fun <T> List<T>.sum(): T = fold(Unit) { acc, e -> acc.combine(e) }
+  fun <T> List<T>.sum(): T = fold(unit) { acc, e -> acc.combine(e) }
   ```
   
 * Using structured concurrency
