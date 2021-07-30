@@ -186,6 +186,46 @@ In Kotlin 1.5, the function is graduated (hence `SinceKotlin(“1.5”)`) and th
 fun foo(s: String) {}
 ```
 
+## OptIn markers and overridden declarations
+
+As a general rule, marker annotation should present either at base and overridden declarations together,
+or at none of them. Using marker on overridden declaration only is forbidden (see `bar` example below)
+because compiler usually cannot guarantee that exactly overridden function is called (see `base.bar` call).
+Using marker on base declaration only provokes error or warning on overridden declaration, depending on marker `RequiresOptIn.level`.
+
+```kotlin
+open class Base {
+    @ShinyNewAPI
+    open fun foo() {}
+
+    @ShinyNewAPI
+    open fun foooo() {}
+
+    open fun bar() {}
+
+    @ShinyNewAPI
+    open fun baz() {}
+}
+
+class Derived {
+    @ShinyNewAPI
+    override fun foo() {} // OK!
+
+    @OptIn(ShinyNewAPI::class)
+    override fun foooo() {} // OK!
+
+    @ShinyNewAPI
+    override fun bar() {} // ERROR! Base declaration isn't annotated
+
+    // Overriding experimental declaration
+    override fun baz() {} // ERROR/WARNING (depending on ShinyNewAPI level)
+}
+
+fun use(base: Base) {
+    base.bar() // Is it experimental or not?
+}
+```
+
 ## Other observations
 
 * Certain limitations for marker annotations arise:
