@@ -51,12 +51,12 @@ annotation class OptIn(
 )
 ```
 
-The `RequiresOptIn` annotation is applied to an annotation class and it makes that class an **opt-in requirement marker**. There are two sets of use cases where markers are used:
+The `RequiresOptIn` annotation is applied to an annotation class, and it makes that class an **opt-in requirement marker**. There are two sets of use cases where markers are used:
 
 1. If a declaration is annotated with the marker, it requires opt-in to that marker and can use other API *with that same marker* in its body.
 2. If a declaration or an expression is annotated with `@OptIn(Marker::class)`, it can use other declarations that use the selected marker, but it does not require opt-in itself (its clients will not *have* to opt in).
 
-The first option of usage of opt-in requirement markers is called a **propagating opt-in** (the annotation effectively causes propagation of the requirement), and the second — a **non-propagating opt-in**. The user is free to choose whichever option is preferrable in each scenario.
+The first option of usage of opt-in requirement markers is called a **propagating opt-in** (the annotation effectively causes propagation of the requirement), and the second — a **non-propagating opt-in**. The user is free to choose whichever option is preferable in each scenario.
 
 Example:
 
@@ -128,7 +128,7 @@ In a previous version of this proposal, we discussed the possibility of introduc
 
 Annotations `RequiresOptIn` and `OptIn` are proposed to be added to the Kotlin standard library. Since we're not yet sure that this design is optimal, we would like to test it first, and see if we can finalize it. Therefore, we would like to keep this whole feature experimental itself, in the sense that we may change something incompatibly, and the client code must be aware of it.
 
-Therefore, we will **require** each user of `RequiresOptIn` to provide at least one `-Xopt-in` compiler argument, which would mean that the user is understanding the risks of using this experimental functionality. It can be either `-Xopt-in=...` with any opt-in requirement marker, or the magic predefined argument `-Xopt-in=kotlin.RequiresOptIn` which doesn't allow using any API by itself, yet merely allows using `RequiresOptIn` and `OptIn` in the source code. Unless one of these arguments is provided, the compiler will report a warning on each usage of `RequiresOptIn` or `OptIn` (but not on usages of the markers!).
+Therefore, we will **require** each user of `RequiresOptIn` to provide at least one `-Xopt-in` compiler argument, which would mean that the user understands the risks of using this experimental functionality. It can be either `-Xopt-in=...` with any opt-in requirement marker, or the magic predefined argument `-Xopt-in=kotlin.RequiresOptIn` which doesn't allow using any API by itself, yet merely allows using `RequiresOptIn` and `OptIn` in the source code. Unless one of these arguments is provided, the compiler will report a warning on each usage of `RequiresOptIn` or `OptIn` (but not on usages of the markers!).
 
 Besides, we will also prohibit any usages of `RequiresOptIn`, `OptIn` and markers that do not aim to make use of the functionality declared in this proposal. The goal is to minimize the number of binary compatibility problems of user-compiled code if we decide to change something incompatibly. For example, you won't be able to use these classes as types:
 
