@@ -116,11 +116,11 @@ test.kt:22:9: error: this declaration is experimental and its usage must be mark
 
 Annotating every usage of some API might quickly become annoying, especially for application modules, where the developer does not care about the clients of the code simply because application modules have no clients. In such cases, it'd be useful to have a module-wide switch to opt in to the API.
 
-We introduce a new CLI argument to kotlinc, `-Xopt-in=org.foo.Ann`, where `org.foo.Ann` is a fully qualified name of the opt-in requirement marker, which enables the corresponding API for the module. It's as if the *whole module* was annotated with `@OptIn(org.foo.Ann::class)`.
+We introduce a new CLI argument to kotlinc, `-opt-in=org.foo.Ann`, where `org.foo.Ann` is a fully qualified name of the opt-in requirement marker, which enables the corresponding API for the module. It's as if the *whole module* was annotated with `@OptIn(org.foo.Ann::class)`.
 
-Since it's not easy to encode arbitrary Kotlin expressions in the CLI arguments, and because opt-in requirement markers are used in the `-Xopt-in` argument, we **require all marker annotations to have no parameters**. The compiler will report an error otherwise.
+Since it's not easy to encode arbitrary Kotlin expressions in the CLI arguments, and because opt-in requirement markers are used in the `-opt-in` argument, we **require all marker annotations to have no parameters**. The compiler will report an error otherwise.
 
-The compiler will check the value of `-Xopt-in` in the same way it checks the argument of the `@OptIn` annotation. In particular, if any of the annotations mentioned in the `-Xopt-in` are deprecated, the compiler is going to report a warning or error, depending on the deprecation level.
+The compiler will check the value of `-opt-in` in the same way it checks the argument of the `@OptIn` annotation. In particular, if any of the annotations mentioned in the `-opt-in` are deprecated, the compiler is going to report a warning or error, depending on the deprecation level.
 
 In a previous version of this proposal, we discussed the possibility of introducing another argument, `-Xexperimental=org.foo.Ann`, to use the propagating opt-in on the whole module (i.e. mark the whole module as "experimental" in terms of that proposal). The implementation of that feature turned out to be unexpectedly complicated, and it wasn't widely used, so we've decided not to add it at this point.
 
@@ -128,7 +128,7 @@ In a previous version of this proposal, we discussed the possibility of introduc
 
 Annotations `RequiresOptIn` and `OptIn` are proposed to be added to the Kotlin standard library. Since we're not yet sure that this design is optimal, we would like to test it first, and see if we can finalize it. Therefore, we would like to keep this whole feature experimental itself, in the sense that we may change something incompatibly, and the client code must be aware of it.
 
-Therefore, we will **require** each user of `RequiresOptIn` to provide at least one `-Xopt-in` compiler argument, which would mean that the user understands the risks of using this experimental functionality. It can be either `-Xopt-in=...` with any opt-in requirement marker, or the magic predefined argument `-Xopt-in=kotlin.RequiresOptIn` which doesn't allow using any API by itself, yet merely allows using `RequiresOptIn` and `OptIn` in the source code. Unless one of these arguments is provided, the compiler will report a warning on each usage of `RequiresOptIn` or `OptIn` (but not on usages of the markers!).
+Therefore, we will **require** each user of `RequiresOptIn` to provide at least one `-opt-in` compiler argument, which would mean that the user understands the risks of using this experimental functionality. It can be either `-opt-in=...` with any opt-in requirement marker, or the magic predefined argument `-opt-in=kotlin.RequiresOptIn` which doesn't allow using any API by itself, yet merely allows using `RequiresOptIn` and `OptIn` in the source code. Unless one of these arguments is provided, the compiler will report a warning on each usage of `RequiresOptIn` or `OptIn` (but not on usages of the markers!).
 
 Besides, we will also prohibit any usages of `RequiresOptIn`, `OptIn` and markers that do not aim to make use of the functionality declared in this proposal. The goal is to minimize the number of binary compatibility problems of user-compiled code if we decide to change something incompatibly. For example, you won't be able to use these classes as types:
 
@@ -176,7 +176,7 @@ where [`ExperimentalStdlibAPI`](https://kotlinlang.org/api/latest/jvm/stdlib/kot
 annotation class ExperimentalStdlibAPI
 ```
 
-In Kotlin 1.5, the function is graduated (hence `SinceKotlin(“1.5”)`) and therefore is no longer annotated with `ExperimentalStdlibAPI`. To allow users to opt in to it on 1.4.30 however, we also annotate it with `WasExperimental` so that for example the CLI argument `-Xopt-in=ExperimentalStdlibAPI` would work. (Of course, it also makes it possible to use it on 1.4.0...1.4.29, where there was no such function and linkage errors would arise, but we explicitly decide not to solve this problem.)
+In Kotlin 1.5, the function is graduated (hence `SinceKotlin(“1.5”)`) and therefore is no longer annotated with `ExperimentalStdlibAPI`. To allow users to opt in to it on 1.4.30 however, we also annotate it with `WasExperimental` so that for example the CLI argument `-opt-in=ExperimentalStdlibAPI` would work. (Of course, it also makes it possible to use it on 1.4.0...1.4.29, where there was no such function and linkage errors would arise, but we explicitly decide not to solve this problem.)
 
 ```kotlin
 // kotlin-stdlib 1.5
