@@ -111,7 +111,7 @@ To iterate through a range of unsigned values there will be range and progressio
 
 ## Experimental status 
 
-The unsigned types are to be released in Kotlin 1.3 as an [experimental feature](experimental.md).
+The unsigned types are to be released in Kotlin 1.3 as an [experimental feature](opt-in.md).
 This means we do not give compatibility guarantees for the API and language features related to unsigned types.
 
 Their usage without an opt-in will produce a compiler warning about their experimentality.
