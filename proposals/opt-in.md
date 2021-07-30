@@ -226,15 +226,62 @@ fun use(base: Base) {
 }
 ```
 
-## Other observations
+## OptIn marker contagiousness
 
-* Certain limitations for marker annotations arise:
-    * Targets `EXPRESSION`, `FILE` and `TYPE` are not possible for marker annotations, because these annotations operate on the declaration level, and these targets aren't declarations in Kotlin. The compiler will report an error on the marker annotation if it declares one of these targets.
-    * Target `TYPE_PARAMETER` is also forbidden for marker annotations. Type parameter can be used only in scope of owner class/function/property, so it makes no sense to declare it experimental.
-    * Although targets `VALUE_PARAMETER`, `LOCAL_VARIABLE` and `FIELD` aren't forbidden directly when a marker annotation is declared, they are forbidden at use-sites. Marker annotation can't be applied to local variable or value parameter because they can be used in local scope only. Also they can't be applied to property fields or getters, please apply them to owner property instead. However, property setter can be annotated separately to point out that writing to (but not reading from) this property requires opt-in. 
-    * Marker annotations must have `BINARY` or `RUNTIME` retention, otherwise the compiler will report an error. `SOURCE` retention is not enough because it wouldn't allow the compiler to read annotations from compiled code, and `RUNTIME` retention is not necessary because the fact that a declaration requires opt-in should not have any effect on how that declaration is visible at runtime through reflection.
-    * As mentioned earlier, marker annotations must have no parameters, otherwise the compiler will report an error.
-* We've experimented with making opt-in requiring declarations “poisonous” in the sense that the requirement of the consent to use them propagates up the call chain, so that even indirect users of an API would be aware of the fact that they're using something that may break at any moment, and would be required to opt in by annotating their code or providing a command line argument. However, we found out that non-poisonous, or rather “poisonous to a certain degree” declarations are also required to fulfill our use cases, and their existence naturally leads to some sort of a classification of usages into “signature usages” (those that have effect on the public API) and “body usages” (those that are used internally in function bodies). This leads to many other non-trivial questions, and overall complicates the design quite a bit, so we've decided simply to avoid mandatory propagation of opt-in requirements for now.
+In Kotlin 1.5.30 we introduced contagiousness rules based on type usages.
+As a rule of thumb, all places which break if some experimental type disappear
+from a library should receive opt-in usage warning/error, 
+even if this experimental type is used implicitly.
+
+Some type is considered "requiring opt-in marker" if its constructor
+(the class which is base for this type) requires opt-in marker,
+and/or any of its type arguments requires opt-in marker.
+So class with opt-in marker annotation makes all types using it "requiring opt-in marker", 
+as well as all types using its nested/inner classes.
+
+Consider the following example
+
+```Kotlin
+@ShinyNewAPI
+class Shiny
+
+@OptIn(ShinyNewAPI::class)
+fun foo(): Shiny = Shiny()
+
+@OptIn(ShinyNewAPI::class)
+fun bar(arg: Shiny = Shiny()) {}
+
+@OptIn(ShinyNewAPI::class)
+fun Shiny?.baz() {}
+
+fun use() {
+    // Three implicit usages of 'Shiny' type
+    val s = foo()
+    bar()
+    null.baz()
+}
+```
+
+All three calls `foo()`, `bar()` and `baz()` inside `fun use()` use `Shiny` type implicitly,
+thus all three should receive opt-in usage warning/error. We can negate it using either `@ShinyNewAPI`
+or `@OptIn(ShinyNewAPI::class)` at `fun use()` itself. 
+Pay attention that `@OptIN(ShinyNewAPI::class)` at `foo`, `bar`, `baz` declarations does not help here.
+To understand this better, rewrite your code like
+```Kotlin
+fun use() {
+    val s: Shiny = foo()
+    bar(Shiny())
+    (null as Shiny?).baz()
+}
+```
+
+## Limitations for marker annotations
+
+* Targets `EXPRESSION`, `FILE` and `TYPE` are not possible for marker annotations, because these annotations operate on the declaration level, and these targets aren't declarations in Kotlin. The compiler will report an error on the marker annotation if it declares one of these targets.
+* Target `TYPE_PARAMETER` is also forbidden for marker annotations. Type parameter can be used only in scope of owner class/function/property, so it makes no sense to declare it experimental.
+* Although targets `VALUE_PARAMETER`, `LOCAL_VARIABLE` and `FIELD` aren't forbidden directly when a marker annotation is declared, they are forbidden at use-sites. Marker annotation can't be applied to local variable or value parameter because they can be used in local scope only. Also they can't be applied to property fields or getters, please apply them to owner property instead. However, property setter can be annotated separately to point out that writing to (but not reading from) this property requires opt-in. 
+* Marker annotations must have `BINARY` or `RUNTIME` retention, otherwise the compiler will report an error. `SOURCE` retention is not enough because it wouldn't allow the compiler to read annotations from compiled code, and `RUNTIME` retention is not necessary because the fact that a declaration requires opt-in should not have any effect on how that declaration is visible at runtime through reflection.
+* As mentioned earlier, marker annotations must have no parameters, otherwise the compiler will report an error.
 
 ## Known issues
 
