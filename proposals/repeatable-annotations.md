@@ -3,9 +3,9 @@
 * **Type**: Design proposal
 * **Author**: Alexander Udalov
 * **Status**: Accepted
-* **Prototype**: In progress
+* **Prototype**: Implemented
 * **Discussion**: [KEEP-257](https://github.com/Kotlin/KEEP/issues/257)
-* **Related issues**: [KT-12794](https://youtrack.jetbrains.com/issue/KT-12794)
+* **Related issues**: [KT-12794](https://youtrack.jetbrains.com/issue/KT-12794) [KT-47928](https://youtrack.jetbrains.com/issue/KT-47928) [KT-47971](https://youtrack.jetbrains.com/issue/KT-47971)
 
 The goal of this proposal is to extend the existing Kotlin feature of repeatable annotations to allow binary- and runtime-retained repeatable annotations, while making it fully interoperable with repeatable annotations in Java.
 
@@ -112,7 +112,7 @@ In addition to this, the compiler will also **treat all Java-repeatable annotati
 
 ## Details
 
-Marking an annotation repeatable in Java results in additional constraints for the annotation container class. The same constraints will be checked for the Kotlin annotation if it’s annotated with `@JvmRepeatable`:
+Marking an annotation repeatable in Java results in additional constraints for the annotation container class. The same constraints will be checked for the Kotlin annotation if it’s annotated with `@JvmRepeatable` ([KT-47928](https://youtrack.jetbrains.com/issue/KT-47928)):
 
 1. The container class has to have a property `value` of an array type of the annotation, and all other properties (if any) must have default values specified.
 2. The **retention** of the container class must be **greater or equal** than that of the annotation class (assuming `SOURCE < BINARY < RUNTIME`).
@@ -148,6 +148,8 @@ fun test() = ...
 
 Note that there will be no error if the contained annotation (`@Tag` in this example) is applied not more than once, because such code was allowed since Kotlin 1.0.
 
+Another error is going to be reported if an annotation class annotated with `@kotlin.annotation.Repeatable` declares a nested class named `Container` ([KT-47971](https://youtrack.jetbrains.com/issue/KT-47971)).
+
 ## Reflection
 
 The following changes in `kotlin-reflect` are needed:
@@ -155,7 +157,10 @@ The following changes in `kotlin-reflect` are needed:
 * Existing extension function `KAnnotatedElement.findAnnotation` will return the **first** instance of a repeating annotation if it’s applied multiple times.
 * A new extension function `KAnnotatedElement.findAnnotations` will be added.
     * For annotations applied multiple times, it returns the list of all values.
-    * For annotations applied only once, it returns the list of that one value (regardless of whether the annotation is declared as repeatable or not)
+    * For annotations applied only once, it returns the list of that one value (regardless of whether the annotation is declared as repeatable or not).
+    * There will be two declarations:
+        * `inline fun <reified T : Annotation> KAnnotatedElement.findAnnotations(): List<T>`
+        * `fun <T : Annotation> KAnnotatedElement.findAnnotations(klass: KClass<T>): List<T>`
 * Existing member function `KAnnotatedElement.annotations` will behave as follows:
     * For Java repeatable annotations, as well as for Kotlin repeatable annotations with *explicit* container, it works as `getAnnotations` in Java reflection: returns the container annotation type. Manual unpacking/flattening of its value is required to get all the repeated entries.
     * For Kotlin repeatable annotations with *implicit* container, it will **automatically flatten** the values and return repeated annotation entries as they are declared in the source code.
@@ -164,4 +169,4 @@ The following changes in `kotlin-reflect` are needed:
 
 ## Timeline
 
-The prototype is being worked on, and the feature is planned to be included under the `-language-version 1.6` flag to Kotlin 1.5.30, and enabled by default since Kotlin 1.6.
+The feature is going to be available starting from Kotlin 1.6.0-M1.
