@@ -102,7 +102,7 @@ The default script compilation and evaluation configurations are defined by the 
 provide script authors with a possibility to customize some configuration parameters, e.g. to add dependencies or 
 specify additional compilation options, e.g. using annotations in the script text:
 
-```
+```kt
 @file:DependsOn("maven:artifact:1.0", "imported.package.*")
 @file:Import("path/to/externalScript.kts")
 @file:CompilerOptions("-someCompilerOpt")
@@ -126,16 +126,16 @@ each platform to resolve external libraries from online repositories (e.g. - mav
 
 In a simple case, the developer wants to implement a scripting host to control script execution and provide the required 
 environment. One may want to write something as simple as:
-```
+```kt
 KotlinScriptingHost().eval(File("path/to/script.kts"))
 ```
 or
-```
+```kt
 KotlinScriptingHost().eval("println(\"Hello from script!\")")
 ```
 and the script should be executed in the current environment with some reasonable default compilation and evaluation 
 settings. If things need to be configured explicitly, the code would look like:
-```
+```kt
 val scriptingHost = KotlinScriptingHost(configurationParams...)
 scriptingHost.eval(File("path/to/script.kts"), compilationConfiguration, evaluationConfiguration)
 ```
@@ -143,13 +143,13 @@ This would also allow the developer to control the lifetime of the scripting hos
 
 In cases then there is more control needed for the compilation and evaluation process, the direct use of the script
 compiler and evaluator could be desirable:
-```
+```kt
 val scriptCompiler = KotlinScriptCompiler(configurationParams...)
-val compiledScript = scriptCompiler.invoke(File("path/to/script.kts), compilationConfiguration)
+val compiledScript = scriptCompiler.invoke(File("path/to/script.kts"), compilationConfiguration)
 val scriptEvaluator = KotlinScriptEvaluator(configurationParams...)
 val evaluationResult = scriptEvaluator.invoke(compiledScript, evaluationConfiguration)
 ```
-In addition in this case the compiled script could be evaluated more than once.  
+In addition in this case the compiled script could be evaluated more than once.
 
 #### More control
 
@@ -206,15 +206,19 @@ Standalone scripting is a variant of the embedded scripting with hosts provided 
 
 The standalone script could be executed e.g. using command line Kotlin compiler:
 
-`kotlinc -cp <classpath required by the script definition> -script myscript.kts`
+```sh
+kotlinc -cp <classpath required by the script definition> -script myscript.kts
+```
 
 Or with the dedicated runner included into the distribution:
 
-`kotlin -cp <classpath required by the script definition> myscrtipt.kts`
+```sh
+kotlin -cp <classpath required by the script definition> myscript.kts
+```
 
 To be able to use the Kotlin scripts in a Unix shell environment, the *shebang* (`#!`) syntax should be supported 
 at the beginning of the script:
-```
+```sh
 #! /path/to/kotlin/script/runner -some -params
 ```
 
@@ -226,15 +230,15 @@ therefore alternative schemes of configuring scripts should be available.*
 
 It should be possible to process custom scripts with the standard hosts, e.g. by supplying a custom script definition 
 in the command line, e.g.:
-
-`kotlin -script-templates="org.acme.MyScriptDef" -cp myScriptDefLib.jar myscript.myscr.kts`
-
+```sh
+kotlin -script-templates="org.acme.MyScriptDef" -cp myScriptDefLib.jar myscript.myscr.kts
+```
 In this case the host loads specified definition class, and extract required definition from it and its annotations.
 
-Another possible mechanism is automatic discovery, with the simplified usage:
-
-`kotlin -cp myScriptDefLib.jar myscript.myscr.kts`
-
+Another possible mechanism is automatic discovery, simplifying usage:
+```sh
+kotlin -cp myScriptDefLib.jar myscript.myscr.kts
+```
 In this case the host analyses the classpath, discovers script definitions located there and then processes then as 
 before. Note that in this case it is should be recommended to use dedicated script extension (`myscr.kts`) in every 
 definition to minimize chances of clashes if several script definitions will appear in the classpath. And on top of
@@ -247,7 +251,7 @@ For the command line usage the support for script parameters is needed. The simp
 has access to the `args: Array<String>` property/parameter. More advanced is to have a customization that supports a 
 declaration of the typed parameters in the script annotations e.g.:
 
-```
+```kt
 @file:param("name", "String?") // note: stringified types are used for the cases not supported by class literals
 @file:param("num", Int::class)  
 @file:param("list", "List<String>") 
@@ -355,7 +359,7 @@ The scripting support consists of the following components:
 Script Definition is a way to specify custom script. It is basically consists of a script base class annotated with 
 `KotlinScript` annotation. The arguments of the annotation define the script configuration parameters.  For example: 
 
-```
+```kt
 @KotlinScript(
     displayName = "My Script",
     fileExtension = "myscr.kts",
@@ -398,7 +402,7 @@ to define it in the annotation instead, since it will speed up the discovery pro
 #### Script Compiler
 
 Script compiler implements the following interface:
-```
+```kt
 interface ScriptCompiler {
 
     /**
@@ -414,7 +418,7 @@ interface ScriptCompiler {
 }
 ```
 where:
-```
+```kt
 interface CompiledScript<out ScriptBase : Any> {
 
     /**
@@ -442,12 +446,12 @@ The compilers for the supported platforms are supplied by default scripting infr
 
 The script compilation could be configured dynamically by specifying configuration refining callbacks in the compilation
 configuration. The callback should be written according to the following signature: 
-```
+```kt
 typealias RefineScriptCompilationConfigurationHandler =
             (ScriptConfigurationRefinementContext) -> ResultWithDiagnostics<ScriptCompilationConfiguration>
 ```
 where:
-```
+```kt
 class ScriptConfigurationRefinementContext(
     val script: SourceCode,
     val compilationConfiguration: ScriptCompilationConfiguration,
@@ -469,7 +473,7 @@ The following properties are recognized by the compiler:
   single appropriate method should be annotated with the `ScriptBody` annotation
 - `implicitReceivers` - a list of script types that is assumed to be implicit receivers for the script body, as
   if the script is wrapped into `with` expressions, in the order from outer to inner scope, i.e.:  
-  ```
+  ```kt
   with(receiver0) {
       ...
       with(receiverN) {
@@ -494,7 +498,7 @@ The following properties are recognized by the compiler:
 - `refineConfigurationOnAnnotations` - a list of script file-level annotations and configuration refining callback,
   if the specified annotations are found in the parsed script, the callback is called to get an updated configuration. 
 - `refineConfigurationOnSections` - a list of top-level "sections" - function calls with single lambda parameter, e.g.  
-  ```
+  ```kt
   plugins {
       ...
   }
@@ -507,7 +511,7 @@ Additional properties are possible for particular platforms and compiler impleme
 
 In case of compiling into constructor, the script compiled into the following class
 
-```
+```kt
 @CopiedAnnotation0(...)
 ...
 @CopiedAnnotationN(...)
@@ -539,7 +543,7 @@ class Script(
 
 In case of compiling into a method, the internal script properties are not exposed from the class:
 
-```
+```kt
 @CopiedAnnotation0(...)
 ...
 @CopiedAnnotationN(...)
@@ -573,7 +577,7 @@ The `implicitReceivers` may also contain compiled external scripts objects (from
 The script evaluator is an optional service (since the scripting host may choose to instantiate and execute compiled
 scripts manually) for instantiating and running compiled scripts. The default evaluators for supported platforms 
 are provided by the scripting infrastructure. It should implement the following interface:
-```
+```kt
 interface ScriptEvaluator {
     suspend operator fun invoke(
         compiledScript: CompiledScript<*>,
@@ -735,12 +739,12 @@ Central as `org.jetbrains.kotlin:kotlin-main-kts`.
 ###### Example scripts
 
 common.main.kts:
-```
+```kt
 val greeting = "Hello, World!"
 ```
 
 sample.main.kts:
-```
+```kt
 @file:Repository("https://jcenter.bintray.com")
 @file:DependsOn("org.jetbrains.kotlinx:kotlinx-html-jvm:0.6.11")
 @file:Import("common.main.kts")
@@ -757,13 +761,13 @@ print(createHTML().html {
 
 ###### Running from command-line compiler (script definition discovery)
 
-```
+```sh
 kotlinc -cp <path/to/kotlin-main-kts.jar> -script sample.main.kts
 ```
 
 ###### Simple host: eval function
 
-```
+```kt
 fun evalFile(scriptFile: File): ResultWithDiagnostics<EvaluationResult> {
 
     val compilationConfiguration = createJvmCompilationConfigurationFromTemplate<MainKtsScript>()
@@ -777,7 +781,7 @@ evalFile(File("sample.main.kts")
 
 ###### Using JSR-223 (`javax.script`) API
 
-```
+```kt
 val engine = ScriptEngineManager().getEngineByExtension("main.kts")!!
 engine.eval("""
 @file:DependsOn("junit:junit:4.11")
@@ -794,7 +798,7 @@ code repository. Here only partial sources are given to illustrate the main impl
 
 ###### Script base class
 
-```
+```kt
 @KotlinScript(
     fileExtension = "main.kts",
     compilationConfiguration = MainKtsScriptDefinition::class,
@@ -805,7 +809,7 @@ abstract class MainKtsScript(val args: Array<String>)
 
 ###### Script compilation configuration properties
 
-```
+```kt
 object MainKtsScriptDefinition : ScriptCompilationConfiguration(
     {
         defaultImports(DependsOn::class, Repository::class, Import::class)
@@ -832,7 +836,7 @@ object MainKtsScriptDefinition : ScriptCompilationConfiguration(
 
 ###### Script evaluation configuration properties
 
-```
+```kt
 object MainKtsEvaluationConfiguration : ScriptEvaluationConfiguration(
     {
         scriptsInstancesSharing(true) // if a script is imported multiple times in the import hierarchy, use a single copy
@@ -846,7 +850,7 @@ object MainKtsEvaluationConfiguration : ScriptEvaluationConfiguration(
 
 ###### Compilation configuration refinement handler
 
-```
+```kt
 class MainKtsConfigurator : RefineScriptCompilationConfigurationHandler {
     private val resolver = FilesAndIvyResolver()
 
