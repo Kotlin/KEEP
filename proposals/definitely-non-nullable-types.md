@@ -7,7 +7,7 @@
 * **Discussion**: [KEEP-268](https://github.com/Kotlin/KEEP/issues/268)
 * **Related issues**: [KT-26245](https://youtrack.jetbrains.com/issue/KT-26245)
 
-The goal of this proposal is to allow explicitly declare definitely not-nullable type
+The goal of this proposal is to allow explicitly declare definitely non-nullable type
 
 ## Background
 
@@ -30,12 +30,12 @@ dereferenced.
 And it's quite understandable, since it's legal to have a call like `foo<String?>(null, null)` that might lead 
 to NullPointerException at runtime if dereferencing was allowed.
 
-At the same time, `T & Any.length` is a valid call, so `T & Any` should have some special type other than `T`.
+At the same time, `t!!.length` is a valid call, so `t!!` should have some special type other than `T`.
 Within compiler, such types are represented as `T & Any`, i.e. intersection type of `T` and `Any`.
-Simply speaking, intersection of a type with not-nullable `Any` would make the former not-nullable, and that's what 
-we need to assign it as a type for `T & Any` expression.
+Simply speaking, intersection of a type with non-nullable `Any` would make the former non-nullable, and that's what
+we need to assign it as a type for `t!!` expression.
 
-Also, there's a special term for such types: definitely not-nullable type.
+Also, there's a special term for such types: definitely non-nullable type.
 
 ## Problem
 
@@ -91,12 +91,12 @@ fun <T> elvisLike(x: T, y: T & Any): T & Any = x ?: y
 
 fun main() {
     elvisLike<String>("", "").length // OK
-    elvisLike<String>("", null).length // Error: 'null' for not-nullable type
+    elvisLike<String>("", null).length // Error: 'null' for non-nullable type
     elvisLike<String?>(null, "").length // OK
-    elvisLike<String?>(null, null).length // Error: 'null' for not-nullable type
+    elvisLike<String?>(null, null).length // Error: 'null' for non-nullable type
 
     elvisLike("", "").length // OK
-    elvisLike("", null).length // Error: 'null' for not-nullable type
+    elvisLike("", null).length // Error: 'null' for non-nullable type
     elvisLike(null, "").length // OK
 }
 ```
