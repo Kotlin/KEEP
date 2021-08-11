@@ -30,10 +30,10 @@ dereferenced.
 And it's quite understandable, since it's legal to have a call like `foo<String?>(null, null)` that might lead 
 to NullPointerException at runtime if dereferencing was allowed.
 
-At the same time, `t!!.length` is a valid call, so `t!!` should have some special type other than `T`.
+At the same time, `T & Any.length` is a valid call, so `T & Any` should have some special type other than `T`.
 Within compiler, such types are represented as `T & Any`, i.e. intersection type of `T` and `Any`.
 Simply speaking, intersection of a type with not-nullable `Any` would make the former not-nullable, and that's what 
-we need to assign it as a type for `t!!` expression.
+we need to assign it as a type for `T & Any` expression.
 
 Also, there's a special term for such types: definitely not-nullable type.
 
@@ -57,22 +57,37 @@ And to the version Kotlin 1.5 or earlier it's effectively impossible.
 
 ## Proposal
 
-The proposal is to introduce new syntax for such type kind: `T!!`.
+The proposal is to introduce strictly limited syntax for intersection types exactly for the case: `T & Any`
 This new syntax should only be allowed if `T` is resolved to a type parameter with nullable upper bounds being nullable.
 
 The semantics of that type kind may be defined as any of the following statements (they all are interchangeable):
-- `T!!` is an [intersection type](https://kotlinlang.org/spec/type-system.html#intersection-types) having a form of `T & Any`
-- `T!!` is populated with all values from `T` beside `null`
+- `T & Any` is an [intersection type](https://kotlinlang.org/spec/type-system.html#intersection-types)
+- `T & Any` is populated with all values from `T` beside `null`
+
+While in the parser, any form of intersection types might be supported, the compiler must reject anything
+but the types which left side is a type parameter with nullable upper bound and the right one should be resolved to
+exactly non-nullable `kotlin.Any`.
 
 Such types should be considered just as any other denotable types and allowed to be used in all contexts where `T` type 
 might be used: parts of public signature, local declarations, etc.
+
+## Syntax ambiguities
+
+At some point, it's likely that bitwise arithmetic operations `&` and `|` will be supported in Kotlin, and it's worth preventing
+possible relevant ambiguities between them and intersection types.
+
+Thus, we propose to forbid intersection types at the following positions:
+- `is/as` operators. Expressions like `expr as T & Any` shall be parsed as `(expr as T) & Any`.
+  But still it's possible to have the following `expr as (T & Any)`
+- Receiver type references: `fun T & Any.foo()` shall be rejected, while `fun (T & Any).foo()` must be allowed.
+- The same logic for receiver types in function types: `(T & Any).() -> Unit` is OK, while `T & Any.() -> Unit` is not.
 
 ## Examples
 
 Using in plain public declarations
 
 ```kotlin
-fun <T> elvisLike(x: T, y: T!!): T!! = x ?: y
+fun <T> elvisLike(x: T, y: T & Any): T & Any = x ?: y
 
 fun main() {
     elvisLike<String>("", "").length // OK
@@ -102,21 +117,12 @@ public interface A<T> {
 
 interface B<T1> : A<T1> {
     override fun foo(x: T1): T1
-    override fun bar(x: T1!!): T1!!
+    override fun bar(x: T1 & Any): T1 & Any
 }
 ```
 
-## Open questions
-
-1) New syntax might look a bit confusing:
-   - When being used for expressions `!!` means something unsafe that should be used with precautions 
-     while value of a type `T!!` is already proved to be not-nullable.
-   - `!` character in types is already used [flexible types](https://github.com/JetBrains/kotlin/blob/master/spec-docs/flexible-java-types.md)
-2) Expressions having a form of `if (x > 0) 1 else v as T!!` currently are being parsed as `(if (x > 0) 1 else v as T)!!`
-while considering parsing priorities it makes sense to parse it like `if (x > 0) 1 else v as (T!!)`
-   - It seems that previous parse tree should be deprecated
-   - See [KT-47445](https://youtrack.jetbrains.com/issue/KT-47445)
 
 ## Timeline
 
-The prototype is being worked on, and the feature is planned to be included under the `-language-version 1.6` flag to Kotlin 1.5.30, and enabled by default since Kotlin 1.6.
+The prototype is being worked on, and the feature is planned to be included under the `-language-version 1.7` or
+with `-XXLanguage:+DefinitelyNotNullTypeParameters` flag and enabled by default since Kotlin 1.7.
