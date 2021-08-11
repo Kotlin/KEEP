@@ -265,17 +265,20 @@ signature of the functional type replicates the textual order in which every arg
 
 * Such assignments are valid:
   ```kotlin
-  class Context {
-      fun Receiver.method(param: Param) {}
-  }
-  
-  fun function(context: Context, receiver: Receiver, p: Param) {}
-  
   fun main() {
-      var g: context(Context) Receiver.(Param) -> Unit
-      g = ::function      // OK
-      g = Context::method // OK 
+    var g: context(Context) Receiver.(Param) -> Unit
+    g = ::foo         // OK
+    g = ::bar         // OK
+    g = Receiver::baz // OK
   }
+  
+  fun foo(context: Context, receiver: Receiver, p: Param) {}
+
+  context(Context)
+  fun bar(receiver: Receiver, p: Param) {}
+
+  context(Context)
+  fun Receiver.baz(p: Param) {}
   ```
 
 ### Referencing specific receiver
