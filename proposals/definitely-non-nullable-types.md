@@ -1,4 +1,4 @@
-# Definitely not-nullable types
+# Definitely non-nullable types
 
 * **Type**: Design proposal
 * **Author**: Denis Zharkov
@@ -125,4 +125,4 @@ interface B<T1> : A<T1> {
 ## Timeline
 
 The prototype is being worked on, and the feature is planned to be included under the `-language-version 1.7` or
-with `-XXLanguage:+DefinitelyNotNullTypeParameters` flag and enabled by default since Kotlin 1.7.
+with `-XXLanguage:+DefinitelyNonNullableTypes` flag and enabled by default since Kotlin 1.7.
