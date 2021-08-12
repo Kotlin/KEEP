@@ -265,7 +265,7 @@ fun use() {
 All three calls `foo()`, `bar()` and `baz()` inside `fun use()` use `Shiny` type implicitly,
 thus all three should receive opt-in usage warning/error. We can negate it using either `@ShinyNewAPI`
 or `@OptIn(ShinyNewAPI::class)` at `fun use()` itself. 
-Pay attention that `@OptIN(ShinyNewAPI::class)` at `foo`, `bar`, `baz` declarations does not help here.
+Pay attention that `@OptIn(ShinyNewAPI::class)` at `foo`, `bar`, `baz` declarations does not help here.
 To understand this better, rewrite your code like
 ```Kotlin
 fun use() {
@@ -286,4 +286,3 @@ fun use() {
 ## Known issues
 
 * Once the API has been released, its call sites are still using the marker annotation, which means that the annotation class will need to go through the deprecation cycle, which is somewhat inconvenient.
-
