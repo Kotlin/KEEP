@@ -234,9 +234,9 @@ As a rule of thumb, all places which break if some experimental type disappear
 from a library should receive opt-in usage warning/error, 
 even if this experimental type is used implicitly.
 
-Some type is considered "requiring opt-in marker" if its constructor
-(the class which is base for this type) requires opt-in marker,
+Some class-based type is considered "requiring opt-in annotation marker" if its class requires opt-in marker,
 and/or any of its type arguments requires opt-in marker.
+For example, using `MyClass<MyArg>` requires opt-in marker if either `MyClass` or `MyArg` require this marker.
 So class with opt-in marker annotation makes all types using it "requiring opt-in marker", 
 as well as all types using its nested/inner classes.
 
