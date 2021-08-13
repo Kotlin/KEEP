@@ -107,7 +107,8 @@ Using `OptIn` with annotations that are *not* opt-in requirement markers has no 
 When using an API that requires opt-in without the said opt-in, the compiler reports a warning or an error depending on the specified level. It's possible to specify a custom message in `RequiresOptIn`, that will be reported by the compiler. If no message is given (i.e. if `message` is empty), the compiler will report that the API is *experimental*:
 
 ```
-test.kt:22:9: error: this declaration is experimental and its usage must be marked with '@ShinyNewAPI' or '@OptIn(ShinyNewAPI::class)'
+test.kt:22:9: error: this declaration requires an explicit opt-in annotation marker to be used. Please read and understand the caveats in the documentation of `ShinyNewAPI` first.
+If you are willing to use it, mark the usage with '@ShinyNewAPI' to propagate opt-in marker requirement to further users or with '@OptIn(ShinyNewAPI::class)' to hide this usage as an implementation detail.'
     foo.bar()
         ^
 ```
