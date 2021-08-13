@@ -1,28 +1,40 @@
 # Opt-in requirements
 
-Discussion of this proposal is held in [this issue](https://github.com/Kotlin/KEEP/issues/95).
+* **Type**: Design proposal
+* **Authors**: Alexander Udalov, Mikhail Glukhikh
+* **Previously known as**: Experimental API support
+* **Discussion and feedback**: [KEEP-95](https://github.com/Kotlin/KEEP/issues/95)
 
 This proposal describes a mechanism that will allow library authors to provide API that requires explicit opt-in from their clients. The proposed mechanism makes it possible to declare that the API requires opt-in, and to opt in to that API at the call site. Without such explicit consent from the user, a warning or an error is reported on usages.
 
 An example use case is experimental API which, although publicly released as a part of the library, may break at any moment and its usages will need to be recompiled. The ultimate goal is to allow library authors to release APIs earlier and more frequently without fear of the necessity to support an incorrectly designed API for a long time because of source and/or binary compatibility.
 
-## Use cases in the standard Kotlin library
+## Use cases
 
-* Annotations for type inference (@Exact, @OnlyInputTypes, etc.): we'd like to publish them, but don't want to commit to never changing semantics (see [KT-13138](https://youtrack.jetbrains.com/issue/KT-13138), [KT-13198](https://youtrack.jetbrains.com/issue/KT-13198))
-* Bitwise operations for integers
-* Coroutines-related APIs, where we're still experimenting a lot
-* Certain features for kotlin-reflect, that we're not sure about (see [KT-15987](https://youtrack.jetbrains.com/issue/KT-15987), [KT-15992](https://youtrack.jetbrains.com/issue/KT-15992))
+* **In the Kotiln standard library**
+  * Annotations for type inference (`@Exact`, `@OnlyInputTypes`, etc.): we'd like to publish them, but don't want to commit to never changing semantics (see   [KT-13138](https://youtrack.jetbrains.com/issue/KT-13138), [KT-13198](https://youtrack.jetbrains.com/issue/KT-13198))
+  * Bitwise operations for small integer types.
+  * Certain features for kotlin-reflect, that we're not sure about (see [KT-15987](https://youtrack.jetbrains.com/issue/KT-15987), [KT-15992](https://youtrack.jetbrains.com/issue/KT-15992))
+  * New functions that get added to the standard library (`@ExperimentalStdlibApi`) for public preview.
+* **Other libraries**
+  * Experimental declarations for public preview.
+  * Internal declarations that should not be used outside of the library, but are `public` for some other reason.
+  * Fragile or delicate APIs that need a lot of expertise to use and thus require an explicit opt-in.  
 
 ## Goals
 
-* Clear **opt-in** required for all users whose code may be broken by changes to the API
-* **Granularity**: one should be able to mark a small part of an API so that only the users of that part are required to opt in
-* **Smooth graduation**: if the API doesn't need to be changed as soon as it *graduates* (i.e. no longer requires opt-in), just unmark it, and all clients remain binary compatible
-* **Garbage collection upon graduation**: when the API graduates, the opt-in flags/markers are highlighted as warnings (and subsequently, errors) so that clients know to remove them
+* Clear **opt-in** required for all users whose code may be broken by changes to the API.
+* **Granularity**: one should be able to mark a small part of an API so that only the users of that part are required to opt in.
+* **Smooth graduation**: if the API doesn't need to be changed as soon as it *graduates* (i.e. no longer requires opt-in), just unmark it, and all clients remain binary compatible.
+* **Garbage collection upon graduation**: when the API graduates, the opt-in flags/markers are highlighted as warnings (and subsequently, errors) so that clients know to remove them.
 
 ## Initial observations
 
 * One solution for the experimental API use case would be to use whole packages for experimental declarations, e.g. `kotlin.experimental`, `kotlin.jvm.experimental`, ... However, this is not granular enough and smooth graduation is not possible, because even if the API was completely fine from the start, it's going to be moved to a non-experimental package eventually, which will break binary clients.
+
+> This solution was originally used for coroutines, originally placing them into `kotlin.coroutines.experimental` package and is still used 
+> for some bitwise operators in `kotiln.experimental` package. 
+
 * A more natural solution would involve some explicit binary-retained annotation on each declaration. This way, the compiler can check each call and each class usage, and report a warning/error if that symbol requires opt-in but no consent to using it has been given by the user. However, just one annotation isn't enough, because we'd like to force the user to opt in to each API (= group of declarations) separately. This is why we propose a design below where each API declares its own marker annotation, which must be used at call sites.
     * We've explored the possibility of using a “string tag” argument instead of custom marker annotations (e.g. `@RequiresOptIn(“kotlin.ExperimentalTypeInference”) ...`) but discarded it because it's not as clean, involves more typing and reading, requires not to make typos, and complicates the implementation, especially in the IDE.
 * There's a number of ways to express the opt-in to use an API, but a source-retained annotation (“local” opt-in) and a command line argument (“global” opt-in) would seem the most natural choices.
