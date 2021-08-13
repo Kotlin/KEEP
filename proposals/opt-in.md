@@ -76,18 +76,14 @@ fun Foo.bar() = ...
 
 // Usage:
 
-// Function useFooAndBar uses API marked with ShinyNewAPI and thus
-// is required to opt in to that marker. Here, we choose a propagating opt-in,
-// because the API is used in the function signature (parameter foo's type).
-// (But this is not enforced by the compiler in any way, we could've chosen
-// a non-propagating opt-in as well.)
+// Function shinyNewFeature() uses API marked with ShinyNewAPI
+// and thus is also, conceptually, a part of ShinyNewAPI and so it is marked as such.
 @ShinyNewAPI
-fun useFooAndBar(foo: Foo) {
-    foo.bar()
-}
+fun shinyNewFeature() = Foo().bar()
 
 // Function doSomething uses API marked with ShinyNewAPI and is also
-// required to opt in. Here, we choose a non-propagating opt-in, because the
+// required to use the OptIn marker annotation. 
+// Here, we choose a non-propagating opt-in, because the
 // API is used in the function body and it should not concern our clients
 @OptIn(ShinyNewAPI::class)
 fun doSomething() {
@@ -96,7 +92,8 @@ fun doSomething() {
 }
 ```
 
-Note that by opting into the API with the propagating opt-in, `useFooAndBar` effectively requires opt-in itself (with the same marker). In theory, we could distinguish initial introduction of the API and its propagating usages, but it would complicate the proposal a bit and there doesn't seem to be much value in doing that.
+Note that by opting into the API with the propagating opt-in, `shinyNewFeature` effectively requires opt-in itself (with the same marker annotation). 
+In theory, we could distinguish initial introduction of the API and its propagating usages, but it would complicate the proposal a bit and there doesn't seem to be much value in doing that.
 
 Both opt-in mechanisms allow to use the API for the selected markers anywhere in the parse tree lexically under the annotated element.
 
