@@ -180,7 +180,7 @@ of the compiled script should be supported by the compilation platform.
 #### Execution lifecycle
 
 The script is executed according to the following scheme:
-- compilation - the *Script Compiler* takes the script, it's compilation configuration and 
+- compilation - the *Script Compiler* takes the script, its compilation configuration and 
   provides a compiled class. Inside this process. If the compilation configuration defines refinement callbacks, they 
   are called before or after parsing to update configuration with parameter depending on the script contents or other
   dynamic data.
