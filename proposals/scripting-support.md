@@ -327,7 +327,7 @@ The scripting support consists of the following components:
   - compilation: `(scriptSource, compilationConfiguration) -> compiledScript`
   - predefined script compilers based on the kotlin platforms: /JVM, /JS, /Native
   - custom/customized implementation possible
-  - compiled scripts cashing belongs here
+  - compiled scripts caсhing belongs here
   - should not keep the state of the script compilation, the required state for the subsequent compilations, e.g. in the 
     REPL mode, is passed along with the compiled script
 - `ScriptEvaluator` - the component that receives compiled script instantiates it, and then evaluates it in a required 
