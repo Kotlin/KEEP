@@ -11,7 +11,7 @@ An example use case is experimental API which, although publicly released as a p
 
 ## Use cases
 
-* **In the Kotiln standard library**
+* **In the Kotlin standard library**
   * Annotations for type inference (`@Exact`, `@OnlyInputTypes`, etc.): we'd like to publish them, but don't want to commit to never changing semantics (see   [KT-13138](https://youtrack.jetbrains.com/issue/KT-13138), [KT-13198](https://youtrack.jetbrains.com/issue/KT-13198))
   * Bitwise operations for small integer types.
   * Certain features for kotlin-reflect, that we're not sure about (see [KT-15987](https://youtrack.jetbrains.com/issue/KT-15987), [KT-15992](https://youtrack.jetbrains.com/issue/KT-15992))
@@ -33,7 +33,7 @@ An example use case is experimental API which, although publicly released as a p
 * One solution for the experimental API use case would be to use whole packages for experimental declarations, e.g. `kotlin.experimental`, `kotlin.jvm.experimental`, ... However, this is not granular enough and smooth graduation is not possible, because even if the API was completely fine from the start, it's going to be moved to a non-experimental package eventually, which will break binary clients.
 
 > This solution was originally used for coroutines, originally placing them into `kotlin.coroutines.experimental` package and is still used 
-> for some bitwise operators in `kotiln.experimental` package. 
+> for some bitwise operators in `kotlin.experimental` package. 
 
 * A more natural solution would involve some explicit binary-retained annotation on each declaration. This way, the compiler can check each call and each class usage, and report a warning/error if that symbol requires opt-in but no consent to using it has been given by the user. However, just one annotation isn't enough, because we'd like to force the user to opt in to each API (= group of declarations) separately. This is why we propose a design below where each API declares its own marker annotation, which must be used at call sites.
     * We've explored the possibility of using a “string tag” argument instead of custom marker annotations (e.g. `@RequiresOptIn(“kotlin.ExperimentalTypeInference”) ...`) but discarded it because it's not as clean, involves more typing and reading, requires not to make typos, and complicates the implementation, especially in the IDE.
