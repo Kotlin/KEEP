@@ -318,7 +318,7 @@ than a function name for a label looks more natural since the object type descri
 belongs to ([KT-21387](https://youtrack.jetbrains.com/issue/KT-21387)).
 
 ```kotlin
-fun List<Int>.decimateEveryEvenThird() = buildSequence {
+fun List<Int>.decimateEveryEvenThird() = sequence {
     var counter = 1
     for (e in this@List) {
         if (e % 2 == 0 && counter % 3 == 0) {
