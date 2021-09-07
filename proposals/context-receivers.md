@@ -215,7 +215,7 @@ Take a look at the following example.
 
 ```kotlin
 context(Comparator<T>)
-inline infix operator fun <T> T.compareTo(other: T) = compare(this, other)
+infix operator fun <T> T.compareTo(other: T) = compare(this, other)
 
 context(Comparator<T>)
 val <T> Pair<T, T>.max get() = if (first > second) first else second
@@ -296,7 +296,7 @@ For every receiver in the scope, the compiler generates the label from the name 
 
 ```kotlin
 context(Logger, Storage<User>)
-fun userInfo(name: String): Storage.Info<User> {
+fun userInfo(name: String): Storage<User>.Info {
     this@Logger.info("Retrieving info about $name")
     return this@Storage.info(name)
 }
@@ -309,7 +309,7 @@ In cases where the label cannot be generated or referenced, a workaround is to u
 typealias IterableClass<C, T> = (C) -> Iterator<T>
 
 context(IterableClass<C, T>)
-inline operator fun <C, T> C.iterator(): Iterator<T> = this@IterableClass.invoke(this)
+operator fun <C, T> C.iterator(): Iterator<T> = this@IterableClass.invoke(this)
 ```
 
 Using labeled `this` may come in handy even without context receivers. If multiple receivers in a nested scope can be 
