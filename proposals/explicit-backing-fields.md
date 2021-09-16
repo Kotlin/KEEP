@@ -129,17 +129,20 @@ The proposed design consists of two new ideas.
 ### Explicit Backing Fields
 
 ```kotlin
-val it: A
-	[visibility] field[: B] = initializer
+val it: P
+	[visibility] field[: F] = initializer
 ```
 
 The above `field` declaration is referred to as an _explicit backing field declaration_.
 
+Explicit backing fields is a FIR-only feature.
+
 #### Accessors
 
-- if `A :> B`, the compiler can provide a default getter
-- if `A <: B`, the compiler can provide a default setter
-- If an accessor is required, it must be provided either by the compiler or the user
+- if `P :> F`, the compiler can provide a default getter
+- if `P <: F`, the compiler can provide a default setter
+
+If the compiler can not provide a getter, the user must declare it explicitly. The same applies to setters in case of `var` properties.
 
 ```kotlin
 public val flow: SharedFlow
@@ -175,7 +178,9 @@ var someStrangeExample: Int
 
 #### Initializer
 
-If there is an explicit backing field, it must have an initializer, and the property must not declare an initializer.
+If there is an explicit backing field, the property must not declare an initializer.
+
+If the explicit backing field is not `lateinit`, it must have an initializer. For `lateinit` properties initializers are forbidden.
 
 #### Mutability
 
@@ -235,8 +240,8 @@ fun test() {
 Initially, the following syntax was suggested:
 
 ```kotlin
-public val items = mutableListOf<Item>()
-	private get(): List<Item>
+private val items = mutableListOf<Item>()
+	public get(): List<Item>
 ```
 
 > In above example `items` is `MutableList<Item>` when accessed privately inside class and read-only `List<String>` when accessed from outside class.
