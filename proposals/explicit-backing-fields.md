@@ -36,7 +36,7 @@
 > }
 > ```
 
-With the proposed syntax in mind, the above code snipped could be rewritten as follows:
+With the proposed syntax in mind, the above code snippet could be rewritten as follows:
 
 ```kotlin
 class MyClass {
@@ -177,6 +177,10 @@ var someStrangeExample: Int
 
 If there is an explicit backing field, it must have an initializer, and the property must not declare an initializer.
 
+#### Mutability
+
+For now, we assume `val` properties have immutable backing fields, and `var` properties have mutable ones.
+
 #### Forbidden
 
 Explicit backing fields are not allowed inside interfaces or abstract properties.
@@ -271,3 +275,43 @@ var thing
 ### Custom Getters
 
 Hypothetically, we could perform more analysis to find out whether smart type narrowing is possible for the given getter. 
+
+### Mutability
+
+Letting a `val` property have a mutable backing field may be useful. Consider the [following example](https://github.com/JetBrains/kotlin/blob/master/libraries/stdlib/jvm/src/kotlin/util/LazyJVM.kt#L57):
+
+```kotlin
+private class SynchronizedLazyImpl<out T>(
+    initializer: () -> T, 
+    lock: Any? = null
+) : Lazy<T>, Serializable {
+    private var initializer: (() -> T)? = initializer
+    @Volatile private var _value: Any? = UNINITIALIZED_VALUE
+    // final field is required to enable safe publication of constructed instance
+    private val lock = lock ?: this
+
+    override val value: T
+        get() {
+            val _v1 = _value
+            if (_v1 !== UNINITIALIZED_VALUE) {
+                @Suppress("UNCHECKED_CAST")
+                return _v1 as T
+            }
+
+            return synchronized(lock) {
+                val _v2 = _value
+                if (_v2 !== UNINITIALIZED_VALUE) {
+                    @Suppress("UNCHECKED_CAST") (_v2 as T)
+                } else {
+                    val typedValue = initializer!!()
+                    _value = typedValue
+                    initializer = null
+                    typedValue
+                }
+            }
+        }
+    
+    ...
+}
+```
+
