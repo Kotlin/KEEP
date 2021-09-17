@@ -145,7 +145,7 @@ Explicit backing fields is a FIR-only feature.
 If the compiler can not provide a getter, the user must declare it explicitly. The same applies to setters in case of `var` properties.
 
 ```kotlin
-public val flow: SharedFlow
+public val flow: SharedFlow<String>
     field: MutableSharedFlow? = null
     get() {
         return field ?: run { ... }
@@ -254,7 +254,7 @@ Attempt to add support for the above syntax led to multiple redundant complicati
 
 ### Direct Backing Field Access
 
-It might be handy to allow the direct access to the property backing field via syntax like `myProperty#field`. 
+It might be handy to allow the direct access to the property backing field via syntax like `myProperty#field` (just a hypothetical syntax). 
 
 ###  Allow `protected field`
 
