@@ -12,54 +12,34 @@
 
 **Note**: initial proposal contents have been partially copied down here for convenience. Despite the different approach, the already shown use cases are still relevant.
 
->  Common pattern in java is having full type accessible as private property and then only exposing required interface in the public getter:
->
-> ```java
-> class MyClass {
-> 	// Use full type for private access
-> 	private final ArrayList<String> data = new ArrayList<>();
-> 	
-> 	// Only expose what is needed in public getter
-> 	public List<String> getData() {
-> 		return data;
-> 	}
-> }
-> ```
->
-> This pattern allows easy hiding of implementation details and allows for easy clean external interfaces to the classes. But there is no idiomatic Kotlin way to achieve this pattern. Best thing you can do is define two separate properties to mimic how Java does it:
->
-> ```kotlin
-> class MyClass {
->     private val _data = ArrayList<String>()
->     val data: List<String>
->         get() = _data
-> }
-> ```
+Sometimes, Kotlin programmers need to declare two properties which are conceptually the same, but one is part of a public API and another is an implementation detail. This is known as [backing properties](https://kotlinlang.org/docs/properties.html#backing-properties):
+
+```kotlin
+class C {
+    private val _elementList = mutableListOf<Element>()
+
+    val elementList: List<Element>
+        get() = _elementList
+}
+```
 
 With the proposed syntax in mind, the above code snippet could be rewritten as follows:
 
 ```kotlin
-class MyClass {
-    val data: List<String>
-        field = ArrayList()
+class C {
+    val elementList: List<Element>
+        field = mutableListOf()
 }
 ```
 
 ## Use Cases
-
-### Motivation
-
-> - There is no clean idiomatic way to do this pattern in Kotlin
-> - Current best approach throws away all benefits of Kotlin properties and forces developer to write Java-like code with separate private field and public getter
-> - Current best approach forces developer to assign two different names to single property (or pad private property, for example adding `_` prefix and then using this prefix everywhere in code)
-> - This is another place where Java pattern could be introduced into Kotlin with less boilerplate
 
 ### Read-Only from Outside
 
 > We often do not want our data structures to be modified from outside. Unlike Java, this can be easily achieved in Kotlin by just exposing read-only `List`. But as already ilustrated in above example, exposing different type of a property is a bit messy.
 
 ```kotlin
-private val _items = mutableListOf<Item>()
+internal val _items = mutableListOf<Item>()
 val item : List<Item> by _items
 ```
 
@@ -67,7 +47,7 @@ And the new syntax allows us to write:
 
 ```kotlin
 val items: List<Item>
-	private field = mutableListOf()
+    internal field = mutableListOf()
 ```
 
 ### Android Architecture Components
@@ -92,13 +72,45 @@ Becomes:
 
 ```kotlin
 val city: LiveData<String>
-	field = MutableLiveData().apply { value = "" }
+    field = MutableLiveData().apply { value = "" }
 val charts: LiveData<List<Chart>>
-	field = MutableLiveData().apply { value = emptyList() }
+    field = MutableLiveData().apply { value = emptyList() }
 val loading: LiveData<Boolean>
-	field = MutableLiveData().apply { value = false }
+    field = MutableLiveData().apply { value = false }
 val message: LiveData<String>
-	field = MutableLiveData()
+    field = MutableLiveData()
+```
+
+### Common Java Pattern
+
+>  Common pattern in java is having full type accessible as private property and then only exposing required interface in the public getter:
+>
+>  ```java
+>  class MyClass {
+>      // Use full type for private access
+>      private final ArrayList<String> data = new ArrayList<>();
+>  
+>      // Only expose what is needed in public getter
+>      public List<String> getData() {
+>          return data;
+>      }
+>  }
+>  ```
+>
+>  This pattern allows easy hiding of implementation details and allows for easy clean external interfaces to the classes.
+>
+>  - There is no clean idiomatic way to do this pattern in Kotlin
+>  - Current best approach throws away all benefits of Kotlin properties and forces developer to write Java-like code with separate private field and public getter
+>  - Current best approach forces developer to assign two different names to single property (or pad private property, for example adding `_` prefix and then using this prefix everywhere in code)
+>  - This is another place where Java pattern could be introduced into Kotlin with less boilerplate
+
+The proposed syntax allows to achieve the same functionality while keeping the same level of simplicity:
+
+```kotlin
+class MyClass {
+    val data: List<String>
+        field = ArrayList()
+}
 ```
 
 ### RX Observable and Subjects
@@ -118,7 +130,7 @@ Turns into:
 ```kotlin
 class MyClass {
     val dataStream: Observable<String>
-    	field = PublishSubject.create()
+        field = PublishSubject.create()
 }
 ```
 
@@ -130,7 +142,7 @@ The proposed design consists of two new ideas.
 
 ```kotlin
 val it: P
-	[visibility] field[: F] = initializer
+    [visibility] field[: F] = initializer
 ```
 
 The above `field` declaration is referred to as an _explicit backing field declaration_.
@@ -176,21 +188,13 @@ var someStrangeExample: Int
     }
 ```
 
-#### Initializer
+#### Restrictions
 
-If there is an explicit backing field, the property must not declare an initializer.
+If there is an explicit backing field, the property must not declare an initializer. If the explicit backing field is not `lateinit`, it must have an initializer. For `lateinit` properties, initializers are forbidden.
 
-If the explicit backing field is not `lateinit`, it must have an initializer. For `lateinit` properties initializers are forbidden.
+For now, we assume `val` properties have immutable backing fields, and `var` properties have mutable ones. That is, assignment to `field` inside a `val` property getter results in an error.
 
-#### Mutability
-
-For now, we assume `val` properties have immutable backing fields, and `var` properties have mutable ones.
-
-#### Forbidden
-
-Explicit backing fields are not allowed inside interfaces or abstract properties.
-
-Explicit backing fields are not allowed for delegated properties.
+Explicit backing fields are not allowed inside interfaces or abstract properties, as well as they are forbidden for delegated properties.
 
 ### Smart Type Narrowing
 
@@ -220,7 +224,7 @@ The formal checks corresponding to the above rules are:
 ```kotlin
 class MyClass {
     val items: List<String>
-    	field = mutableListOf("a", "b")
+        field = mutableListOf("a", "b")
     
     fun registerItem(item: String) {
         items.add(item) // Viewed as MutableList<String>
@@ -241,7 +245,7 @@ Initially, the following syntax was suggested:
 
 ```kotlin
 private val items = mutableListOf<Item>()
-	public get(): List<Item>
+    public get(): List<Item>
 ```
 
 > In above example `items` is `MutableList<Item>` when accessed privately inside class and read-only `List<String>` when accessed from outside class.
