@@ -212,7 +212,7 @@ it can then narrow down the returned instance type at the call site without loss
 The formal checks corresponding to the above rules are:
 
 1. the property does not have a custom getter, only the default one
-2. `A :> B`
+2. `P :> F`
 3. accessing:
    1. a private backing field of a class member property within the class
    2. a private backing field of a top-level property within the file
