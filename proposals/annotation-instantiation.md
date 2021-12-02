@@ -2,8 +2,7 @@
 
 * **Type**: Design proposal
 * **Author**: Leonid Startsev
-* **Status**: In review
-* **Prototype**: In progress
+* **Status**: Implemented in 1.6
 * **Issue:** [KT-45395](https://youtrack.jetbrains.com/issue/KT-45395)
 
 ## Synopsis
