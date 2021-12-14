@@ -3,7 +3,7 @@
 * **Type**: Design proposal
 * **Author**: Vsevolod Tolstopytov
 * **Status**: Accepted
-* **Prototype**: Being discussed
+* **Prototype**: In progress
 * **Discussion**: [KEEP-283](https://github.com/Kotlin/KEEP/issues/283)
 * **Related issues**: [KT-48872](https://youtrack.jetbrains.com/issue/KT-48872)
 
@@ -42,7 +42,7 @@ Apart from that, most of the API being written leverages Collections API, not ar
 The proposal that addresses all of the above is as follows:
 
 * Decommission of `Enum.values()` with the IDE assistance without deprecation.
-* Introduce property `entries: List<E>` that returns an unmodifiable list of all enum entries.
+* Introduce property `entries: EnumEntries<E>` that returns an unmodifiable list of all enum entries.
 * For already compiled Kotlin enums and Java enums, a special mapping class that contains a pre-allocated list of entries is generated. 
 
 ### Decommission of `Enum.values()`
@@ -57,6 +57,15 @@ To avoid that, `values()` will be softly decommissioned via IDE assistance:
 * Soft warning with an intention to replace call to `values()` with call to `entries` will be introduced.
 * All the corresponding materials, such as Kotlin guides, J2K and tutorials will be adjusted to use `entries` API.
 * Eventually, we are going to re-visit this decision and decide on the further deprecation of `values` API.
+
+### `EnumEntries<E>` type
+
+Effectively, `entries` represents an immutable list of enum entries and can be represented as type `List<E>`.
+To have an ability to further extend Enum's API in a non-intrusive manner that does not involve code-generation
+for each enum, we expose a direct subtype of `List<E>` named `EnumEntries`.
+
+All potential extensions, such as `valueOfOrNull(String)`, `hasValue(String)` can be implemented on the standard library
+level as extensions of `EnumEntries`.
 
 ### Naming alternatives
 
@@ -104,7 +113,7 @@ enum MyEnum extends Enum<MyEnum> {
     <clinit> {
         A = new MyEnum("A", 0);
         $VALUES = $values();
-        Supplier<MyEnum[]> supplier = #invokedynamic ..args.. $IVALUES;
+        Supplier<MyEnum[]> supplier = #invokedynamic ..args.. values;
         $ENTRIES = new EnumEntriesList(supplier);
     }
 
@@ -118,10 +127,6 @@ enum MyEnum extends Enum<MyEnum> {
 
     private synthetic static MyEnum[] $values() {
         return new MyEnum[] { A };
-    }
-
-    private synthetic static MyEnum[] $IVALUES() {
-        return $VALUES;
     }
 }
 ```
@@ -162,6 +167,7 @@ The second risk is the education disturbance and a new name for developers to ge
 
 In addition to an existing [`enumValues`](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/enum-values.html) function in the standard library,
 `enumEntries` function that returns `entries` list is added.
+`enumValues` is deprecated for the removal.
 
 ## Timeline
 
