@@ -205,8 +205,7 @@ Using marker on overridden declaration only is normally forbidden (see `bar` exa
 because compiler usually cannot guarantee that exactly overridden function is called (see `base.bar` call).
 The exception to this rule is the situation when base class has the same marker, 
 in this case it's allowed to have the same marker on overridden declaration without marker on base declaration.
-The reason of this exception is marker contagiousness (see next chapter about it). See example for the exception below.
-
+The reason of this exception is marker contagiousness in lexical scopes (see chapter about it below). 
 
 ```kotlin
 open class Base {
@@ -255,7 +254,7 @@ class Derived : Base() {
 }
 ```
 
-## OptIn marker contagiousness
+## OptIn marker contagiousness (type usages)
 
 In Kotlin 1.5.30 we introduced contagiousness rules based on type usages.
 As a rule of thumb, all places which break if some experimental type disappear
@@ -301,6 +300,49 @@ fun use() {
     val s: Shiny = foo()
     bar(Shiny())
     (null as Shiny?).baz()
+}
+```
+
+## OptIn marker contagiousness (lexical scopes)
+
+In Kotlin 1.6.20 we also introduced contagiousness rules based on lexical scopes.
+The basic rule of thumb remains the same: all places which break if some experimental type disappear
+from a library should receive opt-in usage warning/error. 
+Here we consider the same rule for type usage in dispatch receiver position.
+
+To obey this rule, OptIn marker is considered contagious in lexical scope, 
+so in the example below both `fun foo` and `class Nested` are counted as part of `ShinyNewAPI`.
+
+```kotlin
+@ShinyNewAPI
+class Base {
+   // Effectively 'fun foo' has the marker
+   fun foo() {}
+   // Effectively 'class Nested' also has the marker
+   class Nested
+}
+
+fun useBase(
+  // requires opt-in
+  base: Base
+) {
+  // also requires opt-in
+  base.foo()
+  // also requires opt-in
+  Nested()
+}
+```
+
+When `foo` is in use, the real dispatch receiver type is taken into account. 
+If `foo` is called on a derived class without marker, the call does not require opt-in.
+
+```kotlin
+@OptIn(ShinyNewAPI::class)
+class Derived : Base() 
+
+fun useDerived(derived: Derived) {
+    // Ok: dispatch receiver is 'Derived' (not 'Base'!) and it has OptIn
+    derived.foo()
 }
 ```
 
