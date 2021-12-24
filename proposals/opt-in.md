@@ -199,9 +199,14 @@ fun foo(s: String) {}
 ## OptIn markers and overridden declarations
 
 As a general rule, marker annotation should present either at base and overridden declarations together,
-or at none of them. Using marker on overridden declaration only is forbidden (see `bar` example below)
-because compiler usually cannot guarantee that exactly overridden function is called (see `base.bar` call).
+or at none of them. 
 Using marker on base declaration only provokes error or warning on overridden declaration, depending on marker `RequiresOptIn.level`.
+Using marker on overridden declaration only is normally forbidden (see `bar` example below)
+because compiler usually cannot guarantee that exactly overridden function is called (see `base.bar` call).
+The exception to this rule is the situation when base class has the same marker, 
+in this case it's allowed to have the same marker on overridden declaration without marker on base declaration.
+The reason of this exception is marker contagiousness (see next chapter about it). See example for the exception below.
+
 
 ```kotlin
 open class Base {
@@ -233,6 +238,20 @@ class Derived {
 
 fun use(base: Base) {
     base.bar() // Is it experimental or not?
+}
+```
+
+Exception example
+```kotlin
+@ShinyNewAPI
+open class Base {
+    // No marker here
+    open fun foo() {}
+}
+@OptIn(ShinyNewAPI::class)
+class Derived : Base() {
+    @ShinyNewAPI // Ok
+    override fun foo() {}
 }
 ```
 
