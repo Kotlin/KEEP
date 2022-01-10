@@ -2,7 +2,7 @@
 
 * **Type**: Standard Library API proposal
 * **Author**: Ilya Gorbunov
-* **Status**: Experimental in Kotlin 1.3.70
+* **Status**: Experimental since Kotlin 1.3.50, partially stable since 1.6.0
 * **Prototype**: Implemented
 * **Discussion**: [KEEP-190](https://github.com/Kotlin/KEEP/issues/190)
 
@@ -115,10 +115,10 @@ from unrelated time sources in a single expression and get nonsense in the resul
 
 ### Duration
 
-It is proposed to represent duration values with an inline class `Duration` that wraps a primitive value. 
+It is proposed to represent duration values with an inline value class `Duration` that wraps a primitive `Long` value. 
 
 ```kotlin
-inline class Duration internal constructor(internal val value: Long) : Comparable<Duration>
+value class Duration internal constructor(internal val value: Long) : Comparable<Duration>
 ```
 
 The property `value` stores a `Long` number encoding either the number of nanoseconds, or the number of milliseconds 
@@ -138,9 +138,9 @@ A `Duration` value can be negative.
 
 The primary constructor of `Duration` is internal. 
 A `Duration` value can be constructed from a numeric value (`Int`, `Long` or `Double`) and 
-a unit of duration. If the unit is known in advance and constant, the functions of `Duration` companion object can 
-be used to construct a duration, e.g. `Duration.minutes(1.5)`, `Durations.seconds(30)`, `Duration.milliseconds(500)`. Otherwise, the extension function 
-`numericValue.toDuration(unit)` can be used.
+a unit of duration. If the unit is known in advance at compile time, the extension properties in `Duration.Companion` 
+provide the most expressive way to construct a duration, e.g. `1.5.minutes`, `30.seconds`, `500.milliseconds`. 
+Otherwise, the extension function `numericValue.toDuration(unit)` can be used.
 
 #### Conversions
 
@@ -149,7 +149,7 @@ A `Duration` value can be retrieved back as a number with:
   a long number in the specified fixed unit;
 - the functions `toDouble(unit)`, `toLong(unit)`, `toInt(unit)` that return a number of the particular `Double`, `Long` or `Int` type
 expressed in the unit specified with the parameter `unit`.
-  
+
 #### Operators
 
 `Duration` values support the following operations:
@@ -169,15 +169,15 @@ The equality of Duration is defined so that two duration values representing tim
 are equal, no matter which numeric types and duration units were used to construct these durations, e.g.:
 
 ```kotlin
-Duration.days(1) == Duration.hours(24)
-Duration.minutes(1.5) == Duration.seconds(90)
+1.days == 24.hours
+1.5.minutes == 90.seconds
 ```
 
 `compareTo` operation is implemented in a similar way:
 
 ```kotlin
-Duration.hours(1) < Duration.minutes(65)  // true
-Duration.hours(0.5) > Duration.minutes(40) // false
+1.hours < 65.minutes  // true
+0.5.hours > 40.minutes // false
 ```
 
 #### Components
@@ -185,9 +185,9 @@ Duration.hours(0.5) > Duration.minutes(40) // false
 `Duration` can be decomposed to integer components in several ways:
 
 ```kotlin
-inline fun <T> toComponents(action: (days: Int, hours: Int, minutes: Int, seconds: Int, nanoseconds: Int) -> T): T
-inline fun <T> toComponents(action: (hours: Int, minutes: Int, seconds: Int, nanoseconds: Int) -> T): T
-inline fun <T> toComponents(action: (minutes: Int, seconds: Int, nanoseconds: Int) -> T): T
+inline fun <T> toComponents(action: (days: Long, hours: Int, minutes: Int, seconds: Int, nanoseconds: Int) -> T): T
+inline fun <T> toComponents(action: (hours: Long, minutes: Int, seconds: Int, nanoseconds: Int) -> T): T
+inline fun <T> toComponents(action: (minutes: Long, seconds: Int, nanoseconds: Int) -> T): T
 inline fun <T> toComponents(action: (seconds: Long, nanoseconds: Int) -> T): T
 ```
 
@@ -210,23 +210,21 @@ val result = buildString {
 }
 ```
 
-
-In case if the highest order component doesn't fit in the `Int` or `Long` data type, it is clamped to the range of that type.
+When the highest order component doesn't fit in the `Long` data type range, it is clamped in that range.
 
 #### String representation
 
 Duration provides three ways it can be represented as string.
 
-1. The default `toString` implementation finds the unit in which the value is represented in the most readable form in
-accordance with the following principles:
-    * select the unit so that the result magnitude fits into the range `1..<1000` or is closest to this range
-    * round fractions to 3 significant digits: `750`, `75.0`, `7.50`
-    * prefer a larger number in more granular unit than a smaller number in less granular one, 
-      if the ratio between their scales is not a power of 10. For example, prefer `105m` to `1.75h`, or `40h` to `1.67d`
-    * very big durations are represented in scientific notation in days: `3.65e+7d`
-    * very small durations are represented in scientific notation in seconds: `5.40e-44s`
+1. The default `toString()` represents a duration as a combination of hours, minutes, and seconds in
+human-readable form, for example, `1h 0m 45.677s`.
+    * the seconds component can have a fractional part
+    * leading and traling zero components are omitted
+    * a duration less than a second is represented in an appropriate sub-second unit: `1.23ms`, `455us`, `5ns`
+    * a negative duration that has multiple components has them parenthesized and 
+      prefixed with a single `-` sign: `-(1h 23m 45s)`
     * `ZERO` duration is represented as `0s`
-    * the infinite duration is represented as `Infinity` without unit and with optional `-` sign
+    * an infinite duration is represented as `Infinity` without unit and with optional `-` sign.
 
 2. The operation `toString(unit, decimals = number)` allows to represent a duration in a fixed unit with a fixed number 
 of decimal places, with the exceptions:
@@ -234,18 +232,16 @@ of decimal places, with the exceptions:
     * the maximum `decimals` value supported is 12, specifying greater values leads to the same result as for `decimals = 12`
     * the infinite duration is represented as `Infinity` without unit and with optional `-` sign
 
-3. The operation `toIsoString()` returns an ISO-8601 based string representation of a duration. Only `H`, `M` and `S` components are used.
-   For example: 
+3. The operation `toIsoString()` returns an ISO-8601 compatible string representation of a duration. Only `H`, `M` and `S` components are used.
+   For example:
    
-   - `Duration.days(2).toIsoString() == "PT48H"` 
-   - `Duration.seconds(-82850.4).toIsoString() == "-PT23H0M50.400S"`
+   - `2.days.toIsoString() == "PT48H"` 
+   - `(-82850.4).seconds.toIsoString() == "-PT23H0M50.400S"`
 
 ### DurationUnit
 
 An enum that lists the possible units in which duration can be expressed: `DAYS`, `HOURS`, `MINUTES`, `SECONDS`,
 `MILLISECONDS`, `MICROSECONDS`, `NANOSECONDS`.
-
-On JVM it is a typealias to `java.util.concurrent.TimeUnit`.
 
 ### TimeSource and TimeMark
 
@@ -275,7 +271,7 @@ abstract class TimeMark {
 `hasPassedNow` and `hasNotPassedNow` functions are useful for checking whether a deadline or expiration `TimeMark` has been reached:
 
 ```kotlin
-val timeout: Duration = Duration.minutes(5)
+val timeout: Duration = 5.minutes
 val expirationMark = timeSource.markNow() + timeout
 // later
 if (expirationMark.hasPassedNow()) {
@@ -365,17 +361,36 @@ at all, the API depending on it should fail with an exception.
 
 It's proposed to provide this API in the common Kotlin Standard Library in a new package: `kotlin.time`.
 
-To gather early adoption feedback, the new API was released in the experimental status in the coming Kotlin 1.3.x release. 
+To gather early adoption feedback, the new API was released in the experimental status in Kotlin 1.3.50.
+The `Duration` class, `DurationUnit` enum, and related top-level functions and extensions became stable since Kotlin 1.6.0.
 To mark the experimental status of this API we provide the annotation `@kotlin.time.ExperimentalTime`.
 
 However, we can't deprecate the existing stable API that is going to be replaced with the new API, such as `measureTimeMillis`, 
 before the new API goes stable.
 
-The experimental status of `Duration` and consequently almost all API in `kotlin.time` cannot be lifted without graduating
-`Inline classes` feature to stable first.
-
-
 ## Future advancements
+
+### Context-sensitive resolution of extensions in the `Duration.Companion`
+
+Currently, the extensions for constructing a duration from a number in a fixed unit, e.g. `Int.seconds`, are placed inside 
+the companion object of the `Duration` class. This makes it possible to use them either with an explicit import, like 
+`import kotlin.time.Duration.Companion.seconds`, or when the `Duration` companion object presents as a receiver in scope:
+
+```kotlin
+val d = with(Duration) { 1.minutes + 40.seconds }
+```
+
+We presume that if the [context-sensitive resolution, KT-16768](https://youtrack.jetbrains.com/issue/KT-16768) was implemented, the compiler would resolve 
+an expression in a context where `Duration` type is expected, e.g. `val d: Duration = 10.seconds`, 
+by looking into the static scope of `Duration` first, namely in its companion object. 
+There it would find a suitable extension method and use it even without an import (or maybe with an import of `kotlin.time.Duration` class itself).
+
+Then we could also provide a "copy constructor" function `fun Duration(value: Duration) = value` that just sets an expected
+type for its parameter allowing to construct durations without long imports as following:
+
+```kotlin
+val d = Duration(1.minutes + 40.seconds)
+```
 
 ### `WallClock` extending `TimeSource` interface
 
