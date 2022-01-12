@@ -4,9 +4,9 @@
 * **Authors**: Roman Elizarov, Anastasia Shadrina
 * **Contributors**: Denis Zharkov, Marat Akhin, Mikhail Belyaev, Ilya Gorbunov, Ilmir Usmanov, Simon Ogorodnik,
   Dmitriy Novozhilov, Mikhail Glukhikh
-* **Status**: Proposed
+* **Status**: Experimental in 1.6.20-M1
 * **Discussion**: [KEEP-259](https://github.com/Kotlin/KEEP/issues/259)
-* **Prototype**: In Progress
+* **Prototype**: Implemented
 
 ## Abstract
 
@@ -62,6 +62,7 @@ We would appreciate hearing your feedback on this proposal in the [KEEP-259](htt
 * [Open issues and concerns](#open-issues-and-concerns)
   * [Context receivers abuse and scope pollution](#context-receivers-abuse-and-scope-pollution)
   * [Methods from Any in top-level functions](#methods-from-any-in-top-level-functions)
+* [Prototype](#prototype)
 
 <!--- END -->
 
@@ -203,6 +204,9 @@ of them is allowed to have a subtype relation between them.
 > This constraint comes from the greedy nature of the [Resolution algorithm](#resolution-algorithm) and absence
 > of any way to explicitly pass context arguments into a call. 
 
+> In the current [prototype](#prototype) implemented in 1.6.20-M1, you won't receive an error on a declaration-site 
+> if there are repeated context receivers. The compiler will report an error only on a call-site.
+
 ### Contextual functions and property accessors
 
 For functions and property accessors, context receivers are additional **context parameters** of those
@@ -280,6 +284,21 @@ signature of the functional type replicates the textual order in which every arg
   context(Context)
   fun Receiver.baz(p: Param) {}
   ```
+  
+Conceptually, context receivers of a declaration have no order. However, a signature of a contextual functional type 
+replicates the textual order they are declared. We consider the future introduction of automatic conversion between 
+two similar functional types that differ only in the order of context receivers (for example, `context(A, B) () -> Unit`
+and `context(B, A) () -> Unit`). In 1.6.20, it won't be supported. 
+
+> In the current [prototype](#prototype), you can invoke a contextual functional type only by passing all receivers 
+> (including an extension receiver) as arguments explicitly. For example:
+> ```kotlin
+> context(C)
+> fun R.f(g: context(C) R.(Param) -> Unit, p: Param) {
+>     g(this@C, this@R, p)
+> }
+> ```
+> 
 
 ### Referencing specific receiver
 
@@ -301,6 +320,9 @@ fun userInfo(name: String): Storage<User>.Info {
     return this@Storage.info(name)
 }
 ```
+
+> Note that referencing a receiver via a labeled `this` expression is now supported only by the compiler.
+> Full IDE plugin support is planned to be implemented soon.
 
 If multiple receivers have the same generated label, none of them can be referenced with the qualified `this`.
 In cases where the label cannot be generated or referenced, a workaround is to use a type alias.
@@ -1164,6 +1186,8 @@ The detailed design for scope properties is to be presented later.
 
 ### Contextual classes and contextual constructors
 
+> We included contextual classes and contextual constructors in the [prototype](#prototype) implemented in Kotlin 1.6.20-M1.
+
 Contextual classes and contextual constructors are yet another natural future extension of this proposal.
 They can be used to require some context to be present for instantiating the class, which has a bunch of use cases.
 
@@ -1339,3 +1363,9 @@ Context receivers do not create an entirely new problem here, but make an existi
 One can find legal use cases for `Any` methods on an extension receiver, but we don't know any
 sensible use cases with context receivers, so their availability is an unwanted side effect for top-level 
 contextual functions. 
+
+# Prototype
+
+The first prototype of context receivers is available in Kotlin 1.6.20-M1 under the `-Xcontext-receivers` compiler option.
+Note that the implementation is experimental and IDE support is minimal. 
+Feel free to report any issues you face in [YouTrack](https://kotl.in/issue).
