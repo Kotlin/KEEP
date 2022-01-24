@@ -1,18 +1,17 @@
 # Explicit Backing Fields
 
 - **Type**: Design Proposal
-- **Author**: ?
+- **Author**: Nikolay Lunyak, Roman Elizarov
 - **Contributors**: Svetlana Isakova, Kirill Rakhman, Dmitry Petrov, Roman Elizarov, Ben Leggiero, Matej Drobnič, Mikhail Glukhikh, Nikolay Lunyak
-- **Status**: Implemented in FIR
-- **Prototype**: Implemented
+- **Status**: Prototype implemented in FIR
 - **Initial YouTrack Issue**: [KT-14663](https://youtrack.jetbrains.com/issue/KT-14663)
 - **Initial Proposal**: [private_public_property_types#122](https://github.com/Kotlin/KEEP/pull/122)
 
 ## Summary
 
-**Note**: initial proposal contents have been partially copied down here for convenience. Despite the different approach, the already shown use cases are still relevant.
-
-Sometimes, Kotlin programmers need to declare two properties which are conceptually the same, but one is part of a public API and another is an implementation detail. This is known as [backing properties](https://kotlinlang.org/docs/properties.html#backing-properties):
+Sometimes, Kotlin programmers need to declare two properties which are conceptually the same,
+but one is part of a public API and another is an implementation detail. 
+This pattern is known as [backing properties](https://kotlinlang.org/docs/properties.html#backing-properties):
 
 ```kotlin
 class C {
@@ -32,11 +31,39 @@ class C {
 }
 ```
 
+## Table of contents
+
+<!--- TOC -->
+
+* [Use Cases](#use-cases)
+  * [Expose read-only subtype](#expose-read-only-subtype)
+  * [Decouple storage type from external representation](#decouple-storage-type-from-external-representation)
+  * [Expose read-only view](#expose-read-only-view)
+  * [Access field from outside of getter and setter](#access-field-from-outside-of-getter-and-setter)
+* [Design](#design)
+  * [Explicit Backing Fields](#explicit-backing-fields)
+    * [Restrictions](#restrictions)
+    * [Accessors](#accessors)
+    * [Visibility](#visibility)
+    * [Lateinit](#lateinit)
+  * [Smart Type Narrowing](#smart-type-narrowing)
+* [Alternatives](#alternatives)
+  * [Initial Proposal](#initial-proposal)
+* [Future Enhancements](#future-enhancements)
+  * [Direct Backing Field Access](#direct-backing-field-access)
+  * [Protected Fields](#protected-fields)
+  * [Mutable Fields for Read-only Properties](#mutable-fields-for-read-only-properties)
+
+<!--- END -->
+
 ## Use Cases
 
-### Read-Only from Outside
+This proposal caters to a variety of use-cases that are currently met via a backing property pattern.
 
-> We often do not want our data structures to be modified from outside. Unlike Java, this can be easily achieved in Kotlin by just exposing read-only `List`. But as already ilustrated in above example, exposing different type of a property is a bit messy.
+### Expose read-only subtype
+
+We often do not want our data structures to be modified from outside. It is customary in Kotlin to have 
+a read-only (e.g. `List`) and a mutable (e.g. `MutableList`) interface to the same data structure. 
 
 ```kotlin
 internal val _items = mutableListOf<Item>()
@@ -50,11 +77,13 @@ val items: List<Item>
     internal field = mutableListOf()
 ```
 
-### Android Architecture Components
+This use-case is also widely applicable to architecture of reactive applications:
+ 
+* Android `LiveData` has a `MutableLiveData` counterpart.
+* Rx `Observable` has a mutable `Subject` counterpart.
+* Kotlin coroutines `SharedFlow` has a `MutableSharedFlow`, etc.
 
->  Proper way to do Architecture components is to use `MutableLiveData` (`LiveData` implementation that allows caller to change its value) privately inside View Model classes and then only expose read-only `LiveData` objects outside.
-
-Sample code [from an Android app](https://github.com/elpassion/crweather/blob/9c3e3cb803b7e4fffbb010ff085ac56645c9774d/app/src/main/java/com/elpassion/crweather/MainModel.kt#L14):
+For example, sample code [from an Android app](https://github.com/elpassion/crweather/blob/9c3e3cb803b7e4fffbb010ff085ac56645c9774d/app/src/main/java/com/elpassion/crweather/MainModel.kt#L14):
 
 ```kotlin
 private val mutableCity = MutableLiveData<String>().apply { value = "" }
@@ -80,100 +109,155 @@ val loading: LiveData<Boolean>
 val message: LiveData<String>
     field = MutableLiveData()
 ```
+        
+> `private` is a default access for a `field` declaration.
 
-### Common Java Pattern
+In this use-case, an read access to the field from inside the corresponding classes/modules 
+(where the field is visible) automatically gives access to mutable type, which we call [Smart Type Narrowing](#smart-type-narrowing), 
+but is seen as a property with read-only type to the outside code.
 
->  Common pattern in java is having full type accessible as private property and then only exposing required interface in the public getter:
->
->  ```java
->  class MyClass {
->      // Use full type for private access
->      private final ArrayList<String> data = new ArrayList<>();
->  
->      // Only expose what is needed in public getter
->      public List<String> getData() {
->          return data;
->      }
->  }
->  ```
->
->  This pattern allows easy hiding of implementation details and allows for easy clean external interfaces to the classes.
->
->  - There is no clean idiomatic way to do this pattern in Kotlin
->  - Current best approach throws away all benefits of Kotlin properties and forces developer to write Java-like code with separate private field and public getter
->  - Current best approach forces developer to assign two different names to single property (or pad private property, for example adding `_` prefix and then using this prefix everywhere in code)
->  - This is another place where Java pattern could be introduced into Kotlin with less boilerplate
+### Decouple storage type from external representation
 
-The proposed syntax allows to achieve the same functionality while keeping the same level of simplicity:
+Sometimes a property must be internally represented by a different type for storage-efficiency or architectural reason,
+while having a different outside type. For example, API requirements might dictate that the property type
+is `String`, but if we know that it always represents a decimal integer, then it can be efficiently stored as such 
+with custom getter and custom setter.
 
 ```kotlin
-class MyClass {
-    val data: List<String>
-        field = ArrayList()
+val number: String
+    field: Int = 0
+    get() = field.toString()
+    set(value) { field = value.toInt() }
+```
+
+### Expose read-only view
+
+In some application it is desirable to expose not just a read-only subtype, but a specially constructed read-only
+view that protects the data structure from casting into mutable type. For example a `MutableStateFlow` has
+[`asStateFlow`](https://kotlin.github.io/kotlinx.coroutines/kotlinx-coroutines-core/kotlinx.coroutines.flow/as-state-flow.html)
+extension for that purpose.
+
+With the proposed syntax it is possible to declare a custom getter:
+
+```kotlin
+val state: StateFlow<State> 
+    get() = field.asStateFlow()
+    field = MutableStateFlow(State.INITIAL)
+```
+
+For this use-case, the TBD syntax of [Direct Backing Field Access](#direct-backing-field-access) will need to be added.
+
+### Access field from outside of getter and setter
+
+Kotlin allows property field to be accessed from the property's getter and setter using a `field` variable.
+This proposal is designed with an idea to provide an explicit syntax to access a property's field from anywhere
+inside the corresponding class when the field is declared explicitly:
+
+```kotlin
+class Component {
+    var status: Status
+        field // explicit field declaration
+        set(value) {
+            field = value
+            notifyStatusChanged()
+        }
 }
 ```
 
-### RX Observable and Subjects
-
-> Data can often be pushed into reactive world using subjects. However, exposing `Subject` would allow consumer of the class to push its own data into it. That is why it is good idea to expose all subjects as read-only `Observable`:
-
-```kotlin
-class MyClass {
-    private val _dataStream = PublishSubject.create<String>()
-    val dataStream: Observable<String>
-        get() = _dataStream
-}
-```
-
-Turns into:
-
-```kotlin
-class MyClass {
-    val dataStream: Observable<String>
-        field = PublishSubject.create()
-}
-```
+This way, all the code inside the class can change the field of the property directly, without invoking the setter . 
+However, the actual access syntax of such [Direct Backing Field Access](#direct-backing-field-access) is TBD. 
 
 ## Design
 
-The proposed design consists of two new ideas.
+The proposed design consists of two new ideas: explicit backing fields and smart type narrowing.
 
 ### Explicit Backing Fields
 
-```kotlin
-val it: P
-    [visibility] field[: F] = initializer
+The grammar for `propertyDeclaration` is extended to support an optional _explicit backing field declaration_ in addition
+to the optional `getter` and `setter` (in any order between them). 
+
+```
+propertyDeclaration ::=
+    modifiers? ('val' | 'var') typeParameters?
+    (receiverType '.')?
+    (multiVariableDeclaration | variableDeclaration)
+    typeConstraints? (('=' expression) | propertyDelegate)? ';'?
+     ( (getter? (semi? setter)? (semi? field)?) 
+     | (setter? (semi? getter)? (semi? field)?)
+     | (getter? (semi? field)? (semi? setter)?) 
+     | (setter? (semi? field)? (semi? getter)?)
+     | (field? (semi? getter)? (semi? setter)?) 
+     | (field? (semi? setter)? (semi? getter)?)
+
+getter ::=
+    modifiers? 'get' ('(' ')' (':' type)? functionBody)?
+  
+setter ::=
+    modifiers? 'set' ('(' functionValueParameterWithOptionalType ','? ')' (':' type)? functionBody)?
+    
+field ::=
+    modifiers? 'field` (':' type)? ('=' expression)?       
 ```
 
-The above `field` declaration is referred to as an _explicit backing field declaration_.
+Explicit backing field declaration has an optional visibility, an optional type, and an optional 
+initialization expression. 
 
-Explicit backing fields is a FIR-only feature.
+#### Restrictions
+
+There are the following additional semantic restrictions on the property declaration grammar:
+
+* A property with an explicit field declaration cannot have its own initializer.
+  A property with an explicit field must be initialized with the initialization expression for its
+  field to clarify the fact, that property initialization goes directly to the field and does not
+  call property's setter. The property without field initialization expression is considered
+  uninitialized and is allowed only when it is `lateinit` (see [Lateinit](#lateinit) section for details).
+* A property with an explicit backing field must always explicitly specify the type of the property itself.
+* Explicit backing field declaration is not allowed for interface properties, for `abstract` properties, and for delegated properties.
+
+A backing field type is not required to be explicitly specified: 
+
+* If both backing field type and initialization expression are not specified, then the field type is the same as the property type.
+* If backing field type is not specified, but there is an initialization expression, then  
+  the field type is inferred from the type of its backing field initialization expression. 
+* When both field type and initialization expression are specified, then the type of the former must be 
+  assignable to the latter.
+
+Backing field assignability is the same as it is now for `field` references in getters and setters:
+
+* `var` properties have mutable backing fields.
+* `val` properties have read-only backing fields. That is, assignment to `field` inside a `val` property getter results in an error.
 
 #### Accessors
+                                                          
+When explicit backing field with type `F` for a property with type `P` is declared explicitly, 
+then compiler can derive getter and, for `var` properties, setter implementation automatically:
 
-- if `P :> F`, the compiler can provide a default getter
-- if `P <: F`, the compiler can provide a default setter
+* If `P :> F`, the compiler can provide a default getter.
+* If `P <: F`, the compiler can provide a default setter.
 
-If the compiler can not provide a getter, the user must declare it explicitly. The same applies to setters in case of `var` properties.
+If the compiler can not provide a getter, the user must declare it explicitly. 
+The same applies to setters in case of `var` properties.
 
 ```kotlin
 public val flow: SharedFlow<String>
     field: MutableSharedFlow? = null
-    get() {
+    get() { // It is an error if getter is not explicitly specified here
         return field ?: run { ... }
     }
 ```
 
 #### Visibility
 
-Only the `private` and the `internal` visibilities are allowed for explicit backing fields now. The default visibility is `private`.
+Only the `private` and `internal` visibilities are allowed for explicit backing fields. 
+The default field visibility is `private`.
 
 ```kotlin
 val mutableWithinModule: List<Item>
     internal field = mutableListOf()
 ```
 
-Right now, there is no special syntax to explicitly access the backing field from outside the property accessors, but we will see how it can be accessed implicitly via the ["second idea"](#smart-type-narrowing).
+The special syntax to explicitly access the backing field from outside the code of property accessors is TBD, 
+but the field can be implicitly access when it is visible via the [Smart Type Narrowing](#smart-type-narrowing).
 
 #### Lateinit
 
@@ -188,54 +272,41 @@ var someStrangeExample: Int
     }
 ```
 
-#### Restrictions
-
-If there is an explicit backing field, the property must not declare an initializer. If the explicit backing field is not `lateinit`, it must have an initializer. For `lateinit` properties, initializers are forbidden.
-
-For now, we assume `val` properties have immutable backing fields, and `var` properties have mutable ones. That is, assignment to `field` inside a `val` property getter results in an error.
-
-Explicit backing fields are not allowed inside interfaces or abstract properties, as well as they are forbidden for delegated properties.
-
 ### Smart Type Narrowing
 
-#### Rules
-
-If:
-
-1. the compiler can guarantee the property getter returns the same instance as the one stored in the backing field
-2. the type of that instance is compatible with the property type
-3. the backing field visibility allows a hypothetical direct access
-4. there is no ambiguity in such an access
-
-it can then narrow down the returned instance type at the call site without loss of functionality. This is what is meant by the words _smart type narrowing_.
-
-The formal checks corresponding to the above rules are:
-
-1. the property does not have a custom getter, only the default one
-2. `P :> F`
-3. accessing:
-   1. a private backing field of a class member property within the class
-   2. a private backing field of a top-level property within the file
-   3. an internal backing field within the module
-4. property must be final, otherwise an overridden version would be able to provide a custom getter that may return a different instance
-
-#### Example
+The idea behind smart type narrowing is to implicitly access the underlying field, as opposed to the property,
+when the field is in scope and when it is safe to do so. For example, expanding on 
+[Expose read-only subtype](#expose-read-only-subtype) use-case, one can write:
 
 ```kotlin
-class MyClass {
-    val items: List<String>
-        field = mutableListOf("a", "b")
-    
-    fun registerItem(item: String) {
-        items.add(item) // Viewed as MutableList<String>
-    }
+class Component {
+  val items: List<Item>
+      field = mutableListOf()
+  
+  fun addItem(item: Item) {
+      items += item // works
+  }
 }
 
-fun test() {
-    val it = MyClass()
-    it.items // Viewed as a List<String>
-}
+// outside code
+component.items += item // does not compile; cannot add to List<Item>
 ```
+
+The code above works, because `items` there implicitly refers to the field with type `MutableList<Item>`.
+
+Smart type narrowing works when trying to read the value of the property and all the following conditions are met:
+
+* The backing field is visible from the point of access.
+* The property is final (that is, it is not open `open`).
+* The property does not have an explicit getter.
+
+> The last rule automatically guarantees that the getter was automatically generated. Together with 
+> the requirement that the field is not `open`, it means that the compiler knows that the field stores the same 
+> instance as returned by the getter and that the type of the field is narrower than the type of 
+> the property (see [Accessors](#accessors) section).
+
+In this case, the type of property read expression is narrowed by the compiler from the type of the property 
+to the type of its field.
 
 ## Alternatives
 
@@ -250,77 +321,35 @@ private val items = mutableListOf<Item>()
 
 > In above example `items` is `MutableList<Item>` when accessed privately inside class and read-only `List<String>` when accessed from outside class.
 
-In fact, the above syntax brings in an incorrect mental model: it says _'There is a private property `it` with some *part* that declares its public behavior'_.
+In fact, the above syntax brings in an incorrect mental model: it says _'There is a private property `items` with some *part* that declares its public behavior'_.
 
-Attempt to add support for the above syntax led to multiple redundant complications (see the [problems section](https://github.com/matejdro/KEEP/blob/private_public_property_types/proposals/private_public_property_types.md#questions-to-consider) + unclear override mechanics).
+Attempt to add support for the above syntax led to multiple redundant complications (see the [problems section](https://github.com/matejdro/KEEP/blob/private_public_property_types/proposals/private_public_property_types.md#questions-to-consider) and unclear override mechanics).
 
 ## Future Enhancements
 
 ### Direct Backing Field Access
+                                                                     
+We plan to add support for a syntax to explicitly access the property's backing field when the field was 
+explicitly declared and is accessible via some TBD syntax.  
 
-It might be handy to allow the direct access to the property backing field via syntax like `myProperty#field` (just a hypothetical syntax). 
+###  Protected Fields
+                     
+The set of visibilities for an explicitly declared field can be extended to include `protected`
+(in addition to `private` and `internal`). This way, subclasses can explicitly or implicitly
+(via the [smart type narrowing](#smart-type-narrowing)) reference the field.
 
-###  Allow `protected field`
+### Mutable Fields for Read-only Properties
 
-This way, smart type narrowing would become possible inside subclasses as well.
-
-### Use of `field` Before Property Type Is Known
-
-Right now, any attempt to use `field` inside a property accessor in cases when the property type is not yet known (depends on the getter return value) will result into `UNRESOLVED_REFERENCE`. 
-
-Since we now can have explicit backing field declarations, we may use them to find out the type for backing fields:
+Letting a `val` property have a mutable backing field may be useful. 
+Consider the following snippet from the 
+[implementation of `lazy` in the Kotlin standard library](https://github.com/JetBrains/kotlin/blob/master/libraries/stdlib/jvm/src/kotlin/util/LazyJVM.kt#L57):
 
 ```kotlin
-var thing
-    field = SomeThing()
+// backing field pattern
+private var _value: Any? = UNINITIALIZED_VALUE
+
+override val value: T
     get() {
-        return convertSomehow(field)
-    }
-    set(value) {
-        field = convertTheOtherWayAround(value)
+       // initializes _value backing field on the first access
     }
 ```
-
-### Custom Getters
-
-Hypothetically, we could perform more analysis to find out whether smart type narrowing is possible for the given getter. 
-
-### Mutability
-
-Letting a `val` property have a mutable backing field may be useful. Consider the [following example](https://github.com/JetBrains/kotlin/blob/master/libraries/stdlib/jvm/src/kotlin/util/LazyJVM.kt#L57):
-
-```kotlin
-private class SynchronizedLazyImpl<out T>(
-    initializer: () -> T, 
-    lock: Any? = null
-) : Lazy<T>, Serializable {
-    private var initializer: (() -> T)? = initializer
-    @Volatile private var _value: Any? = UNINITIALIZED_VALUE
-    // final field is required to enable safe publication of constructed instance
-    private val lock = lock ?: this
-
-    override val value: T
-        get() {
-            val _v1 = _value
-            if (_v1 !== UNINITIALIZED_VALUE) {
-                @Suppress("UNCHECKED_CAST")
-                return _v1 as T
-            }
-
-            return synchronized(lock) {
-                val _v2 = _value
-                if (_v2 !== UNINITIALIZED_VALUE) {
-                    @Suppress("UNCHECKED_CAST") (_v2 as T)
-                } else {
-                    val typedValue = initializer!!()
-                    _value = typedValue
-                    initializer = null
-                    typedValue
-                }
-            }
-        }
-    
-    ...
-}
-```
-
