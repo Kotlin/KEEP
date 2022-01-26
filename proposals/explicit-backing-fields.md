@@ -124,7 +124,7 @@ is `String`, but if we know that it always represents a decimal integer, then it
 with custom getter and custom setter.
 
 ```kotlin
-val number: String
+var number: String
     field: Int = 0
     get() = field.toString()
     set(value) { field = value.toInt() }
