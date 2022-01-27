@@ -164,7 +164,7 @@ class Component {
 }
 ```
 
-This way, all the code inside the class can change the field of the property directly, without invoking the setter . 
+This way, all the code inside the class can change the field of the property directly, without invoking the setter. 
 However, the actual access syntax of such [Direct Backing Field Access](#direct-backing-field-access) is TBD. 
 
 ## Design
