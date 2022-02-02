@@ -36,10 +36,11 @@ class C {
 <!--- TOC -->
 
 * [Use Cases](#use-cases)
-  * [Expose read-only subtype](#expose-read-only-subtype)
+  * [Expose read-only supertype](#expose-read-only-supertype)
   * [Decouple storage type from external representation](#decouple-storage-type-from-external-representation)
   * [Expose read-only view](#expose-read-only-view)
   * [Access field from outside of getter and setter](#access-field-from-outside-of-getter-and-setter)
+  * [Retrieve property delegate reference](#retrieve-property-delegate-reference)
 * [Design](#design)
   * [Explicit Backing Fields](#explicit-backing-fields)
     * [Restrictions](#restrictions)
@@ -58,16 +59,17 @@ class C {
 
 ## Use Cases
 
-This proposal caters to a variety of use-cases that are currently met via a backing property pattern.
+This proposal caters to a variety of use-cases that are currently met via a 
+[backing property pattern](https://kotlinlang.org/docs/properties.html#backing-properties).
 
-### Expose read-only subtype
+### Expose read-only supertype
 
 We often do not want our data structures to be modified from outside. It is customary in Kotlin to have 
 a read-only (e.g. `List`) and a mutable (e.g. `MutableList`) interface to the same data structure. 
 
 ```kotlin
 internal val _items = mutableListOf<Item>()
-val item : List<Item> by _items
+val item: List<Item> by _items
 ```
 
 And the new syntax allows us to write:
@@ -76,6 +78,9 @@ And the new syntax allows us to write:
 val items: List<Item>
     internal field = mutableListOf()
 ```
+
+> While the number of lines in this code does not change, the related properties become better grouped together and
+repetition of the property name multiple times is avoided.
 
 This use-case is also widely applicable to architecture of reactive applications:
  
@@ -145,18 +150,22 @@ val state: StateFlow<State>
     field = MutableStateFlow(State.INITIAL)
 ```
 
-For this use-case, the TBD syntax of [Direct Backing Field Access](#direct-backing-field-access) will need to be added.
+> Note, that `field.asStateFlow()` allocates a wrapper read-only view object and it is called here every time this 
+property is accessed, allocating a new instance. For some applications this is an acceptable and even preferable 
+behavior. For others, it is crucial to create this view object once and cache it in a separate field. We don't plan 
+to address the later use-cases &mdash; that's where the backing-field pattern will have to continue to be used.
+
+For this use-case to become actually usable, the TBD syntax of [Direct Backing Field Access](#direct-backing-field-access) 
+will need to be added. That's because such applications need to modify the mutable data structure that is stored in the field,
+but the rules of [Smart Type Narrowing](#smart-type-narrowing) will not make it directly available. 
 
 ### Access field from outside of getter and setter
 
 Kotlin allows property field to be accessed from the property's getter and setter using a `field` variable.
-This proposal is designed with an idea to provide an explicit syntax to access a property's field from anywhere
-inside the corresponding class when the field is declared explicitly:
 
 ```kotlin
 class Component {
     var status: Status
-        field // explicit field declaration
         set(value) {
             field = value
             notifyStatusChanged()
@@ -164,8 +173,60 @@ class Component {
 }
 ```
 
-This way, all the code inside the class can change the field of the property directly, without invoking the setter. 
-However, the actual access syntax of such [Direct Backing Field Access](#direct-backing-field-access) is TBD. 
+This proposal is designed with an idea to provide an explicit syntax to access a property's field from anywhere
+inside the corresponding class as if the backing field was declared with `private` access. In this particular example,
+any code inside the class `Component` will be able to change the field of the `status` property directly, without invoking the setter. 
+However, the actual access syntax of such [Direct Backing Field Access](#direct-backing-field-access) is TBD.
+
+### Retrieve property delegate reference
+
+Delegated properties in Kotlin have a backing field that stores a reference to the delegate object and 
+automatically generate getter and setter implementations that forward accesses to the delegate. 
+The following Kotlin code:
+
+```kotlin
+class Data {
+    val expensive: T by lazy { /*...*/ }    
+}
+```
+
+is basically compiled into the following code:
+
+```kotlin
+class Data {
+    private val expensive$delegate: Lazy<T> = SynchronizedLazyImpl<T> { /*...*/ }
+    val expensive: T
+        get() = expensive$delegate.value
+}
+```
+
+As you can see, `expensive$delegate` here is effectively a backing for the property with the delegate.
+The are many use-cases where the direct access to the delegate is need. For example, a `Lazy` type 
+has [`isInitialized`](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-lazy/is-initialized.html) function. 
+The existing syntax for its access is cumbersome and not type-safe:
+
+```kotlin
+fun isExpensiveInitialized() = 
+    (this::value.getDelegate() as Lazy<T>).isInitialized()
+```
+
+In practice, it means that 
+[developers have to resort to an backing field pattern](https://stackoverflow.com/questions/42522739/kotlin-check-if-lazy-val-has-been-initialised) 
+to make it look nice:
+
+```kotlin
+class Data {
+    private val expensiveDelegate: Lazy<T> = SynchronizedLazyImpl<T> { /*...*/ }
+    val expensive: T
+        get() = expensiveDelegate.value
+    fun isExpensiveInitialized() =
+        expensiveDelegate.isInitialized()
+}
+```
+
+It is expected that TBD [Direct Backing Field Access](#direct-backing-field-access) syntax is going to 
+provide a direct and simpler way to access the delegate of a delegated property without having to 
+resort to the backing field pattern.
 
 ## Design
 
@@ -329,8 +390,8 @@ Attempt to add support for the above syntax led to multiple redundant complicati
 
 ### Direct Backing Field Access
                                                                      
-We plan to add support for a syntax to explicitly access the property's backing field when the field was 
-explicitly declared and is accessible via some TBD syntax.  
+We plan to add support for a syntax to explicitly access the property's backing field as well as for property 
+delegate via some TBD syntax.  
 
 ###  Protected Fields
                      
