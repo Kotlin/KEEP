@@ -4,7 +4,7 @@
 * **Author**: Kevin Bierhoff
 * **Contributors**: David Baker, Jeffrey van Gogh
 * **Status**: Submitted
-* **Prototype**: https://github.com/kevin1e100/kotlin/pull/new/optionals
+* **Prototype**: https://github.com/JetBrains/kotlin/pull/4737
 
 ## Summary
 
@@ -245,7 +245,7 @@ What are the dependencies of the proposed API:
 
 ## Reference implementation
 
-* See https://github.com/kevin1e100/kotlin/pull/new/optionals
+* See https://github.com/JetBrains/kotlin/pull/4737
 
 ## Unresolved questions
 
