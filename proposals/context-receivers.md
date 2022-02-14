@@ -852,7 +852,7 @@ limited form of typed (checked) effects.
 Coeffects constitute a dual approach to modelling the same behavior as with effects. Instead of looking at effects
 that a function has, we can look at the context in which the function can be run (see
 [Thomas Petricek's work for details](http://tomasp.net/coeffects/)). Kotlin context receivers are a limited form of a typed
-(checked) coffect system. We can rewrite the declaration of the `hello` function with an `emit` effect to Kotlin as a
+(checked) coeffect system. We can rewrite the declaration of the `hello` function with an `emit` effect to Kotlin as a
 function that requires an `Emit` context:
 
 ```kotlin
