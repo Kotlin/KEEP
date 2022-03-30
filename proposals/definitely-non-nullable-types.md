@@ -108,9 +108,9 @@ Overrides of Java annotated methods
 import org.jetbrains.annotations.*;
 
 public interface A<T> {
-    public T foo(T x) { return x; }
+    T foo(T x);
     @NotNull
-    public T bar(@NotNull T x) {}
+    T bar(@NotNull T x);
 }
 
 // FILE: main.kt
