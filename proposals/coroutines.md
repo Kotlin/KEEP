@@ -884,8 +884,8 @@ Its result type `T` has moved into a position of type argument in its additional
 The implementation result type of `Any?` is designed to represent the action of the suspending function.
 When suspending function _suspends_ coroutine, it returns a special marker value of 
 `COROUTINE_SUSPENDED` (see more in [coroutine intrinsics](#coroutine-intrinsics) section). 
-When a suspending function does not suspend but
-continues coroutine execution, it returns its result or throws an exception directly.
+When a suspending function does not suspend the current coroutine but continues the coroutine's
+execution, it returns its result or throws an exception directly.
 This way, the `Any?` return type of the `await` implementation is actually a union of
 `COROUTINE_SUSPENDED` and `T` that cannot be expressed in Kotlin's type system.
 
