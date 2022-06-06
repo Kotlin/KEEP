@@ -251,7 +251,7 @@ This design proposal does not affect the call resolution procedure in any way. I
 
 ### Override matching signature
 
-his signature is used when `override` in the derived class or interface needs to be matched with inherited class or interface. 
+This signature is used when `override` in the derived class or interface needs to be matched with inherited class or interface. 
 We can describe it in the following way:
 
 * It includes all Kotlin type information, including generics parameters and detailed parameter types.
@@ -477,7 +477,7 @@ have their own name and cannot be overridden, so the binary signature name has a
   checking among constructors according to the general rules.  
   Both [override matching check](#override-matching-check) and [call resolution check](#call-resolution-check) are performed.
 * Constructor binary signature name is stored in Klib as a part of the **binary signature** for the purpose of linking.  
-  However, on Kotlin/JVM, constructors are anonymous and signature does is not stored as a part of the constructor’s JVM signature at all.
+  However, on Kotlin/JVM, constructors are anonymous and signature is not stored as a part of the constructor’s JVM signature at all.
 
 The latter means, that the following code will not compile on Kotlin/JVM:
 
