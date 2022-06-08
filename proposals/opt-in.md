@@ -128,8 +128,6 @@ Annotating every usage of some API might quickly become annoying, especially for
 
 We introduce a new CLI argument to kotlinc, `-opt-in=org.foo.Ann`, where `org.foo.Ann` is a fully qualified name of the opt-in requirement marker, which enables the corresponding API for the module. It's as if the *whole module* was annotated with `@OptIn(org.foo.Ann::class)`.
 
-Since it's not easy to encode arbitrary Kotlin expressions in the CLI arguments, and because opt-in requirement markers are used in the `-opt-in` argument, we **require all marker annotations to have no parameters**. The compiler will report an error otherwise.
-
 The compiler will check the value of `-opt-in` in the same way it checks the argument of the `@OptIn` annotation. In particular, if any of the annotations mentioned in the `-opt-in` are deprecated, the compiler is going to report a warning or error, depending on the deprecation level.
 
 In a previous version of this proposal, we discussed the possibility of introducing another argument, `-Xexperimental=org.foo.Ann`, to use the propagating opt-in on the whole module (i.e. mark the whole module as "experimental" in terms of that proposal). The implementation of that feature turned out to be unexpectedly complicated, and it wasn't widely used, so we've decided not to add it at this point.
