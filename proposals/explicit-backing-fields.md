@@ -3,7 +3,7 @@
 - **Type**: Design Proposal
 - **Author**: Nikolay Lunyak, Roman Elizarov
 - **Contributors**: Svetlana Isakova, Kirill Rakhman, Dmitry Petrov, Roman Elizarov, Ben Leggiero, Matej Drobnič, Mikhail Glukhikh, Nikolay Lunyak
-- **Status**: Prototype implemented in FIR
+- **Status**: Prototype implemented in K2 compiler, in preview since 1.7.0
 - **Initial YouTrack Issue**: [KT-14663](https://youtrack.jetbrains.com/issue/KT-14663)
 - **Initial Proposal**: [private_public_property_types#122](https://github.com/Kotlin/KEEP/pull/122)
 
@@ -54,6 +54,8 @@ class C {
   * [Direct Backing Field Access](#direct-backing-field-access)
   * [Protected Fields](#protected-fields)
   * [Mutable Fields for Read-only Properties](#mutable-fields-for-read-only-properties)
+* [Change log](#change-log)
+  * [Prototype in K2 preview with Kotlin 1.7.0](#prototype-in-k2-preview-with-kotlin-170)
 
 <!--- END -->
 
@@ -414,3 +416,15 @@ override val value: T
        // initializes _value backing field on the first access
     }
 ```
+
+## Change log
+
+This section records changes to this KEEP.
+
+### Prototype in K2 preview with Kotlin 1.7.0
+
+Prototype of this proposal has been delivered in Kotlin 1.7.0 as a part of K2 compiler preview.
+In order to try out his new feature you need to enable the K2 compiler with 
+`-Xuse-k2` command line option and enable this language feature with `-XXLanguage:+ExplicitBackingFields`.
+The implementation is not stable yet and will generate pre-release binary. 
+There is no IDE support yet.
