@@ -255,7 +255,7 @@ is transformed into
 addEventListener("message", ($message) => {
   const { data: { $kind, $captured } } = $message
   if ($kind == "START") {
-    if ($captured.foo == $data.$captured.bar) {
+    if ($captured.foo == $captured.bar) {
       postMessage({
         $kind: "RETURN",
         $result: "Equal",
