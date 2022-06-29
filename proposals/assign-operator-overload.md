@@ -123,8 +123,8 @@ Or as a DSL
 ```kotlin
 myTask.apply {
     input1 = File("input-file.txt")
-    Input2 = calculatedProperty
-    output = File("input-file.txt"))
+    input2 = calculatedProperty
+    output = File("input-file.txt")
 }
 ```
 
@@ -214,7 +214,6 @@ operator fun Int.assign(v: String)
 val value = 5
 value = 6
        ~~~ Assign operator method exists, but type doesn’t match
-
 ```
 
 If there is no operator overload method, the user should see the usual `Val cannot be reassigned` error.
@@ -350,7 +349,7 @@ The latter could be quite distracting for a reader of a typical DSL, see:
 ```kotlin
 myTask.apply {
     input1 = File("input-file.txt")
-    Input2Property.bind(calculatedProperty)
+    input2Property.bind(calculatedProperty)
     output = File("input-file.txt")
 }
 ```
@@ -384,7 +383,7 @@ We can write `input = File(...)` to set a property value and `$input.bind($anoth
 ```kotlin
 myTask.apply { 
     input1 = File("input-file.txt")
-    $Input2.bind(calculatedProperty)
+    $input2.bind(calculatedProperty)
     output = File("input-file.txt")
 } 
 ```
@@ -397,7 +396,7 @@ Another alternative is generally to take the approach presented in this KEEP, bu
 ```kotlin
 myTask.apply {
     input1 := File("input-file.txt")
-    Input2 := calculatedProperty
+    input2 := calculatedProperty
     output := File("input-file.txt")
 }
 ```
@@ -433,8 +432,8 @@ A variant of [separate operator syntax for assignment](#separate-operator-syntax
 ```kotlin
 myTask.apply {
     input1 = File("input-file.txt")
-    Input2 := calculatedProperty // desugars to $input2.bind(calculatedProperty)
-    output = File("input-file.txt"))
+    input2 := calculatedProperty // desugars to $input2.bind(calculatedProperty)
+    output = File("input-file.txt")
 }
 ```
 
