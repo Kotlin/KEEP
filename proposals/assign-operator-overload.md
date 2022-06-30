@@ -3,7 +3,7 @@
 * **Type**: Design proposal
 * **Authors**: Anže Sodja, Lóránt Pintér, Stefan Wolf, Roman Elizarov
 * **Status**: In review
-* **Discussion**: // TODO add KEEP issue
+* **Discussion**: [KEEP-309](https://github.com/Kotlin/KEEP/issues/309)
 * **Prototype**: Implemented
 
 
@@ -25,7 +25,7 @@ list[0] = 4 // operator set
 
 Notice that the `list` is defined as a read-only (`val`) property, but contains a reference to a mutable container of type `MutableList` which is modified with various operators using variants of assign (`=`) operator.
 
-These operators are not hardcoded in Kotlin to operate on lists of arrays, for that matter, but are implemented in the language via _operator conventions_. The language is designed to recognize those conventions and resolve the corresponding operators (in the above example we use operators `plusAssign` and `set`), while the actual support for the specific containers is provided in the standard library. Other libraries are free to define those operators on their own containers to suit the intended usage of those containers.
+These operators are not hardcoded in Kotlin to operate on lists or arrays, for that matter, but are implemented in the language via _operator conventions_. The language is designed to recognize those conventions and resolve the corresponding operators (in the above example we use operators `plusAssign` and `set`), while the actual support for the specific containers is provided in the standard library. Other libraries are free to define those operators on their own containers to suit the intended usage of those containers.
 
 Essentially, these operators form a DSL for collection manipulation that allow writing collection-manipulation code in an easier-to-read way. To see the advantage of having these operators in the language, imagine a configuration part of code that sets various properties and parameters for some subsystem in the code:
 
