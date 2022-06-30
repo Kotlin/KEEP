@@ -4,7 +4,7 @@
 * **Authors**: Anže Sodja, Lóránt Pintér, Stefan Wolf, Roman Elizarov
 * **Status**: In review
 * **Discussion**: [KEEP-309](https://github.com/Kotlin/KEEP/issues/309)
-* **Prototype**: Implemented
+* **Prototype**: Implemented in [PR #4890](https://github.com/JetBrains/kotlin/pull/4890)
 
 
 ## Abstract
