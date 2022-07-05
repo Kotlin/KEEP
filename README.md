@@ -75,6 +75,6 @@ discussions.
 
 ### Contributing to existing KEEPs
 
-* For in-progress KEEPs, please keep discussions on the corresponding issue.
+* For in-progress KEEPs, please keep discussions in the corresponding issue.
 * If you find problems with the _text_ or have text correction for merged KEEPs, feel free to create a separate
   issue or a pull request with the proposed correction.
