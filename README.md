@@ -18,8 +18,8 @@ the [Kotlin Source Code Repository](https://github.com/JetBrains/kotlin).
 
 ### Design notes
 
-Some feature ideas that are being discussed for Kotlin represent important directions of potential enhancement, but 
-are not complete to call them design proposals, yet they still need to be discussed
+Some feature ideas that are being discussed for Kotlin represent important directions of potential enhancement but 
+are not complete to call them design proposals. They still need to be discussed
 with the Kotlin community to gather use-cases for these features, their potential syntax, impact on existing Kotlin code, etc.
 They are called "design notes" and are stored in a separate [notes](notes) directory.
 
@@ -33,24 +33,24 @@ Language enhancements/features usually go through the following informal stages:
 4. Experimental support in the language.
 5. Further refinement and stable release.
 
-All stages involve gathering of feedback on the corresponding feature.
+All stages involve the gathering of feedback on the corresponding feature.
 It does not stop even when the feature becomes stable.
-The community feedback on all stages is crucial to the open philosophy of Kotlin language enhancement process. 
+The community feedback on all stages is crucial to the open philosophy of the Kotlin language enhancement process. 
 
 ### Contributing ideas
 
-If you have a vague idea on the potential enhancement, not sure whether it is worthwhile and/or
+If you have a vague idea about the potential enhancement but you are not sure whether it is worthwhile and/or
 fits the Kotlin language, or just want to get community feedback, you can use either
 of the two channels you feel most comfortable with:
 
 * [#language-proposals](https://kotlinlang.slack.com/messages/language-proposals/) channel in Kotlin public Slack
-  (get invite [here](http://slack.kotlinlang.org/));
-* [Kotlin Forum in Language design category](https://discuss.kotlinlang.org/c/language-design).
+  (get an invite [here](http://slack.kotlinlang.org/));
+* [Kotlin Forum in the Language design category](https://discuss.kotlinlang.org/c/language-design).
 
 ### Contributing use-cases and specific enhancement proposals
 
-If you have a use-case that is not covered by the language or have a specific language enhancement in mind,
-then, please, file an [YouTrack issue](https://kotl.in/issue) in the `Language Design` subsystem. 
+If you have a use case that is not covered by the language or have a specific language enhancement in mind,
+then, please, file a [YouTrack issue](https://kotl.in/issue) in the `Language Design` subsystem. 
 While many popular enhancements and language design problems are already filed in 
 [Kotlin YouTrack](https://youtrack.jetbrains.com/issues/KT?project=kt), your contribution to them is still very important:
 
@@ -66,8 +66,8 @@ Design proposals in this repository are expected to be well thought-through and 
 a prototype implementation that demonstrates their feasibility. All design proposals in this repository
 shall be backed by maintainers of the corresponding subsystems in the Kotlin compiler or its standard library.
 
-If you are in doubt of whether the proposal meets those criteria, please start with the discussion
-of your idea, use-case, or a specific enhancement in the appropriate channels and secure support for your general
+If you are in doubt about whether the proposal meets those criteria, please start with the discussion
+of your idea, use case, or a specific enhancement in the appropriate channels and secure support for your general
 idea/proposal from maintainers before submitting a KEEP.
 
 We will be gradually moving KEEPs that are not backed by Kotlin maintainers into YouTrack issues for further 
@@ -77,4 +77,4 @@ discussions.
 
 * For in-progress KEEPs, please keep discussions in the corresponding issue.
 * If you find problems with the _text_ or have text correction for merged KEEPs, feel free to create a separate
-  issue, or a pull-request with the proposed correction.
+  issue or a pull request with the proposed correction.
