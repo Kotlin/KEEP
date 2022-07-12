@@ -84,7 +84,7 @@ We have considered the following alternatives:
 
 ### Translation strategy for Kotlin enums
 
-For source-compiled enums, a new static property with a JVM signature `public static List<E> getEntries()` is added,
+For source-compiled enums, a new static property with a JVM signature `public static EnumEntries<E> getEntries()` is added,
 returning a pre-allocated immutable list of enum entries.
 
 For the sake of compatibility with bytecode pre-processors and reflection usages that modify a backing array `$VALUES` field,
@@ -108,7 +108,7 @@ has the following form (all irrelevant parts omitted):
 ```java
 enum MyEnum extends Enum<MyEnum> {
     private static final synthetic MyEnum[] $VALUES
-    private static final synthetic List<MyEnum> $ENTRIES;
+    private static final synthetic EnumEntries<MyEnum> $ENTRIES;
    
     <clinit> {
         A = new MyEnum("A", 0);
@@ -121,7 +121,7 @@ enum MyEnum extends Enum<MyEnum> {
         return $VALUES.clone();
     }
   
-    public static List<MyEnum> getEntries() {
+    public static EnumEntries<MyEnum> getEntries() {
         return $ENTRIES;
     }
 
