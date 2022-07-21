@@ -18,7 +18,7 @@ Sealed inline classes are sealed classes as well, which allows a programmer to d
 
 ## Motivation / use cases
 
-The main use-case for sealed inline classes is `Result`. Currently it is decraled as inline class with underlying type `Any?`
+The main use-case for sealed inline classes is `Result`. Currently it is declared as inline class with underlying type `Any?`
 ```kotlin
 @JvmInline
 value class Result<out T>(val value: Any?) {
@@ -135,7 +135,7 @@ Thus, we box noinline children with sealed inline class type, when the sealed in
 
 This is the reason for the following restrictions.
 
-- Noinline children (classes and objects) should have `value` modifier, as shown in the examples. Since the noinline children can be boxed, they cannot have stable identity. In other words, they are identitiless, and we use `value` modifier to mark them.
+- Noinline children (classes and objects) should have `value` modifier, as shown in the examples. Since the noinline children can be boxed, they cannot have stable identity. In other words, they are identityless, and we use `value` modifier to mark them.
 
 - Children of sealed inline classes cannot implement interfaces.
 
@@ -175,11 +175,17 @@ becomes:
 
 ```kotlin
 class IC {
-  val $value: Any?
+  synthetic private val $value: Any?
+  
+  synthetic public fun $value(): Any? = $value
 }
 ```
 
-There can be no boxed inline children.
+Note, that we generate the getter for the field - it is called in static `-impl`
+function replacements of inline children's methods. 
+
+There can be no boxed inline children - thus, original methods are removed. In
+usual inline classes they redirect to static replacement functions.
 
 If one of children has primitive underlying value, the value is boxed:
 ```kotlin
@@ -197,10 +203,10 @@ val ic: IC = ICInt(1)
 the compiler generates the following code
 
 ```kotlin
-val ic = Integet.valueOf(1)
+val ic = Integer.valueOf(1)
 ```
 
-The following rulues for passing to function and returning from the function apply:
+The following rules for passing to function and returning from the function apply:
 
 - When we pass sealed inline class, it is mapped to `Any?`:
 ```kotlin
@@ -214,7 +220,7 @@ fun foo-<hash>(ic: Any?)
 
 `<hash>` is computed using usual [inline classes mangling rules](https://github.com/Kotlin/KEEP/blob/master/proposals/inline-classes.md#mangling-rules).
 
-- When we pass nullable sealed inline class, it is mapped to boxed selaed inline class:
+- When we pass nullable sealed inline class, it is mapped to boxed sealed inline class:
 ```kotlin
 fun foo(ic: IC?)
 ```
@@ -361,7 +367,7 @@ fun `toString-impl`(value: Any?): String {
 fun `toString-impl`(value: Any?): String = "I3${`$value`}"
 ```
 
-The logic for `toString` applies for all methods, decrared in interfaces: if the method is not overridden in inline child, we do not generate redirect.
+The logic for `toString` applies for all methods, declared in interfaces: if the method is not overridden in inline child, we do not generate redirect.
 
 Note, that there is no function generated for the middle - we do not need one,
 since we cannot have objects of the middle type. Thus, we do not have `super`
