@@ -352,6 +352,8 @@ This is needed to preserve information about inline classes at runtime.
 
 #### Generic inline class mapping
 
+_Note: this functionality is added in Kotlin 1.8._
+
 Consider the following sample:
 ```kotlin
 @JvmInline
@@ -370,7 +372,21 @@ value class GenericArray<T>(val y: Array<T>)
 fun foo(g: GenericArray<Int>) {} // `g` has type `Integer[]` or `Object[]`?
 ``` 
 
-Therefore, because of this ambiguity, such cases are going to be forbidden in the first version of inline classes.
+Therefore, because of this ambiguity, such cases were forbidden in the first version of inline classes.
+
+However, since 1.8 these inline classes are mapped to the upper bound of the generic parameter.
+In other words, given the code
+```kotlin
+@JvmInline
+value class IC<T>(val a: T)
+
+fun foo(ic: IC<String>)
+```
+the compiler generates the following
+```kotlin
+fun foo-<hash>(ic: Any?)
+```
+since `T`'s upper bound is `Any?`.
 
 * Sidenote: maybe it's worth to consider inline classes with reified generics:
     ```kotlin
