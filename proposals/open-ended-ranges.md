@@ -181,6 +181,18 @@ operator fun Double.rangeUntil(that: Double): OpenEndRange<Double>
 operator fun Float.rangeUntil(that: Float): OpenEndRange<Float>
 ```
 
+### Equality of open-ended ranges
+
+Similar to closed ranges, the `OpenEndRange` interface does not specify contract for `equals`/`hashCode` implementations,
+however its concrete implementations can do that. For example, an open-ended range of double values equal to another such range
+when bounds are respectively equal to each other, or to any empty range of doubles, when it is empty itself.
+
+Also, as a consequence of implementing both `OpenEndRange` and `ClosedRange` in concrete range implementations for standard discrete types,
+an open-ended range is equal to the closed range with the same `start` value and `endExclusive` equal to `endInclusive + 1`:
+```kotlin
+0..<10 == 0..9 // true
+```
+
 ## Experimental status
 
 Both the language feature of `rangeUntil` operator and its supporting standard library API
