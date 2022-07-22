@@ -21,10 +21,13 @@ the `lastIndex` extension property returning the last index value, namely `size 
 allowing to instantiate a range of discrete integral values like `0 until size` which is equivalent to `0..(size - 1)`.
 
 Despite all of this, due to asymmetry between `..` and `until`, the former is used more often, even in cases where the latter would be more clear.
-Also, our UX research shows that Kotlin newcomers have troubles remembering whether the upper bound of the range produced by `until`
-is exclusive or inclusive.
 
-To mitigate that, we propose to introduce the operator `..<` in Kotlin that would be 
+We have conducted a UX research that showed that Kotlin users may experience troubles identifying whether the ranges created with 
+the `..` operator and `until` function have their upper bound excluded or included. We also evaluated how introducing new operators
+for range expressions may improve this situation, and it turned out that the effect of that can be significant: 
+the misinterpretation rate was less by ~20-30% with them.
+
+For the above reason, we propose to introduce the operator `..<` in Kotlin that would be 
 on par with the `..` operator and make it very clear that the upper bound is not included.
 
 ## Use cases
@@ -210,6 +213,16 @@ We recommend library developers to [propagate](https://kotlinlang.org/docs/opt-i
 if they use experimental API in their code.
 
 ## Alternatives
+
+### Introduce the operator `..=` as an alias to `..`
+
+When conducting the UX research, we have also evaluated what effect the operator `..=`
+which basically means the same as `..` could bring.
+
+While it has shown that `..=` operator similarly to `..<` reduces the number of errors in interpretation of range expressions,
+the effect of that doesn't overweight negative effects of redundancy brought to the language by having both `..` and `..=` doing the same
+and migration effort required to change `..` to `..=` in Kotlin code bases.
+
 
 ### Adapt the existing range interface for open-ended ranges
 
