@@ -3,7 +3,7 @@
 * **Type**: Design proposal
 * **Author**: Vsevolod Tolstopytov
 * **Status**: Accepted
-* **Prototype**: In progress
+* **Prototype**: Implemented
 * **Discussion**: [KEEP-283](https://github.com/Kotlin/KEEP/issues/283)
 * **Related issues**: [KT-48872](https://youtrack.jetbrains.com/issue/KT-48872)
 
@@ -171,4 +171,4 @@ In addition to an existing [`enumValues`](https://kotlinlang.org/api/latest/jvm/
 
 ## Timeline
 
-The feature is going to be available as experimental starting from Kotlin 1.7.0 and as stable starting from Kotlin 1.8.0.
+The feature is going to be available as experimental starting from Kotlin 1.8.0 and as stable starting from Kotlin 1.9.0.
