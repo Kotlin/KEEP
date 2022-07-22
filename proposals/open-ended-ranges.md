@@ -79,8 +79,12 @@ println(eqivalent)  // 1..1.9999999999999998
   However, the base [Range](https://docs.groovy-lang.org/latest/html/api/groovy/lang/Range.html) interface doesn't indicate inclusiveness and 
   has somewhat contradictory contract of `containsWithinBounds` function.
 
-- Swift distinguishes open-ended [`Range`](https://developer.apple.com/documentation/swift/range) and closed [`ClosedRange`](https://developer.apple.com/documentation/swift/closedrange)
-  structures.
+- Swift has the base protocol [`RangeExpression`](https://developer.apple.com/documentation/swift/rangeexpression/) which is implemented
+  by the open-ended [`Range`](https://developer.apple.com/documentation/swift/range),
+  the closed [`ClosedRange`](https://developer.apple.com/documentation/swift/closedrange),
+  and also the one-sided `PartialRangeFrom` (start-inclusive), `PartialRangeThrough` (end-inclusive), `PartialRangeUpTo` (end-exclusive) ranges.
+  The base protocol provides operations of checking whether the range contains a value and slicing a collection 
+  (i.e. producing the closed range of indices of the collection with the matching index type that are contained in the range).
 
 - [kotlin-statistics](https://github.com/thomasnield/kotlin-statistics/blob/master/src/main/kotlin/org/nield/kotlinstatistics/range) 
   library provides the base `Range` type and individual types for each combination of included/excluded bounds:
