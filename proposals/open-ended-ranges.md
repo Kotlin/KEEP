@@ -155,7 +155,7 @@ class IntRange : IntProgression(...), ClosedRange<Int>, OpenEndRange<Int> {
 }
 ```
 
-There's a subtlety in implementing `endExlcusive` property in such ranges: usually it returns `endInclusive + 1`, but 
+There's a subtlety in implementing `endExclusive` property in such ranges: usually it returns `endInclusive + 1`, but 
 there can be such ranges where `endInclusive` is already the maximum value of the range type, and so adding one to it
 would overflow.
 
