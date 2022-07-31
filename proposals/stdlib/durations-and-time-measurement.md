@@ -258,10 +258,10 @@ since that mark was taken.
 Additionally, it has two operators `+` and `-` allowing to get another `TimeMark` displaced from this one by the given duration.
 
 ```kotlin
-abstract class TimeMark {
-    abstract fun elapsedNow(): Duration
-    open operator fun plus(duration: Duration): TimeMark = ...
-    open operator fun minus(duration: Duration): TimeMark = plus(-duration)
+interface TimeMark {
+    fun elapsedNow(): Duration
+    operator fun plus(duration: Duration): TimeMark = ...
+    operator fun minus(duration: Duration): TimeMark = plus(-duration)
 
     fun hasPassedNow(): Boolean = elapsedNow() >= Duration.ZERO
     fun hasNotPassedNow(): Boolean = elapsedNow() < Duration.ZERO
@@ -279,7 +279,7 @@ if (expirationMark.hasPassedNow()) {
 }
 ``` 
 
-A `TimeMark` is not serializable because it isn't possible to restore the captured time point upon deserialization
+Instances of `TimeMark` are usually not serializable because it isn't possible to restore the captured time point upon deserialization
 in a meaningful way.
 
 ### Monotonic TimeSource
@@ -302,6 +302,56 @@ However, `elapsedRealtimeNanos` cannot be called directly from the standard libr
 on the Android platform. This can be solved by providing an extension point in the standard library and providing 
 a specialized implementation in another Android-targeted library. Should this API graduate to stable, such an implementation
 could be provided in [Android KTX](https://developer.android.com/kotlin/ktx).
+
+### Specialized value class-based TimeMark
+
+A plain implementation of the `TimeMark` interface is usually a class that encapsulates a time reading value obtained from
+a time source and a reference to the time source used to calculate the elapsed time.
+Using such implementation of `TimeMark` to note the elapsed time involves allocation of an object for that class:
+
+```kotlin
+
+val mark = timeSource.markNow() // allocating a time mark instance
+...
+val elapsed = mark.elapsedNow()
+```
+
+The cost of this allocation may be negligible in some cases, but in others it can pose additional memory pressure 
+if the measured block of code is executed often.
+
+It can be noted that if the time source is a singleton object, such as `TimeSource.Monotonic`, its time mark can avoid 
+storing a reference to it and can hold just a single property with a time reading value. 
+This allows to make such time mark an inline value class:
+
+```kotlin
+public interface TimeSource {
+    public object Monotonic {
+
+        override fun markNow(): ValueTimeMark = ...
+
+
+        public value class ValueTimeMark internal constructor(internal val reading: ValueTimeMarkReading) : TimeMark {
+            override fun elapsedNow(): Duration = ...
+            override fun plus(duration: Duration): ValueTimeMark = ...
+            override fun minus(duration: Duration): ValueTimeMark = ...
+            override fun hasPassedNow(): Boolean = !elapsedNow().isNegative()
+            override fun hasNotPassedNow(): Boolean = elapsedNow().isNegative()
+        }
+    }
+}
+```
+
+Since the `Monotonic` object is specialized to return a value class, `ValueTimeMark`, and that value class overrides all operations 
+of the `TimeMark` interface, specializing them to return another `ValueTimeMark` as necessary, the combination of
+`markNow` + `elapsedNow` calls on the _monotonic_ time source now operates with the underlying value of type 
+`ValueTimeMarkReading` and doesn't involve additional allocations. The latter is a platform specific type to represent
+a time reading obtained from the time source. For example, on JVM it's just a type alias to `Long`.
+
+Note that this optimization is possible only when it's known statically that the time source returns `ValueTimeMark`,
+and thus working with `TimeSource.Monotonic` through its `TimeSource` interface still involves boxing of its time marks.
+
+The function `measureTime` without a `TimeSource` also benefits from that, as it obtains a time mark from the default monotonic 
+time source.
 
 ### AbstractLongTimeSource/AbstractDoubleTimeSource
 
