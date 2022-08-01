@@ -141,7 +141,7 @@ enum entries.
 
 The proposal has two main risks:
 
-The potential source-compatibility issue for `entries` property in the companion objects within a Enum.
+The first is the potential source-compatibility issue for `entries` property in the companion object within an Enum.
 After the implementation of the proposed change as is, the following existing code will change its behaviour:
 
 ```kotlin
@@ -161,7 +161,7 @@ the resolve to `entries` from companion object.
 Taking into account the additional deprecation cycle and non-trivial setup for the problem to reproduce, we do not 
 consider it a serious threat to compatibility.
 
-The second risk is the education disturbance and a new name for developers to get familiar with -- `entries`, opposed to already well-known `values`.
+The second risk is the education disturbance and a new name for developers to get familiar with — `entries`, opposed to already well-known `values`.
 
 ## Collateral changes
 
