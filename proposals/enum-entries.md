@@ -62,10 +62,17 @@ To avoid that, `values()` will be softly decommissioned via IDE assistance:
 
 Effectively, `entries` represents an immutable list of enum entries and can be represented as type `List<E>`.
 To have an ability to further extend Enum's API in a non-intrusive manner that does not involve code-generation
-for each enum, we expose a direct subtype of `List<E>` named `EnumEntries`.
+for each enum, we expose a direct subtype of `List<E>` named `EnumEntries`:
 
-All potential extensions, such as `valueOfOrNull(String)`, `hasValue(String)` can be implemented on the standard library
-level as extensions of `EnumEntries`.
+```
+sealed interface EnumEntries<E : Enum<E>> : List<E>
+```
+
+We deliberately limit any extensions of this type to the standard library to have a future-proof way to 
+extend it in the future in a backwards-compatible manner.
+All future potential extensions, such as `valueOfOrNull(String)`, `hasValue(String)` can be implemented on the standard library
+level as members or extensions of `EnumEntries`.
+
 
 ### Naming alternatives
 
@@ -114,7 +121,7 @@ enum MyEnum extends Enum<MyEnum> {
         A = new MyEnum("A", 0);
         $VALUES = $values();
         Supplier<MyEnum[]> supplier = #invokedynamic ..args.. values;
-        $ENTRIES = new EnumEntriesList(supplier);
+        $ENTRIES = EnumEntries.Kt.enumEntries(supplier); // internal factory from standard library
     }
 
     public static MyEnum[] values() {
@@ -156,12 +163,13 @@ enum class MyEnum {
 MyEnum.entries // <- member has a higher priority than a companion member
 ```
 
-To mitigate that, a separate compiler-assistant deprecation cycle is introduced, along with the preservation of 
-the resolve to `entries` from companion object.
+To mitigate that, a separate compiler-assistant deprecation cycle is introduced, that will keep companion's `entries`
+priority higher than auto-generated memeber for the duration of the deprecation cycle.
 Taking into account the additional deprecation cycle and non-trivial setup for the problem to reproduce, we do not 
 consider it a serious threat to compatibility.
 
 The second risk is the education disturbance and a new name for developers to get familiar with — `entries`, opposed to already well-known `values`.
+It is mitigated by indefinitely long [soft decommision](#decommission-of-enumvalues) instead of a regular deprecation cycle.
 
 ## Collateral changes
 
@@ -172,3 +180,4 @@ In addition to an existing [`enumValues`](https://kotlinlang.org/api/latest/jvm/
 ## Timeline
 
 The feature is going to be available as experimental starting from Kotlin 1.8.0 and as stable starting from Kotlin 1.9.0.
+The corresponding language feature can be enabled with the `-XXLanguage:+EnumEntries` compiler argument in Kotlin 1.8.0.
