@@ -120,7 +120,7 @@ enum MyEnum extends Enum<MyEnum> {
     <clinit> {
         A = new MyEnum("A", 0);
         $VALUES = $values();
-        Supplier<MyEnum[]> supplier = #invokedynamic ..args.. values;
+        Supplier<MyEnum[]> supplier = #invokedynamic ..args.. $entries;
         $ENTRIES = EnumEntries.Kt.enumEntries(supplier); // internal factory from standard library
     }
 
@@ -130,6 +130,10 @@ enum MyEnum extends Enum<MyEnum> {
   
     public static EnumEntries<MyEnum> getEntries() {
         return $ENTRIES;
+    }
+
+    private synthetic static MyEnum[] $entries() {
+        return $VALUES;
     }
 
     private synthetic static MyEnum[] $values() {
