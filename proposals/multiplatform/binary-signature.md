@@ -390,8 +390,8 @@ they will taken into account, too:
 ### Override matching
 
 Override matching is performed using [**override matching signature**](#override-matching-signature). 
-It has to match between the override and the overridden method, which means the the source name, the binary signature name, 
-and all the parameter names must match or there will be a compilation error. In particular, this example is an error 
+It has to match between the override and the overridden method, which means the source name, the binary signature name, 
+and all the parameter types must match or there will be a compilation error. In particular, this example is an error 
 (the source name does not match):
 
 ```kotlin
