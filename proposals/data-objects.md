@@ -2,7 +2,7 @@
 
 * **Type**: Design proposal
 * **Authors**: Alexander Udalov, Roman Elizarov, Pavel Mikhailovskii
-* **Status**: Stable since Kotlin 1.3 (Revision 3.3), experimental in Kotlin 1.1-1.2
+* **Status**: Experimental since 1.7.20, stable since 1.8.0
 
 
 ## Introduction
