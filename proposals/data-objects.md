@@ -9,14 +9,14 @@
 
 When using algebraic data types, it’s annoying to declare singleton values because there’s no way to get automatic toString similar to data classes. E.g. on JVM:
 ```kotlin
-sealed class List<T> {
-  data class Cons<T>(val value: T) : List<T>()
-  object Nil : List<Nothing>()
+sealed class MyList<T> {
+    data class Cons<T>(val value: T) : MyList<T>()
+    object Nil : MyList<Nothing>()
 }
 
 fun main() {
-println(List.Cons(42))   // Cons(value=42)
-println(List.Nil)        // test.List$Nil@1d251891
+    println(MyList.Cons(42))   // Cons(value=42)
+    println(MyList.Nil)        // test.MyList$Nil@1d251891
 }
 ```
 
