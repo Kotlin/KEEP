@@ -3,6 +3,7 @@
 * **Type**: Design proposal
 * **Authors**: Alexander Udalov, Roman Elizarov, Pavel Mikhailovskii
 * **Status**: Experimental since 1.7.20, stable since 1.8.0
+* **Discussion and feedback**: [#317](https://github.com/Kotlin/KEEP/issues/317)
 
 
 ## Introduction
