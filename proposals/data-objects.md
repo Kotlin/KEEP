@@ -46,14 +46,21 @@ There are some issues though:
 
 ### Data object
 
-Another possible solution is to allow the data modifier on objects, which will lead to toString being generated as for data classes.
+Another possible solution is to allow the data modifier on objects, which will lead to `toString` being generated as for data classes.
+
+Even though data objects are singletons, `equals` and `hashCode` probably should also be generated:
+* it may be useful to have a stable `hashCode`
+* as it's in principle possible to create multiple instances of a data objec` class via JVM reflection, and some third-party frameworks may do that,
+it would make sense to have `equals` implementation that would treat all instances of the same data class as equal.
 
 Other data class methods should not be generated:
 
-* equals and hashCode work fine already since it’s a singleton
-* componentN makes no sense because it doesn’t have a public constructor
-* copy makes no sense because it’s a singleton
+* `componentN` makes no sense because it doesn’t have a public constructor
+* `copy` makes no sense because it’s a singleton
     * Or should it be generated and always return this?
+
+
+
 
 Question: data companion object
 
