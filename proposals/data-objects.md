@@ -50,7 +50,7 @@ Another possible solution is to allow the data modifier on objects, which will l
 
 Even though data objects are singletons, `equals` and `hashCode` probably should also be generated:
 * it may be useful to have a stable `hashCode`
-* as it's in principle possible to create multiple instances of a data objec` class via JVM reflection, and some third-party frameworks may do that,
+* as it's in principle possible to create multiple instances of a `data object` class via JVM reflection, and some third-party frameworks may do that,
 it would make sense to have `equals` implementation that would treat all instances of the same data class as equal.
 
 Other data class methods should not be generated:
