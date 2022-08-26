@@ -3,8 +3,10 @@
 * **Type**: Standard Library API proposal
 * **Author**: Kevin Bierhoff
 * **Contributors**: David Baker, Jeffrey van Gogh
-* **Status**: Submitted
+* **Status**: Experimental since Kotlin 1.7.0
+* **Related issues**: [KT-50484](https://youtrack.jetbrains.com/issue/KT-50484)
 * **Prototype**: https://github.com/JetBrains/kotlin/pull/4737
+* **Discussion**: [KEEP-321](https://github.com/Kotlin/KEEP/issues/321)
 
 ## Summary
 
@@ -15,8 +17,8 @@ Convenience functions for working with `java.util.Optional` to simplify Kotlin-J
 Main use case for this proposal is Kotlin code that interops with Java code that uses `Optional`s, which includes the following scenarios:
 
 1. Kotlin code calling functions defined in Java that return an `Optional` or expect `Optional`-typed method parameters,
-1. overriding such functions in Kotlin,
-1. Kotlin code dealing with `Optional`-typed fields,
+2. overriding such functions in Kotlin,
+3. Kotlin code dealing with `Optional`-typed fields,
 
 Between these scenarios it can be necessary to *construct*, *unwrap*, *convert*, or *transform* `Optional` objects in Kotlin.
 We assume that the first scenario will be by far the most common one in most code bases.
@@ -109,6 +111,8 @@ as Scala's [Option](https://www.scala-lang.org/api/2.13.6/scala/Option.html) doe
 
 ### Construction
 
+> **Update:** after a discussion, this section has been excluded from this proposal.
+
 For completeness, we propose including the following alternatives to `Optional`'s factory methods:
 
 * `optionalOf<T>(x)`: Creates `Optional` for the given value
@@ -188,7 +192,7 @@ but using them has drawbacks in several areas:
 
 The extensions proposed above address these shortcomings.
 
-### Compiler-managed coersions
+### Compiler-managed coercions
 
 The compiler could automatically treat `Optional<T>` as `T?`, wrapping and unwrapping as needed.
 We rejected this approach for a number of reasons:
@@ -212,7 +216,7 @@ and return types wherever Kotlin code calls such methods.
 This avoids some of the issues with direct compiler support, but creates others:
 
 * Tooling complexity: projects/repos would have to opt into using the plugin, and build systems would have to provide a way of doing so.
-  The plugin would also have to be released as a separeate artifact, ideally included in `kotlinc` distributions.
+  The plugin would also have to be released as a separate artifact, ideally included in `kotlinc` distributions.
 
 * Depending on the details, users may need to be aware of the mechanics and explicitly
   reference the generated methods, e.g., with a special name suffix.
@@ -229,7 +233,7 @@ to provide commensurate additional benefit.
 
 A built-in `kotlin.Optional` would be redundant to nullable types.
 Hypothetically, a Swift-like approach that treats nullable types as a shorthand for optionality appears possible;
-however in Kotlin/JVM we'd then still need coersions to and from `java.util.Optional`.
+however in Kotlin/JVM we'd then still need coercions to and from `java.util.Optional`.
 Note that if `java.util.Optional` ever becomes a value type, the extensions proposed for creating and unwrapping optionals become no-ops.
 
 ## Dependencies
@@ -241,7 +245,7 @@ What are the dependencies of the proposed API:
 ## Placement
 
 * JDK8 standard library (which already contains extensions for streams).
-* Package: `kotlin.util`
+* Package: `kotlin.jvm.optionals`
 
 ## Reference implementation
 
@@ -249,7 +253,7 @@ What are the dependencies of the proposed API:
 
 ## Unresolved questions
 
-* Is it too clever to have two `optionalOf` overloads corresonding to `Optional.of,ofNullable`?
+* Is it too clever to have two `optionalOf` overloads corresponding to `Optional.of,ofNullable`?
   * `of` can fail if `null` flows into it at runtime despite non-null argument type
   * Alternative would be a single overload corresponding to `ofNullable`
 
@@ -260,6 +264,7 @@ What are the dependencies of the proposed API:
   Nullable type arguments can for instance sneak in when typing return values from Java methods,
   as well as when declaring generic methods such as the ones proposed here (`fun <T : Any> Optional<T>...`),
   where it's easy to forget `: Any`.
+  
   Note: nullable type arguments are already effectively prevented by `kotlinc` when _constructing_ `Optional`s.
 
 * Additional extension functions and operators could be added, e.g., if there is sufficient demand.
