@@ -195,7 +195,7 @@ however its concrete implementations can do that. For example, an open-ended ran
 when bounds are respectively equal to each other, or to any empty range of doubles, when it is empty itself.
 
 Also, as a consequence of implementing both `OpenEndRange` and `ClosedRange` in concrete range implementations for standard discrete types,
-an open-ended range is equal to the closed range with the same `start` value and `endExlcusive` equal to `endInclusive + 1`:
+an open-ended range is equal to the closed range with the same `start` value and `endExclusive` equal to `endInclusive + 1`:
 ```kotlin
 0..<10 == 0..9 // true
 ```
