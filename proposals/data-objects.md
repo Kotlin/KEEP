@@ -73,6 +73,7 @@ Question: could Unit be redefined as data object?
 * On JVM: if data object is serializable, generate `readResolve` which returns the value of the INSTANCE field
 * Prohibit to declare or inherit custom `equals`/`hashCode` (but not `toString`!) in data objects
   * It’s OK if there’s a non-final implementation of `equals`/`hashCode` in a superclass of a data object, since it’s overridden anyway
+* `DataObject::class.isData` should return `true`  
 * Prohibit `data companion object` syntax and use in anonymous object expressions, e.g. `val o = data object {}`
 * After kotlin-stdlib is compiled with language version 1.8, make `Unit` and `EmptyCoroutineContext` data objects
 * IDE (KTIJ-22087 (https://youtrack.jetbrains.com/issue/KTIJ-22087/Support-IDE-inspections-for-upcoming-data-objects))
