@@ -59,9 +59,6 @@ Other data class methods should not be generated:
 * `copy` makes no sense because it’s a singleton
     * Or should it be generated and always return this?
 
-
-
-
 Question: data companion object
 
 Question: could Unit be redefined as data object?
