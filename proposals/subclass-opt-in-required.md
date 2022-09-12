@@ -1,8 +1,10 @@
 # Opt-in into API implementation
 
 * **Type**: Design proposal
+* **Author**: Vsevolod Tolstopyatov
 * **Contributors**: Mikhail Glukhikh, Vsevolod Tolstopyatov, Roman Elizarov, Ilya Gorbunov
 * **Status**: Implemented in Kotlin 1.8.0 as experimental
+* **Discussion**: [KEEP-320](https://github.com/Kotlin/KEEP/issues/320) 
 
 This proposal describes a mechanism that will allow Kotlin library authors to provide extensible API (interfaces, abstract classes) that is stable for use
 but requires an explicit opt-in for direct extension and implementation, clearly separating stability concerns.
@@ -113,7 +115,7 @@ The following annotation targets are explicitly prohibited by Kotlin:
 * Sealed classes and interfaces
 * Final classes
 * Open local classes
-* Kotlin `object` and enum classes
+* Kotlin `object` and `enum` classes
 * `fun` interfaces
   * There are no technical limitations to allow it on `fun` interfaces, but we have not found compelling use-cases for
     such feature
