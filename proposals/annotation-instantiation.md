@@ -2,8 +2,7 @@
 
 * **Type**: Design proposal
 * **Author**: Leonid Startsev
-* **Status**: In review
-* **Prototype**: In progress
+* **Status**: Implemented in 1.6.0
 * **Issue:** [KT-45395](https://youtrack.jetbrains.com/issue/KT-45395)
 
 ## Synopsis
@@ -55,12 +54,12 @@ Current annotation class' limitations (no members including secondary constructo
 ### Implementation
 
 Note that a particular implementation class for JVM is not used in the example and is hidden as an implementation detail.
-This allows the compiler to perform certain optimizations — a special synthetic implementation class can be generated on-demand, like with lambdas or SAM
+This allows the compiler to perform certain optimizations — a special synthetic implementation class is generated on-demand, like with lambdas or SAM
 conversions, to avoid additional code generation for every annotation in a project.
 Also, on Native, unlike JVM, annotation classes themselves don't have to be interfaces and can be instantiated directly.
 
 ### Java interop
 
-With the strategy that generates annotation implementation on-demand, it becomes possible in future
+With the strategy that generates annotation implementation on-demand, it becomes possible
 to allow calling constructors of annotations defined in Java code as well.
 On the other side, synthetic implementation of Kotlin annotation is not visible to Java code. This is not necessarily a problem because Java clients can still manually implement any annotation in Java way.
