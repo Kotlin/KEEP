@@ -286,7 +286,7 @@ signature of the functional type replicates the textual order in which every arg
   ```
   
 Conceptually, context receivers of a declaration have no order. However, a signature of a contextual functional type 
-replicates the textual order they are declared. We consider the future introduction of automatic conversion between 
+replicates the textual order they are declared in. We consider the future introduction of automatic conversion between 
 two similar functional types that differ only in the order of context receivers (for example, `context(A, B) () -> Unit`
 and `context(B, A) () -> Unit`). In 1.6.20, it won't be supported. 
 
@@ -335,7 +335,7 @@ operator fun <C, T> C.iterator(): Iterator<T> = this@IterableClass.invoke(this)
 ```
 
 Using labeled `this` may come in handy even without context receivers. If multiple receivers in a nested scope can be 
-addressed via plain `this`, the use of it becomes ambiguous and decreases a readability. Using a bare type name rather 
+addressed via plain `this`, the use of it becomes ambiguous and decreases readability. Using a bare type name rather 
 than a function name for a label looks more natural since the object type describes the object better than the scope it 
 belongs to ([KT-21387](https://youtrack.jetbrains.com/issue/KT-21387)).
 
@@ -612,7 +612,7 @@ fun hello() {
 }
 ```
 
-It might be a neat trick for a small application, but it is a very error-prone practice for a larger code. It becomes 
+It might be a neat trick for a small application, but it is a very error-prone practice for a larger codebase. It becomes 
 all too easy to call other functions from `hello` which also call `println` themselves and to forget about `context(PrintWriter)`:
 
 ```kotlin
@@ -1219,7 +1219,7 @@ class Service
 ### Future decorators
 
 While we've decided to not rely on decorators for the core support of multiple receivers as explained in the
-[Multiple receivers with decorators](#multiple-receivers-with-decorators) section, the very concept of decorators in
+[Multiple receivers with decorators](#multiple-receivers-with-decorators) section, the very concept of decorators is
 a useful one with its own use cases. Moreover, the concept of context receiver and the corresponding changes to the resolution
 rules to account for them is an important building block for decorators in the future.
 
@@ -1314,7 +1314,7 @@ class AClass { // this: AClass
     fun Extension.doSomething() { // this: Extension
        dsl1 { // this: Builder1
            dsl2 { // this: Builder2
-               foo() // where this function is declared? 
+               foo() // where is this function declared? 
            }
        }    
     }    
