@@ -408,7 +408,7 @@ There are few primitives in the standard library and the rest is left to applica
 
 Here is the definition of the standard library interface 
 [`Continuation`](http://kotlinlang.org/api/latest/jvm/stdlib/kotlin.coroutines/-continuation/index.html)  
-(defined in `kotlinx.coroutines` package), which represents a generic callback:
+(defined in `kotlin.coroutines` package), which represents a generic callback:
 
 ```kotlin
 interface Continuation<in T> {
