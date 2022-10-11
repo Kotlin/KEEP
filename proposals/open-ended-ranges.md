@@ -18,7 +18,7 @@ and ending one before the number of elements in it, so to iterate these indices,
 For such a common use case, Kotlin standard library provides various shortcut functions, such as 
 the `indices` extension property available on many data structures returning that `0..(size - 1)` range,
 the `lastIndex` extension property returning the last index value, namely `size - 1`, and finally the `until` infix function
-allowing to instantiate a range of discrete integral values like `0 until size` which is equivalent to `0..(size - 1)`.
+allowing to instantiate a range of integral values like `0 until size` which is equivalent to `0..(size - 1)`.
 
 Despite all of this, due to asymmetry between `..` and `until`, the former is used more often, even in cases where the latter would be more clear.
 
@@ -34,7 +34,8 @@ on par with the `..` operator and make it very clear that the upper bound is not
 
 Currently, the use cases of the new operator are mostly covered by the `until` function, that corrects the upper bound
 returning a closed range of integral values that would be equivalent to an open-ended range. 
-However, the `until` function is available only for integral or discrete argument types, such as `Int`, `Long`, `Char`, 
+However, the `until` function is available only for the types where finding the successor to a value is done by adding 1 to that value, 
+such as `Int`, `Long`, `Char`, 
 and having the new operator gives a chance for introducing open-ended ranges for those type that didn't have it before.
 
 ### Iterating indices of a data structure
@@ -50,7 +51,7 @@ Such intervals are usually chosen as ranges that include their lower bound and e
 adjacent ranges neither have a point where they overlap, nor a point between them that is not contained in these ranges.  
 
 Even sometimes when the value is already discrete, for example, when it is expressed as a `Double` number, 
-and it is possible to represent a half-open range with a closed one by adjusting one of its bounds, 
+and it is possible to emulate a half-open range with a closed one by adjusting one of its bounds, 
 in practice it is not convenient to work with such ranges:
 
 ```kotlin
@@ -204,8 +205,9 @@ Similar to closed ranges, the `OpenEndRange` interface does not specify contract
 however its concrete implementations can do that. For example, an open-ended range of double values equal to another such range
 when bounds are respectively equal to each other, or to any empty range of doubles, when it is empty itself.
 
-Also, as a consequence of implementing both `OpenEndRange` and `ClosedRange` in concrete range implementations for standard discrete types,
-an open-ended range is equal to the closed range with the same `start` value and `endExclusive` equal to `endInclusive + 1`:
+Also, as a consequence of implementing both `OpenEndRange` and `ClosedRange` 
+in concrete range types for the standard integral types and `Char` type,
+in these range types an open-ended range is equal to the closed range with the same `start` value and `endExclusive` equal to `endInclusive + 1`:
 ```kotlin
 0..<10 == 0..9 // true
 ```
