@@ -65,7 +65,7 @@ println(eqivalent)  // 1..1.9999999999999998
 - Swift: `...` end-inclusive range, `..<` end-exclusive, supports one-sided ranges 
 - Ruby: `..` end-inclusive range, `...` end-exclusive, supports one-sided ranges
 - Groovy: `..` end-inclusive range, `..<` end-exclusive, `<..` start-exclusive, `<..<` both bounds-exclusive range
-
+- Rust: `..=` end-inclusive range, `..` end-exclusive, supports one-sided ranges
 
 ### Libraries for representing ranges
 
@@ -85,6 +85,16 @@ println(eqivalent)  // 1..1.9999999999999998
   and also the one-sided `PartialRangeFrom` (start-inclusive), `PartialRangeThrough` (end-inclusive), `PartialRangeUpTo` (end-exclusive) ranges.
   The base protocol provides operations of checking whether the range contains a value and slicing a collection 
   (i.e. producing the closed range of indices of the collection with the matching index type that are contained in the range).
+
+- Rust provides 6 structs in the standard library to represent ranges, varying by their boundness and inclusiveness of the end bound:
+  [`Range`](https://doc.rust-lang.org/std/ops/struct.Range.html), [`RangeInclusive`](https://doc.rust-lang.org/std/ops/struct.RangeInclusive.html), 
+  [`RangeFrom`](https://doc.rust-lang.org/std/ops/struct.RangeFrom.html), 
+  [`RangeTo`](https://doc.rust-lang.org/std/ops/struct.RangeTo.html), [`RangeToInclusive`](https://doc.rust-lang.org/std/ops/struct.RangeTo.html), 
+  [`RangeFull`](https://doc.rust-lang.org/std/ops/struct.RangeTo.html).
+  
+  There's also a crate that provides a more generic [`GenericRange`](https://docs.rs/ranges/latest/ranges/struct.GenericRange.html) implementation
+  that covers all of the above range variants and allows to express other type of ranges, like one with an excluded start bound.
+  
 
 - [kotlin-statistics](https://github.com/thomasnield/kotlin-statistics/blob/master/src/main/kotlin/org/nield/kotlinstatistics/range) 
   library provides the base `Range` type and individual types for each combination of included/excluded bounds:
