@@ -146,7 +146,7 @@ This allows the compiler and runtime to freely choose their actual representatio
 Inline classes 
 (see the corresponding [Inline Classes KEEP](https://github.com/Kotlin/KEEP/blob/master/proposals/inline-classes.md)) 
 were experimentally implemented in Kotlin since 1.2.30 and are, in fact, **user-defined value classes**. 
-Their primary feature is that they explicitly disavow the identity and reference equality operator (`===`). For them,this is not available (produces a compilation error). This allows a compiler to optimize representation of Kotlin inline classes, storing their underlying value instead of a box in many cases.
+Their primary feature is that they explicitly disavow the identity and reference equality operator (`===`). For them, this is not available (produces a compilation error). This allows a compiler to optimize representation of Kotlin inline classes, storing their underlying value instead of a box in many cases.
 
 > The umbrella issue for Kotlin inline value classes is [KT-23338](https://youtrack.jetbrains.com/issue/KT-23338).
 
