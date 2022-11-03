@@ -98,7 +98,7 @@ However, the demand for such a feature is most likely very low, so that we could
 As a midterm solution, we propose to forbid full reflection for synthetic Java properties.
 Any invocation of a method or a property requiring `kotlin-reflect` would result in an `UnsupportedOperationException`.
 That solution has been implemented in our prototype.
-If a significant number of users asks for full reflection, it shouldn't be too difficult to implement.
+If a significant number of users asks for full reflection, we'll reconsider this decision.
 
 ## The asymmetry between boolean and other properties
 
