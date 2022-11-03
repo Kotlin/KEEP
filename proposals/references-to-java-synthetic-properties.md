@@ -4,7 +4,7 @@
 * **Author**: Pavel Mikhailovskii
 * **Status**: Proposed
 * **Prototype**: Supported under a flag in 1.3.70 and enabled by default in .gradle.kts. Preview in 1.8.20 with `-language-version 1.9`. Planned to be enabled by default in 1.9.
-* **Related issues**: [KT-8575](https://youtrack.jetbrains.com/issue/KT-8575), [KT-35933](https://youtrack.jetbrains.com/issue/KT-35933), [KT-54525](https://youtrack.jetbrains.com/issue/KT-54525)
+* **Related issues**: [KT-8575](https://youtrack.jetbrains.com/issue/KT-8575), [KT-35933](https://youtrack.jetbrains.com/issue/KT-35933), [KT-54525](https://youtrack.jetbrains.com/issue/KT-54525), [KT-54770](https://youtrack.jetbrains.com/issue/KT-54770)
 
 Discussion of this proposal is held in [this issue](https://github.com/Kotlin/KEEP/issues/328).
 
@@ -20,11 +20,11 @@ The possibility to access Java synthetic properties the same way as properties d
 For the sake of language consistency, it would make sense to allow to obtain `KProperty` references to such properties
 similarly to Kotlin properties as well.
 
-## Historical Digression
+# Context
 
-Kotlin allows to access synthetic Java properties the same way as properties defined in Kotlin.
-The main known limitation is don't support indexed synthetic Java properties
-(see [JavaBeans Specification](https://download.oracle.com/otndocs/jcp/7224-javabeans-1.01-fr-spec-oth-JSpec/) chapter 7.2).  
+Methods that follow the Java conventions for getters and setters (no-argument methods with names starting with get
+(or `is` for boolean properties) and single-argument methods with names starting with set)
+are represented as properties in Kotlin, as described [here](https://kotlinlang.org/docs/java-interop.html#getters-and-setters).
 
 So, properties defined in a Java class
 ```java
@@ -56,6 +56,8 @@ widget.name = "Widget1"
 widget.isActive = true
 ```
 
+## References to synthetic Java properties: current situation
+
 In Kotlin 1.3.70 a possibility to obtain references to such properties was added.
 ```kotlin
 val widget = Widget()
@@ -64,12 +66,14 @@ widgetName.set("Widget1")
 ```
 That functionality was never widely advertised, and was only available under a feature flag.
 It also wasn't properly documented add covered with tests.
-Nonetheless, it was enabled by default in `.gradle.kts`.
+Nonetheless, it was enabled by default in `.gradle.kts` (see [KT-35933](https://youtrack.jetbrains.com/issue/KT-35933)).
+Until recently, it didn't work in K2 (see [KT-54770](https://youtrack.jetbrains.com/issue/KT-54770)); the issue has been
+solved in our prototype.
 
 Our review of the implementation added in 1.3.70 uncovered a number of issues:
-- Synthetic Java properties weren't included in `KClass.members`
+- Synthetic Java properties weren't included in `KClass.members`.
 - Most of the features provided by `kotlin-reflect`, such as `KProperty::visibility` worked incorrectly.
-- The property reference syntax worked differently for boolean and other properties.
+- The compiler didn't report resolution ambiguity when it occurred.
 
 We are going to consider the found issues and possible ways of solving them below.
 
@@ -82,10 +86,9 @@ As we already include Java fields in `KClass.members`, adding also Java syntheti
 contain two `KProperty` entries with the same type and name for each synthetic property. 
 User code using `KClass.members` to directly access Java fields may break after addition of extra members.
 This consideration seems to be a serious argument against inclusion of synthetic Java properties into `KClass.members`.
-If we ever decide to o that, we will probably have to add a new overloaded version of `KClass.members`
-with a boolean parameter controlling inclusion of Java synthetic properties.
-We would also need to add a property, indicating that a `KProperty` instance represents a synthetic property,
-e.g. `KProperty::isSythetic`.
+```kotlin
+val nameField = Widget::class.memberProperties.single { it.name == "name"} // would fail if we include both the field and the synthetic property
+```
 
 As was mentioned above, all features requiring `kotlin-reflect`, such as `KProperty::visibility` worked incorrectly. 
 Instead of somehow taking into account the synthetic nature of the property, they tried to access a Java **field** of the same name. 
@@ -100,30 +103,21 @@ Any invocation of a method or a property requiring `kotlin-reflect` would result
 That solution has been implemented in our prototype.
 If a significant number of users asks for full reflection, we'll reconsider this decision.
 
-## The asymmetry between boolean and other properties
+## Reporting resolution ambiguity
 
-According to the JavaBeans specification, the name of a getter method for a boolean property can with either "get" or "is" prefix.
-In the latter case Kotlin
-(in contrast to the [JavaBeans Specification](https://download.oracle.com/otndocs/jcp/7224-javabeans-1.01-fr-spec-oth-JSpec/)
-and JDK utility classes such as `com.sun.beans.introspect.PropertyInfo`) treats the "is" prefix as a part of the property name.
-Unfortunately, that has an unexpected effect on the semantic of reference expressions.
-While `val nameProperty = widget::name` would return an instance of `KMutableProperty0<Boolean>`, a similar expression for a boolean property
-`val isActiveProperty = widget::isActive` would return an instance of `KFunction` referencing the getter method of the same name.
-To obtain a reference to the property, an explicit type annotation is needed:
-`val isActiveProperty: KMutableProperty0<Boolean> = widget::isActive`.
-Such an inconsistency may lead to hard-to-spot and hard-to-understand errors. 
-It seems that the only way to mitigate this issue is to implement an IDE inspection offering a quick fix adding an
-explicit type annotation and allowing to choose between referencing a property and a getter.
-In the cases where a property reference is not assigned to a variable, but is passed elsewhere,
-the fix should introduce a temporary `val` with an explicit type annotation:
+At the moment the compiler doesn't report resolution ambiguity error in the cases when a reference expression `object::member` can
+refer to both a synthetic Java property and some other member. Instead, it always silently prefers other types of members
+to Java synthetic properties. That may lead to hard-to-spot and hard-to-understand errors.
+
+In particular, for boolean properties whose name starts with "is" prefix, the name of the property would be the same as
+the name of its getter. In that case, if no type information sufficient to decide whether the reference points to a property, or to a function,
+it would be treated as a reference to the getter:
 ```kotlin
-val props = listOf(widget::name, widget::isActive)
+val nameRef = widget::name         // returns an instance of KMutableProperty0<String>
+val isActiveRef = widget::isActive // returns an instance of KFunction0<Boolean>
+val isActivePropertyRef: KMutableProperty0<Boolean> = widget::isActive // returns an instance of KMutableProperty0<Boolean>
 ```
-After the quick fix is applied:
-```kotlin
-val widgetIsActivePropertyReference: KMutableProperty0<Boolean> = widget::isActive
-val props = listOf(widget::name, widgetIsActivePropertyReference)
-```
+We suggest that the compiler should always report an overload ambiguity error in such cases.
 
 ## The proposed solution
 
@@ -131,5 +125,7 @@ To sum up, we propose the following:
 - Make it possible to reference synthetic Java properties using the `::` syntax.
 - Disable `kotlin-reflect`-dependent features for now; throw an `UnsupportedOperationException`.
 - Do not include synthetic Java properties in `KClass.members`.
-- Implement an IDE inspection  offering a quick fix adding an explicit type annotation for references to boolean 
-synthetic Java properties with "is"-prefixed getter.
+- When checking reference expressions for overload ambiguity the compiler should handle Java synthetic properties
+the same way as Kotlin properties.
+- For boolean properties starting with "is" the compiler should always report errors for references that may point
+to both the property itself and its getter.
