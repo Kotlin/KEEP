@@ -127,7 +127,7 @@ val props = listOf(widget::name, widgetIsActivePropertyReference)
 
 ## The proposed solution
 
-Tu sum up, we propose the following:
+To sum up, we propose the following:
 - Make it possible to reference synthetic Java properties using the `::` syntax.
 - Disable `kotlin-reflect`-dependent features for now; throw an `UnsupportedOperationException`.
 - Do not include synthetic Java properties in `KClass.members`.
