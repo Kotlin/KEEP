@@ -1,5 +1,10 @@
 # `@JvmExpose` annotation to explicitly mark accessible API for Java
 
+* Type: Design proposal
+* Authors: Iaroslav Postovalov, Ilmir Usmanov
+* Status: TODO
+* Discussion and feedback: TODO
+
 This document describes an annotation for the transformation of API written in Kotlin to be convenient for use from Java.
 
 ## Motivation and use-cases
@@ -171,7 +176,7 @@ public static Object f-impl(int x, @NotNull Continuation $completion)
 public static int f(int x)
 ```
 
-### The main function exposed
+### When the `main` function is exposed
 
 ```
 @JvmExpose("main")
