@@ -1,9 +1,10 @@
 # `@JvmExpose` annotation to explicitly mark accessible API for Java
 
-* Type: Design proposal
-* Authors: Iaroslav Postovalov, Ilmir Usmanov
-* Status: TODO
-* Discussion and feedback: TODO
+* **Type**: Design proposal
+* **Authors**: Iaroslav Postovalov, Ilmir Usmanov
+* **Status**: TODO
+* **Prototype**: In progress
+* **Discussion and feedback**: TODO
 
 This document describes an annotation for the transformation of API written in Kotlin to be convenient for use from Java.
 
@@ -155,8 +156,9 @@ ExampleKt.f(new Example("42"));
 ```
 
 Usually, constructor of the inline class is used to perform boxing of it.
-Annotating it with `JvmExpose` will lead to creating a new,
-synthetic constructor (with placeholder parameter of type `Void`, probably) for boxing,
+Annotating it with `@JvmExpose` will lead to creating a new,
+synthetic constructor (with placeholder parameter of type `java.lang.Void`, probably,
+to avoid signature clash) for boxing,
 enabling the default one for user. 
 
 ### Suspending exposed functions
