@@ -154,6 +154,11 @@ A `JvmExpose` annotation should be added to the constructor of `Example` to achi
 ExampleKt.f(new Example("42"));
 ```
 
+Usually, constructor of the inline class is used to perform boxing of it.
+Annotating it with `JvmExpose` will lead to creating a new,
+synthetic constructor (with placeholder parameter of type `Void`, probably) for boxing,
+enabling the default one for user. 
+
 ### Suspending exposed functions
 
 Functions that are both `suspend` and annotated with `@JvmExpose` should not take a continuation as normal ones
