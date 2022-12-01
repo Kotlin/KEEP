@@ -71,24 +71,13 @@ Until recently, it didn't work in K2 (see [KT-54770](https://youtrack.jetbrains.
 solved in our prototype.
 
 Our review of the implementation added in 1.3.70 uncovered a number of issues:
-- Synthetic Java properties weren't included in `KClass.members`.
 - Most of the features provided by `kotlin-reflect`, such as `KProperty::visibility` worked incorrectly.
-- The compiler didn't report resolution ambiguity when it occurred.
+- Synthetic Java properties weren't included in `KClass.members`.
+- Synthetic Java properties can be overshadowed by "physical" declarations with the same name.
 
 We are going to consider the found issues and possible ways of solving them below.
 
 ## Reflection support
-
-As was said above, synthetic Java properties aren't included in `KClass.members`.
-Even though it wouldn't be difficult to include them, such a change could potentially break users' code.
-Very often Java synthetic properties use an underlying field whose name is the same as the name of the property itself.
-As we already include Java fields in `KClass.members`, adding also Java synthetic properties would mean that `KClass.members` would
-contain two `KProperty` entries with the same type and name for each synthetic property. 
-User code using `KClass.members` to directly access Java fields may break after addition of extra members.
-This consideration seems to be a serious argument against inclusion of synthetic Java properties into `KClass.members`.
-```kotlin
-val nameField = Widget::class.memberProperties.single { it.name == "name"} // would fail if we include both the field and the synthetic property
-```
 
 As was mentioned above, all features requiring `kotlin-reflect`, such as `KProperty::visibility` worked incorrectly. 
 Instead of somehow taking into account the synthetic nature of the property, they tried to access a Java **field** of the same name. 
@@ -103,29 +92,58 @@ Any invocation of a method or a property requiring `kotlin-reflect` would result
 That solution has been implemented in our prototype.
 If a significant number of users asks for full reflection, we'll reconsider this decision.
 
-## Reporting resolution ambiguity
-
-At the moment the compiler doesn't report resolution ambiguity error in the cases when a reference expression `object::member` can
-refer to both a synthetic Java property and some other member. Instead, it always silently prefers other types of members
-to Java synthetic properties. That may lead to hard-to-spot and hard-to-understand errors.
-
-In particular, for boolean properties whose name starts with "is" prefix, the name of the property would be the same as
-the name of its getter. In that case, if no type information sufficient to decide whether the reference points to a property, or to a function,
-it would be treated as a reference to the getter:
+For practical reasons, we will make the following APIs work without reflection:
 ```kotlin
-val nameRef = widget::name         // returns an instance of KMutableProperty0<String>
-val isActiveRef = widget::isActive // returns an instance of KFunction0<Boolean>
-val isActivePropertyRef: KMutableProperty0<Boolean> = widget::isActive // returns an instance of KMutableProperty0<Boolean>
+propertyReference.call()
+propertyReference.getter()
+propertyReference.getter.call()
+propertyReference.setter(value)
+propertyReference.setter.call(value)
 ```
-We suggest that the compiler should always report an overload ambiguity error in such cases.
+We're not going to support `callBy` methods as they imply use of reflection.
+
+The fact that synthetic Java properties aren't included in `KClass.members` doesn't seem to be an issue.
+Even though it wouldn't be difficult to include them, such a change could potentially break users' code.
+Very often Java synthetic properties use an underlying field whose name is the same as the name of the property itself.
+As we already include Java fields in `KClass.members`, adding also Java synthetic properties would mean that `KClass.members` would
+contain two `KProperty` entries with the same type and name for each synthetic property.
+User code using `KClass.members` to directly access Java fields may break after addition of extra members.
+This consideration seems to be a serious argument against inclusion of synthetic Java properties into `KClass.members`.
+```kotlin
+val nameField = Widget::class.memberProperties.single { it.name == "name"} // would fail if we include both the field and the synthetic property
+```
+
+## Reference resolution strategy
+
+The existing reference resolution strategy seems to be consistent and doesn't require any modification, even
+though the logic behind it may look puzzling at a first glance.
+
+First of all, synthetic members always have lesser priority than any "physical" declarations. If a Java synthetic property is
+shadowed by "physical" declaration with the same name, and both members satisfy the expected type, or no expected type constraint is present,
+the compiler will prefer the physical member without reporting ambiguity. 
+
+In particular, it means that for "is"-prefixed boolean synthetic Java properties a reference expression without
+an expected type annotation will return a reference to the getter, not the property:
+```kotlin
+val isActiveRef = widget::isActive // returns a KFunction0<Boolean> reference the getter method
+```
+
+If a situation when the expected type is known, it will be taken into account, so that only declarations satisfying the
+expected type will take part in resolution. This rule is not specific to synthetic Java properties and applies to all 
+kinds of callable references in Kotlin. It makes it possible to obtain a reference to a synthetic Java property even if the
+latter is overshadowed by a physical member with the same name:
+```kotlin
+val isActivePropertyRef: KMutableProperty0<Boolean> = widget::isActive // now it's a reference to the property, not the getter
+```
+
+We believe that it should be enough to simply explain this logic in user documentation.
 
 ## The proposed solution
 
 To sum up, we propose the following:
 - Make it possible to reference synthetic Java properties using the `::` syntax.
-- Disable `kotlin-reflect`-dependent features for now; throw an `UnsupportedOperationException`.
+- Disable `kotlin-reflect`-dependent features for now; throw an `UnsupportedOperationException` with a message making
+it clear that the limitation applies only to Java synthetic properties.
+- Support `getter`/`setter` and `call`
 - Do not include synthetic Java properties in `KClass.members`.
-- When checking reference expressions for overload ambiguity the compiler should handle Java synthetic properties
-the same way as Kotlin properties.
-- For boolean properties starting with "is" the compiler should always report errors for references that may point
-to both the property itself and its getter.
+- When checking reference expressions for overload ambiguity th
