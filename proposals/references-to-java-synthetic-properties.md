@@ -20,7 +20,7 @@ The possibility to access Java synthetic properties the same way as properties d
 For the sake of language consistency, it would make sense to allow to obtain `KProperty` references to such properties
 similarly to Kotlin properties as well.
 
-# Context
+## Context
 
 Methods that follow the Java conventions for getters and setters (no-argument methods with names starting with get
 (or `is` for boolean properties) and single-argument methods with names starting with set)
