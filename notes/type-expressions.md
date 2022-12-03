@@ -63,7 +63,7 @@ The following table lists the mentioned type expressions and their equivalents i
 | function type     | `fun interface`                        |
 | product type      | `data class` or `value class`          |
 | union type        | `sealed interface/class`, `enum class` |
-| tagged type       | -                                      |
+| tagged type       | `class TaggedTyped : Type`             |
 | intersection type | -                                      |
 | restriction type  | -                                      |
 
@@ -128,6 +128,22 @@ name = string // not allowed
 fun Name@String.greet() = print("Hello, ${uppercase()}") // receiver cast to String
 Name@"Peter".greet() // prints "Hello, PETER"
 "something".greet() // does not compile
+```
+A tagged type therefore behaves similarly to a subclass.
+Here is the comparison:
+```kotlin
+interface A
+fun function(a: A)
+
+// via subclassing
+class TaggedA : A
+val value: TaggedA = TaggedA()
+function(value)
+
+// via tagging
+typealias TaggedA = Tag@A
+val value: TaggedA = Tag@A()
+function(value)
 ```
 
 Of course, tagged types can be used in combination with any other type expression, including tuple types.
@@ -256,9 +272,10 @@ const fun p(num: Int) = it == v
 typealias Zero = Int / ::p
 ```
 we could just write `Int / v` or even `Int / 0`.
+The ultimate short form would be `/0`, the base type being inferred from the value.
 Together with union types, this allows to define finite types embedded in a given type, e.g. a finite set of integers.
 ```kotlin
-typealias SpecialNumber = Int / 0 | Int / 8 | Int / 42
+typealias SpecialNumber = /0 | /8 | /42
 ```
 This would be equivalent to the following, but the usage would be different:
 ```kotlin
