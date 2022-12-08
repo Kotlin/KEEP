@@ -87,20 +87,13 @@ directly to the underlying field!
 
 Possibly, a proper solution to this issue would be to implement proper reflection support.
 However, the demand for such a feature is most likely very low, so that we could postpone its implementation.
-As a midterm solution, we propose to forbid full reflection for synthetic Java properties.
+Supporting reflection would require making some extra design decisions, for example on what should be returned
+by such properties as `KProperty::annotations` or `KProperty.Getter::name`.
+
+As a midterm solution, we propose to forbid `kotlin-reflect`-based reflection for synthetic Java properties.
 Any invocation of a method or a property requiring `kotlin-reflect` would result in an `UnsupportedOperationException`.
 That solution has been implemented in our prototype.
 If a significant number of users asks for full reflection, we'll reconsider this decision.
-
-For practical reasons, we will make the following APIs work without reflection:
-```kotlin
-propertyReference.call()
-propertyReference.getter()
-propertyReference.getter.call()
-propertyReference.setter(value)
-propertyReference.setter.call(value)
-```
-We're not going to support `callBy` methods as they imply use of reflection.
 
 The fact that synthetic Java properties aren't included in `KClass.members` doesn't seem to be an issue.
 Even though it wouldn't be difficult to include them, such a change could potentially break users' code.
@@ -144,6 +137,5 @@ To sum up, we propose the following:
 - Make it possible to reference synthetic Java properties using the `::` syntax.
 - Disable `kotlin-reflect`-dependent features for now; throw an `UnsupportedOperationException` with a message making
 it clear that the limitation applies only to Java synthetic properties.
-- Support `getter`/`setter` and `call`
 - Do not include synthetic Java properties in `KClass.members`.
 - When checking reference expressions for overload ambiguity th
