@@ -97,7 +97,7 @@ If a significant number of users asks for full reflection, we'll reconsider this
 
 The fact that synthetic Java properties aren't included in `KClass.members` doesn't seem to be an issue.
 By design, `KClass.members` returns only real members and doesn't include any synthetic ones.
-We could possibly consider introducing a separate property for them, e.g. `KClass.syntheticMemebers`.
+In the future, we could possibly consider introducing a separate property for them, e.g. `KClass.syntheticMemebers`.
 
 ## Reference resolution strategy
 
