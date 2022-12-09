@@ -65,7 +65,7 @@ val widgetName = widget::name
 widgetName.set("Widget1")
 ```
 That functionality was never widely advertised, and was only available under a feature flag.
-It also wasn't properly documented add covered with tests.
+It also wasn't properly documented or covered with tests.
 Nonetheless, it was enabled by default in `.gradle.kts` (see [KT-35933](https://youtrack.jetbrains.com/issue/KT-35933)).
 Until recently, it didn't work in K2 (see [KT-54770](https://youtrack.jetbrains.com/issue/KT-54770)); the issue has been
 solved in our prototype.
@@ -96,15 +96,8 @@ That solution has been implemented in our prototype.
 If a significant number of users asks for full reflection, we'll reconsider this decision.
 
 The fact that synthetic Java properties aren't included in `KClass.members` doesn't seem to be an issue.
-Even though it wouldn't be difficult to include them, such a change could potentially break users' code.
-Very often Java synthetic properties use an underlying field whose name is the same as the name of the property itself.
-As we already include Java fields in `KClass.members`, adding also Java synthetic properties would mean that `KClass.members` would
-contain two `KProperty` entries with the same type and name for each synthetic property.
-User code using `KClass.members` to directly access Java fields may break after addition of extra members.
-This consideration seems to be a serious argument against inclusion of synthetic Java properties into `KClass.members`.
-```kotlin
-val nameField = Widget::class.memberProperties.single { it.name == "name"} // would fail if we include both the field and the synthetic property
-```
+By design, `KClass.members` returns only real members and doesn't include any synthetic ones.
+We could possibly consider introducing a separate property for them, e.g. `KClass.syntheticMemebers`.
 
 ## Reference resolution strategy
 
@@ -138,4 +131,3 @@ To sum up, we propose the following:
 - Disable `kotlin-reflect`-dependent features for now; throw an `UnsupportedOperationException` with a message making
 it clear that the limitation applies only to Java synthetic properties.
 - Do not include synthetic Java properties in `KClass.members`.
-- When checking reference expressions for overload ambiguity th
