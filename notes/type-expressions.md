@@ -63,7 +63,7 @@ The following table lists the mentioned type expressions and their equivalents i
 | function type     | `fun interface`                        |
 | product type      | `data class` or `value class`          |
 | union type        | `sealed interface/class`, `enum class` |
-| tagged type       | `class TaggedTyped : Type`             |
+| tagged type       | -                                      |
 | intersection type | -                                      |
 | restriction type  | -                                      |
 
@@ -109,6 +109,21 @@ fun parseNextInt(line: String): (value: Int, nextPosition: Int)
 
 YouTrack issues: [KT-45587](https://youtrack.jetbrains.com/issue/KT-45587)
 
+### Implementation notes
+
+Tuple types could be represented by generated generic classes similar to `Function1`, `Function2`, etc.
+```kotlin
+value class Tuple2<T1, T2>(val _1: T1, val _2: T2)
+```
+The property names are tentative and TBD.
+They allow a more convenient way to access the components than the generated `operator component` functions.
+
+Named components in tuple type expressions are treated at compile-time only.
+If the declared or inferred type of a value is a tuple type with named components, for example `val person: (name: String, age: Int)`, and we access the components like `person.name` and `person.age`, this will be compiled to `person._1` and `person._2` respectively.
+
+A challenge will be to optimize for value or primitive types as components.
+This is related to project Valhalla and has been discussed also [here](value-classes.md#efficient-generic-collections).
+
 ## Tagged types
 
 This produces a copy of a given type with an equivalent set of values.
@@ -117,38 +132,23 @@ The basic syntax is `Tag@A` where `Tag` is a free to choose symbol (same restric
 Value constructors have the form `Tag@a` where `a: A`.
 
 Note that the symbol `Tag` does not give an identity to the type, contrary to the name of a class.
-Values of `Tag@A` are automatically cast to `A` if needed.
-Values of `A` or `Other@A` are *not* automatically cast to `Tag@A`.
+The underlying value of a tagged value can be accessed via property syntax `x.value` (name TBD) when `x: Tag@A`.
+So if `x: Tag@String`, we could write `x.value.length` to get the length of the underlying string.
+Since accessing the underlying value is so common, it could be optional to specify the accessor, meaning that `x.length` would be compiled to `x.value.length`.
 ```kotlin
 var string = "any string whatsoever"
 var name: Name@String = Name@"Peter"
-string = name // ok
+string = name // ok, compiled to 'string = name.value'
 name = string // not allowed
 
-fun Name@String.greet() = print("Hello, ${uppercase()}") // receiver cast to String
+fun Name@String.greet() = print("Hello, ${this.uppercase()}")
 Name@"Peter".greet() // prints "Hello, PETER"
 "something".greet() // does not compile
-```
-A tagged type therefore behaves similarly to a subclass.
-Here is the comparison:
-```kotlin
-interface A
-fun function(a: A)
-
-// via subclassing
-class TaggedA : A
-val value: TaggedA = TaggedA()
-function(value)
-
-// via tagging
-typealias TaggedA = Tag@A
-val value: TaggedA = Tag@A()
-function(value)
 ```
 
 Of course, tagged types can be used in combination with any other type expression, including tuple types.
 In particular, `Tag@(a: A)` would be a tagged unary tuple with named component.
-If `x: Tag@(a: A)`, the underlying value of type `A` could be accessed via `x.a` because `x` is automatically cast to `(a: A)`.
+If `x: Tag@(a: A)`, the underlying value of type `A` could be accessed via `x.a` being the short form of `x.value.a`.
 
 A special use-case arises when tagging `Unit`.
 This effectively produces a singleton type with a specific name for its value.
@@ -159,6 +159,20 @@ val off: Off@ = Off@
 ```
 Together with [union types](#union-types), this makes it possible to model enumerations as type expressions.
 More generally, tagged types help to realize tagged unions, see below.
+
+### Implementation notes
+
+Tagged types could be represented by a generic class like this:
+```kotlin
+value class Tagged<V>(val tag: String, val value: V)
+```
+So, besides accessing the value via `x.value`, also the tag name can be accessed via `x.tag` at runtime.
+
+Optimized variants could be provided for `Unit` or primitive types like `Int`:
+```kotlin
+value class TaggedUnit(val tag: String)
+value class TaggedInt(val tag: String, val value: Int)
+```
 
 ## Union types
 
@@ -174,8 +188,14 @@ Applied to `Unit` as carrier type, this yields basic enumerations.
 For example `One@ | Two@ | Three@` is a type with three values `One@`, `Two@` and `Three@` respectively.
 
 The standard way to consume union types is via `when` blocks.
-Example:
+Examples:
 ```kotlin
+fun download(): Success@String | Failure@String
+when (val result = download()) {
+    is Success@String -> print("Content: $result")
+    is Failure@String -> print("Error: $result")
+}
+
 typealias Color = Red@ | Blue@ | Yellow@ | Green@
 val vehicle: Car@(brand: String, color: Color) | Bike@
 when (vehicle) {
@@ -185,11 +205,7 @@ when (vehicle) {
 }
 ```
 
-Union types are convenient as return types of functions when different outcomes need to be modelled.
-```kotlin
-fun parseData(s: String): Data | Failure
-```
-Furthermore, they could be used to realize the multi-catch feature available in Java but still missing in Kotlin.
+Union types could be used to realize the multi-catch feature available in Java but still missing in Kotlin.
 ```kotlin
 try {
     // do something that could fail
@@ -201,7 +217,7 @@ try {
 Theoretical examples requiring recursive `typealias`:
 ```kotlin
 typealias N = Zero@ | Succ@N
-typealias List<T> = (head: T, tail: List<T>) | Empty@
+typealias List<out T> = (head: T, tail: List<T>) | Empty@
 ```
 
 YouTrack issues: [KT-13108](https://youtrack.jetbrains.com/issue/KT-13108), [KT-7128](https://youtrack.jetbrains.com/issue/KT-7128)
