@@ -118,11 +118,15 @@ value class Tuple2<T1, T2>(val _1: T1, val _2: T2)
 The property names are tentative and TBD.
 They allow a more convenient way to access the components than the generated `operator component` functions.
 
+Due to type erasure of generics, `is` checks on tuple types represented by these generic classes are not possible.
+However, this is essential to data types, contrary to function types.
+Consequently, reified type parameters, possibly realized with type tokens, are necessary for the `TupleN` classes.
+See also the discussion [here](value-classes.md#efficient-generic-collections).
+
+Concerning performance, project Valhalla promises to bring optimizations for tuples of primitive and, more generally, value types.
+
 Named components in tuple type expressions are treated at compile-time only.
 If the declared or inferred type of a value is a tuple type with named components, for example `val person: (name: String, age: Int)`, and we access the components like `person.name` and `person.age`, this will be compiled to `person._1` and `person._2` respectively.
-
-A challenge will be to optimize for value or primitive types as components.
-This is related to project Valhalla and has been discussed also [here](value-classes.md#efficient-generic-collections).
 
 ## Tagged types
 
@@ -168,7 +172,10 @@ value class Tagged<V>(val tag: String, val value: V)
 ```
 So, besides accessing the value via `x.value`, also the tag name can be accessed via `x.tag` at runtime.
 
-Optimized variants could be provided for `Unit` or primitive types like `Int`:
+Similar to tuple types, `is` checks for tagged types are essential, for example in combination with union types (see below).
+Hence, reified type parameters are also relevant for the `Tagged` class.
+
+In pre-Valhalla JVMs, optimized variants could be provided for `Unit` or primitive types like `Int`:
 ```kotlin
 value class TaggedUnit(val tag: String)
 value class TaggedInt(val tag: String, val value: Int)
