@@ -174,6 +174,15 @@ So, besides accessing the value via `x.value`, also the tag name can be accessed
 
 Similar to tuple types, `is` checks for tagged types are essential, for example in combination with union types (see below).
 Hence, reified type parameters are also relevant for the `Tagged` class.
+However, besides the type token generated for the type parameter, also the value of the tag property must be evaluated during `is` checks, so that the following becomes true:
+```kotlin
+val a: Alpha@String = Alpha@"a"
+val b: Beta@String = Beta@"b"
+val c: Alpha@Int = Alpha@8
+assert(a is Alpha@String)
+assert(b !is Alpha@String)
+assert(c !is Alpha@String)
+```
 
 In pre-Valhalla JVMs, optimized variants could be provided for `Unit` or primitive types like `Int`:
 ```kotlin
