@@ -135,7 +135,7 @@ public final class Example {
   public static equals-impl0(Ljava/lang/String;Ljava/lang/String;)Z
 
   // Synthetic constructor, not calls constructor-impl for boxing
-  public synthetic <init>(Ljava/lang/String;Ljava/lang/Void;)V
+  private synthetic <init>(Ljava/lang/String;Ljava/lang/Void;)V
 
   @Lkotlin/jvm/JvmInline;()
   @Lkotlin/jvm/JvmExposeBoxed;()
