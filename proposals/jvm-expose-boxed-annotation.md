@@ -107,38 +107,41 @@ value class Example(val s: String) {
 
 ```java
 public final class Example {
-  //// Public ABI intended for Java callers:
+    //// Public ABI intended for Java callers:
 
-  // Visibility matches with the visibility of the s property in the code
-  public getS()Ljava/lang/String;
-  public x()V
-  public y(LExample;)V
-  
-  public toString()Ljava/lang/String;
-  public hashCode()I
-  public equals(Ljava/lang/Object;)Z
+    // Visibility matches with the visibility of the s property in the code
+    public getS()Ljava/lang/String;
+    public x()V
+    public y(LExample;)V
 
-  // Not synthetic constructor,
-  // visibility matches with the one declared in the code,
-  // calls constructor-impl
-  public <init>(Ljava/lang/String;)V 
-      
-  //// Mangled ABI for Kotlin callers:
-  public synthetic unbox-impl()Ljava/lang/String;
-  public static x-impl(Ljava/lang/String;)V
-  public static y-NmaSWX8(Ljava/lang/String;Ljava/lang/String;)V
-  public static toString-impl(Ljava/lang/String;)Ljava/lang/String;
-  public static hashCode-impl(Ljava/lang/String;)I
-  public static equals-impl(Ljava/lang/String;Ljava/lang/Object;)Z
-  public static constructor-impl(Ljava/lang/String;)Ljava/lang/String;
-  public static synthetic box-impl(Ljava/lang/String;)LExample;
-  public static equals-impl0(Ljava/lang/String;Ljava/lang/String;)Z
+    public toString()Ljava/lang/String;
+    public hashCode()I
+    public equals(Ljava/lang/Object;)Z
 
-  // Synthetic constructor, not calls constructor-impl for boxing
-  private synthetic <init>(Ljava/lang/String;Ljava/lang/Void;)V
+    // Not synthetic constructor,
+    // visibility matches with the one declared in the code,
+    // calls constructor-impl
+    public <init>(Ljava/lang/String;)V
 
-  @Lkotlin/jvm/JvmInline;()
-  @Lkotlin/jvm/JvmExposeBoxed;()
+    //// Mangled ABI for Kotlin callers:
+    public synthetic unbox-impl()Ljava/lang/String;
+    public static x-impl(Ljava/lang/String;)V
+    public static y-NmaSWX8(Ljava/lang/String;Ljava/lang/String;)V
+    public static toString-impl(Ljava/lang/String;)Ljava/lang/String;
+    public static hashCode-impl(Ljava/lang/String;)I
+    public static equals-impl(Ljava/lang/String;Ljava/lang/Object;)Z
+
+    // Constructor for unboxed value
+    public static constructor-impl(Ljava/lang/String;)Ljava/lang/String;
+    public static synthetic box-impl(Ljava/lang/String;)LExample;
+    public static equals-impl0(Ljava/lang/String;Ljava/lang/String;)Z
+
+    // Synthetic constructor,
+    // not calls constructor-impl for boxing
+    private synthetic <init>(Ljava/lang/String;Ljava/lang/Void;)V
+
+    @Lkotlin/jvm/JvmInline;()
+    @Lkotlin/jvm/JvmExposeBoxed;()
 }
 ```
 
