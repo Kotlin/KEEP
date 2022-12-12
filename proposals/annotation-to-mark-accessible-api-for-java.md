@@ -1,4 +1,4 @@
-# `@JvmExpose` annotation to explicitly mark accessible API for Java
+# `@JvmExposeBoxed` annotation for opening API of inline classes to Java
 
 * **Type**: Design proposal
 * **Authors**: Iaroslav Postovalov, Ilmir Usmanov
@@ -6,176 +6,156 @@
 * **Prototype**: In progress
 * **Discussion and feedback**: TODO
 
-This document describes an annotation for the transformation of API written in Kotlin to be convenient for use from Java.
+This document describes an annotation for the transformation of inline classes to be convenient for use from Java.
 
 ## Motivation and use-cases
 
-When creating an API for Java in Kotlin, one always has to handle a lot of problems with different tools:
+Functions taking and returning `@JvmInline` classes are unavailable from Java because their name contains `-` with hash suffix.
 
-1. Mangling.
+Functions declared in an inline class are compiled to hyphen-mangled static methods taking underlying type, except in cases when a bridge method to implement interface is required.
 
-Internal functions and properties are mangled by Kotlin without any documentation of it.
-However,
-creating internal declarations seems to be a viable way to create API available for Java but not available for Kotlin.
+The constructor of an inline class is generated private and synthetic, so inaccessible from Java.
 
-The workaround is using `@JvmName`:
+All these characteristics lead to that inline classes being completely cut off from Java API; however, they can be useful for interoperability inside one module, for framework compatibility, and for writing libraries providing support of Java.
 
-```kotlin
-// Kotlin API
-class Example {
-    internal fun noJvmName() {}
+Related issues:
 
-    @JvmName("jvmName")
-    internal fun jvmName() {
-    }
-}
-```
+1. To access the property of an inline class, reflection has to be used ([KT-50518](https://youtrack.jetbrains.com/issue/KT-50518)).
+2. Java frameworks like Mockito have problems with methods returning unboxed inline classes ([KT-51641](https://youtrack.jetbrains.com/issue/KT-51641)).
+3. Inaccessible constructors of inline classes ([KT-47686](https://youtrack.jetbrains.com/issue/KT-47686)).
+4. Issues of inline class methods with kapt (https://github.com/Kotlin/KEEP/issues/104#issuecomment-449782492).
+5. A general issue about JVM compatibility of value classes ([KT-50689](https://youtrack.jetbrains.com/issue/KT-50689)).
 
-```java
-// Java usage
-new Example().noJvmName$example_main(); // looks awful
-new Example().jvmName();
-```
-
-2. Overloads
-
-Using default parameter values requires user to mark functions with `@JvmOverloads`. 
-
-3. Inline classes
-
-Functions taking and returning `@JvmInline` classes as well as properties of such classes are visible as its internal property's type,
-and it breaks the idea of inline classes when used from Java.
-
-The only possible workaround is writing a part of API in Java taking boxed instances of value classes.
-Moreover, constructors of inline classes are synthetic; hence, a factory method is needed.
-
-4. Suspending functions
-
-Suspending functions can't be successfully called from Java because of necessity to instantiate `Continuation`.
-A widely known workaround is to wrap the result of the function to `CompletableFuture`:
-
-```kotlin
-import kotlinx.coroutines.GlobalScope
-import kotlinx.coroutines.future.future
-import java.util.concurrent.CompletableFuture
-
-suspend fun s(): Int = 42
-
-fun sForJava(): CompletableFuture<Int> = GlobalScope.future {
-    s()
-}
-```
-
-However, this way requires including `org.jetbrains.kotlinx:kotlinx-coroutines-jdk8`,
-hence can't be proposed as a new feature of the language.
-
-Another way to make a workaround similar to way `suspend fun main` is implemented is calling `runSuspend`:
-```kotlin
-import kotlin.coroutines.jvm.internal.*
-
-suspend fun s(): Int = 42
-
-@Suppress("INVISIBLE_MEMBER")
-fun sForJava(): Int {
-    var result: Result<Int>? = null
-    runSuspend {
-        result = Result.success(s())
-    }
-    return result!!.getOrThrow()
-}
-```
+The issues that are related to the behavior of frameworks can be addressed by documenting the existence of mangled boxing methods and the getter method of the inline class main property, but others require changing the ABI of inline classes and functions related to them.
 
 ## Proposed API
 
-Adding a new `@kotlin.jvm.JvmExpose` annotation is proposed to address all the listed problems at once,
-so its purpose is to ensure that an API can be called from Java freely
-and to handle Kotlin features
-that were designed without attention to calling from Java
-in order to simplify development of libraries for Java and Kotlin written in Kotlin.
+Adding a new `@kotlin.jvm.JvmExposeBoxed` annotation is proposed to address the problem. Hence, its purpose is to ensure that the inline class is exposed as its JVM class in all APIs to simplify the development of libraries designed for use from Java written in Kotlin.
 
-Its behavior can be described as “annotated function is guaranteed to be available from Java by exactly the name defined either in the code or in the string parameter”; hence, the following limits are imposed:
-
-1. A `private` function cannot be marked as well as a function defined in private and local classes and objects.
-2. A `@JvmSynthetic` function cannot be marked
-3. `@JvmOverloads` is assumed
-
-Marking a `public` function without any features leading to mangling is allowed, for example, to show that the API is “Java-friendly.”
-
-Example usages:
+The annotation is defined as
 
 ```kotlin
-class SomeThings {
-    @JvmExpose // equivalent to @JvmName("forJava")
-    internal fun forJava() {}
-}
+@Target(AnnotationTarget.CLASS)
+@Retention(AnnotationRetention.BINARY)
+@MustBeDocumented
+@SinceKotlin("...")
+@OptionalExpectation
+public expect annotation class JvmExposeBoxed
 ```
 
-Additionally, marking an `internal` function with `@JvmExpose` designates that calling it from another module in Java is **not** an error, so IDE inspections should handle it.
+The actual class is present only on JVM.
 
-Combination of `@JvmExpose internal` and `@JvmSynthetic public` allows creating a completely non-overlapping API for Java and Kotlin; however, it looks like abuse, so, probably, it should be an antipattern:
+Its behavior consists in adding API of the marked inline class as its boxed variant; hence, only `@JvmInline` value classes can be annotated.
 
-```kotlin
-class X {
-    @JvmExpose internal fun a(consumer: java.util.function.Consumer<Int>) = consumer.accept(42)
-    @JvmSynthetic fun a(consumer: (Int) -> Unit) = consumer(42)
-}
-```
-
-### `JvmExpose` on functions with `@JvmInline` parameters or return type
-
-Functions related to `@JvmInline value class`  require special treatment since their representation in JVM differs significantly from ordinary ones.
-
-First, the value parameters and return value of a function marked with `@JvmExpose` should be boxed if their type is inline class. The reason is that inline classes are cumbersome to use from Java in their unboxed form. A mangled implementation of the function for unboxed Kotlin usage should be created as well.
+In added functions, the value parameters and return value are boxed if their type is inline class marked with new annotation. A hash code mangled implementation of the function for usage from Kotlin should be created as usual.
 
 ```kotlin
-// Example.kt
-
 @JvmInline
+@JvmExposeBoxed
 value class Example(val s: String)
 
-@JvmExpose 
 fun f(x: Example): Example = TODO()
 ```
 
 ```java
-public static Example f-impl(java.lang.String x)
-public static Example f(Example x) {  }
+public static f-NmaSWX8(Ljava/lang/String;)Ljava/lang/String; // for Kotlin
+public static f(LExample;)LExample; // for Java
 ```
 
-The certain problem is that one cannot instantiate an inline class with its constructor because it is generated with `ACC_SYNTHETIC`. A solution for that could be annotating a constructor `@JvmExpose`  to have a constructor exposed by the compiler (it also will create an internal synthetic overload of it taking something like `Nothing?`). Since this requirement is unobvious, an IDE inspection must report that instances of an inline class taken as an argument of the exposed function cannot be instantiated.
+The current design does not affect properties. If one needs to expose a getter method returning an inline class, it should be created as a function:
 
 ```kotlin
-@JvmInline
-value class Example @JvmExpose constructor(val s: String)
+@get:JvmName("getX-impl")
+val x: Example = TODO()
+
+fun getX() = x
 ```
 
-A `JvmExpose` annotation should be added to the constructor of `Example` to achieve the following Java syntax:
+```java
+public static getX-impl()Ljava/lang/String; // for Kotlin
+public static getX()LExample; // for Java
+```
+
+One of the problems is that one cannot instantiate an inline class with its constructor because it is generated with `private` and `synthetic` byte code flags. A solution for that could be annotating a constructor `@JvmExposeBoxed`  to have a constructor exposed by the compiler (it also will create an internal synthetic overload of it taking something like `Nothing?`).
+
+```kotlin
+@JvmInline 
+@JvmExposeBoxed
+value class Example(val s: String)
+```
+
+A `JvmExpose` annotation should be added to the class to achieve the following Java syntax:
 
 ```java
 ExampleKt.f(new Example("42"));
 ```
 
-Usually, constructor of the inline class is used to perform boxing of it.
-Annotating it with `@JvmExpose` will lead to creating a new,
-synthetic constructor (with placeholder parameter of type `java.lang.Void`, probably,
-to avoid signature clash) for boxing,
-enabling the default one for user. 
+Usually, the constructor of the inline class is used to perform boxing of it. Annotating it with `@JvmExpose` will lead to creating a new, synthetic constructor (with placeholder parameter of type `java.lang.Void`, probably, to avoid signature clash) for boxing, enabling the default one for the user (making it not synthetic).
 
-### Suspending exposed functions
+All other functions and properties declared in the boxed exposed inline class become available as normal object methods on JVM. Bridges are generated for all of them as it is already done for inline classes implementing interfaces. If one of the bridge methods takes another instance of inline classes, it is taken boxed, too. However, `box-impl` and `unbox-impl` methods are intentionally left unavailable for users to not break encapsulation and constructor invariants.
 
-Functions that are both `suspend` and annotated with `@JvmExpose` should not take a continuation as normal ones
-because it is impossible to use it in Java conveniently,
-so they can block the thread like `suspend fun main` or `@Test suspend` do.
-A possible problem is handling functions that actively use kotlinx.coroutines types (from `Deferred` to `Flow`),
-which are not convenient for Java users at all.
-As in the previous subsection, a mangled normal function should be created for Kotlin:
-М
+Example of ABI for the following class:
+
 ```kotlin
-@JvmExpose 
-suspend fun f(x: Int): Int = TODO()
+@JvmInline
+@JvmExposeBoxed
+value class Example(val s: String) {
+    fun x()
+    fun y(another: Example)
+}
 ```
 
 ```java
-public static Object f-impl(int x, @NotNull Continuation $completion)
-public static int f(int x)
+public final class Example {
+  //// Public ABI intended for Java callers:
+
+  // Visibility matches with the visibility of the s property in the code
+  public getS()Ljava/lang/String;
+  public x()V
+  public y(LExample;)V
+  
+  public toString()Ljava/lang/String;
+  public hashCode()I
+  public equals(Ljava/lang/Object;)Z
+
+  // Not synthetic constructor,
+  // visibility matches with the one declared in the code,
+  // calls constructor-impl
+  public <init>(Ljava/lang/String;)V 
+      
+  //// Mangled ABI for Kotlin callers:
+  public synthetic unbox-impl()Ljava/lang/String;
+  public static x-impl(Ljava/lang/String;)V
+  public static y-NmaSWX8(Ljava/lang/String;Ljava/lang/String;)V
+  public static toString-impl(Ljava/lang/String;)Ljava/lang/String;
+  public static hashCode-impl(Ljava/lang/String;)I
+  public static equals-impl(Ljava/lang/String;Ljava/lang/Object;)Z
+  public static constructor-impl(Ljava/lang/String;)Ljava/lang/String;
+  public static synthetic box-impl(Ljava/lang/String;)LExample;
+  public static equals-impl0(Ljava/lang/String;Ljava/lang/String;)Z
+
+  // Synthetic constructor, not calls constructor-impl for boxing
+  public synthetic <init>(Ljava/lang/String;Ljava/lang/Void;)V
+
+  @Lkotlin/jvm/JvmInline;()
+  @Lkotlin/jvm/JvmExposeBoxed;()
+}
 ```
+
+(Insignificant details like the `final` flag of methods, all inline classes are final themselves, and nullity annotations are omitted. Order of generation is insignificant, too.)
+
+## Questions
+
+* No interaction with Valhalla described for the value classes case
+    * https://openjdk.org/projects/valhalla/
+    * https://openjdk.org/projects/valhalla/design-notes/state-of-valhalla/01-background
+        * The investigation for Valhalla compatibility is postponed until the prototype is ready.
+* What about MPP
+    * On other platforms, `@JvmInline` classes do not differ from the usual ones, so they will not be affected by `@JvmExposeBoxed` as well.
+
+##  Other considered name variants
+
+* `JvmInlineExposed`
+* `JvmInlineBoxed`
+* `JvmBoxedValue`
+* `**JvmExposeBoxed**`
