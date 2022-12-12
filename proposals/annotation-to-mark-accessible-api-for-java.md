@@ -158,4 +158,3 @@ public final class Example {
 * `JvmInlineExposed`
 * `JvmInlineBoxed`
 * `JvmBoxedValue`
-* `**JvmExposeBoxed**`
