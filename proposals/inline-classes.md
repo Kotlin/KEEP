@@ -649,7 +649,7 @@ value class A(val x: Int) {
 }
 ```
 
-As it is possible to use init blocks for inline classes since 1.4.30, this restriction can also be lifted in 1.8.20.
+As it is possible to use init blocks for inline classes since 1.4.30, this restriction can also be lifted in 1.9 (release), 1.8.20 (experimental).
 
 ### Mangling
 
