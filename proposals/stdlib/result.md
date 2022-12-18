@@ -525,7 +525,7 @@ However, this creates its own problems:
 
 All in all, it does not seem that the costs outweigh whatever benefits it might bring.
 
-> Defining an even more general `Either<L, R>` type as a discriminated union between between two arbitrary types 
+> Defining an even more general `Either<L, R>` type as a discriminated union between two arbitrary types 
 `L` and `R` and then using `typealias Result<T> = Either<Throwable, T>` raises similar problems with 
 an additional burden of designing functions for `Either` that would not needlessly pollute the namespace
 of functions applicable to `Result`. We don't have sufficient motivating use-cases for having
