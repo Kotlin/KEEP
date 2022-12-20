@@ -201,10 +201,13 @@ value class ValueClass {
     public ValueClass(int x) {
         this.x = x;
     }
+    public boolean equals(ValueClass other) {
+        return (x - other.x) % 2 == 0;
+    }
     @Override
     public boolean equals(Object other) {
         if (other instanceof ValueClass) {
-            return (((ValueClass) other).x - x) % 2 == 0;
+            return equals((ValueClass)other);
         }
         return false;
     }
