@@ -231,11 +231,6 @@ class Main {
 
 ## Possible future improvements
 
-### Resolving references to typed equals in compiler frontend
-
-Currently `'=='` operator is being resolved to typed equals in compiler backend, but resolving it in frontend could let
-user navigate to declaration of typed equals in IDE.
-
 ### Typed equals in non-value classes
 
 Introducing typed equals in non-value classes could help to get rid of boilerplate code:
@@ -262,3 +257,7 @@ class A {
     }
 }
 ```
+
+### Resolving references to typed equals in IDE
+
+Resolving `'=='` operation to typed equals in IDE could let user navigate from invocation to declaration.
