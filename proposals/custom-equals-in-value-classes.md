@@ -88,7 +88,9 @@ concept of **typed equals** was proposed:
 
 ```Kotlin
 @JvmInline
+@AllowTypedEquals
 value class Degrees(val value: Double) {
+    @TypedEquals
     fun equals(other: Degrees) = (value - other.value) % 360.0 == 0.0
 }
 ```
