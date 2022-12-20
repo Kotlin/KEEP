@@ -93,7 +93,7 @@ value class Degrees(val value: Double) {
 }
 ```
 
-Type of `other` will be erased during compilation and passing argument will not require boxing.
+Type of `other` will be unboxed during compilation and passing argument will not require boxing.
 
 More precise, we define typed equals as a function such that:
 
