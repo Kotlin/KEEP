@@ -199,32 +199,31 @@ be able to compile Kotlin value classes with custom equals to Valhalla values cl
 ```Java
 value class ValueClass {
     int x;
-
     public ValueClass(int x) {
         this.x = x;
     }
-
     @Override
     public boolean equals(Object other) {
-        return true;
+        if (other instanceof ValueClass) {
+            return (((ValueClass) other).x - x) % 2 == 0;
+        }
+        return false;
     }
-
     @Override
     public int hashCode() {
         return 42;
     }
 }
-
 class Main {
     public static void main(String[] args) {
         ValueClass zeroVal = new ValueClass(0);
-        ValueClass oneVal = new ValueClass(1);
-
+        ValueClass oneVal = new ValueClass(2);
+        
         Object zeroObj = zeroVal;
-
-        System.out.println(zeroVal.equals(oneVal));        // true
-        System.out.println(zeroObj.equals(oneVal));        // true
-        System.out.println(zeroObj.hashCode());            // 42
+        
+        System.out.println(zeroVal.equals(oneVal));		// true
+        System.out.println(zeroObj.equals(oneVal));		// true
+        System.out.println(zeroObj.hashCode());			// 42
     }
 }
 ```
