@@ -193,8 +193,7 @@ default-generated equals in `B` will be comparing it underlying values using cus
 ### Interaction with Valhalla
 
 In its current prototype version `20-valhalla+20-75` Valhalla supports customization of equals and hashCode in values
-classes, thus, we will
-be able to compile Kotlin value classes with custom equals to Valhalla values classes.
+classes. Therefore, we will be able to compile Kotlin value classes with custom equals to Valhalla values classes.
 
 ```Java
 value class ValueClass {
