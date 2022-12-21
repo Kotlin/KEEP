@@ -166,6 +166,7 @@ Currently, inline classes must satisfy the following requirements:
 - Inline class cannot have backing fields
     - Hence, it follows that inline class can have only simple computable properties (no lateinit/delegated properties)
 - Inline class must be a toplevel or a nested class. Local and inner inline classes are not allowed.
+- Inline classes cannot have context receivers.
 - Inline classes cannot have `var` properties with backing fields.
 
 ### Other restrictions
