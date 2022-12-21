@@ -6,6 +6,8 @@
 * **Author**: Evgeniy Zhelenskiy
 * **Prototype**: Experimental in Kotlin/JVM since 1.8.20
 
+Discussion of this proposal is held in [this issue](https://github.com/Kotlin/KEEP/issues/340).
+
 ## Summary
 
 Currently working [Inline Classes](https://github.com/Kotlin/KEEP/blob/master/proposals/inline-classes.md) allow making a performant identity-less wrapper for a value of some type. It is performant because it stores the inner value directly when possible and differentiates the types in compile type.
