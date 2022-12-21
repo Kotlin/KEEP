@@ -637,6 +637,21 @@ value class Negative(val x: Int) {
 Note that these problems were fixed with mangling of constructors and functions, accepting inline classes. Thus, since 1.4.30
 we lift the restrictions.
 
+*Secondary constructors with body*
+
+When it was impossible to use init blocks for inline classes, it was also forbidden to have secondary constructors with bodies:
+
+```kotlin
+@JvmInline
+value class A(val x: Int) {
+    constructor(x: Double) : this(x.toInt()) {
+        println(x)
+    }
+}
+```
+
+As it is possible to use init blocks for inline classes since 1.4.30, this restriction can also be lifted in 1.9 (release), 1.8.20 (experimental).
+
 ### Mangling
 
 To mitigate described problems, we propose introducing mangling for declarations that have top-level inline class types in their signatures.
