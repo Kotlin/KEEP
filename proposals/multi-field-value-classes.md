@@ -187,7 +187,7 @@ fun foo(g: Generic<Int, Long>) {}
 These MFVC would also benefit from reified generics because lots of boxing would be eliminated:
 
 ```kotlin
-@JvmInlinevalue class Reified<reified T, reified R>(val x: T, val y: R)
+@JvmInline value class Reified<reified T, reified R>(val x: T, val y: R)
 fun foo(a: Reified<Int, Long>, b: Reified<Byte, Boolean>)
 ```
 
