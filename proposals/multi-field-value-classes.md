@@ -166,7 +166,7 @@ Each multi-field value class has its own wrapper that is represented as a usual 
 * **When used as type parameter (including function types).** It happens because type parameters are erased in JVM. It is the same as for inline classes. However, there are exception for the rule:
     * When type parameter upper bound is MFVC.
     * When type parameter is a type parameter of inline function or lambda.
-* **Returning from not inline function.** It happens because it is impossible to pass several objects between frames in JVM. The exception is chain of MFVC getters: the compiler replaces `wrapper.segment.p1.x` with getter `wrapper.`getSegment-p1-x`()` instead of `wrapper.getSegment().getP1().getX()`. And this complex getter escapes boxing when getter implementation was initially just reading the field.
+* **Returning from not inline function.** It happens because it is impossible to pass several objects between frames in JVM. The exception is chain of MFVC getters: the compiler replaces `wrapper.segment.p1.x` with getter ``wrapper.`getSegment-p1-x`()`` instead of `wrapper.getSegment().getP1().getX()`. And this complex getter escapes boxing when getter implementation was initially just reading the field.
 * **Secondary constructors.** As they are replaced with non-inline function.
 * **Passing returned boxed value to another function that expects boxed parameter.** Intermediate value isn’t unboxed due to optimization because it would be boxed back otherwise.
 * **Lateinit variables and properties.** Because nullable types are stored.
