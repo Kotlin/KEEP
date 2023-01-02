@@ -1,9 +1,9 @@
 # Data objects
 
-* Type: Design proposal
-* Authors: Alexander Udalov, Roman Elizarov, Pavel Mikhailovskii, Marat Akhin
-* Status: Preview in 1.8.20, Release in 1.9.0
-* Discussion and feedback: [#317](https://github.com/Kotlin/KEEP/issues/317)
+* **Type**: Design proposal
+* **Authors**: Alexander Udalov, Roman Elizarov, Pavel Mikhailovskii, Marat Akhin
+* **Status**: Preview in 1.8.20, Release in 1.9.0
+* **Discussion and feedback**: [#317](https://github.com/Kotlin/KEEP/issues/317)
 
 # Summary
 
