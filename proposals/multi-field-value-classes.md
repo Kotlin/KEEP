@@ -8,9 +8,11 @@
 
 Discussion of this proposal is held in [this issue](https://github.com/Kotlin/KEEP/issues/340).
 
-## Summary
+## Description
 
-Currently working [Inline Classes](https://github.com/Kotlin/KEEP/blob/master/proposals/inline-classes.md) allow making a performant identity-less wrapper for a value of some type. It is performant because it stores the inner value directly when possible and differentiates the types in compile type.
+### Inline Classes
+
+Currently working [Inline Classes](https://github.com/Kotlin/KEEP/blob/master/proposals/inline-classes.md) allow making a performant identity-less type-safe wrapper with human-readable `toString` for a value of some type. It is performant because it stores the inner value directly when possible and differentiates the types in compile time.
 
 ```kotlin
 @JvmInline
@@ -23,18 +25,57 @@ value class Password(val value: String) {
 
 Using `Password` class instead of raw `String` helps you not to pass invalid password when validated one is expected and it helps not to pass it accidentally as `Username`. There is no overhead because password is represented as raw `String` in the compiled code and the runtime.
 
-However, Inline classes are very limited: it may be useful to escape creating wrappers because of performance issues for classes with multiple fields too. Inline classes generalization is named [Value classes](https://github.com/Kotlin/KEEP/blob/master/notes/value-classes.md) (shallow immutable classes without identity). Since single field value classes are inline classes, which are already implemented, this KEEP describes multi-field value classes (MFVC).
+### Multi-field value classes
 
-Value classes are very similar to data classes but:
+However, Inline classes are very limited: it may be useful to escape creating wrappers because of performance issues for classes with multiple fields too. Inline classes generalization is named [Value classes](https://github.com/Kotlin/KEEP/blob/master/notes/value-classes.md) (shallow immutable classes without identity).
 
-* They do not have component functions and `copy` methods.
-* They can only have `val` constructor parameters, while data classes can have `var` parameters as well.
-* It is forbidden to use identity of value classes.
-* Customizing equals is not allowed until “typed equals” feature is released.
+As well, as for Inline classes, one of the main aims of MFVC is the compiler optimizations that are possible due to the lack of fixed identity. Unfortunately, there are several limitations for optimization for JVM target described below in the [Boxing](#boxing) section.
+
+Multi-field value classes are the next part of the Value classes feature after Inline classes.
+
+### Value classes
+
+Value classes are effective shallow-immutable data classes without identity, copy functions and component functions.
+
+Shallow immutability is chosen to make it possible to implement internally mutable classes with immutable public API such as `Lazy<T>`. However, there are domains where deep immutability is required, but allowing such requirement is currently outside the scope of the document.
+
+Value classes do not have `copy` methods due to their inconvenience for usage to mutate:
+* They are verbose and hard to understand when combined with constructions such as `if`s, loops.
+* They are unsuitable for nested structures: `a = a.copy(b = a.b.copy(c = f(a.b.c + 1)))` instead of `a.b.c = f(a.b.c)` for mutable classes.
+* They cannot be used for operators: `a = a.copy(b = a.b + 2)` instead of `a.b += 2` for mutable classes.
+
+Not yet implemented lens syntax is going to be used for convenient mutating mutable fields/variables of immutable object types. Other applications of the shallow-copying function `copy` do not exist for shallow-immutable value classes.
+
+Value classes do not have component functions as they are used for positional destructuring which is considered harmful because of exposing of the internal state and order of the fields. It will be replaced with not yet implemented named destructuring syntax.
+
+Customizing `equals` is not allowed until “typed equals” feature is released.
+
+### Further development: `VArray`s and reification
+
+One of other important steps of Value classes feature are Value arrays (`VArray`s) and reified classes and reified not-inline functions. They significantly extend applicability and optimizations of Value classes, **but they require MFVC to be already implemented** for that. Their importance is caused by frequent usage of containers that store and use stored values: they are currently handle value classes as boxed.
+
+`VArray` is the fundamental container and first reified class. `VArray`s solve the problem of effective arrays (with invariant type parameter) without necessity of declaring manual [`UIntArray`](https://github.com/JetBrains/kotlin/blob/30788566012c571aa1d3590912468d1ebe59983d/libraries/stdlib/unsigned/src/kotlin/UIntArray.kt#L15) for each type `UInt`. It also generifies existing `IntArray`, `LongArray`, `BooleanArray` etc. with scalable general `VArray<T>` which maps to `VArray<Int>`, `VArray<Long>`, `VArray<Boolean>` correspondingly.
+
+Having `VArray`s and reified functions also allows to write generic functions, extensions that operate on generic `VArray<T>`:
+```kotlin
+operator fun <reified T> VArray<T>.plus(other: VArray<T>) =
+    VArray<T>(this.size + other.size) { if (it < this.size) this[it] else other[it - this.size] }
+```
+
+Having reified functions for generics of primitive or value class types helps to escape boxing. For example, being used within non-reified generic function, `x/*int*/ + y/*int*/` becomes `Integer.valueOf(x/*Integer*/.value, y/*Integer*/.value)`. So, it is better to generate specializations for such classes if the type parameters are marked as reified. However, reifying all parameters as it is done in C++ and Rust leads to huge code footprint and exponential growth of compilation time while it gives no significant performance boost for reference types.
+
+`VArray` is not the only container or class the users may want to reify, thus reification of other classes shall also be possible in the future.
+
+### Project Valhalla
+
+There is [Project Valhalla](https://openjdk.org/projects/valhalla/) for JVM that suggests Value Classes that are similar to ones this proposal is about. It solves the same problems but on the runtime side (efficient user-defined identity-less objects, arrays of them, classes with them as fields, generic specialization). While the compiler is limited by JVM bytecode restrictions (cannot return several values from function) and uses the open world model (does not know all code that will be executed and usages of all classes, functions), the Valhalla-capable runtime is not limited and has closed world model (does know all executing code and usages of all classes, functions). It gives a great advantage in performing optimizations to the Valhalla-based Value classes.
+
+However, it requires usage of the capable runtime, which is impracticable condition for Android, where runtime is still compatible with JVM 1.8 that was released in 2014. That is why Kotlin/JVM compiler needs to provide the functionality independent of Valhalla Project. Nevertheless, the latter solution is preferred, so simple migration to it must be possible.
 
 ## Use cases
+*Since single field value classes are inline classes, which are already implemented, this KEEP describes further only multi-field value classes (MFVC).*
 
-The typical example of MFVC usage is applications that create a lot of small effective structures without identity, e.g. geometry structures:
+The typical example of MFVC usage is applications that create a lot of small effective structures without identity, e.g. geometry structures, complex numbers, rational numbers:
 
 ```kotlin
 interface Figure
@@ -60,7 +101,7 @@ value class DSegment(val p1: DPoint, p2: DPoint): FigureWithPerimeter<Double> {
     fun equals(other: DSegment) =
         p1 == other.p1 && p2 == other.p2 || p1 == other.p2 && p2 == other.p1
     
-    override hashCode() = p1.hashCode() + p2.hashCode()
+    override fun hashCode() = p1.hashCode() + p2.hashCode()
     
     override val perimeter get() = length
 }
@@ -133,16 +174,9 @@ fun <T: Comparable<T>> split(tree: Tree<T>, key: T): (left: Tree<T>, right: Tree
 }
 ```
 
-## Description
+## Syntax
 
-Value classes are declared using soft keyword `value` as inline classes are. In Kotlin/JVM they also need `@JvmInline` annotation (several examples are above) before [Valhalla project](https://openjdk.org/projects/valhalla/) release. After the release, Valhalla value classes would become the default and expected way to create ones in Kotlin/JVM because they offer more optimizations than it is possible to do for pre-Valhalla value classes. So the latter are marked with annotations.
-
-The reasons why the feature is implemented in Kotlin for pre-Valhalla JVMs too are:
-
-* Valhalla is only JVM, while Kotlin is not.
-* Valhalla would hardly be adopted in Android in any nearest future because Android Runtime is still compatible with JVM 1.8.
-* Adoption of new JVM’s is quite slow.
-
+Value classes are declared using soft keyword `value` as inline classes are. In Kotlin/JVM they also need `@JvmInline` annotation (several examples are above) before [Valhalla project](https://openjdk.org/projects/valhalla/) release. After the release, Valhalla value classes would become the default and expected way to create ones in Kotlin/JVM because they offer more optimizations than it is possible to do for pre-Valhalla value classes. So the latter are marked with annotations in Kotlin/JVM.
 
 As any other class, value classes can declare member (except inner classes), be a member of some other class, have generics, extensions and other language features.
 
@@ -162,11 +196,11 @@ Each multi-field value class has its own wrapper that is represented as a usual 
 
 **Rules for boxing** are the following:
 
-* **Boxed when used as other type.** It means that if one uses MFVC as nullable type, implemented interface or `Any`, the boxing will happen: `dRectangle.area` doesn’t require the boxing while `(dRectangle as FigureWithArea<Double>).area` does.
-* **When used as type parameter (including function types).** It happens because type parameters are erased in JVM. It is the same as for inline classes. However, there are exception for the rule:
+* **Boxed when used as other type.** It means that if one uses MFVC as nullable type, implemented interface or `Any`, the boxing will happen: `dRectangle.area` does not require the boxing while `(dRectangle as FigureWithArea<Double>).area` does.
+* **When used as type parameter (including function types).** It happens because type parameters are erased in JVM. It is the same as for inline classes. However, there are exceptions to the rule:
     * When type parameter upper bound is MFVC.
-    * When type parameter is a type parameter of inline function or lambda.
-* **Returning from not inline function.** It happens because it is impossible to pass several objects between frames in JVM. The exception is chain of MFVC getters: the compiler replaces `wrapper.segment.p1.x` with getter ``wrapper.`getSegment-p1-x`()`` instead of `wrapper.getSegment().getP1().getX()`. And this complex getter escapes boxing when getter implementation was initially just reading the field.
+    * When type parameter is a type parameter of inline function or inline lambda.
+* **Returning from not inline function.** *(This point does not apply to primary constructors of MFVC).* It happens because it is impossible to pass several objects between frames in JVM. The exception is a chain of MFVC getters: the compiler replaces `wrapper.segment.p1.x` with getter ``wrapper.`getSegment-p1-x`()`` instead of `wrapper.getSegment().getP1().getX()`. And this complex getter escapes boxing when getter implementation was initially just reading the field.
 * **Secondary constructors.** As they are replaced with non-inline function.
 * **Passing returned boxed value to another function that expects boxed parameter.** Intermediate value isn’t unboxed due to optimization because it would be boxed back otherwise.
 * **Lateinit variables and properties.** Because nullable types are stored.
@@ -201,11 +235,11 @@ Kotlin reflection is not supported for MFVC yet but will be supported soon.
 
 ## Methods from `kotlin.Any`
 
-As it is done for [inline classes](https://github.com/Kotlin/KEEP/blob/master/proposals/inline-classes.md#methods-from-kotlinany), compiler generates `toString`, `hashCode`, `equals` (but not component functions because positional destructuring is considered harmful). `toString` and `hashCode` can be customized by overriding, customization of equals will be possible by using feature “typed equals” (which takes the corresponding type as parameter instead of `Any?`) that is in development.
+As it is done for [inline classes](https://github.com/Kotlin/KEEP/blob/master/proposals/inline-classes.md#methods-from-kotlinany), the compiler generates `toString`, `hashCode`, `equals` (but not component functions as described [above](#value-classes)). `toString` and `hashCode` can be customized by overriding, customization of equals will be possible by using feature “typed equals” (which takes the corresponding type as parameter instead of `Any?`) that is in development.
 
 ## Arrays of Value Classes
 
-This paragraph is actual for both inline classes and multi-field value classes so they are generified to value classes here. Value arrays of value classes are reified classes which are not implemented yet. They also cause many other design questions because of necessity of value Lists etc. So there are no value arrays (`VArray'`s) for now and it is forbidden to use `vararg` for value classes. The same thing is already [written](https://github.com/Kotlin/KEEP/blob/master/proposals/inline-classes.md#arrays-of-inline-class-values) for Inline Classes.
+This paragraph is actual for both inline classes and multi-field value classes, so they are generified to value classes here. Value arrays of value classes are reified classes which are not implemented yet. They also cause many other design questions because of necessity of value Lists etc. So there are no [value arrays](#further-development--varray-s-and-reification) (`VArray`s) for now and it is forbidden to use `vararg` for value classes. The same thing is already [written](https://github.com/Kotlin/KEEP/blob/master/proposals/inline-classes.md#arrays-of-inline-class-values) for Inline Classes.
 
 ## Expect/Actual MFVC
 
@@ -219,19 +253,19 @@ As for [Inline Classes](https://github.com/Kotlin/KEEP/blob/master/proposals/inl
 
 ## MFVC ABI (JVM)
 
-It is not always possible to pass multi-field value class (MFVC) values to functions as unboxed. The limitations are listed above in [Boxing](#Boxing) section.
+It is not always possible to pass MFVC values to functions as unboxed. The limitations are listed above in [Boxing](#Boxing) section.
 
-Also, there are strong limitations for returning MFVC from functions: it is forbidden to return multiple values from function in JVM. However, if we could never cope with it, all the optimizations would be useless: if a value was boxed once, there is no reason to escape boxing because using the existing box guarantees that no more boxes for this value are created.
+Also, there are strong limitations for returning MFVC from functions: it is forbidden to return multiple values from function in JVM. However, if we could never cope with it, all the optimizations would be useless: if a value was boxed once, then there is no reason to escape boxing because using the existing box guarantees that no more boxes for this value are created.
 
 Fortunately, there are several workarounds:
 
-* Using shadow stacks. Benchmark showed that it is even slower than using a box that is rather cheap in modern JVMs.
+* Using shadow stacks. A benchmark showed that it is even slower than using a box that is rather cheap in modern JVMs.
 * Using local variables for the calling site. It is only possible for inline functions as they are in the same stack frame.
-* Getting result MFVC from arguments at the calling site. It is only possible for primary constructors of MFV. They are the main and initial source of all MFVCs.
+* Getting result MFVC from arguments at the calling site. It is only possible for primary constructors of MFVC. They are the main and initial source of all MFVCs.
 
 Primary constructors do two things: field initialization and side effects. They can be separated and the latter is stored in so-called `/*static*/ fun constructor-impl(...): Unit` which takes field values as parameters and performs side effects. So MFVC primary constructor calls can be replaced with storing arguments in variables and then calling the `constructor-impl` function on them.
 
-The `constructor-impl` must be generated even if it is empty because public ABI must not depend on the body inisides.
+The `constructor-impl` calls must be generated even if it is empty because public ABI must not depend on the body insides.
 
 ### (Un)boxing functions
 
@@ -239,7 +273,7 @@ Every MFVC can exist in 2 forms: boxed (single field, variable, parameter)  and 
 
 Conversion from unboxed one into boxed one is rather simple: calling static synthetic function `box-impl` with necessary type and value arguments. However, there are several points that make synthetic unboxing functions `unbox-impl-[...]` more complicated.
 
-#### Choice between `unbox-impl` and getter.
+#### The choice between `unbox-impl` and getter.
 
 ```kotlin
 @JvmInline
@@ -328,7 +362,7 @@ r.mfvc1.mfvc2 // option #1: Mfvc2.`box-impl`(r.`getX-0`(), r.`getX-1`()) creates
 
 So, it is necessary to create intermediate MFVC unbox methods for nested MFVC properties.
 
-Furthermore, if they existed, they could be overridden to optimize nested access. The methods must also have default implementations that created intermediate boxes. This would allow such properties to be overridden in Java or by non-trivial getters. It would also help to save binary compatibility. As MFVC cannot have properties with custom getter and backing field simultaneously, the only cause of choice between effective and default implementation is whether the current regular class property getter is default or not. So, when it becomes default/not default subgetters of the current class change there implementation to effective/default and do not affect other classes.
+Furthermore, if they existed, they could be overridden to optimize nested access. The methods must also have default implementations that create intermediate boxes. This would allow such properties to be overridden in Java or by non-trivial getters. It would also help to save binary compatibility. As MFVC cannot have properties with custom getter and backing field simultaneously, the only cause of choice between effective and default implementation is whether the current regular class property getter is default or not. So, when it becomes default/not default subgetters of the current class change there implementation to effective/default and do not affect other classes.
 
 Naming unbox methods becomes more difficult with nested MFVC. A node in MFVC tree can be identified by its path from the root (e.g. `["mfvc1", "mfvc2", "x"]` for the example above). Each of elements of a path can be identified by its name or by its index. Better readability is necessary in stack traces. So, names are chosen.
 
@@ -375,11 +409,11 @@ SomeClass {
 
 `getSegment` is not mangled as MFVCs, returned from functions, are always boxed.
 
-`f(x/*: DPoint*/)` can be compiled into `f(x.unbox-impl-x(), x.unbox-impl-y())` and `f(x.getX(), x.getY())`. If the `getX` or `getY` are not public necessity of unbox functions is obvious. But we actually always need them because if we call them instead of getters, we don't need to recompile existing calls when the name or visibility changes.
+`f(x/*: DPoint*/)` can be compiled into `f(x.unbox-impl-x(), x.unbox-impl-y())` and `f(x.getX(), x.getY())`. If the `getX` or `getY` are not public, necessity of unbox functions is obvious. But we actually always need them because if we call them instead of getters, we do not need to recompile existing calls when the name or visibility changes.
 
 #### Optimization
 
-When accessing a MFVC leaf from within the class it is better to use get-field directly than the unbox function as it is done for regular properties with backing fields. If the property is private, MFVC leaves will be also private and used only by kotlin-reflect.
+When accessing a MFVC leaf from within the class, it is better to use get-field directly than the unbox function as it is done for regular properties with backing fields. If the property is private, MFVC leaves will be also private and used only by kotlin-reflect.
 
 #### Overriding example:
 
@@ -451,7 +485,7 @@ fun f(x: Interface) = x.`getPoint-x`() * x.`getPoint-y`()
 
 ### Annotations
 
-Each property and its parts (field, getter, setter) can be annotated. MFVC properties are not exceptions.
+Each property and its parts (field, getter, setter) can be annotated. MFVC properties are not the exceptions.
 
 Annotating MFVC leaves does not cause any problems because they are not transformed while annotating other MFVC properties are.
 
@@ -460,19 +494,19 @@ Annotating non-leaves is currently forbidden due to lack of use-cases.
 ### Expression flattening
 
 As described above, the default representation of MFVC is flattened, so it is necessary to flatten existing expressions.
-The easiest way is to take a box and then flatten it. but we should escape boxing when possible.
+The easiest way is to take a box and then flatten it, but we should escape boxing when possible.
 
-* If the expression is a primary constructor call, we flatten each of subfields recursively to variables and then call `constructor-impl` function. The flattened expressions are the read accesses to the variables.
+* If the expression is a primary constructor call, we flatten each of subfields recursively to variables and then call `constructor-impl` function on them. The flattened expressions are the read accesses to the variables.
 * If the expression already has some flattened representation, we can just use it. For example, it could be some getter call that can be replaced with multiple unboxing functions calls.
 * If the expression is some block of statements, we flatten the last one recursively as it is the result of the block.
 * `when`, `if` and `try` expressions results are also flattened.
 * Otherwise, we should actually receive a boxed expression and then unbox it with unbox methods or field getting.
 
 
-If we flatten not to variables themselves but we just want expressions, we may escape using variables when possible (keeping evaluation order the same):
+If we flatten not to variables themselves, but we just want expressions, we may escape using variables when possible (keeping evaluation order the same):
 
 ```kotlin
-*// Before:
+// Before:
 val a = 2
 val b = 3
 val c = b + 1
@@ -484,7 +518,7 @@ val b = 3
 // [a, b, b + 1]*
 ```
 
-If the flattened representation is used to reset (not initialize) a variable/field, new value representation must be stored in variables. If an exception is thrown during evaluation of the new value, the old value must be kept. The tail of flattened expressions that cannot throw an error is inlined (variables are not created).
+If the flattened representation is used to reset (not initialize) a variable/field, the new value representation must be firstly stored in temporary variables. If an exception is thrown during evaluation of the new value, the old value must be kept. The tail of flattened expressions that cannot throw an error is inlined (variables are not created).
 
 If boxing result is not needed, boxing is not called.
 
@@ -585,6 +619,8 @@ If necessary, bridges are generated.
 #### Equality
 
 There is an additional function `equals-impl0` for equals replacement that takes both parameters flattened. It is called instead of `==` when possible. If the right argument is MFVC and the left one is literal null, right argument is not boxed. Also, if right argument is unboxed `MFVC`, and the left one is `MFVC?`, the compiler generates an if expression, that checks the left for being null and then uses `equals-impl0` if it is not.
+
+If there is a user-defined typed equals, no `equals-impl0` is generated, and the user function is renamed to `equals-impl0`.
 
 #### String concatenation
 
