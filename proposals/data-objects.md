@@ -35,10 +35,10 @@ data class Div(val lhv: Expr, val rhv: Expr) : Expr
 data class Const(val value: Int) : Expr
 
 fun eval(e: Expr): Int = when (e) {
-    is Add -> *eval*(e.lhv) + *eval*(e.rhv)
-    is Sub -> *eval*(e.lhv) - *eval*(e.rhv)
-    is Mul -> *eval*(e.lhv) * *eval*(e.rhv)
-    is Div -> *eval*(e.lhv) / *eval*(e.rhv)
+    is Add -> eval(e.lhv) + eval(e.rhv)
+    is Sub -> eval(e.lhv) - eval(e.rhv)
+    is Mul -> eval(e.lhv) * eval(e.rhv)
+    is Div -> eval(e.lhv) / eval(e.rhv)
     is Const -> e.value
 }
 ```
