@@ -1,5 +1,3 @@
-# Multi-field value classes KEEP draft
-
 # Multi-field value classes
 
 * **Type**: Design proposal
