@@ -37,7 +37,7 @@ Multi-field value classes are the next part of the Value classes feature after I
 
 Value classes are effective shallow-immutable data classes without identity, copy functions and component functions.
 
-Shallow immutability is chosen to make it possible to implement internally mutable classes with immutable public API such as `Lazy<T>`. However, there are domains where deep immutability is required, but allowing such requirement is currently outside the scope of the document.
+Shallow immutability is chosen to make it possible to implement internally mutable classes with immutable public API such as using property of type `Lazy<T>`: `value class SomeData(val x: Int, private val lazyY: Lazy<Int>) { val y get() = lazyY.value }`. However, there are domains where deep immutability is required, but allowing such requirement is currently outside the scope of the document.
 
 Value classes do not have `copy` methods due to their inconvenience for usage to mutate:
 * They are verbose and hard to understand when combined with constructions such as `if`s, loops.
