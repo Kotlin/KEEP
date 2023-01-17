@@ -68,7 +68,9 @@ Having reified functions for generics of primitive or value class types helps to
 
 There is [Project Valhalla](https://openjdk.org/projects/valhalla/) for JVM that suggests Value Classes that are similar to ones this proposal is about. It solves the same problems but on the runtime side (efficient user-defined identity-less objects, arrays of them, classes with them as fields, generic specialization). While the compiler is limited by JVM bytecode restrictions (cannot return several values from function) and uses the open world model (does not know all code that will be executed and usages of all classes, functions), the Valhalla-capable runtime is not limited and has closed world model (does know all executing code and usages of all classes, functions). It gives a great advantage in performing optimizations to the Valhalla-based Value classes.
 
-However, it requires usage of the capable runtime, which is impracticable condition for Android, where runtime is still compatible with JVM 1.8 that was released in 2014. That is why Kotlin/JVM compiler needs to provide the functionality independent of Valhalla Project. Nevertheless, the latter solution is preferred, so simple migration to it must be possible.
+Value classes without `@JvmInline` annotation will be supported and mapped to Valhalla Value classes after its release.
+
+However, these classes require usage of the capable runtime, which is impracticable condition for Android, where runtime is still compatible with JVM 1.8 that was released in 2014. That is why Kotlin/JVM compiler needs to provide the functionality independent of Valhalla Project. Nevertheless, the latter solution is preferred, so simple migration to it must be possible.
 
 ## Use cases
 *Since single field value classes are inline classes, which are already implemented, this KEEP describes further only multi-field value classes (MFVC).*
