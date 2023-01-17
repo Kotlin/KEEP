@@ -46,7 +46,7 @@ Not yet implemented lens syntax is going to be used for convenient mutating muta
 
 Value classes do not have component functions as they are used for positional destructuring which is considered harmful because of exposing of the internal state and order of the fields. It will be replaced with not yet implemented named destructuring syntax.
 
-Customizing `equals` is not allowed until “typed equals” feature is released.
+Customizing `equals` is not allowed until “typed equals” feature is released. Customizing existing `equals` would lead to unavoidable boxing of the parameter.
 
 ### Further development: `VArray`s and reification
 
