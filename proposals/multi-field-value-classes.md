@@ -62,7 +62,7 @@ operator fun <reified T> VArray<T>.plus(other: VArray<T>) =
 
 Having reified functions for generics of primitive or value class types helps to escape boxing. For example, being used within non-reified generic function, `x/*int*/ + y/*int*/` becomes `Integer.valueOf(x/*Integer*/.value, y/*Integer*/.value)`. So, it is better to generate specializations for such classes if the type parameters are marked as reified. However, reifying all parameters as it is done in C++ and Rust leads to huge code footprint and exponential growth of compilation time while it gives no significant performance boost for reference types.
 
-`VArray` is not the only container or class the users may want to reify, thus reification of other classes shall also be possible in the future.
+`VArray` is not the only container or class the users may want to reify, thus reification of other classes and interfaces (`List<T>`, `ArrayList<T>`, `Set<T>`, `Point<T>(x: T, y: T)`) shall also be possible in the future.
 
 ### Project Valhalla
 
