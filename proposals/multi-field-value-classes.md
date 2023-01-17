@@ -27,7 +27,7 @@ Using `Password` class instead of raw `String` helps you not to pass invalid pas
 
 However, Inline classes are very limited: it may be useful to escape creating wrappers because of performance issues for classes with multiple fields too. Inline classes generalization is named [Value classes](https://github.com/Kotlin/KEEP/blob/master/notes/value-classes.md) (shallow immutable classes without identity).
 
-As well, as for Inline classes, one of the main aims of MFVC is the compiler optimizations that are possible due to the lack of fixed identity. Unfortunately, there are several limitations for optimization for JVM target described below in the [Boxing](#boxing) section.
+As well, as for Inline classes, one of the main aims of MFVC is compiler optimizations that are possible due to the lack of fixed identity. Unfortunately, there are several limitations for optimization for JVM target described below in the [Boxing](#boxing) section.
 
 Multi-field value classes are the next part of the Value classes feature after Inline classes.
 
