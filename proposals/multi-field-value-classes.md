@@ -10,7 +10,7 @@ Discussion of this proposal is held in [this issue](https://github.com/Kotlin/KE
 
 ### Inline Classes
 
-Currently working [Inline Classes](https://github.com/Kotlin/KEEP/blob/master/proposals/inline-classes.md) allow making a performant identity-less type-safe wrapper with human-readable `toString` for a value of some type. It is performant because it stores the inner value directly when possible and differentiates the types in compile time.
+Current [Inline Classes](https://github.com/Kotlin/KEEP/blob/master/proposals/inline-classes.md) are performant identity-less type-safe wrappers with human-readable `toString` for a value of some type. They are represented with raw (unboxed) value at runtime when possible, thus eliminating need for wrapper allocations.
 
 ```kotlin
 @JvmInline
