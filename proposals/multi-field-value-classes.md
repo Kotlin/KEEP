@@ -196,7 +196,7 @@ Jetpack compose has examples when this limitation is broken, and usual boxing `d
 
 [This class](https://github.com/JetBrains/androidx/blob/458f93113905b5753b999df784aeb92dab51cf65/compose/ui/ui-geometry/src/commonMain/kotlin/androidx/compose/ui/geometry/MutableRect.kt#L32) is mutable to allow convenient syntax and reuse the wrapper. If it was MFVC, the first problem would have been solved by lens syntax, the second one would not exist at all.
 
-[This class](https://github.com/JetBrains/androidx/blob/458f93113905b5753b999df784aeb92dab51cf65/compose/ui/ui-graphics/src/commonMain/kotlin/androidx/compose/ui/graphics/Vertices.kt#L23) suffers from lack of `VArray`s of Value classes and imitates them manually.
+[Vertices](https://github.com/JetBrains/androidx/blob/458f93113905b5753b999df784aeb92dab51cf65/compose/ui/ui-graphics/src/commonMain/kotlin/androidx/compose/ui/graphics/Vertices.kt#L23) suffers from lack of `VArray`s of Value classes and imitates them manually.
 
 ### [KorGE](https://korge.org/)
 
