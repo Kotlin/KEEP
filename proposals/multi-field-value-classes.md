@@ -200,7 +200,7 @@ Jetpack compose has examples when this limitation is broken, and usual boxing `d
 
 ### [KorGE](https://korge.org/)
 
-Korge is a modern multiplatform game engine for Kotlin.
+KorGE is a modern multiplatform game engine for Kotlin.
 
 Game engines also require small number of allocations as Compose. Furthermore, it manipulates geometry objects and collects of them so it must do it effectively. Actually it does it by manual specialization for these hand-made classes.
 
