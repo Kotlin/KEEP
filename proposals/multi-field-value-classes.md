@@ -52,7 +52,7 @@ Customizing `equals` is not allowed until “typed equals” feature is released
 
 One of other important steps of Value classes feature are Value arrays (`VArray`s) and reified classes and reified not-inline functions. They significantly extend applicability and optimizations of Value classes, **but they require MFVC to be already implemented** for that. Their importance is caused by frequent usage of containers that store and use stored values: they are currently handle value classes as boxed.
 
-`VArray` is the fundamental container and first reified class. `VArray`s solve the problem of effective arrays (with invariant type parameter) without necessity of declaring manual [`UIntArray`](https://github.com/JetBrains/kotlin/blob/30788566012c571aa1d3590912468d1ebe59983d/libraries/stdlib/unsigned/src/kotlin/UIntArray.kt#L15) for each type `UInt`. It also generifies existing `IntArray`, `LongArray`, `BooleanArray` etc. with scalable general `VArray<T>` which maps to `VArray<Int>`, `VArray<Long>`, `VArray<Boolean>` correspondingly.
+`VArray` is the fundamental container and first reified class. `VArray`s solve the problem of effective arrays (with invariant type parameter) without necessity of declaring manual [`UIntArray`](https://github.com/JetBrains/kotlin/blob/master/libraries/stdlib/unsigned/src/kotlin/UIntArray.kt#L15) for each inline class type. It also generifies existing `IntArray`, `LongArray`, `BooleanArray` etc. with scalable general `VArray<T>` which maps to `VArray<Int>`, `VArray<Long>`, `VArray<Boolean>` correspondingly.
 
 Having `VArray`s and reified functions also allows to write generic functions, extensions that operate on generic `VArray<T>`:
 ```kotlin
