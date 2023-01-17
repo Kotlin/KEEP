@@ -228,7 +228,7 @@ Pools with reusable boxed wrappers: [PointPool](https://github.com/korlibs/korge
 
 ## Syntax
 
-Value classes are declared using soft keyword `value` as inline classes are. In Kotlin/JVM they also need `@JvmInline` annotation (several examples are above) before [Valhalla project](https://openjdk.org/projects/valhalla/) release. After the release, Valhalla value classes would become the default and expected way to create ones in Kotlin/JVM because they offer more optimizations than it is possible to do for pre-Valhalla value classes. So the latter are marked with annotations in Kotlin/JVM.
+Value classes are declared using soft keyword `value` as inline classes are. In Kotlin/JVM they also need `@JvmInline` annotation (several examples are above) before [Valhalla project](https://openjdk.org/projects/valhalla/) release. After the release, Valhalla value classes would become the default and expected way to create ones in Kotlin/JVM because they offer more optimizations than it is possible to do for pre-Valhalla value classes. So the latter are marked with annotations in Kotlin/JVM. Adding or removing the annotation will break binary compatibility.
 
 As any other class, value classes can declare member (except inner classes), be a member of some other class, have generics, extensions and other language features.
 
