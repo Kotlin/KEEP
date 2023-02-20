@@ -151,10 +151,10 @@ value class Color(
 @JvmInline
 value class Gradient(val from: Color, val to: Color)
 
-fun Gradient.colorAt(percentage: Double): Color {
-     require(percentage in 0.0..100.0) { "Invalid percentage: $percentage" }
-     val c1 = 100.0 - percentage
-     val c2 = percentage
+fun Gradient.colorAt(ratio: Double): Color {
+     require(ratio in 0.0..1.0) { "Invalid ratio: $ratio" }
+     val c1 = 1.0 - ratio
+     val c2 = ratio
      return Color(
          alpha = (from.alpha.toDouble() * c1 + to.alpha.toDouble() * c2).toUByte(),
          red = (from.red.toDouble() * c1 + to.red.toDouble() * c2).toUByte(),
