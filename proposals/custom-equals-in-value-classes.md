@@ -88,7 +88,6 @@ concept of **typed equals** was proposed:
 
 ```Kotlin
 @JvmInline
-@AllowTypedEquals
 value class Degrees(val value: Double) {
     @TypedEquals
     fun equals(other: Degrees) = (value - other.value) % 360.0 == 0.0
@@ -138,50 +137,6 @@ star-projection of the value class.
 ### Custom `hashCode`
 
 It is obvious that the ability of overriding `equals` makes us allow overriding of `hashCode`.
-
-### `@TypedEquals` and `@AllowTypedEquals` annotations
-
-Customization of equals in value classes is currently considered as an experimental feature. Thus, we want to force
-user to `@OptIn` before using it. In previous section we introduced `@TypedEquals` annotation, which serves as a marker
-for typed equals function. Unfortunately, simply annotating `@TypedEquals` with `@RequireOptIn` will not work, as
-typed equals may be invoked implicitly:
-
-```Kotlin
-@JvmInline
-value class IC(val x: Int) {
-    @TypedEquals
-    fun equals(other: IC) = ...
-}
-
-fun foo() {
-    setOf(IC(1), IC(2)) // compiles without @OptIn, but invokes typed equals internally
-}
-```
-
-We propose to add new annotation `@AllowTypedEquals`. This annotation is applicable for value classes only and any value
-class that declares typed equal must be annotated by `@AllowTypedEquals`:
-
-```Kotlin
-@Target(AnnotationTarget.CLASS)
-@Retention(AnnotationRetention.BINARY)
-@MustBeDocumented
-@RequiresOptIn
-annotation class AllowTypedEquals
-```
-
-```Kotlin
-@JvmInline
-@AllowTypedEquals
-value class IC(val x: Int) {
-    @TypedEquals
-    fun equals(other: IC) = ...
-}
-
-@OptIn(AllowTypedEquals::class) // usage of value class IC requires OptIn
-fun foo() {
-    setOf(IC(1), IC(2))
-}
-```
 
 ## Other questions
 
