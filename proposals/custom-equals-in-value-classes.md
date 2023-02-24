@@ -108,7 +108,7 @@ More precise, we define typed equals as a function such that:
 Typed equals, as well as equals from `Any`, must define an equivalence relation, i.e. be symmetric, reflexive,
 transitive and consistent.
 
-We forbid typed equals to have type parameters.
+We forbid typed equals to have type parameters, as well as default values for value parameter.
 
 > From now, we will be calling equals from `Any` *untyped* equals, in contrast, to *typed* one.
 
