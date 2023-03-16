@@ -63,7 +63,7 @@ To avoid that, `values()` will be softly decommissioned with the help of IDE ass
 Effectively, `entries` represents an immutable list of all enum entries and can be represented as type `List<E>`.
 We consider `List<E>` insufficient as the long-term solution:
 
-- `List<E>` does not represent what it is intended to -- a list of **all** existing enum entries. 
+- `List<E>` does not represent well the intended meaning of `entries` being a list of **all** existing enum entries. 
   - It means that the semantics of the value is lost as soon as it leaves the callsite.
   - It doesn't allow programmers to introduce their own extensions on list of all enum entries (e.g. `valueOfOrNullIgnoreCase`) as they do not have the right tool to express it in the signature.
 - It prevents Kotlin from further extension of Enum's API without introducing new code-generated members to `enum` type.
@@ -75,7 +75,7 @@ sealed interface EnumEntries<E : Enum<E>> : List<E>
 ```
 
 We deliberately limit any implementations of this type to the standard library to have a future-proof way to 
-extend it in the future in a backwards-compatible manner.
+extend it in a backwards-compatible manner.
 All further potential extensions, such as `valueOfOrNull(String)`, `hasValue(String)` can be implemented on the standard library
 level as members or extensions over `EnumEntries`.
 
@@ -106,7 +106,7 @@ code generation.
 #### Implementation note
 
 A special type, `EnumEntriesList` is introduced to the standard library. The type has the only constructor
-accepting the array of all enum entries and the correspinding call is generated in enum's initialization section.
+accepting an array of all enum entries and the corresponding call is generated in enum's class initialization section.
 
 The final decompiled class for the enum:
 ```kotlin
@@ -171,15 +171,15 @@ MyEnum.entries // <- member has a higher priority than a companion member
 
 
 To mitigate this and similar (e.g. top-level property named `entries`) ambiguities, a separate compiler-assistant deprecation cycle is introduced, that will keep ambiguous declaration's
-priority higher than auto-generated `entries` memeber for the duration of the deprecation cycle.
+priority higher than auto-generated `entries` member's priority for the duration of the deprecation cycle.
 
-Eventually, we expect all such ambigous callsites to be resolved into the proposed `entries` member, while all previously-accessible declarations will still be avialble using their fully-qualified name. 
-The only exception from this rule is already compiled Kotlin enum classes and Java enum classes that has a enum entry with the name `entries`, in order
+Eventually, we expect all such ambiguous callsites to be resolved to the proposed `entries` member, while all previously-accessible declarations will still be available using their fully-qualified name. 
+The only exception from this rule is already compiled Kotlin enum classes and Java enum classes that have an enum entry with the name `entries`, in order
 to preserve the backwads compatibility and ability to programmatically refer to `entries` entry. In that scenario, in order to refer to `entries` member, 
 a top-level function `enumEntries<EnumType>()` should be used instead.
 
 To address potential risks of the changed resolve at compile-time, we deliberately prolong the deprecation cycle, 
-as well as artificial prioritization over `entries` member for multiple additional major releases.
+as well as artificial de-prioritization of `entries` member for multiple additional major releases.
 
 ### Developers familiarity with `values`
 
