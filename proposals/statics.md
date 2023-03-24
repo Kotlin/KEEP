@@ -6,6 +6,7 @@
 * **Status**: Proposed, in public review
 * **Issue**: [KT-11968](https://youtrack.jetbrains.com/issue/KT-11968)
   Research and prototype namespace-based solution for statics and static extensions
+* **Discussion**: [KEEP-348](https://github.com/Kotlin/KEEP/issues/348)
 
 ## Table of contents
 
