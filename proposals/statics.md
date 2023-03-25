@@ -61,6 +61,7 @@
   * [Deprecate superclass scope linking](#deprecate-superclass-scope-linking)
   * [Mangling scheme for static extensions on JVM](#mangling-scheme-for-static-extensions-on-jvm)
   * [ABI for non-JVM platforms](#abi-for-non-jvm-platforms)
+  * [Static object alternatives and namespaces](#static-object-alternatives-and-namespaces)
 
 <!--- END -->
 
@@ -414,6 +415,21 @@ static object Namespace {
     fun toString() = "Namespace" // Error: not allowed to use the signatures matching members of `kotlin.Any`
 }
 ```
+
+The mental model for the concept of `static object` is that it is very much like a regular named object,
+but all its methods are static and do not use object instance in any way, so there is no stable reference
+to this object, as it is not needed. Another way to look at it, is that `static` modifier for an `object` has
+a similar effect as a `value` modifier for a `class` &mdash; it is an indicator that a stable reference
+is not needed.
+
+Static object is a performance-oriented tweak to the concept of a named object. It need not be taught
+to beginner Kotlin developers. When used properly, one does not need to understand what difference
+`static` modifier for a named `object` makes. Beginner Kotlin developers can simply ignore `static` modifier
+before `object` and still make sense of the code.
+
+> An early prototype of this design used a `namespace` keyword instead of `static object`.
+> [Static object alternatives and namespaces](#static-object-alternatives-and-namespaces) section goes into
+> more details on alternatives for `static object` design and the rationale for picking the design proposed here.
 
 ### Constant static properties
 
@@ -1604,7 +1620,7 @@ val set: Set<Int> = [1, 2, 3] // calls Set.buildCollection(...) operator functio
 
 ## Open issues
 
-This section lists of open issue in the design.
+This section lists open issues in the design and discusses alternatives for some of the design decisions.
 
 ### Static section vs static modifier
 
@@ -1802,7 +1818,7 @@ import when the short name is typed.
 
 [Static extensions on JVM](#static-extensions-on-jvm) section gives one scheme for mangling the name
 of static extensions so that it is readable nicely on JVM. It is not clear-cut decision on which scheme to choose,
-so here is a larger list of options. They vary in the separator that is used (or an absence thereof) and 
+so here is a larger list of options. They vary in the separator that is used (or an absence thereof) and
 in the order of components. As example, we'll show JVM names for the following static extensions:
 
 ```kotlin
@@ -1825,3 +1841,60 @@ fun <T> Box.static.of(value: T): Box<T>  // Box.of
 ABI for non-JVM platforms will have to be designed and added to this document. Kotlin/JVM platform provides
 the strictest backwards and forwards compatibility guarantees, as well as seamless two-way interoperability, hence
 the JVM ABI is taken care of first.
+
+### Static object alternatives and namespaces
+
+The `static object` syntax from [Static objects](#static-objects) section of this proposal is one of its most
+controversial parts with a number of alternative, but it is the result of a pragmatic compromise.
+
+An early prototype of this design used a `namespace` keyword instead of `static object`
+and attempted to base the whole terminology around the concept of a namespace. So, static members were namespace members
+and static extensions were namespace extensions. And here in lies the problem: static objects feature is a fringe part
+of this design proposal. The feature that every Kotlin developer will use are static members, some will also use static
+extensions, and only a few will use static objects. So, a good design has to get the most important,
+the most actively used part of the proposal right &mdash; static members. However, it would be inappropriate
+to call them "namespace members" in Kotlin. An overwhelming majority of popular programming languages calls
+them static members, see [statics in other languages](#statics-in-other-languages). It is not in Kotlin design
+philosophy to invent a new name for a long-established concept, even if that new name might somehow better
+reflect the concept.
+
+So, having made the decision to call static members what everyone calls the &mdash; static members, we come to
+the hard choice of picking the name for the concept of static objects. Now, remember that static objects are
+going to be a fringe, rarely used feature. Inventing a totally new name for the rarely used feature is not an
+option. To minimize the number of concepts in the language, it has to reuse the concept of statics.
+
+So, static it is, but static what? The default way of grouping a bunch of functions and, optionally, some state
+in Kotlin is through an object. In Kotlin, you can allocate an anonymous object using `object {}` expression
+or declare a named object using `object XXX {}` declaration. In both cases, you get a thing that posses a
+stable reference as many things in Kotlin do. But not all things in Kotlin posses a stable reference. Instances of
+numbers in Kotlin and instances of other value classes are objects in Kotlin, but they don't have a stable
+reference. So, having a stable reference might initially seem to be an integral part of being an object, but it is not.
+
+This observation reflects the pragmatic approach to choosing defaults in Kotlin. It is easier to see in comparison
+with a hypothetical programming language that puts performance above pragmatics as the cornerstone of
+its design philosophy. In this hypothetical performance-centered language every feature that adds any kind of
+runtime costs would require developer to write extra code to acknowledge and be explicit about such cost.
+For example, a provision of stable reference for objects incurs costs, so in that hypothetical language
+objects would not have any stable reference by default, unless explicitly requested. However, in Kotlin defaults
+are chosen pragmatically, to reflect the most common usage for writing application-level code.
+
+In Kotlin design philosophy application developers are primarily concerned with the business logic of their code and
+performance is a secondary concern, if a concern at all. For performance-sensitive code Kotlin provides additional
+opt-in capabilities to be used by experts who write performance-sensitive code. One such performance-oriented
+capability is a `value class`, and another such performance-oriented capability is a `static object`.
+They take away performance-affecting "provides a stable reference" feature of classes and objects respectively
+for those cases where you can do away without it. If you take legal Kotlin code and replace `value class` with `class`
+and `static object` with `object` the code will mostly compile and work as before
+(maybe with few non-essential differences), but will lose some efficiency.
+
+It is perfectly fine if developer who wants to combine several functions into a common namespace uses `object XXX {}`
+for that purpose. If they know about static objects they can gain a bit of additional efficiency by declaring
+their functions inside a `static object XXX {}`, but there is not much harm is they don't. That is another reason while
+static objects do not deserve a separate concept on their own.
+
+From the syntactic point of view, we can consider an option of using `static XXX {}` instead of a `static object XXX {}`
+and name them "named static sections" instead of "static objects". However, this option is problematic for two main reasons.
+First, it requires `static` to become a hard keyword on par with `fun`, `class`, `interface`, etc. That is
+a way more disruptive and more breaking change. Second, it breaks the spirit of Kotlin design that tries to minimize the
+number of core concepts, opting to modify them instead. Kotlin does not have `enum`, but `enum class`, Kotlin does
+not have `record` but `data class`, etc. It is in Kotlin spirit to have `static object` as opposed to a separate concept.
