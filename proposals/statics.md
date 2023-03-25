@@ -1809,9 +1809,9 @@ fun Color.static.parse(s: String): Color // Color.parse
 fun <T> Box.static.of(value: T): Box<T>  // Box.of
 ```
 
-| Alternative  | Scheme                  | `Color.background` on JVM | Color.parse` on JVM | `Box.of` on JVM |
-|--------------|-------------------------|---------------------------|---------------------|-----------------|
-| 0 (proposed) | Class$name              | `getColor$background`     | `Color$parse`       | `Box$of`        |
-| 1            | name$Class              | `getBackground$Color`     | `parse$Color`       | `of$Box`        |
-| 2            | lower(Class)upper(name) | `getColorBackground`      | `colorParse`        | `boxOf`         |
-| 3            | nameClass               | `getBackgroundColor`      | `parseColor`        | `ofBox`         |
+| Alternative  | Scheme                  | `Color.background` on JVM | `Color.parse` on JVM | `Box.of` on JVM |
+|--------------|-------------------------|---------------------------|----------------------|-----------------|
+| 0 (proposed) | Class$name              | `getColor$background`     | `Color$parse`        | `Box$of`        |
+| 1            | name$Class              | `getBackground$Color`     | `parse$Color`        | `of$Box`        |
+| 2            | lower(Class)upper(name) | `getColorBackground`      | `colorParse`         | `boxOf`         |
+| 3            | nameClass               | `getBackgroundColor`      | `parseColor`         | `ofBox`         |
