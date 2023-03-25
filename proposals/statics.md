@@ -1575,7 +1575,7 @@ For example:
 ```kotlin
 class Color(val rgb: Int) : Parseable<Color> {
     static {
-        fun parse(s: String): Color { /* impl */ }
+        override fun parse(s: String): Color { /* impl */ }
     }
 }
 ```
@@ -1584,7 +1584,7 @@ class Color(val rgb: Int) : Parseable<Color> {
 
 ```kotlin
 class Color(val rgb: Int) : Parseable<Color> {
-    static fun parse(s: String): Color { /* impl */ }
+    static override fun parse(s: String): Color { /* impl */ }
 }
 ```
 
