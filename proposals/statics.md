@@ -1898,3 +1898,9 @@ First, it requires `static` to become a hard keyword on par with `fun`, `class`,
 a way more disruptive and more breaking change. Second, it breaks the spirit of Kotlin design that tries to minimize the
 number of core concepts, opting to modify them instead. Kotlin does not have `enum`, but `enum class`, Kotlin does
 not have `record` but `data class`, etc. It is in Kotlin spirit to have `static object` as opposed to a separate concept.
+
+Another alternative for the `static object` concept is a "local package". That is, we can add `package XXX {}` syntax
+instead of `static object XXX {}`. The package and the static object are really similar &mdash; they contain the same kind 
+of static declarations, they are imported in a similar way, etc. Two downsides of this choice are differences in the 
+naming convention that are already established (lowercase for packages and camelcase for objects) and the confusion 
+it might cause on JVM, as local packages will not be represented by packages on JVM.
