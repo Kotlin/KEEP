@@ -60,6 +60,7 @@
   * [Reflection](#reflection)
   * [Deprecate superclass scope linking](#deprecate-superclass-scope-linking)
   * [Mangling scheme for static extensions on JVM](#mangling-scheme-for-static-extensions-on-jvm)
+  * [ABI for non-JVM platforms](#abi-for-non-jvm-platforms)
 
 <!--- END -->
 
@@ -1815,3 +1816,9 @@ fun <T> Box.static.of(value: T): Box<T>  // Box.of
 | 1            | name$Class              | `getBackground$Color`     | `parse$Color`        | `of$Box`        |
 | 2            | lower(Class)upper(name) | `getColorBackground`      | `colorParse`         | `boxOf`         |
 | 3            | nameClass               | `getBackgroundColor`      | `parseColor`         | `ofBox`         |
+
+### ABI for non-JVM platforms
+
+ABI for non-JVM platforms will have to be designed and added to this document. Kotlin/JVM platform provides
+the strictest backwards and forwards compatibility guarantees, as well as seamless two-way interoperability, hence
+the JVM ABI is taken care of first.
