@@ -1802,7 +1802,8 @@ import when the short name is typed.
 
 [Static extensions on JVM](#static-extensions-on-jvm) section gives one scheme for mangling the name
 of static extensions so that it is readable nicely on JVM. It is not clear-cut decision on which scheme to choose,
-so here is a larger list of options. As example, we'll show JVM names for the following static extensions:
+so here is a larger list of options. They vary in the separator that is used (or an absence thereof) and 
+in the order of components. As example, we'll show JVM names for the following static extensions:
 
 ```kotlin
 val Color.static.background: Color       // Color.background
@@ -1816,6 +1817,8 @@ fun <T> Box.static.of(value: T): Box<T>  // Box.of
 | 1            | name$Class              | `getBackground$Color`     | `parse$Color`        | `of$Box`        |
 | 2            | lower(Class)upper(name) | `getColorBackground`      | `colorParse`         | `boxOf`         |
 | 3            | nameClass               | `getBackgroundColor`      | `parseColor`         | `ofBox`         |
+| 4            | Class_name              | `getColor_background`     | `Color_parse`        | `Box_of`        |
+| 5            | Class::name             | `getColor::background`    | `Color::parse`       | `Box::of`       |
 
 ### ABI for non-JVM platforms
 
