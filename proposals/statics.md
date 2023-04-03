@@ -192,7 +192,7 @@ val Intent.static.SCHEME_SMS: String
     get() = "sms"
 ```
 
-Here, `Intent` is a 3rd-party Java clas. With this declaration, one can write `Intent.SCHEME_SMS` to get a string
+Here, `Intent` is a 3rd-party Java class. With this declaration, one can write `Intent.SCHEME_SMS` to get a string
 `"sms"`.
 
 ### Static object primer
