@@ -985,7 +985,7 @@ fun Namespace.static.ext() {
 
 ### Static extensions resolution and import
 
-Static extensions can be called in several ways. One way is using making a qualified class with
+Static extensions can be called in several ways. One way is using making a qualified call with
 `<ClassName>.<extensionName>` as in, for example, `Color.parse(s)`. Similarly to the regular extensions, the
 corresponding static extensions has to be imported in order for this call to be resolved.
 
@@ -1289,7 +1289,8 @@ Get compiled as the following equivalent Java code:
 
 ```java
 public class Outer {
-    public static int getX() { return 0; }
+    private static int x = 0;
+    public static int getX() { return x; }
     public static void foo(int x) {}
     public static ext(int $this$ext) {}
 }
@@ -1317,7 +1318,8 @@ Get compiled as the following equivalent Java code:
 
 ```java
 public class Namespace {
-    public static int getProperty() { return 42; }
+    private static int property = 42;
+    public static int getProperty() { return property; }
     public static void doSomething() {}
 }
 ```
@@ -1383,9 +1385,6 @@ public class Color {
 ```
 
 > Note: It means that adding/removing Kotlin `const` modifier is not a binary compatible change on JVM.
-
-Private static constants in interfaces have the same problem on JVM 1.8 as other private static members.
-See [Static members of classes and interfaces on JVM](#static-members-of-classes-and-interfaces-on-jvm).
 
 ### Static extensions on JVM
 
