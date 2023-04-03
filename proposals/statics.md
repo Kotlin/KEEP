@@ -1549,7 +1549,7 @@ A static scope projection value does not have a stable identity and is internall
 value class whose scope contains all the static declarations from the scope of the corresponding class.
 
 The value of the static projection `<ClassName>.static` it the only member of its own type `<ClassName>.static`
-that is a direct subtype of `Any`. The types of different static scope project are always unreleased despite
+that is a direct subtype of `Any`. The types of different static scope projections are always unrelated despite
 relations of the corresponding classes. For example, even if class `B` is subclass of class `A`, the `B.static` type
 is not a subtype of `A.static` type.
 
