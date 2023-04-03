@@ -260,7 +260,7 @@ classMemberDeclaration
   | staticSection         // New class member declaration variant
   ;
 
-staticSection : `static` classBody ;
+staticSection : 'static' classBody ;
 ```
 
 There are the following additional semantic restrictions on static sections:
