@@ -62,6 +62,8 @@
   * [Mangling scheme for static extensions on JVM](#mangling-scheme-for-static-extensions-on-jvm)
   * [ABI for non-JVM platforms](#abi-for-non-jvm-platforms)
   * [Static object alternatives and namespaces](#static-object-alternatives-and-namespaces)
+    * [Anonymous static sections](#anonymous-static-sections)
+    * [Local packages](#local-packages)
 
 <!--- END -->
 
@@ -406,6 +408,11 @@ namespace grouping related functions.
 > create a  weird exception where the super class or interface implementation will be getting access to `this` reference,
 > while the methods of the static objects themselves have no access to `this`. However, in the future, if needed,
 > we may introduce a separate concept of [Static interfaces and static overrides](#static-interfaces-and-static-overrides).
+
+The key use-case for static objects is to group a number of declarations with short names, such that they will be used
+at their call sites with a qualified call syntax of `<ObjectName>.<declarationName>`. This will aid in autocompletion
+such declarations in IDE by typing the name of the containing object first to discover all the members inside.
+Declaration with longer, non-ambiguous names should continue to be declared on the top-level in packages.
 
 Static objects do not have value and do not extend `Any`. Still, to future-proof them, they are forbidden from declaring
 any functions with the same Kotlin or platform signatures that are declared in the `kotlin.Any` class. For example:
@@ -1891,15 +1898,71 @@ for that purpose. If they know about static objects they can gain a bit of addit
 their functions inside a `static object XXX {}`, but there is not much harm is they don't. That is another reason while
 static objects do not deserve a separate concept on their own.
 
-From the syntactic point of view, we can consider an option of using `static XXX {}` instead of a `static object XXX {}`
-and name them "named static sections" instead of "static objects". However, this option is problematic for two main reasons.
-First, it requires `static` to become a hard keyword on par with `fun`, `class`, `interface`, etc. That is
-a way more disruptive and more breaking change. Second, it breaks the spirit of Kotlin design that tries to minimize the
-number of core concepts, opting to modify them instead. Kotlin does not have `enum`, but `enum class`, Kotlin does
-not have `record` but `data class`, etc. It is in Kotlin spirit to have `static object` as opposed to a separate concept.
+However, there are two feasible alternatives to static objects explained in details below:
+[Anonymous static sections](#anonymous-static-sections) and [Local packages](#local-packages).
+
+#### Anonymous static sections
+
+We can consider an option of using `static XXX {}` instead of a `static object XXX {}`
+and name them "named static sections" instead of "static objects". So, the example from the
+[Static objects](#static-objects) section is going to look like this:
+
+```kotlin
+static Namespace {
+    val property = 42 // static property
+    fun doSomething() { // static function
+        property // OK: Can refer to static property in the same scope
+        this // ERROR: Static objects have no instance
+    }
+}
+```
+
+Advantages:
+
+* Named static sections play nicely together with [static section syntax](#option-for-static-section-syntax).
+* `static` is more concise than `static object`, so it is going to be easier to promote and teach it as a
+  default solution for grouping functions together.
+
+Disadvantages:
+
+* It requires `static` to become a hard keyword on par with `fun`, `class`, `interface`, etc.
+  It is a more disruptive and more breaking change.
+* It breaks the spirit of Kotlin design that tries to minimize the number of core concepts, opting to modify them
+  instead. Kotlin does not have `enum`, but `enum class`, Kotlin does  not have `record` but `data class`, etc.
+
+#### Local packages
 
 Another alternative for the `static object` concept is a "local package". That is, we can add `package XXX {}` syntax
-instead of `static object XXX {}`. The package and the static object are really similar &mdash; they contain the same kind 
-of static declarations, they are imported in a similar way, etc. Two downsides of this choice are differences in the 
-naming convention that are already established (lowercase for packages and camelcase for objects) and the confusion 
-it might cause on JVM, as local packages will not be represented by packages on JVM.
+instead of `static object XXX {}`. So, the example from the
+[Static objects](#static-objects) section is going to look like this:
+
+```kotlin
+package Namespace {
+    val property = 42 // static property
+    fun doSomething() { // static function
+        property // OK: Can refer to static property in the same scope
+        this // ERROR: Static objects have no instance
+    }
+}
+```
+
+The package and the static object are really similar &mdash; they contain the same kind
+of static declarations, they are imported in a similar way, etc.
+
+Advantages:
+
+* Reuses the existing concept of a packages as a way to group static declarations in a common namespace.
+* `package` is more concise than `static object`, so it is going to be easier to promote and teach it as a
+  default solution for grouping functions together.
+
+Disadvantages:
+
+* It breaks the naming conventions that are already established for packages and objects:
+  lowercase for packages and camelcase for objects.
+* It does not highlight an important difference that declarations from top-level packages are supposed to
+  be used by their short name as `<declarationName>`, while declaration from local packages are designed to be used in
+  the qualified form of `<LocalPackageName>.<declarationName>`.
+* It might cause confusion on JVM, as local packages will not be represented by packages on JVM.
+* It adds an ambiguity to the grammar when a file without a package starts with a local packages without body,
+  e.g. when the whole file consists of `package XXX`. This ambiguity is not hard to resolve in the favor of treating
+  it as a package name declaration for a file, but it is an ambiguity nonetheless.
