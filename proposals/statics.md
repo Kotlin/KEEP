@@ -1963,6 +1963,6 @@ Disadvantages:
   be used by their short name as `<declarationName>`, while declaration from local packages are designed to be used in
   the qualified form of `<LocalPackageName>.<declarationName>`.
 * It might cause confusion on JVM, as local packages will not be represented by packages on JVM.
-* It adds an ambiguity to the grammar when a file without a package starts with a local packages without body,
+* It adds an ambiguity to the grammar when a file without a package starts with a local package without body,
   e.g. when the whole file consists of `package XXX`. This ambiguity is not hard to resolve in the favor of treating
   it as a package name declaration for a file, but it is an ambiguity nonetheless.
