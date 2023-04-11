@@ -759,7 +759,7 @@ fun <T> sequence(block: suspend SequenceScope<T>.() -> Unit): Sequence<T> = Sequ
 
 It uses a different primitive from the standard library called 
 [`createCoroutine`](http://kotlinlang.org/api/latest/jvm/stdlib/kotlin.coroutines/create-coroutine.html) 
-which is similar `startCoroutine` (that was explained in [coroutine builders](coroutine-builders) section). 
+which is similar to `startCoroutine` (that was explained in [coroutine builders](coroutine-builders) section). 
 However it _creates_ a coroutine, but does _not_ start it. 
 Instead, it returns its _initial continuation_ as a reference to `Continuation<Unit>`:
 
