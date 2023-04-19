@@ -190,6 +190,149 @@ Being a language with a more advanced type system, ADT support in TypeScript loo
 
 TypeScript has powerful runtime introspection abilities, and they allow you to support convenience features via libraries such as [lodash](https://lodash.com/) (e.g., [structural equality](https://lodash.com/docs/4.17.15#isEqual) or [copying](https://lodash.com/docs/4.17.15#clone)), instead of having to implement them via code generation or as a language feature.
 
+# Data objects use-cases in existing codebases
+
+## Summary
+
+* Quite a lot of toString boilerplate
+* Nobody seems to care much about `Serializable`/`readResolve`
+    * Few objects even implement `Serializable`, almost never override `readResolve` 🤷‍♂️
+
+## toString boilerplate
+
+https://github.com/JetBrains/kotlin/blob/master/kotlin-native/backend.native/compiler/ir/backend.native/src/org/jetbrains/kotlin/backend/konan/llvm/ContextUtils.kt#L55
+
+```
+internal sealed class Lifetime(val slotType: SlotType) {
+    object STACK : Lifetime(SlotType.STACK) {
+        override fun toString(): String {
+            return "STACK"
+        }
+    }
+    // ...
+}
+```
+
+### In Square/okhttp
+
+https://github.com/square/okhttp/blob/master/okhttp/src/jvmTest/java/okhttp3/SocketChannelTest.kt#L217
+
+```
+sealed class SocketMode
+
+object Channel : SocketMode() {
+  override fun toString(): String = "Channel"
+}
+
+object Standard : SocketMode() {
+  override fun toString(): String = "Standard"
+}
+```
+
+### In Corda/corda
+
+https://github.com/corda/corda/blob/release/os/4.10/node/src/main/kotlin/net/corda/node/services/statemachine/transitions/TransitionResult.kt#L40
+
+```
+sealed class FlowContinuation {
+    // ... data classes
+    object ProcessEvents : FlowContinuation() {
+        override fun toString() = "ProcessEvents"
+    }
+
+    object Abort : FlowContinuation() {
+        override fun toString() = "Abort"
+    }
+}
+```
+
+### In Ktorio/ktor
+
+https://github.com/ktorio/ktor/blob/main/ktor-client/ktor-client-core/common/src/io/ktor/client/plugins/websocket/WebSockets.kt#L24
+
+```
+public object WebSocketCapability : HttpClientEngineCapability<Unit> {
+    override fun toString(): String = "WebSocketCapability"
+}
+```
+
+### In Mamoe/marai-console
+
+https://github.com/mamoe/mirai-console/blob/master/tools/intellij-plugin/src/creator/steps/LanguageType.kt#L44
+
+```
+sealed class LanguageType : ILanguageType {
+    // ...
+
+    object Kotlin : LanguageType() {
+        override fun toString(): String = "Kotlin" // display in UI
+        // more methods
+    }
+
+    object Java : LanguageType() {
+        override fun toString(): String = "Java" // display in UI
+        // more methods
+    }
+}
+```
+
+### In Freeletics/RxRedux
+
+https://github.com/freeletics/RxRedux/blob/master/sample/src/main/java/com/freeletics/rxredux/businesslogic/pagination/PaginationStateMachine.kt#L19
+
+```
+sealed class Action {
+    object LoadNextPageAction : Action() {
+        override fun toString(): String = LoadNextPageAction::class.java.simpleName
+    }
+
+    object LoadFirstPageAction : Action() {
+        override fun toString(): String = LoadFirstPageAction::class.java.simpleName
+    }
+}
+```
+
+### In Pysaumount/fpinkotlin
+
+https://github.com/pysaumont/fpinkotlin/blob/master/fpinkotlin-parent/fpinkotlin-advancedtrees-solutions/src/main/kotlin/com/fpinkotlin/advancedtrees/listing01/Tree.kt#L78
+
+```
+    sealed class Color {
+        internal object R: Color() {
+            override fun toString(): String = "R"
+        }
+
+        internal object B: Color() {
+            override fun toString(): String = "B"
+        }
+    }
+```
+
+### In ExpediaGroup/graphql-kotlin
+
+https://github.com/ExpediaGroup/graphql-kotlin/blob/master/clients/graphql-kotlin-client-jackson/src/main/kotlin/com/expediagroup/graphql/client/jackson/types/OptionalInput.kt#L25
+
+```
+sealed class OptionalInput<out T> {
+    object Undefined : OptionalInput<Nothing>() {
+        override fun toString() = "Undefined"
+    }
+    // ... data class
+}
+```
+
+### In Kobee1203/weedow-searchy
+
+https://github.com/Kobee1203/weedow-searchy/blob/dev/core/src/main/kotlin/com/weedow/searchy/utils/NullValue.kt#L8
+
+```
+object NullValue : Serializable {
+    override fun toString(): String {
+        return javaClass.simpleName
+    }
+}
+```
+
 # Alternatives
 
 To solve the ADT inconsistency problem between data classes and objects, we could use one of the alternatives.
