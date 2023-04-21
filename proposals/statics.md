@@ -252,7 +252,7 @@ There is a major shortcoming to this approach. In the end, when the improvement 
 called a "companion object" in Kotlin that will work and behave very much like statics in all the other major and
 popular programming languages (see [Statics in other languages](#statics-in-other-languages)), but under a different name,
 without offering any tangible benefits in conciseness or in reducing error-proneness of the resulting code.
-Basically, it is going "inventing a new name just for the sake of inventing a new name".
+Basically, it is going to be "inventing a new name just for the sake of inventing a new name".
 
 This approach is not consistent with Kotlin's pragmatic design philosophy that is explicitly focused on keeping
 the language familiar and easy to learn to a wide range of developers with diverse backgrounds.
