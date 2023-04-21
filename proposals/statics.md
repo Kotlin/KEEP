@@ -2,7 +2,7 @@
 
 * **Type**: Design proposal
 * **Authors**: Roman Elizarov
-* **Contributors**: Simon Ogorodnik, Mikhail Zarechensky, Marat Ahin, Alexandr Udalov
+* **Contributors**: Simon Ogorodnik, Mikhail Zarechensky, Marat Ahin, Alexandr Udalov, Vsevolod Tolstopyatov
 * **Status**: Proposed, in public review
 * **Issue**: [KT-11968](https://youtrack.jetbrains.com/issue/KT-11968)
   Research and prototype namespace-based solution for statics and static extensions
@@ -39,8 +39,10 @@
   * [Static extensions as members](#static-extensions-as-members)
   * [Static extensions vs extensions as static members](#static-extensions-vs-extensions-as-static-members)
 * [Code style](#code-style)
+  * [Statics and the future role of companion objects](#statics-and-the-future-role-of-companion-objects)
   * [Class-related functions](#class-related-functions)
   * [Constructor functions](#constructor-functions)
+  * [When to use static members or static extensions](#when-to-use-static-members-or-static-extensions)
 * [JVM ABI](#jvm-abi)
   * [Static members of classes and interfaces on JVM](#static-members-of-classes-and-interfaces-on-jvm)
   * [Static objects on JVM](#static-objects-on-jvm)
@@ -56,7 +58,7 @@
   * [Static section vs static modifier](#static-section-vs-static-modifier)
   * [Callable references to static members](#callable-references-to-static-members)
   * [Static soft keyword ambiguity](#static-soft-keyword-ambiguity)
-  * [Migration of objects to static objects](#migration-of-objects-to-static-objects)
+  * [Migration of objects to statics](#migration-of-objects-to-statics)
   * [Reflection](#reflection)
   * [Deprecate superclass scope linking](#deprecate-superclass-scope-linking)
   * [Mangling scheme for static extensions on JVM](#mangling-scheme-for-static-extensions-on-jvm)
@@ -79,6 +81,8 @@ the Kotlin programming language. The main motivations behind this proposal are:
   and clear usage of Java frameworks that rely on statics, easier Java to Kotlin migration.
 
 > It is a non-goal of this proposal to deprecate or to completely replace companion objects.
+> More details on the future of companion objects can be found in the
+> [statics and the future role of companion objects](#statics-and-the-future-role-of-companion-objects) section.
 
 All in all, the new concepts are designed to address the following major problems in the language design:
 
@@ -716,7 +720,7 @@ fun main() {
 > as it can break some previously compiling code. Adding a `static` modifier is not a source compatible change
 > either, because `static objects` lacks identity and cannot be referenced as explained in the section on
 > [Static objects](#static-objects). Neither change is binary compatible, too.
-> See [Migration of objects to static objects](#migration-of-objects-to-static-objects) section for further discussion.
+> See [Migration of objects to statics](#migration-of-objects-to-statics) section for further discussion.
 
 ### Statics visibility
 
@@ -986,7 +990,7 @@ fun Namespace.static.ext() {
 > Rationale: the requirement to have an explicit `.static` modifier makes it explicit for the reader of this
 > extension function that it has no `this` receiver in scope without having to find the declaration of
 > the object that is being extended to verify that it is a static object. It will also aid with
-> [Migration of objects to static objects](#migration-of-objects-to-static-objects) as the extensions on
+> [Migration of objects to statics](#migration-of-objects-to-statics) as the extensions on
 > the objects that are being migrated to static objects can clearly and independently migrate from
 > being regular extensions to static extensions.
 
@@ -1220,6 +1224,36 @@ To summarize the difference between them:
 We expect that introduction of statics and static extensions in Kotlin will have a major impact on the style of
 Kotlin libraries, as well as on the style of the Kotlin standard library itself.
 
+### Statics and the future role of companion objects
+
+Statics will replace companion objects in most use-cases. The majority of uses of companion object in Kotlin
+libraries will be migrated to statics. Statics will become the new default that is being taught and promoted
+to Kotlin developers as a means to structure their declarations and to add class-related utilities.
+
+> The actual design for the migration mechanism is TBD.
+> See [Migration of objects to statics](#migration-of-objects-to-statics) for details.
+
+The remaining use-cases for companion objects are DSLs that want to attach a custom _instance_ implementing
+a certain interface (or extending a certain class) to the classes that are declared with that DSL. For example,
+a database-related DSL might want to be structured in a way where a `User` is both a class, representing the type
+of the user entities with its properties, and an instance that can be used in expressions like `query(User)`.
+
+The Kotlin standard library and Kotlin coroutines have one such DSL where elements of the
+[`CoroutineContext`](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin.coroutines/-coroutine-context/), like a
+[`Job`](https://kotlinlang.org/api/kotlinx.coroutines/kotlinx-coroutines-core/kotlinx.coroutines/-job/),
+serve both as a type and as a value, so you can write concise and clear code like:
+
+```kotlin
+val currentJob: Job = coroutineContext[Job]
+//              ^^^ type               ^^^ value of companion object
+```
+
+These are all sophisticated use-cases, so the concept of a companion object will be moved into advanced section
+of teaching materials and can be omitted from the curriculum for beginner developers entirely.
+
+> In the future, [Static interfaces and static overrides](#static-interfaces-and-static-overrides) might replace
+> the companion objects entirely.
+
 ### Class-related functions
 
 It is now customary to complement interfaces, like `List` from the standard library, with top-level functions
@@ -1260,6 +1294,22 @@ its name and return type and is not explicit in the language.
 If support for [static operators](#static-operators) is added in the future, it will become possible to declare it
 as a static extension `operator fun <T> List.static.invoke(...)`, thus preserving the call-site `List(...)` usage,
 but making it explicitly connected to the `List` interface.
+
+### When to use static members or static extensions
+
+Authors of classes will have a choice of writing static members or static extensions for their classes.
+For example, an author of the `Color` class can declare `fun Color.static.parse(s: String): Color` function
+as a static extension, or they can declare it as a static member. There will not be much difference for
+the users of `Color` class, in either case users are calling the function as `Color.parse(s)`.
+
+This is similar to a stylistic choice between an instance member and an extension:
+
+* Declare a _static member_ when the function need to access the private implementation details of the class
+  or otherwise constitutes a core part of its API that cannot be conceptually declared as an extension by a 3rd party.
+  For example, when the implementation, even though relying only on public API, is tied to non-documented 
+  internal implementation details that are subject to change in the future updates.
+* Declare a _static extension_ when the function is a utility that is provided on top of the core API of the class
+  and which anyone could have written themselves if it was not provided by the original author of the class.
 
 ## JVM ABI
 
@@ -1605,6 +1655,15 @@ fun main() {
 }
 ```
 
+Introduction of static interfaces and static overrides might allow for a complete replacement of companion objects
+and their eventual deprecation. In this case, instead of `Color.static` syntax for
+[Static scope projection reference](#static-scope-projection-reference) we might allow the name of the class itself,
+like `Color`, to be used as a reference to the static scope in expressions. For example, as was discussed
+in [Statics and the future role of companion objects](#statics-and-the-future-role-of-companion-objects) section,
+as DSL for database access that needs a `User` class to be usable both as a type and in expressions like `query(User)`
+could declare a static interface that is required for all database entity classes to implement and accept an instance
+of this static interface in its `query` function.
+
 ### Static operators
 
 In this initial design presented in this KEEP, the static methods and static extensions cannot have an `operator` modifier.
@@ -1766,10 +1825,10 @@ the extra resolution step. We'll need to develop some kind of deprecation cycle 
 The reasonable approach to such deprecation is to deprecate all nested and inner classes, interfaces, and objects
 with the name `static`.
 
-### Migration of objects to static objects
+### Migration of objects to statics
 
-We expect a large number of companion objects to be migrated to statics. This is a easy in cases where the
-corresponding companion objects were not part of the stable public API. However, change from companion object to
+We expect a large number of regular objects and companion objects to be migrated to statics. This is easy in cases where the
+corresponding objects were not part of the stable public API. However, change from companion object to
 statics is not binary compatible, so it is not an option for stable libraries API. The same story is for
 migration from regular `object` declaration that are used as a namespace to `static object` declarations
 (e.g. `Delegates` from the standard library).
