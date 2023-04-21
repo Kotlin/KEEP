@@ -16,6 +16,7 @@
   * [Static members primer](#static-members-primer)
   * [Static extension primer](#static-extension-primer)
   * [Static object primer](#static-object-primer)
+  * [The alternative of fixing companion objects](#the-alternative-of-fixing-companion-objects)
 * [Detailed Design](#detailed-design)
   * [Static members grammar](#static-members-grammar)
     * [Option for static section syntax](#option-for-static-section-syntax)
@@ -237,6 +238,24 @@ absence of static objects by declaring a class with only static members inside t
 static object for grouping multiple functions or properties under a single namespace. This pattern will be hard
 to get rid of later, since it would introduce unnecessary type of the class, in addition to the static methods
 themselves.
+
+### The alternative of fixing companion objects
+
+The main alternative to this design proposal with statics is to gradually improve and fix the design of companion objects
+in Kotlin to address all of their shortcomings while doubling down on the companion object concept. That means things like
+getting companion objects lighter-weight, getting rid of a required stable instance, and thus allowing extensions on
+any classes by postulating that every class has a light-weight instance-less companion object.
+The advantage of this approach is that we will not have to teach existing and novice Kotlin developers
+a new concept of statics, and it keeps the spirit of "everything is an object in Kotlin".
+
+There is a major shortcoming to this approach. In the end, when the improvement process is over, we'll have a feature
+called a "companion object" in Kotlin that will work and behave very much like statics in all the other major and
+popular programming languages (see [Statics in other languages](#statics-in-other-languages)), but under a different name,
+without offering any tangible benefits in conciseness or in reducing error-proneness of the resulting code.
+Basically, it is going "inventing a new name just for the sake of inventing a new name".
+
+This approach is not consistent with Kotlin's pragmatic design philosophy that is explicitly focused on keeping
+the language familiar and easy to learn to a wide range of developers with diverse backgrounds.
 
 ## Detailed Design
 
@@ -1306,7 +1325,7 @@ This is similar to a stylistic choice between an instance member and an extensio
 
 * Declare a _static member_ when the function need to access the private implementation details of the class
   or otherwise constitutes a core part of its API that cannot be conceptually declared as an extension by a 3rd party.
-  For example, when the implementation, even though relying only on public API, is tied to non-documented 
+  For example, when the implementation, even though relying only on public API, is tied to non-documented
   internal implementation details that are subject to change in the future updates.
 * Declare a _static extension_ when the function is a utility that is provided on top of the core API of the class
   and which anyone could have written themselves if it was not provided by the original author of the class.
