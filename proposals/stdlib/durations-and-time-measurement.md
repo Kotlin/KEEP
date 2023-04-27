@@ -55,7 +55,7 @@ and solves the problem of specifying its unit.
 While `measureTime` function is convenient to measure time of executing a block of code, there are cases when 
 the beginning and end of a time interval measurement cannot be placed in the scope of a function. These cases require
 to notch the moment of the beginning, store it somewhere and then calculate the elapsed time from that moment. 
-Also the elapsed time can be noted not only once, as it is with `measureTime`, but multiple times.
+Also, the elapsed time can be noted not only once, as it is with `measureTime`, but multiple times.
 
 The interface `TimeSource` is a basic building block both for implementing `measureTime` and for covering the case above.
 It allows to obtain a `TimeMark` that captures the current instant of the time source. That `TimeMark` can be queried later 
@@ -72,6 +72,34 @@ timeout is not expired, and positive values if it is. For convenience, instead o
 a negative duration one can use `hasPassedNow`/`hasNotPassedNow` functions of the `TimeMark`.
 This way timeout can be represented by a single `TimeMark` instead of a `TimeMark` and a `Duration`.
 
+#### Noting time between two time marks
+
+When measuring elapsed time from a single origin point, it's enough to get a `TimeMark` at the origin point 
+and then use its `elapsedNow` function.
+
+However, if a use case requires measuring at some point several elapsed time values from several origin points, 
+it is hard to do consistently using only the `elapsedNow` function because each its call may return slightly different
+value depending on the *current* time in the time source produced these origin time marks. 
+
+```kotlin
+val elapsed1 = originMark1.elapsedNow()
+val elapsed2 = originMark2.elapsedNow()
+// the difference between elapsed1 and elapsed2 depends on the order of calls and 
+// on the unpredictable delay between these two calls
+```
+
+When, for example, doing several animation calculations, it's important to measure time elapsed from the start
+of each animation with regard to the frame rendering time moment consistently, and such unpredictable difference may 
+result in unwanted visual artifacts.
+
+To support this case, a time source can return time marks comparable and subtractable with each other, so it is possible
+to mark the time moment of a frame once and then calculate all animation elapsed times consistently:
+
+```kotlin
+val markNow = timeSource.markNow()
+val elapsed1 = markNow - originMark1
+val elapsed2 = markNow - originMark2
+```
 
 ## Similar API review
 
@@ -110,6 +138,11 @@ Klock [TimeSpan](https://github.com/korlibs/klock/blob/master/klock/src/commonMa
 Another approach that was considered is introducing the class `TimeStamp` and the arithmetic operations on it that 
 return `Duration`. However, it was concluded to be error-prone because it would be too easy to mix two timestamps taken
 from unrelated time sources in a single expression and get nonsense in the result.
+
+**Update:** after considering use cases (see [Noting time between two time marks](#noting-time-between-two-time-marks)), 
+we decided to introduce a subtype of `TimeMark`, `ComparableTimeMark`, that allows arithmetic operations 
+(subtraction, comparison) on time marks obtained from the same time source, 
+even though mixing time marks from different time sources would lead to a runtime exception.
 
 ## API details
 
@@ -282,9 +315,64 @@ if (expirationMark.hasPassedNow()) {
 Instances of `TimeMark` are usually not serializable because it isn't possible to restore the captured time point upon deserialization
 in a meaningful way.
 
+### Comparable time marks
+
+`ComparableTimeMark` interface extends the `TimeMark` interface with the functions to compare two time marks with each other
+and to calculate time elapsed between them.
+
+```kotlin
+interface ComparableTimeMark : TimeMark, Comparable<ComparableTimeMark> {
+    abstract override operator fun plus(duration: Duration): ComparableTimeMark
+    open override operator fun minus(duration: Duration): ComparableTimeMark = plus(-duration)
+    operator fun minus(other: ComparableTimeMark): Duration
+    override operator fun compareTo(other: ComparableTimeMark): Int = (this - other) compareTo (Duration.ZERO)
+
+    override fun equals(other: Any?): Boolean
+    override fun hashCode(): Int
+}
+```
+
+In order to represent a time source from which comparable time marks can be obtained, a specialized time source interface is introduced:
+
+```kotlin
+interface TimeSource {
+    interface WithComparableMarks : TimeSource {
+        override fun markNow(): ComparableTimeMark
+    }
+}
+```
+
+The comparison `timeMark1 < timeMark2` returns true if `timeMark1` represents the moment earlier than `timeMark2`.
+If the time marks were obtained from different time sources, both comparison and the `minus` operator throw an `IllegalArgumentException`.
+
+Comparable time marks also implement structural equality contract with the `equals` and `hashCode` functions consistent with
+the `compareTo` operator, so that if `timeMark1 == timeMark2`, then `timeMark1 compareTo timeMark2 == 0`.
+However, the equality operator doesn't throw an exception when time marks are from different time sources, it just returns `false`.
+
+#### Alternatives considered
+
+- Instead of introducing separate interfaces for comparable time marks and time sources returning them, introduce functions
+  in the `TimeMark` base interface.
+  - Comparing time marks is not always needed, but supporting it in the base interface would complicate all `TimeSource`
+    implementations.
+  
+- Instead of introducing specialized time source for comparable time marks, parametrize the base `TimeSource` interface 
+  with a generic time mark type, then `TimeSource<*>`, `TimeSource<TimeMark>`, and `TimeSource<ComparableTimeMark>` types
+  can be used.
+
+  ```kotlin
+  interface TimeSource<out M : TimeMark> {
+      fun markNow(): M
+  }
+  ```
+  - We do not expect many different parametrizations of `TimeSource` interface, so dealing with pesky `<>` brackets in 
+    common use cases would be tedious.
+  - Parametrization only affects the return type of one function, so it doesn't bring much value compared to covariant
+    override in a more specialized interface.
+
 ### Monotonic TimeSource
 
-`TimeSource` has the nested object `Monotonic` that implements `TimeSource` and provides the default source of monotonic 
+`TimeSource` has the nested object `Monotonic` that implements `TimeSource.WithComparableMarks` and provides the default source of monotonic 
 time in the platform.
 
 Different platforms provide different sources of monotonic time:
@@ -325,17 +413,20 @@ This allows to make such time mark an inline value class:
 
 ```kotlin
 public interface TimeSource {
-    public object Monotonic {
+    public object Monotonic : TimeSource.WithComparableMarks {
 
         override fun markNow(): ValueTimeMark = ...
 
 
-        public value class ValueTimeMark internal constructor(internal val reading: ValueTimeMarkReading) : TimeMark {
+        public value class ValueTimeMark internal constructor(internal val reading: ValueTimeMarkReading) : ComparableTimeMark {
             override fun elapsedNow(): Duration = ...
             override fun plus(duration: Duration): ValueTimeMark = ...
             override fun minus(duration: Duration): ValueTimeMark = ...
             override fun hasPassedNow(): Boolean = !elapsedNow().isNegative()
             override fun hasNotPassedNow(): Boolean = elapsedNow().isNegative()
+
+            override fun minus(other: ValueTimeMark): Duration = ...
+            operator fun compareTo(other: ValueTimeMark): Int = ...
         }
     }
 }
@@ -353,16 +444,18 @@ and thus working with `TimeSource.Monotonic` through its `TimeSource` interface 
 The function `measureTime` without a `TimeSource` also benefits from that, as it obtains a time mark from the default monotonic 
 time source.
 
-### AbstractLongTimeSource/AbstractDoubleTimeSource
+`ValueTimeMark` is a `ComparableTimeMark`, thus it allows comparing it with other `ValueTimeMark` values.
 
-These two abstract classes are provided to make it easy implementing own `TimeSource` 
-from a source that returns the current timestamp as a number.
+### AbstractLongTimeSource
+
+This abstract class is provided to make it easy implementing own `TimeSource` 
+from a source that returns the current timestamp as an integer number.
 
 ```kotlin
-public abstract class AbstractLongTimeSource(protected val unit: DurationUnit) : TimeSource {
+public abstract class AbstractLongTimeSource(protected val unit: DurationUnit) : TimeSource.WithComparableMarks {
     protected abstract fun read(): Long
 
-    override fun markNow(): TimeMark = ...
+    override fun markNow(): ComparableTimeMark = ...
 }
 ```
 
