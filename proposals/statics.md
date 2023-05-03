@@ -1967,7 +1967,7 @@ performance is a secondary concern, if a concern at all. For performance-sensiti
 opt-in capabilities to be used by experts who write performance-sensitive code. One such performance-oriented
 capability is a `value class`, and another such performance-oriented capability is a `static object`.
 They take away performance-affecting "provides a stable reference" feature of classes and objects respectively
-for those cases where you can do away without it. If you take legal Kotlin code and replace `value class` with `class`
+for those cases where you can do away without it. If you take legal Kotlin code and replace `value class` with `data class`
 and `static object` with `object` the code will mostly compile and work as before
 (maybe with few non-essential differences), but will lose some efficiency.
 
