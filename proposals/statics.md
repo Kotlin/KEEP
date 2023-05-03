@@ -1524,7 +1524,7 @@ public class Widget {
 ```
 
 Here, the compound JVM name `Color$background` of this static extension gets further processed to produce the JVM name
-of the getter method. Other kinds of JVM name mangling, like the mangling scheme used for functions with inline
+of the getter method. Other kinds of JVM name mangling, like the mangling scheme used for functions with inline or
 value class parameter types, would likewise receive the compound name of the static extension as an input.
 
 > Alternative schemes for the names of static extensions on JVM are discussed in
