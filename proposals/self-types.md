@@ -56,13 +56,13 @@ class LazySet<T>(computation: () -> Set<T>) : LazyContainer<Set<T>, LazySet<T>>(
     fun add(elem: T): LazySet<T> = create { computation() + elem }
 }
 val list = LazyList { listOf(1, 2, 3) }
-						.applyFunction { l -> l.subList(1, 2) }
-						.add(15)
-						.computation()
+			.applyFunction { l -> l.subList(1, 2) }
+			.add(15)
+			.computation()
 val set = LazySet { setOf(1, 2, 3) }
-						.applyFunction { s -> s.map { it + 1 }.toSet() }
-						.add(3)
-						.computation()
+			.applyFunction { s -> s.map { it + 1 }.toSet() }
+			.add(3)
+			.computation()
 ```
 
 With **Self type** feature the same code would look much easier to read.
@@ -91,11 +91,12 @@ class LazySet<T>(computation: () -> Set<T>) : LazyContainer<Set<T>, LazySet<T>>(
     fun add(elem: T): LazySet<T> = create { computation() + elem }
 }
 val list = LazyList { listOf(1, 2, 3) }
-						.applyFunction { l -> l.subList(1, 2) }
-						.add(15)
-						.computation()
+			.applyFunction { l -> l.subList(1, 2) }
+			.add(15)
+			.computation()
 val set = LazySet { setOf(1, 2, 3) }
-						.applyFunction { s -> s.map { it + 1 }.toSet() }
-						.add(3)
-						.computation()
+			.applyFunction { s -> s.map { it + 1 }.toSet() }
+			.add(3)
+			.computation()
 ```
+
