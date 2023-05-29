@@ -100,3 +100,151 @@ val set = LazySet { setOf(1, 2, 3) }
 			.computation()
 ```
 
+### Observer pattern
+
+Observer pattern can also be implemented using **Self types**. 
+
+```kotlin
+abstract class AbstractObservable<out Self : AbstractObservable<Self>> {
+    private val observers: MutableList<(Self) -> Unit> = mutableListOf()
+
+    fun observe(observer: (Self) -> Unit) {
+        observers += observer
+    }
+
+    @Suppress("UNCHECKED_CAST")
+    protected fun notification() {
+        observers.forEach { observer ->
+            observer(this as Self)
+        }
+    }
+}
+
+class User(val name: String) : AbstractObservable<User>() {
+    val friends: MutableList<User> = mutableListOf()
+
+    var status: String? = null
+        set(value) {
+            field = value
+            notification()
+        }
+}
+
+class Company(val name: String) : AbstractObservable<Company>() {
+    val potentialEmployees: MutableList<User> = mutableListOf()
+
+    var hiring: Boolean = false
+        set(value) {
+            field = value
+            notification()
+        }
+}
+
+val user1 = User("Maxim").apply {
+    observe {
+        if (it.status != null) {
+            it.friends.forEach { friend ->
+                println("Sending message to friend {${friend.name}} about new status: ${it.status}")
+            }
+        }
+    }
+}
+
+val company: Company = Company("ITMO University").apply {
+    observe {
+        it.potentialEmployees.forEach { potentialEmployee ->
+            println(
+                "Sending notification to potential employee " +
+                "{${potentialEmployee.name}} that company hiring status is:" +
+                " ${if (it.hiring) "Hiring" else "Freeze"}."
+            )
+        }
+    }
+}
+
+company.potentialEmployees.add(user1)
+company.potentialEmployees.add(user2)
+
+company.hiring = true
+val user2 = User("Ivan")
+user1.friends.add(user2)
+
+user1.status = "Looking for a new job"
+```
+
+With **Self type** feature the same code would look much easier to read and **do not contain unchecked casts**
+
+```kotlin
+import kotlin.Self
+
+@Self
+abstract class AbstractObservable {
+    private val observers: MutableList<(Self) -> Unit> = mutableListOf()
+
+    fun observe(observer: (Self) -> Unit) {
+        observers += observer
+    }
+
+    protected fun notification() {
+        observers.forEach { observer ->
+            observer(this)
+        }
+    }
+}
+
+class User(val name: String) : AbstractObservable<User>() {
+    val friends: MutableList<User> = mutableListOf()
+
+    var status: String? = null
+        set(value) {
+            field = value
+            notification()
+        }
+}
+
+class Company(val name: String) : AbstractObservable<Company>() {
+    val potentialEmployees: MutableList<User> = mutableListOf()
+
+    var hiring: Boolean = false
+        set(value) {
+            field = value
+            notification()
+        }
+}
+
+val user1 = User("Maxim").apply {
+    observe {
+        if (it.status != null) {
+            it.friends.forEach { friend ->
+                println("Sending message to friend {${friend.name}} about new status: ${it.status}")
+            }
+        }
+    }
+}
+
+val company: Company = Company("ITMO University").apply {
+    observe {
+        it.potentialEmployees.forEach { potentialEmployee ->
+            println(
+                "Sending notification to potential employee " +
+                "{${potentialEmployee.name}} that company hiring status is:" +
+                " ${if (it.hiring) "Hiring" else "Freeze"}."
+            )
+        }
+    }
+}
+
+company.potentialEmployees.add(user1)
+company.potentialEmployees.add(user2)
+
+company.hiring = true
+
+// stdout: Sending notification to potential employee Maxim that company hiring status is: Hiring
+// stdout: Sending notification to potential employee Ivan that company hiring status is: Hiring
+
+val user2 = User("Ivan")
+user1.friends.add(user2)
+
+user1.status = "Looking for a new job"
+// stdout: Sending message to friend Ivan about new status: Looking for a new job
+```
