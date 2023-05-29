@@ -29,7 +29,7 @@ They can be used in multiple useful and popular patterns, so there is a reason a
 
 ## Usage examples
 
-One of the most common example of Self types application is [abstract builder pattern](https://medium.com/@hazraarka072/fluent-builder-and-powering-it-up-with-recursive-generics-in-java-483005a85fcd). However, in Kotlin builders are usually implemented via extension recievers.Although, if we want to have transformation chain of immutable object/data, Self types are really usefull.
+One of the most common example of Self types application is [abstract builder pattern](https://medium.com/@hazraarka072/fluent-builder-and-powering-it-up-with-recursive-generics-in-java-483005a85fcd). However, in Kotlin builders are usually implemented via extension recievers. Although, if we want to have transformation chain of immutable object/data, Self types are really usefull.
 
 ### Transformation chains
 
