@@ -248,3 +248,46 @@ user1.friends.add(user2)
 user1.status = "Looking for a new job"
 // stdout: Sending message to friend Ivan about new status: Looking for a new job
 ```
+
+### Recursive containers
+
+```kotlin
+abstract class AbstractNode<out Self : AbstractNode<Self>>(val children: List<Self>)
+
+class Node<out Self : Node<Self>>(children: List<Self> = emptyList()) : AbstractNode<Self>(children) {
+    fun doTheBest() = println(42)
+}
+
+val betterTree = Node<Node<*>>(listOf(
+    Node<Node<*>>(),
+    Node<Node<*>>(listOf(Node<Node<*>>()))
+))
+
+betterTree.children
+    .flatMap { it.children }
+    .forEach { it.doTheBest() }
+```
+
+With **Self type** feature the same code would look much easier to read.
+
+
+```kotlin
+import kotlin.Self
+
+@Self
+abstract class AbstractNode(val children: List<Self>)
+
+@Self
+class Node(children: List<Self> = emptyList()) : AbstractNode<Self>(children) {
+    fun doTheBest() = println(1)
+}
+
+val betterTree = Node(listOf(
+    Node(),
+    Node(listOf(Node()))
+))
+
+betterTree.children
+    .flatMap { it.children }
+    .forEach { it.doTheBest() }
+```
