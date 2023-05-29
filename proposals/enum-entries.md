@@ -34,7 +34,7 @@ Apart from that, most of the API being written leverages Collections API, not ar
 
  * [HttpStatus.resolve allocates HttpStatus.values() once per invocation](https://github.com/spring-projects/spring-framework/issues/26842)
  * [Kotlin standard library](https://github.com/JetBrains/kotlin/blob/92d200e093c693b3c06e53a39e0b0973b84c7ec5/libraries/stdlib/jvm/src/kotlin/text/CharCategoryJVM.kt#L170)
- * [kotlinx.serializarion Enum deserializer]( https://github.com/Kotlin/kotlinx.serialization/issues/1372)
+ * [kotlinx.serialization Enum deserializer]( https://github.com/Kotlin/kotlinx.serialization/issues/1372)
  * [MySQL JDBC  Remove Enum.values() calls to avoid unnecessary array](https://github.com/Microsoft/mssql-jdbc/pull/1065)
 
 ## Proposal
@@ -87,7 +87,7 @@ Various languages use different notations to refer to enumeration elements, maki
 We have considered the following alternatives:
 
 * `values` property. While being the most familiar one, it carries the burdens of the existing `values()` API:
-  * It is easy to misspel it with `values()` and fall into the same trap.
+  * It is easy to misspell it with `values()` and fall into the same trap.
   * Introduction of `values` property adds an unfixable method reference ambiguity for all the callers of `E::values`.
 * Java language [refers](https://docs.oracle.com/javase/specs/jls/se7/html/jls-8.html#jls-8.9.1) to enum elements as `constants`. 
   * The risks of introducing widely-used API named `constants` with the potential clashes with [Kotlin constant evaluation](https://youtrack.jetbrains.com/issue/KT-14652) outweighs the benefits of the straightforward name.
@@ -184,7 +184,7 @@ as well as artificial de-prioritization of `entries` member for multiple additio
 ### Developers familiarity with `values`
 
 The second risk is the education disturbance and a new name for developers to get familiar with — `entries`, opposed to already well-known `values`.
-It is mitigated by indefinitely long [soft decommision](#decommission-of-enumvalues) instead of a regular deprecation cycle, as well as by our learning materials, official recommendations and overall adoption over official tools and libraries.
+It is mitigated by indefinitely long [soft decommission](#decommission-of-enumvalues) instead of a regular deprecation cycle, as well as by our learning materials, official recommendations and overall adoption over official tools and libraries.
 
 ## Collateral changes
 
