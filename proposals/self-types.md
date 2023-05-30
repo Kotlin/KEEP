@@ -291,3 +291,53 @@ betterTree.children
     .flatMap { it.children }
     .forEach { it.doTheBest() }
 ```
+
+### Abstract factory
+
+
+```kotlin
+abstract class Element<out Factory>(val factory: Factory)
+
+interface Factory<out Self : Factory<Self>> {
+    fun create(): Element<Self>
+}
+
+abstract class SpecificFactory<out Self : SpecificFactory<Self>> : Factory<Self> {
+    abstract fun doSpecific()
+}
+
+class ConcreteFactory : SpecificFactory<ConcreteFactory>() {
+    override fun create(): Element<ConcreteFactory> = object : Element<ConcreteFactory>(this) {}
+    override fun doSpecific() = println("Soo concrete!")
+}
+
+fun <Factory : SpecificFactory<Factory>> test(element: Element<Factory>) {
+    element.factory.doSpecific()
+}
+```
+
+With **Self type** feature the same code would look much easier to read.
+
+
+```kotlin
+abstract class Element<out Factory>(val factory: Factory)
+
+@Self
+interface Factory> {
+    fun create(): Element<Self>
+}
+
+@Self
+abstract class SpecificFactory : Factory<Self> {
+    abstract fun doSpecific()
+}
+
+class ConcreteFactory : SpecificFactory<ConcreteFactory>() {
+    override fun create(): Element<ConcreteFactory> = object : Element<ConcreteFactory>(this) {}
+    override fun doSpecific() = println("Soo concrete!")
+}
+
+fun <Factory : SpecificFactory<Factory>> test(element: Element<Factory>) {
+    element.factory.doSpecific()
+}
+```
