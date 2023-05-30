@@ -341,3 +341,54 @@ fun <Factory : SpecificFactory<Factory>> test(element: Element<Factory>) {
     element.factory.doSpecific()
 }
 ```
+
+## Design
+
+Self-type behaves exactly same as covariant recursive generic type parameter that is bounded with bound.
+
+```kotlin
+fun interface Foo<out Self : Foo<Self>> {
+
+}
+```
+
+Can be rewriten as:
+
+```kotlin
+@Self
+fun interface Foo {
+
+}
+```
+
+### `Self` bound
+
+`Self` type is bounded to the nearest receiver.
+
+```kotlin
+@Self
+class Foo {
+    @Self
+    class Bar {
+        fun x(): Self // Self from Bar
+    }
+
+    fun y(): Self // Self from Foo
+}
+```
+
+With this design decision it is imposible to access `Self` type of `Foo` inside `Bar`. It is considered to be not very popular situation, so user can create their own recursive generic for `Foo` or `Bar`.
+
+### `this` assingment
+
+Only `this` that refers to function receiver is assignable to the self-type with the correspoding bound.
+
+```kotlin
+@Self
+abstract class A {
+    fun self(): Self = this
+
+    fun other(a: A): Self = a.self() // Do not compile as we cannot return Self of an other object
+}
+```
+
