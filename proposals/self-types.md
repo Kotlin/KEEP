@@ -347,7 +347,7 @@ fun <Factory : SpecificFactory<Factory>> test(element: Element<Factory>) {
 Self-type behaves exactly same as covariant recursive generic type parameter that is bounded with bound.
 
 ```kotlin
-fun interface Foo<out Self : Foo<Self>> {
+interface Foo<out Self : Foo<Self>> {
 
 }
 ```
@@ -355,10 +355,24 @@ fun interface Foo<out Self : Foo<Self>> {
 Can be rewriten as:
 
 ```kotlin
+import kotlin.Self
+
 @Self
-fun interface Foo {
+interface Foo {
 
 }
+```
+
+Special type parameter for type `Self` would be in the end of type parameters list.
+
+```kotlin
+import kotlin.Self
+
+@Self
+interface Foo<A, B> {}
+
+// This is not real representation inside compiler, but enough to understand for user.
+interface Foo<A, B, out Self : Foo<A, B, Self>> {}
 ```
 
 ### `Self` bound
@@ -392,3 +406,55 @@ abstract class A {
 }
 ```
 
+### Covariance
+
+As type `Self` is `out` it can be used only in covariant position.
+
+```kotlin
+import kotlin.Self
+
+@Self
+interface Foo {
+    fun foo(): Self // compiles
+    fun bar(s: Self) // compile error
+}
+```
+
+Input generic position:
+
+```kotlin
+import kotlin.Self
+
+@Self
+interface Foo {
+    fun foo(f: Bar<Self>): Self // compiles
+}
+```
+
+Super type argument position:
+
+```kotlin
+import kotlin.Self
+
+@Self
+interface Foo {}
+
+@Self
+interface Bar : Foo<Self> {}
+```
+
+### New instance of class with self-type
+
+Type argument for `Self` type will be set implicitly, but also can be set explicitly by user.
+
+```kotlin
+import kotlin.Self
+
+@Self
+class Foo<T> {
+    ...
+}
+
+val fooImplicit = Foo<Int>()
+val fooExplicit = Foo<Int, Foo<Int, *>>()
+```
