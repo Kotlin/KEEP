@@ -393,7 +393,7 @@ class Foo {
 
 With this design decision it is imposible to access `Self` type of `Foo` inside `Bar`. It is considered to be not very popular situation, so user can create their own recursive generic for `Foo` or `Bar`.
 
-### `this` assingment
+### `this` assignment
 
 Only `this` that refers to function receiver is assignable to the self-type with the correspoding bound.
 
