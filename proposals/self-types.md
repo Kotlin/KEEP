@@ -524,3 +524,73 @@ Self-type [capturing](https://kotlinlang.org/spec/type-system.html#type-capturin
 ### Safe-calls
 
 Self-type behaves as the same covariant recursive generic type parameter. So, self-type materializes to the eceirver type. Value will be validated on the declaration-site by safe-values rules.
+
+
+## Other languages experience
+
+### Swift
+
+* [Self type documentation](https://docs.swift.org/swift-book/documentation/the-swift-programming-language/types/#Self-Type)
+* [Associated types](https://docs.swift.org/swift-book/documentation/the-swift-programming-language/generics/#Associated-Types)
+
+Swift protocols are like Rust traits (limited type classes). Protocols can be conformed (implemented) by classes. A class can inherit one another.
+
+```swift
+protocol Protoc {
+    func className() -> Self
+}
+
+class Superclass : Protoc {
+    func className() -> Self { return self }
+}
+
+class Subclass: Superclass { }
+
+let a = Superclass()
+print(type(of: a.className())) // Prints "Superclass"
+
+let b = Subclass()
+print(type(of: b.className())) // Prints "Subclass"
+
+let c: Superclass = Subclass()
+print(type(of: c.className())) // Prints "Subclass"
+
+let d: Protoc = Subclass()
+print(type(of: d.className())) // Prints "Subclass"
+
+```
+
+Swift prohibits using a new object where self is expected:
+
+```swift
+final class Foo {
+    /*
+    error: cannot convert return expression of type 'Foo' to return type 'Self'
+    func f() -> Self { return Foo() }
+     ^~~~~
+                                    as! Self
+    */
+    func f() -> Self { return Foo() }
+}
+```
+
+In non-return positions Self is available only in protocols and class declaration should use itself instead of Self:
+
+```swift
+/*
+error: covariant 'Self' or 'Self?' can only appear as the type of a property, subscript or method result; did you mean 'A'?
+*/
+class A {
+    func f(s: Self) -> Self { return s }
+}
+
+protocol P {
+    func f(s: Self) -> Self
+}
+
+class B: P {
+    func f(x: B) -> Self { return self }
+}
+
+// todo: more examples
+```
