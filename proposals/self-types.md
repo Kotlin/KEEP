@@ -19,7 +19,7 @@ class B : A {
     
 }
 
-val x: B = B().foo(); // foo return type is B
+val x: B = B().foo() // foo return type is B
 ```
 
 ## Motivation
@@ -431,6 +431,22 @@ interface Foo {
 }
 ```
 
+Return generic position:
+
+```kotlin
+import kotlin.Self
+
+@Self
+interface A {
+
+}
+
+@Self
+interface B {
+    fun a(): A<Self>
+}
+
+```
 Super type argument position:
 
 ```kotlin
