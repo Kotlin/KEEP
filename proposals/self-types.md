@@ -15,11 +15,14 @@ open class A {
     }
 }
 
-class B : A {
-    
+class B : A() {
+    fun b() {
+        println("Inside B")
+    }
 }
 
-val x: B = B().foo() // foo return type is B
+val x = B().foo() // foo return type is B
+x.b() // stdout: Inside B
 ```
 
 ## Motivation
