@@ -474,3 +474,53 @@ class Foo<T> {
 val fooImplicit = Foo<Int>()
 val fooExplicit = Foo<Int, Foo<Int, *>>()
 ```
+
+## Self-types specification
+
+We will use `{T}.Self` to describe type `Self` for type `T`. 
+
+```kotlin
+@Self
+interface A {}
+```
+
+So type `Self` for interface `A` would be `A.Self`.
+
+### Safe-values:
+
+There are two types of values that can be typed as `Self` for type `A`.
+
+1. `this`
+2. `A` constructor call.
+
+
+1. `B <: A => B.Self <: A.Self` to support override for methods with type `Self` in the return position.
+2. `B <: A => B.Self <: A` so we can use `this` as the value for type `A`.
+3. `Nothing <: A.Self` and `A.Self <: Any`.
+4. `B !<: A.Self` if `B` does not fit rules (1) and (3).
+
+Rule (4) guarantees that only values considered safe may have self-type.
+
+Common supertype:
+
+* `CST(B.Self, A) ~ CST(B, A)`
+
+### Safe-positions
+
+`Self` type is the same as the covariant recursive generic parameter, but with some additional implicit casts.
+
+Self-type [positions](https://kotlinlang.org/spec/declarations.html#type-parameter-variance):
+
+* If `A` is a dispatch receiver then `A.Self` can be used only in covariant positions.
+* If `A` is an extension receiver then `A.Self` can be used in all positions.
+
+Self-type [capturing](https://kotlinlang.org/spec/type-system.html#type-capturing):
+
+* If `A` is a dispatch receiver then `A.Self` behaves as a covariant type argument:
+  * For a covariant type parameter `out F` captured type `K <: A.Self`;
+  * For invariant or contravariant type parameter `K` is ill-formed type.
+* If `A` is an extension receiver then `A.Self` behaves as invariant type argument.
+
+### Safe-calls
+
+Self-type behaves as the same covariant recursive generic type parameter. So, self-type materializes to the eceirver type. Value will be validated on the declaration-site by safe-values rules.
