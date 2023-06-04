@@ -648,3 +648,68 @@ func test(_ a: some S, _ b: some S) {
     a.g(s: b.f())
 }
 ```
+
+## TypeScript
+
+[Documentation](https://www.typescriptlang.org/docs/handbook/2/classes.html#this-types)
+
+```typescript
+class A {
+    foo(): this {
+        return this;
+    }
+}
+
+class B extends A {
+    bar(): this {
+        return this;
+    }
+}
+
+var b: B = new B();
+var x: B = b.foo().bar();
+```
+
+Type `this` was added in 1.7 version of TypeScript and some older code became non-compatible. Example:
+
+```typescript
+class Foo {
+  foo() {
+    var x = this;
+    x = new Foo();
+  }
+}
+```
+
+
+In TypeScript >= 1.7 this code would fail with compilation error: `Type 'C' is not assignable to type 'this'. 'C' is assignable to the constraint of type 'this', but 'this' could be instantiated with a different subtype of constraint 'C'`.
+
+This is the problem that we shouldn't have in Kotlin and that is why we use annotation `@Self` in this proposal.
+
+## Rust
+
+[Documentation](https://doc.rust-lang.org/reference/paths.html#self-1)
+
+Obviously, `Rust` do not have inheritance and self-types implemented via macrosses, but example may be useful to understand how self-types may be used `Rust` engineer.
+
+```rust
+trait T {
+    type Item;
+    fn new() -> Self;
+    fn f(&self) -> Self::Item;
+}
+```
+
+Type `Self` in `Rust` also allows user to have a reference on any type alias within scope of receiver.
+
+Type `Self` is reserved keyword, so some constructions give compilation error:
+
+```rust
+trait T {
+    type Self;
+}
+```
+
+`expected identifier, found keyword `Self`  expected identifier, found keyword`.
+
+Type `Self` is also covariant.
