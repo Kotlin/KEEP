@@ -742,3 +742,8 @@ public class MyNode extends Node {
 ```
 
 In `Manifold` annotation `@Self` can be used for type arguments and functions.
+
+## Python
+[Documentation](https://peps.python.org/pep-0673/)
+
+`Python` also provides type `Self`, but we will not cover it due to weak `Python` type system.
