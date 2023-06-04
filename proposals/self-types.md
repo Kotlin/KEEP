@@ -592,8 +592,59 @@ protocol P {
 }
 
 class B: P {
-    func f(x: B) -> Self { return self }
+    func f(s: B) -> Self { return self }
 }
 
-// todo: more examples
+protocol ArrayP {
+    func f() -> Array<Self>
+    func g(arr: Array<Self>) -> Array<Self>
+}
+
+class D: ArrayP {
+    // error: covariant 'Self' or 'Self?' can only appear in the top level of method result type
+    func f() -> Array<Self> { return Array() }
+
+    // error: method 'f()' in non-final class 'D' must return 'Self' to conform to protocol 'ArrayP'
+    func f() -> Array<D> { return Array() }
+
+    // error: method 'g(arr:)' in non-final class 'D' must return 'Self' to conform to protocol 'ArrayP'
+    func g(arr: Array<D>) -> Array<D> { return Array() }
+}
+
+final class E: ArrayP {
+    func f() -> Array<E> { return Array() }
+    func g(arr: Array<E>) -> Array<E> { arr }
+}
+```
+
+### Associated types
+
+Accociated types can be used to achive similar behavior to self-types, but for one-level hierarchy:
+
+```swift
+protocol Protoc {
+    associatedtype S
+    func f() -> S
+    func g(s: S)
+    func arr() -> Array<S>
+}
+
+class A: Protoc {
+    typealias S = A
+    func f() -> A { return self }
+    func g(s: A) { s.specific() }
+    func arr() -> Array<A> { return [self] }
+    func specific() {}
+}
+
+class B: Protoc {
+    override func f() -> B { return self }
+    override func g(x: B) {}
+    override func arr() -> Array<B> { return [self, self] }
+}
+
+func test(_ a: some S, _ b: some S) {
+    a.g(s: a.f())
+    a.g(s: b.f())
+}
 ```
