@@ -713,3 +713,32 @@ trait T {
 `expected identifier, found keyword `Self`  expected identifier, found keyword`.
 
 Type `Self` is also covariant.
+
+## Manifold
+
+There is `Java` library that supports `Self` types.
+
+[Documentation](https://github.com/manifold-systems/manifold/tree/3f4134bcc74ba38bef35a490a03884b5540e6488/manifold-deps-parent/manifold-ext#the-self-type-with-self)
+
+> The Self type provides a way to statically express the "type of this" and is most useful in situations where a method return type or parameter type in a base type reflects a subtype.
+
+```java
+public class Node {
+  private List<Node> children;
+  
+  public List<@Self Node> getChildren() {
+    return children;
+  }
+
+  public void addChild(@Self Node child) {
+    checkAssignable(this, child);
+    children.add(child);
+  }
+}
+
+public class MyNode extends Node {
+  ...
+}
+```
+
+In `Manifold` annotation `@Self` can be used for type arguments and functions.
