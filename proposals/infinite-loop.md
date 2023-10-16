@@ -4,23 +4,23 @@
 * **Author**: Vadim Mishenev
 * **Contributors**: Roman Elizarov
 * **Status**: In Progress
-* **Prototype**: In Progress (inferring `Nothing` for `while(true)` is implemented)
+* **Prototype**: In Progress (inferring `Nothing` is implemented)
 * **Issue**: [KT-27970](https://youtrack.jetbrains.com/issue/KT-27970/Support-an-infinite-for-loop)
 
 ## Summary
 
-
-This KEEP introduces a new expression to indicate an [infinite loop](https://en.wikipedia.org/wiki/Infinite_loop) (also known as a “while true”) and inferring types for a such loop.
+This KEEP introduces a new expression `for { ... }` to indicate an [infinite loop](https://en.wikipedia.org/wiki/Infinite_loop) (also known as a “while true”).
 
 ## Motivation
 
-Kotlin leads to be laconic programming language, and an infinite loop `while(true) { .. }` (rare `do { .. } while(true)`)  might be expressed more concisely. 
+Kotlin leads to be laconic programming language, and an infinite loop `while(true) { .. }` (rare `do { .. } while(true)`) might be expressed more concisely. 
 Besides, a dedicated expression makes an infinite loop immediately understandable.
 This usually results in more readable code.
 
 ### Use-cases
 
-Infinite loops is an idiom that is widely used in Kotlin programming:
+Infinite loops is an idiom that is widely used in Kotlin programming. 
+In Kotlin the percentage of `while(true)` among all written `while` loops is 19% (in 1.2M repositories from the BigCode tool).
 
 - Infinite loops are widely used to monitor user input or device activity. 
 The idiomatic approach to reading all the lines from the input stream until it is over (until `readLine` function returns null):
@@ -85,16 +85,9 @@ Remarkably, Rust, Go, Ruby do not have `do-while` loop. So infinite loop can be 
 
 ## Design
 
-Syntax-wise, the proposal is to support infinite loop via the concise `for { ... }` statement (or any other keyword instead of `for`, see "Open questions" section) without parameters or conditions, which seems to read nicely for the case of infinite loop, changing the motivating example to:
+The proposal is to support infinite loop via the concise `for { ... }` construction without parameters or conditions. The curly braces `{ ... }` are required.
+It should be used as expression with the result type `Nothing`, but if a loop has a `break` expression, the result type of expression should be `Unit`.
 
-```kotlin
-for {
-    val line = input.readLine() ?: break
-    // process line
-}
-
-```
-Also, factoring this form both away from and back to having a condition is natural.
 
 ## Statement or expression
 
@@ -122,8 +115,7 @@ let result = loop {
 Currently, in Kotlin infinite loops cannot be properly used inside scope functions. The following code does not compile due to type mismatch, since `while` is not an expression and the resulting type of run coerces to Unit (see [KT-25023](https://youtrack.jetbrains.com/issue/KT-25023/Infinite-loops-in-lambdas-containing-returnlabel-dont-coerce-to-any-type)):
 
 ```kotlin
-private fun foo(): Nothing = // Should be compiled, but Error: Type mismatch: inferred type is Unit but Nothing was expected
-
+fun foo(): Nothing = // Should be compiled, but Error: Type mismatch: inferred type is Unit but Nothing was expected
     run {
         while (true) {
             doSomething()
@@ -141,8 +133,21 @@ val x = run<Int> {
         }
     }
 ```
+Moreover, the porpose infinite loop `for { ... }` with `Nothing`/`Unit` types is backwards compatible with old code.
 
-Also, it makes sense to make existing loops with a condition (`for`, `do-while`, `while`) expressions. But IDE can have an intention to transform loops with `true` condition into proposed infinity loops.
+### Should existing loops in Kotlin be expresions?
+
+IDE can have an intention to transform loops with `true` condition into proposed infinite loops. It could make sense to make existing loops with a condition (`do-while`, `while`) expressions.
+But it breaks backward compatibility with already written code, for example:
+
+```kotlin
+fun foo() = run {
+  while (true) {
+    doSomething()
+  }
+}
+```
+After this changing, `foo` will have `Nothing` type instead of `Unit`. Also, it will cause the compiler error `'Nothing' return type needs to be specified explicitly`.
 
 
 ### Functions with expression body
@@ -162,7 +167,7 @@ Infinite loops can be implemented via a function (like `repeat` in StdLib), but 
 [KT-19748](https://youtrack.jetbrains.com/issue/KT-19748/Provide-some-sort-of-break-continue-like-mechanism-for-loop-like-functions) solves this problem for a such function and loop-like functions (`forEach`, `filter`, etc). But there are some disadvantages of this feature:
 
 - It seems to be very specified only for stdlib's functions.
-- Existed local `return` can become misleading with a labelled `break`/`continue`. A user can expect a local `return` should exit a loop-like function at all. It might need to change the behavior of local `return` for loop-like function.
+- Existed local `return` can become misleading with a labelled `break`/`continue` expression. A user can expect a local `return` should exit a loop-like function at all. It might need to change the behavior of local `return` for loop-like function.
 
 
 ```kotlin
@@ -189,26 +194,28 @@ for (elem in 1..10) {
 - The implementation of the feature is more complicated than infinite loops.
 
 
-## Open  questions
-
-### Which keyword is used for infinite loops? 
+## Which keyword is used for infinite loops? 
 
 Main candidates of the keyword:
 
-- `while { ... } `
+- `while { ... } ` 
 - `for { ... }` 
-	The Golang (Go) uses it.  Probably `for` is shortened to `forever`.	
-- `do { .. }` But `do {} while(..) {}` can be ambiguous so for a user. A user should check the end of a loop to differ `do-while` and `do` loops.
+	The Golang (Go) uses it.  Probably `for` is shortened to `forever`. 
+- `do { ... }` But `do {} while(...) {}` can be ambiguous so for a user. A user should check the end of a loop to differ `do-while` and `do` loops.
 - `loop { ... }`
 	This keyword is used Rust for infinite loops.
 - `repeat { ... }`
 
 
 The plus of using words `while`, `do`, `for` is that they are existing keywords. Users are already familiar with their semantics. 
-Otherwise, introducing a new keyword increases syntax complexity of the language.
-But it can look like that a user forgot to write a condition.
-Also, the existing keywords `for` and `while` requres `{ ... }` for an infinite loop body.
-Otherwise, for example, the following code becomes ambiguous:
+Otherwise, introducing a new keyword increases syntax complexity of the language. 
+Also, it can break backward compatibility since old code can have a user function with the same name as the keyword.
+
+`while { ... } ` can look like that a user forgot to write a condition. At the same time, unlike othe languages, Kotlin does not have a free-form condition for `for` loop.
+
+
+The existing keywords `for` and `while` require `{ ... }` for an infinite loop body.
+Contrariwise, for example, the following code becomes ambiguous:
 
 ```kotlin
 for (x in xs);
@@ -216,6 +223,16 @@ for (x in xs);
 It can be treated either as a for loop with a loop variable `x` and an empty body or as an infinite loop which evaluates expression `(x in xs)`.
 
 
-The question requires UX research.
+To sum up, `for` is the best choice for an infinite loop. It does not require intruduction a new keyword and do not have the problem with forgotten condition like `while`. 
+It seems to read nicely for the case of an infinite loop, changing the motivating example from `Use-cases` section to:
+
+```kotlin
+for {
+    val line = input.readLine() ?: break
+    // process line
+}
+
+```
+Also, factoring this form both away from and back to having a condition is natural.
 
 
