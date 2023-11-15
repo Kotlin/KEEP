@@ -27,7 +27,7 @@ The idiomatic approach to reading all the lines from the input stream until it i
 
 	```kotlin
 	while(true) {
-	    val line = input.readLine() ?: break
+	    val line = input.readlnOrNull() ?: break
 	    // process line
 	}
 
