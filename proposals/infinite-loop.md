@@ -6,6 +6,7 @@
 * **Status**: In Progress
 * **Prototype**: In Progress (inferring `Nothing` is implemented)
 * **Issue**: [KT-27970](https://youtrack.jetbrains.com/issue/KT-27970/Support-an-infinite-for-loop)
+* **Discussion**: [#364](https://github.com/Kotlin/KEEP/issues/364)
 
 ## Summary
 
