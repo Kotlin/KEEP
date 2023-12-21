@@ -326,7 +326,6 @@ fun ResourceScope.openFile(file: File): InputStream
 context fun ResourceScope.openFile(file: File): InputStream
 
 // The API is nicer using context receivers
-@JvmName("contextualFileOpen")  // needed to avoid platform clash
 context(ResourceScope) fun File.open(): InputStream
 ```
 
