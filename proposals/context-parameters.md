@@ -3,7 +3,7 @@
 * **Type**: Design proposal
 * **Author**: Alejandro Serrano
 * **Contributors**: Marat Ahkin, Nikita Bobko, Ilya Gorbunov, Mikhail Zarechenskii, Denis Zharkov
-* **Discussion**: [KEEP-?](https://github.com/Kotlin/KEEP/issues/?)
+* **Discussion**: [KEEP-367](https://github.com/Kotlin/KEEP/issues/367)
 
 ## Abstract
 
