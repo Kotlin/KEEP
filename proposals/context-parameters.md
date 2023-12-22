@@ -447,15 +447,15 @@ class B { fun foo(x: Object) }
 // here 'foo' resolves to the one in 'B'
 // because 'B' is introduced in an inner scope
 // the fact that the one from 'A' is more specific doesn't play a role
-context(A) B.example1() = foo(5)
+context(A) fun B.example1() = foo(5)
 
 // 'this' always resolves to 'B'
-context(A) B.example2() = this.foo(5)
+context(A) fun B.example2() = this.foo(5)
 
 // to access the members from 'A' use a name, 'summon'
-context(A) B.example3a() = summon<A>().foo(5)
-context(a: A) B.example3b() = a.foo(5)
-context(a: A) B.example3b() = with(a) { foo(5) }
+context(A) fun B.example3a() = summon<A>().foo(5)
+context(a: A) fun B.example3b() = a.foo(5)
+context(a: A) fun B.example3b() = with(a) { foo(5) }
 ```
 
 **§29** *(resolution, most specific candidate)*: When choosing the **most specific candidate** we follow the Kotlin specification, with one addition:
@@ -514,7 +514,7 @@ class B { fun foo(x: Object) }
 // here 'foo' resolves to the one in 'A'
 // because both 'A' and 'B' are in the same scope
 // but the one from 'A' is more specific
-context(A) B.example1() = foo(5)
+context(A) fun B.example1() = foo(5)
 ```
 
 ## Q&A about design decisions
