@@ -1,5 +1,7 @@
 # Lateinit property isInitialized intrinsic
 
+* **Discussion**: [KEEP-73](https://github.com/Kotlin/KEEP/pull/73)
+
 Goal: provide a way to check whether a `lateinit` property was assigned.
 
 ## Motivation

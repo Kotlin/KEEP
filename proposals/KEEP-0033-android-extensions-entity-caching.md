@@ -2,6 +2,7 @@
 
 * Type: Android Extensions Proposal
 * Author: Yan Zhulanow
+* Discussion: [KEEP-33](https://github.com/Kotlin/KEEP/pull/33)
 
 ## Summary
 

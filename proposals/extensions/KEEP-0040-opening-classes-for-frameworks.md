@@ -5,6 +5,7 @@
 * **Contributors**: Dmitry Jemerov, Sébastien Deleuze, Yan Zhulanow, Andy Wilkinson 
 * **Status**: Under consideration
 * **Prototype**: Not started
+* **Discussion**: [KEEP-40](https://github.com/Kotlin/KEEP/pull/40)
 
 ## Feedback
 

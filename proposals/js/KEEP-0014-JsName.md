@@ -6,6 +6,7 @@
 * **Status**: Approved
 * **Related issue**: [KT-2752](https://youtrack.jetbrains.com/issue/KT-2752)
 * **Prototype**: Implemented
+* **Discussion**: [KEEP-14](https://github.com/Kotlin/KEEP/pull/14)
 
 ## Common terms used in Kotlin JS
 

@@ -4,6 +4,7 @@
 * **Author**: Leonid Startsev
 * **Status**: Implemented in 1.6.0
 * **Issue:** [KT-45395](https://youtrack.jetbrains.com/issue/KT-45395)
+* **Discussion**: [KEEP-267](https://github.com/Kotlin/KEEP/pull/267)
 
 ## Synopsis
 
