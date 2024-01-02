@@ -15,7 +15,9 @@ the [Kotlin Source Code Repository](https://github.com/JetBrains/kotlin).
 ## Current KEEPs
 
 * Current in-progress KEEPs are listed in [issues](https://github.com/Kotlin/KEEP/issues).
+  Each KEEP is assigned an ID. KEEP ID is the same as issue ID
 * New KEEPs and additions to current KEEPs are submitted as [pull requests](https://github.com/Kotlin/KEEP/pulls).
+  Every KEEP file name must be prefixed with the KEEP ID
 * When KEEPs are implemented, the corresponding design documents are merged into this repository and stored in a [proposals](proposals) directory.
 
 ### Design notes
