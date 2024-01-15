@@ -107,6 +107,64 @@ Other alternatives are:
 
 `SubclassOptInRequired` was chosen as the most appropriate and likely the most familiar for developers 
 to grasp from at first glance.
+
+### SubclassOptInRequired marker contagiousness (lexical scopes)
+
+`SubclassOptInRequired` is not propagated to inner and nested classes. Opt-in is required only when inheriting from a class on which the `SubclassOptInRequired` annotation has been explicitly specified.
+
+```kotlin
+@RequiresOptIn
+annotation class API
+
+@SubclassOptInRequired(API::class)
+open class A {
+    open class B
+}
+
+class C1: A() // opt-in required
+class C2 : A.B() // no opt-in required
+```
+
+### Interaction with Java code
+
+Since the Kotlin compiler can't report errors or warnings in Java code, adding the opt-in is not required for the Java classes or interfaces.
+
+```kotlin
+// a.kt
+@RequiresOptIn
+annotation class API
+
+@SubclassOptInRequired(API::class)
+open class KotlinCl
+
+// b.java
+public class Foo extends KotlinCl {} // no opt-in required
+
+```
+Also, Java code suppresses the propagation of opt-in requirements. Therefore, if a class in Kotlin inherits from the Java class `Foo`, opt-in is not required for the inheritance.
+
+```kotlin
+// c.kt
+class Bar: Foo() //no opt-in required
+```
+
+To propagate experimentation through Java code, it is required to explicitly use the `SubclassOptInRequired` annotation in Java code.
+
+```kotlin
+// a.kt
+@RequiresOptIn
+annotation class API
+
+@SubclassOptInRequired(API::class)
+open class KotlinCl
+
+// b.java
+@SubclassOptInRequired(API::class)
+public class Foo extends KotlinCl {}
+
+// c.kt
+class Bar: Foo() // opt-in required
+```
   
 ### Restrictions and limitations
 
@@ -128,6 +186,6 @@ opting-in into extension and opting-in into overall uses.
 
 ### Status and timeline
 
-The feature is available since Kotlin 1.8.0 as experimental (it itself requires an opt-in
+The feature is available since Kotlin 2.0.0 as experimental (it itself requires an opt-in
 into `ExperimentalSubclassOptIn`)
-and is expected to be promoted to stable in Kotlin 1.9.0.
+and is expected to be promoted to stable in Kotlin 2.1.0.
