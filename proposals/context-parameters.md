@@ -15,7 +15,7 @@ This document is not (yet) formally a KEEP, since it lacks some of the technical
 
 1. Introduction of named context parameters,
 2. Context receivers are dropped,
-3. Removal of `this@Type` syntax, introduction of `context<A>()`,
+3. Removal of `this@Type` syntax, introduction of `implicit<A>()`,
 4. Contexts are not allowed in constructors,
 5. Callable references resolve their context arguments eagerly,
 6. Context-in-classes are dropped.
@@ -98,7 +98,7 @@ Note that, like in the case of extension receivers, those types are considered e
 fun <A> withConsoleLogger(block: context(Logger) () -> A) = ...
 
 withConsoleLogger {
-  val logger = context<Logger>()
+  val logger = implicit<Logger>()
   // you can call functions with Logger as context parameter
   logWithTime("doing something")
 }
@@ -116,10 +116,10 @@ fun <A, B, R> context(a: A, b: B, block: context(A, B) () -> R): R = block(a, b)
 fun <A, B, C, R> context(a: A, b: B, c: C, block: context(A, B, C) () -> R): R = block(a, b, c)
 ```
 
-**§8** *(`context` function)*: We also provide a generic way to obtain a value by type from the context. It allows access to context parameters even when declared using `_`, or within the body of a lambda.
+**§8** *(`implicit` function)*: We also provide a generic way to obtain a value by type from the context. It allows access to context parameters even when declared using `_`, or within the body of a lambda.
 
 ```kotlin
-context(ctx: A) fun <A> context(): A = ctx
+context(ctx: A) fun <A> implicit(): A = ctx
 ```
 
 This function replaces the uses of `this@Type` in the previous iteration of the design.
@@ -376,12 +376,14 @@ functionContext: 'context' [ '(' [ receiverType { ',' receiverType } ] ') ]
 
 **§23** *(declaration with context parameters)*: The context parameters declared for a callable are available in the same way as "regular" value parameters in the body of the function. Both value and context parameters are introduced in the same scope, there is no shadowing between them.
 
-**§24** *(most specific candidate)*:  When choosing the **most specific candidate** we follow the Kotlin specification, with one addition:
+**§24** *(function applicability)*: Building the constraint system is modified for lambda arguments. Compared with the [Kotlin specification](https://kotlinlang.org/spec/overload-resolution.html#description), the type of the parameter _U<sub>m</sub>_ is replaced with _nocontext(U<sub>m</sub>)_, where _nocontext_ removes the initial `context` block from the function type.
+
+**§25** *(most specific candidate)*: When choosing the **most specific candidate** we follow the Kotlin specification, with one addition:
 
 * Candidates with context parameters are considered more specific than those without them.
 * But there is no other prioritization coming from the length of the context parameter list or their types.
 
-**§25** *(context resolution)*: Once the overload candidate is chosen, we **resolve** context parameters (if any). For each context parameter:
+**§26** *(context resolution)*: Once the overload candidate is chosen, we **resolve** context parameters (if any). For each context parameter:
 
 * We traverse the tower of scopes looking for **exactly one** default receiver or context parameter with a compatible type.
     * Anonymous context parameters (declared with `_`) also participate in this process. 
@@ -410,7 +412,7 @@ context(console: ConsoleLogger, file: FileLogger) fun example3() =
 
 ### JVM ABI and Java compatibility
 
-**§26** *(JVM and Java compatibility)*: In the JVM a function with context parameters is represented as a regular function with the context parameters situated at the *beginning* of the parameter list. The name of the context parameter, if present, is used as the name of the parameter.
+**§27** *(JVM and Java compatibility)*: In the JVM a function with context parameters is represented as a regular function with the context parameters situated at the *beginning* of the parameter list. The name of the context parameter, if present, is used as the name of the parameter.
 
 * Note that parameter names do not impact JVM ABI compatibility.
 
