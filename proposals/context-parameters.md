@@ -265,6 +265,21 @@ Context parameters lift two of the main restrictions of this mode of use:
 **§D** *(context-oriented dispatch use case)*: Context parameters can be used to simulate functions available for a type, by requiring an interface that uses the type as an argument. This is very similar to type classes in other languages.
 
 ```kotlin
+interface ToJson<T> {
+  fun toJson(thing: T): Json
+}
+
+context(serializer: ToJson<T>) fun <T> T.toJson(): Json =
+  serializer.toJson(this)
+
+context(_: ToJson<T>) fun <T> ApplicationCall.json(thing: T) =
+  this.respondJson(thing.toJson())
+```
+
+We strongly advise _against_ creating "copies" of an API but with an added context parameter.
+Overload resolution is tricky, and the developer may end up calling the unintended version.
+
+```kotlin
 interface Comparator<T> {
   fun compareTo(one: T, other: T): Boolean
 }
