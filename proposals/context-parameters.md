@@ -40,6 +40,7 @@ This document is not (yet) formally a KEEP, since it lacks some of the technical
 * [Technical design](#technical-design)
   * [Syntax](#syntax)
   * [Extended resolution algorithm](#extended-resolution-algorithm)
+  * [Extended type inference algorithm](#extended-type-inference-algorithm)
   * [JVM ABI and Java compatibility](#jvm-abi-and-java-compatibility)
 * [Q\&A about design decisions](#qa-about-design-decisions)
 * [Acknowledgments](#acknowledgments)
@@ -51,6 +52,14 @@ This document is not (yet) formally a KEEP, since it lacks some of the technical
 
 * Within the body of the declared member, the value of the context parameter is accessible using its name, similar to value parameters.
 * It is allowed to use `_` as a name; in that case, the value is not accessible through any name (but still participates in context resolution).
+
+```kotlin
+context(analysisScope: AnalysisScope)
+fun Type.equalTo(other: Type): Boolean = ...
+
+context(analysisScope: AnalysisScope)
+val Type.isNullable: Boolean get() = ...
+```
 
 **§2** *(restrictions)*:
 
@@ -106,7 +115,7 @@ withConsoleLogger {
 
 ## Standard library support
 
-**§7** *(`context` function)*: To extend the implicit scope in a contextual manner we provide additional functions in the standard library.
+**§8** *(`context` function)*: To extend the implicit scope in a contextual manner we provide additional functions in the standard library.
 
 * The implementation may be built into the compiler, instead of having a plethora of functions defined in the standard library.
 
@@ -116,7 +125,7 @@ fun <A, B, R> context(a: A, b: B, block: context(A, B) () -> R): R = block(a, b)
 fun <A, B, C, R> context(a: A, b: B, c: C, block: context(A, B, C) () -> R): R = block(a, b, c)
 ```
 
-**§8** *(`implicit` function)*: We also provide a generic way to obtain a value by type from the context. It allows access to context parameters even when declared using `_`, or within the body of a lambda.
+**§9** *(`implicit` function)*: We also provide a generic way to obtain a value by type from the context. It allows access to context parameters even when declared using `_`, or within the body of a lambda.
 
 ```kotlin
 context(ctx: A) fun <A> implicit(): A = ctx
@@ -173,7 +182,7 @@ We do this by introducing a **bridge function** that simply wraps the access to 
 context(r: Raise<E>) inline fun raise(error: Error): Nothing = r.raise(error)
 ```
 
-**§12** *(receiver migration, members)*: If your library exposes a "scope" or "context" type, we suggest moving to context parameters:
+**§13** *(receiver migration, members)*: If your library exposes a "scope" or "context" type, we suggest moving to context parameters:
 
 1. functions with the scope type as extension receiver should be refactored to use context parameters,
 2. operations defined as members and extending other types should be taken out of the interface definition, if possible,
@@ -376,19 +385,17 @@ functionContext: 'context' [ '(' [ receiverType { ',' receiverType } ] ') ]
 
 **§23** *(declaration with context parameters)*: The context parameters declared for a callable are available in the same way as "regular" value parameters in the body of the function. Both value and context parameters are introduced in the same scope, there is no shadowing between them.
 
-**§24** *(function applicability)*: Building the constraint system is modified for lambda arguments. Compared with the [Kotlin specification](https://kotlinlang.org/spec/overload-resolution.html#description), the type of the parameter _U<sub>m</sub>_ is replaced with _nocontext(U<sub>m</sub>)_, where _nocontext_ removes the initial `context` block from the function type.
+**§24** *(applicability, lambdas)*: Building the constraint system is modified for lambda arguments. Compared with the [Kotlin specification](https://kotlinlang.org/spec/overload-resolution.html#description), the type of the parameter _U<sub>m</sub>_ is replaced with _nocontext(U<sub>m</sub>)_, where _nocontext_ removes the initial `context` block from the function type.
 
-**§25** *(most specific candidate)*: When choosing the **most specific candidate** we follow the Kotlin specification, with one addition:
+**§25** *(applicability, context resolution)*: After the first phase of function applicability -- checking the type constraint problem -- an additional **context resolution** phase is inserted. For each potentially applicable callable, for each context parameter, we traverse the tower of scopes looking for **exactly one** default receiver or context parameter with a compatible type.
 
-* Candidates with context parameters are considered more specific than those without them.
-* But there is no other prioritization coming from the length of the context parameter list or their types.
+There are three possible outcomes of this process:
 
-**§26** *(context resolution)*: Once the overload candidate is chosen, we **resolve** context parameters (if any). For each context parameter:
+1. If _no_ compatible context value is found for at least one context parameter, then the call is _not_ applicable, and it is removed from the candidate set as a result.
+2. If for at least one context parameter there is more than one compatible value at the same level (and case 1 does not apply), a _context ambiguity_ error is issued.
+3. If none of (1) or (2) apply, then the candidate is applicable.
 
-* We traverse the tower of scopes looking for **exactly one** default receiver or context parameter with a compatible type.
-    * Anonymous context parameters (declared with `_`) also participate in this process. 
-* It is an ambiguity error if more than one value is found at the same level.
-* It is an overload resolution error if no applicable value is found.
+The following piece of code exemplifies how scoping interacts with context resolution:
 
 ```kotlin
 interface Logger {
@@ -410,9 +417,26 @@ context(console: ConsoleLogger, file: FileLogger) fun example3() =
   with(console) { logWithTime("hello") }  // no ambiguity, uses 'console'
 ```
 
+**§26** *(applicability, `DslMarker`)*: During context resolution, if at a certain scope there is a potential contextual value in scope (either coming from a context parameter or for implicit scope) marked with an annotation `@X` which is itself annotated with [`@DslMarker`](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-dsl-marker/) then:
+
+- It is an _error_ for two such values to be available in the same scope.
+- If context resolution chooses a contextual value with the same annotation, but in an outer scope, it is a compilation _error_.
+- If a call binds to a receiver with the same annotation, it is a compilation _error_.
+
+These rules extend the usual behavior of `@DslMarker` to cover both receivers and context parameters uniformly.
+
+**§27** *(most specific candidate)*: When choosing the **most specific candidate** we follow the [Kotlin specification](https://kotlinlang.org/spec/overload-resolution.html#choosing-the-most-specific-candidate-from-the-overload-candidate-set), with one addition:
+
+* Candidates with context parameters are considered more specific than those without them.
+* But there is no other prioritization coming from the length of the context parameter list or their types.
+
+### Extended type inference algorithm
+
+**§28** *(lambda literal inference)*: the type inference process in the [Kotlin specification](https://kotlinlang.org/spec/type-inference.html#statements-with-lambda-literals) should take context parameters into account. Note that unless a function type with context is "pushed" as a type for the lambda, context parameters are never inferred.
+
 ### JVM ABI and Java compatibility
 
-**§27** *(JVM and Java compatibility)*: In the JVM a function with context parameters is represented as a regular function with the context parameters situated at the *beginning* of the parameter list. The name of the context parameter, if present, is used as the name of the parameter.
+**§29** *(JVM and Java compatibility)*: In the JVM a function with context parameters is represented as a regular function with the context parameters situated at the *beginning* of the parameter list. The name of the context parameter, if present, is used as the name of the parameter.
 
 * Note that parameter names do not impact JVM ABI compatibility.
 
