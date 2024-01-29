@@ -66,7 +66,7 @@ val Type.isNullable: Boolean get() = ...
 * It is an *error* to declare an **empty** list of context parameters.
 * It is an *error* if the **name** of a context parameter **coincides** with the name of another context or value parameter to the callable (except for multiple uses of `_`).
 
-**§3** *(implicitness)*: When calling a member with context parameters, those are not spelled out. Rather, the value for each of those arguments is **resolved** from two sources: in-scope context parameters, and implicit scope. We say that context parameters are **implicit**.
+**§3** *(implicitness)*: When calling a member with context parameters, those are not spelled out. Rather, the value for each of those arguments is **resolved** from two sources: in-scope context parameters, and implicit receivers ([as defined by the Kotlin specification](https://kotlinlang.org/spec/overload-resolution.html#receivers)). We say that context parameters are **implicit**.
 
 ```kotlin
 context(logger: Logger) fun logWithTime(message: String) =
@@ -86,7 +86,7 @@ context(logger: Logger) fun User.doAction() {
 **§5** *(naming ambiguity)*: We use the term **context** with two meanings:
 
 1. For a declaration, it refers to the collection of context parameters declared in its signature. We also use the term *contextual function or property*.
-2. Within a body, we use context to refer to the combination of the implicit scope and context parameters. This context is the source for context resolution, that is, for "filling in" the implicit context parameters.
+2. Within a block, we use context to refer to the combination of implicit receivers and context parameters in scope in that block. This context is the source for context resolution, that is, for "filling in" the implicit context parameters.
 
 **§6** *(function types)*: **Function types** are extended with context parameters. It is only allowed to mention the *type* of context parameters, names are not supported.
 
@@ -97,11 +97,20 @@ context(Transaction) (UserId) -> User?
 context(Logger) User.() -> Int
 ```
 
-Note that, like in the case of extension receivers, those types are considered equivalent (for typing purposes, **not** for resolution purposes) to the function types in which all parameters are declared as value parameters.
+Note that, like in the case of extension receivers, those types are considered equivalent (for typing purposes, **not** for resolution purposes) to the function types in which all parameters are declared as value parameters _in the same order_.
+
+```kotlin
+// these are all equivalent types
+context(Logger, User) () -> Int
+context(Logger) User.() -> Int
+context(Logger) (User) -> Int
+Logger.(User) -> Int
+(Logger, User) -> Int
+```
 
 **§7** *(lambdas)*: If a lambda is assigned a function type with context parameters, those behave as if declared with `_` as its name.
 
-* They participate in context resolution but are only accessible through the `context` function (defined below).
+* They participate in context resolution but are only accessible through the `implicit` function (defined below).
 
 ```kotlin
 fun <A> withConsoleLogger(block: context(Logger) () -> A) = ...
@@ -115,7 +124,7 @@ withConsoleLogger {
 
 ## Standard library support
 
-**§8** *(`context` function)*: To extend the implicit scope in a contextual manner we provide additional functions in the standard library.
+**§8** *(`context` function)*: The `context` function adds a new value to the context, in an anonymous manner.
 
 * The implementation may be built into the compiler, instead of having a plethora of functions defined in the standard library.
 
@@ -368,7 +377,7 @@ context(users: UserService) fun saveAll(users: List<User>): Unit =
 
 **§19** *(no contexts in constructors, workaround)*: Note that Kotlin is very restrictive with constructors, as it doesn't allow them to be `suspend` either; the same workarounds (companion object + `invoke``, function with the name of the class) are available in this case.
 
-**§20** *(no contexts in constructors, future)*: We have defined four levels of how this support may pan out in the future:
+**§20** *(no contexts in constructors, future)*: We have defined levels of increasing support for contexts in classes, which steer how the feature may evolve:
 
 1. No context for constructors (current one),
 2. Contexts only for secondary constructors,
@@ -388,10 +397,10 @@ context(users: UserService) fun saveAll(users: List<User>): Unit =
 functionModifier: ... | context
 propertyModifier: ... | context
 
-context: 'context' [ '(' [ parameter { ',' parameter } ] ')' ]
+context: 'context' '(' parameter { ',' parameter } [ ',' ] ')'
 
-functionType: [ functionContext ] {NL} [ receiverType {NL} '.' {NL} ] ...
-functionContext: 'context' [ '(' [ receiverType { ',' receiverType } ] ') ]
+functionType: [ functionContext ] [ receiverType '.' ] ...
+functionContext: 'context' '(' receiverType { ',' receiverType } [ ',' ] ')'
 ```
 
 **Recommended style:** annotations, context parameters, other modifiers as per the [usual style guide](https://kotlinlang.org/docs/coding-conventions.html#modifiers-order).
@@ -432,7 +441,7 @@ context(console: ConsoleLogger, file: FileLogger) fun example3() =
   with(console) { logWithTime("hello") }  // no ambiguity, uses 'console'
 ```
 
-**§26** *(applicability, `DslMarker`)*: During context resolution, if at a certain scope there is a potential contextual value in scope (either coming from a context parameter or for implicit scope) marked with an annotation `@X` which is itself annotated with [`@DslMarker`](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-dsl-marker/) then:
+**§26** *(applicability, `DslMarker`)*: During context resolution, if at a certain scope there is a potential contextual value in scope (either coming from a context parameter or from an implicit receiver) marked with an annotation `@X` which is itself annotated with [`@DslMarker`](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-dsl-marker/) then:
 
 - It is an _error_ for two such values to be available in the same scope.
 - If context resolution chooses a contextual value with the same annotation, but in an outer scope, it is a compilation _error_.
@@ -451,10 +460,12 @@ These rules extend the usual behavior of `@DslMarker` to cover both receivers an
 
 ### JVM ABI and Java compatibility
 
-**§29** *(JVM and Java compatibility)*: In the JVM a function with context parameters is represented as a regular function with the context parameters situated at the *beginning* of the parameter list. The name of the context parameter, if present, is used as the name of the parameter.
+**§29** *(JVM and Java compatibility)*: In the JVM a function with context parameters is represented as a function with additional parameters. In particular, the order is:
+1. Context parameters, if present;
+2. Extension receiver, if present;
+3. Regular value parameters.
 
-* Note that parameter names do not impact JVM ABI compatibility.
-
+* Note that parameter names do not impact JVM ABI compatibility, but we use the names given in parameter declarations as far as possible.
 
 ## Q&A about design decisions
 
@@ -462,7 +473,7 @@ These rules extend the usual behavior of `@DslMarker` to cover both receivers an
 
 One of the main objections to the previous design was the potential scope pollution:
 
-- Having too many functions available in implicit scope makes it difficult to find the right one;
+- Having too many functions available in scope without qualification makes it difficult to find the right one;
 - It becomes much harder to establish where a certain member is coming from.
 
 We think that context parameters provide a better first step in understanding how implicit context resolution fits in Kotlin, without that caveat.
@@ -488,7 +499,7 @@ The subtyping restriction would disallow this case, since `A` and `B` may (poten
 
 *Q: Why drop the context-in-class feature altogether?*
 
-As we explored the design, we concluded that the interplay between contexts and inheritance and visibility is quite complex. Think of questions such as whether a context parameter to a class should also be in implicit scope in an extension method to that class, and whether that should depend on the potential visibility of such context parameter. At this point, we think that a good answer would only come if we fully design "`with`` properties", that is, values that also enter the context scope in their block.
+As we explored the design, we concluded that the interplay between contexts and inheritance and visibility is quite complex. Think of questions such as whether a context parameter to a class should also be in the context of an extension method to that class, and whether that should depend on the potential visibility of such context parameter. At this point, we think that a good answer would only come if we fully design "`with`` properties", that is, values that also enter the context scope in their block.
 
 An additional stone in the way is that one commonly requested use case is to have a constructor with value parameters and another where some of those are contextual. However, this leads to platform clashes, so we would need an additional design on that part.
 
