@@ -66,7 +66,21 @@ val Type.isNullable: Boolean get() = ...
 * It is an *error* to declare an **empty** list of context parameters.
 * It is an *error* if the **name** of a context parameter **coincides** with the name of another context or value parameter to the callable (except for multiple uses of `_`).
 
-**§1.3** *(implicitness)*: When calling a member with context parameters, those are not spelled out. Rather, the value for each of those arguments is **resolved** from two sources: in-scope context parameters, and implicit receivers ([as defined by the Kotlin specification](https://kotlinlang.org/spec/overload-resolution.html#receivers)). We say that context parameters are **implicit**.
+**§1.3** *(properties)*: Properties declared with context parameters may **not** declare an _initializer_, nor use _delegation_.
+
+```kotlin
+// not allowed (property with initializer)
+context(users: UserRepository)
+val firstUser: User? = users.getById(1)
+
+// allowed
+context(users: UserRepository)
+val firstUser: User? get() = users.getById(1)
+```
+
+The underlying reason is that the value for the context parameter is not available until the property is accessed, and may change according to the context.
+
+**§1.4** *(implicitness)*: When calling a member with context parameters, those are not spelled out. Rather, the value for each of those arguments is **resolved** from two sources: in-scope context parameters, and implicit receivers ([as defined by the Kotlin specification](https://kotlinlang.org/spec/overload-resolution.html#receivers)). We say that context parameters are **implicit**.
 
 ```kotlin
 context(logger: Logger) fun logWithTime(message: String) =
@@ -78,17 +92,17 @@ context(logger: Logger) fun User.doAction() {
 }
 ```
 
-**§1.4** *(override)*: Context parameters are part of the signature, and follow the same rules as regular value parameters concerning overriding:
+**§1.5** *(override)*: Context parameters are part of the signature, and follow the same rules as regular value parameters concerning overriding:
 
-* When overriding, the type and order of context parameters must coincide.
+* The type and order of context parameters must coincide.
 * It is allowed (yet discouraged) to change the name of a context parameter.
 
-**§1.5** *(naming ambiguity)*: We use the term **context** with two meanings:
+**§1.6** *(naming ambiguity)*: We use the term **context** with two meanings:
 
 1. For a declaration, it refers to the collection of context parameters declared in its signature. We also use the term *contextual function or property*.
 2. Within a block, we use context to refer to the combination of implicit receivers and context parameters in scope in that block. This context is the source for context resolution, that is, for "filling in" the implicit context parameters.
 
-**§1.6** *(function types)*: **Function types** are extended with context parameters. It is only allowed to mention the *type* of context parameters, names are not supported.
+**§1.7** *(function types)*: **Function types** are extended with context parameters. It is only allowed to mention the *type* of context parameters, names are not supported.
 
 * We do not want to inspect the body of a lambda looking for different context parameter names during overload resolution. The reasoning is similar to how we restrict lambdas with no declared arguments to be 0 or 1-ary.
 
@@ -108,7 +122,7 @@ Logger.(User) -> Int
 (Logger, User) -> Int
 ```
 
-**§1.7** *(lambdas)*: If a lambda is assigned a function type with context parameters, those behave as if declared with `_` as its name.
+**§1.8** *(lambdas)*: If a lambda is assigned a function type with context parameters, those behave as if declared with `_` as its name.
 
 * They participate in context resolution but are only accessible through the `implicit` function (defined below).
 
@@ -157,7 +171,7 @@ interface KParameter {
 
 val KCallable<*>.contextParameters: List<KParameter>
   get() = parameters.filter { 
-    it.kind == KParameter.Kind.CONTEXT_RECEIVER
+    it.kind == KParameter.Kind.CONTEXT_PARAMETER
   }
 
 ```
@@ -376,7 +390,7 @@ context(users: UserService) fun saveAll(users: List<User>): Unit =
 
 **§6.1** *(no contexts in constructors)*: We do **not** support context parameters in constructor declarations (neither primary nor secondary). There are some issues around their design, especially when mixed with inheritance and private/protected visibility.
 
-**§6.2** *(no contexts in constructors, workaround)*: Note that Kotlin is very restrictive with constructors, as it doesn't allow them to be `suspend` either; the same workarounds (companion object + `invoke``, function with the name of the class) are available in this case.
+**§6.2** *(no contexts in constructors, workaround)*: Note that Kotlin is very restrictive with constructors, as it doesn't allow them to be `suspend` either; the same workarounds (companion object + `invoke`, function with the name of the class) are available in this case.
 
 **§6.3** *(no contexts in constructors, future)*: We have defined levels of increasing support for contexts in classes, which steer how the feature may evolve:
 
@@ -495,12 +509,14 @@ fun dslMarkerExample() =
 
 ### JVM ABI and Java compatibility
 
-**§7.8** *(JVM and Java compatibility)*: In the JVM a function with context parameters is represented as a function with additional parameters. In particular, the order is:
+**§7.8** *(JVM and Java compatibility, functions)*: In the JVM a function with context parameters is represented as a function with additional parameters. In particular, the order is:
 1. Context parameters, if present;
 2. Extension receiver, if present;
 3. Regular value parameters.
 
 Note that parameter names do not impact JVM ABI compatibility, but we use the names given in parameter declarations as far as possible.
+
+**§7.9** *(JVM and Java compatibility, properties)*: In the JVM a property with context parameters is represented by its corresponding getter and/or setter. This representation follows the same argument order described in §7.8.
 
 ## Q&A about design decisions
 
@@ -534,7 +550,7 @@ The subtyping restriction would disallow this case, since `A` and `B` may (poten
 
 *Q: Why drop the context-in-class feature altogether?*
 
-As we explored the design, we concluded that the interplay between contexts and inheritance and visibility is quite complex. Think of questions such as whether a context parameter to a class should also be in the context of an extension method to that class, and whether that should depend on the potential visibility of such context parameter. At this point, we think that a good answer would only come if we fully design "`with`` properties", that is, values that also enter the context scope in their block.
+As we explored the design, we concluded that the interplay between contexts and inheritance and visibility is quite complex. Think of questions such as whether a context parameter to a class should also be in the context of an extension method to that class, and whether that should depend on the potential visibility of such context parameter. At this point, we think that a good answer would only come if we fully design "`with` properties", that is, values that also enter the context scope in their block.
 
 An additional stone in the way is that one commonly requested use case is to have a constructor with value parameters and another where some of those are contextual. However, this leads to platform clashes, so we would need an additional design on that part.
 
