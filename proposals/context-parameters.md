@@ -7,7 +7,7 @@
 
 ## Abstract
 
-This is an updated proposal for [KEEP-259](https://github.com/Kotlin/KEEP/issues/259), formerly known as _context receivers_. The new design addresses the issues raised by the users of the prototype and across the community. 
+This is an updated proposal for [KEEP-259](https://github.com/Kotlin/KEEP/issues/259), formerly known as _context receivers_. The new design addresses the issues raised by the users of the prototype implementing that previous iteration of the design and across the community at large. 
 
 This document is not (yet) formally a KEEP, since it lacks some of the technical elements. Those are going to be provided at a later time, but we thought it would be interesting to open the discussion even if the design is not fully formalized.
 
@@ -48,7 +48,7 @@ This document is not (yet) formally a KEEP, since it lacks some of the technical
 
 ## Members with context parameters
 
-**§1** *(declaration)*: Every callable member (functions — but not constructors — and properties) gets additional support for **context parameters**. Context parameters are declared with the `context` keyword followed by a list of parameters, each of the form `name: Type`.
+**§1.1** *(declaration)*: Every callable member (functions — but not constructors — and properties) gets additional support for **context parameters**. Context parameters are declared with the `context` keyword followed by a list of parameters, each of the form `name: Type`.
 
 * Within the body of the declared member, the value of the context parameter is accessible using its name, similar to value parameters.
 * It is allowed to use `_` as a name; in that case, the value is not accessible through any name (but still participates in context resolution).
@@ -61,12 +61,12 @@ context(analysisScope: AnalysisScope)
 val Type.isNullable: Boolean get() = ...
 ```
 
-**§2** *(restrictions)*:
+**§1.2** *(restrictions)*:
 
 * It is an *error* to declare an **empty** list of context parameters.
 * It is an *error* if the **name** of a context parameter **coincides** with the name of another context or value parameter to the callable (except for multiple uses of `_`).
 
-**§3** *(implicitness)*: When calling a member with context parameters, those are not spelled out. Rather, the value for each of those arguments is **resolved** from two sources: in-scope context parameters, and implicit receivers ([as defined by the Kotlin specification](https://kotlinlang.org/spec/overload-resolution.html#receivers)). We say that context parameters are **implicit**.
+**§1.3** *(implicitness)*: When calling a member with context parameters, those are not spelled out. Rather, the value for each of those arguments is **resolved** from two sources: in-scope context parameters, and implicit receivers ([as defined by the Kotlin specification](https://kotlinlang.org/spec/overload-resolution.html#receivers)). We say that context parameters are **implicit**.
 
 ```kotlin
 context(logger: Logger) fun logWithTime(message: String) =
@@ -78,17 +78,17 @@ context(logger: Logger) fun User.doAction() {
 }
 ```
 
-**§4** *(override)*: Context parameters are part of the signature, and follow the same rules as regular value parameters concerning overriding:
+**§1.4** *(override)*: Context parameters are part of the signature, and follow the same rules as regular value parameters concerning overriding:
 
 * When overriding, the type and order of context parameters must coincide.
 * It is allowed (yet discouraged) to change the name of a context parameter.
 
-**§5** *(naming ambiguity)*: We use the term **context** with two meanings:
+**§1.5** *(naming ambiguity)*: We use the term **context** with two meanings:
 
 1. For a declaration, it refers to the collection of context parameters declared in its signature. We also use the term *contextual function or property*.
 2. Within a block, we use context to refer to the combination of implicit receivers and context parameters in scope in that block. This context is the source for context resolution, that is, for "filling in" the implicit context parameters.
 
-**§6** *(function types)*: **Function types** are extended with context parameters. It is only allowed to mention the *type* of context parameters, names are not supported.
+**§1.6** *(function types)*: **Function types** are extended with context parameters. It is only allowed to mention the *type* of context parameters, names are not supported.
 
 * We do not want to inspect the body of a lambda looking for different context parameter names during overload resolution. The reasoning is similar to how we restrict lambdas with no declared arguments to be 0 or 1-ary.
 
@@ -108,7 +108,7 @@ Logger.(User) -> Int
 (Logger, User) -> Int
 ```
 
-**§7** *(lambdas)*: If a lambda is assigned a function type with context parameters, those behave as if declared with `_` as its name.
+**§1.7** *(lambdas)*: If a lambda is assigned a function type with context parameters, those behave as if declared with `_` as its name.
 
 * They participate in context resolution but are only accessible through the `implicit` function (defined below).
 
@@ -116,15 +116,16 @@ Logger.(User) -> Int
 fun <A> withConsoleLogger(block: context(Logger) () -> A) = ...
 
 withConsoleLogger {
-  val logger = implicit<Logger>()
   // you can call functions with Logger as context parameter
   logWithTime("doing something")
+  // you can use 'implicit' to access the context parameter
+  implicit<Logger>().log("hello")
 }
 ```
 
 ## Standard library support
 
-**§8** *(`context` function)*: The `context` function adds a new value to the context, in an anonymous manner.
+**§2.1** *(`context` function)*: The `context` function adds a new value to the context, in an anonymous manner.
 
 * The implementation may be built into the compiler, instead of having a plethora of functions defined in the standard library.
 
@@ -134,7 +135,7 @@ fun <A, B, R> context(a: A, b: B, block: context(A, B) () -> R): R = block(a, b)
 fun <A, B, C, R> context(a: A, b: B, c: C, block: context(A, B, C) () -> R): R = block(a, b, c)
 ```
 
-**§9** *(`implicit` function)*: We also provide a generic way to obtain a value by type from the context. It allows access to context parameters even when declared using `_`, or within the body of a lambda.
+**§2.2** *(`implicit` function)*: We also provide a generic way to obtain a value by type from the context. It allows access to context parameters even when declared using `_`, or within the body of a lambda.
 
 ```kotlin
 context(ctx: A) fun <A> implicit(): A = ctx
@@ -144,7 +145,7 @@ This function replaces the uses of `this@Type` in the previous iteration of the 
 
 ### Reflection
 
-**§10** *(callable reflection)*: The following additions to the `kotlin.reflect` are required for information about members.
+**§2.3** *(callable reflection)*: The following additions to the `kotlin.reflect` are required for information about members.
 
 ```kotlin
 interface KParameter {
@@ -161,13 +162,13 @@ val KCallable<*>.contextParameters: List<KParameter>
 
 ```
 
-**§11** *(property reflection)*: Properties with context parameters are not `KProperty0`, `1`, nor `2`, but rather simply `KProperty`.
+**§2.4** *(property reflection)*: Properties with context parameters are not `KProperty0`, `1`, nor `2`, but rather simply `KProperty`.
 
 ## Simulating receivers
 
 There are cases where the need to refer to members of a context parameter through its name may hurt readability — this happens mostly in relation to DSLs. In this section, we provide guidance on how to solve this issue.
 
-**§12** *(bridge function)*: Given an interface with some members,
+**§3.1** *(bridge function)*: Given an interface with some members,
 
 ```kotlin
 interface Raise<in Error> {
@@ -191,7 +192,7 @@ We do this by introducing a **bridge function** that simply wraps the access to 
 context(r: Raise<E>) inline fun raise(error: Error): Nothing = r.raise(error)
 ```
 
-**§13** *(receiver migration, members)*: If your library exposes a "scope" or "context" type, we suggest moving to context parameters:
+**§3.2** *(receiver migration, members)*: If your library exposes a "scope" or "context" type, we suggest moving to context parameters:
 
 1. functions with the scope type as extension receiver should be refactored to use context parameters,
 2. operations defined as members and extending other types should be taken out of the interface definition, if possible,
@@ -214,7 +215,7 @@ interface Raise<in Error> {
 context(_: Raise<E>) fun <E, A> Either<E, A>.bind() = ...
 ```
 
-**§13** *(receiver migration, run functions)*: We advise keeping any function taking a lambda where the scope type appears as extension receiver as is, and provide a new variant with a context parameter. The latter must unfortunately get a different name to prevent overload conflicts.
+**§3.3** *(receiver migration, run functions)*: We advise keeping any function taking a lambda where the scope type appears as extension receiver as is, and provide a new variant with a context parameter. The latter must unfortunately get a different name to prevent overload conflicts.
 
 ```kotlin
 fun <E, A> runRaise(block: Raise<E>.() -> A): Either<E, A>
@@ -222,7 +223,7 @@ fun <E, A> runRaise(block: Raise<E>.() -> A): Either<E, A>
 fun <E, A> runRaiseContext(block: context(Raise<E>) () -> A): Either<E, A>
 ```
 
-**§14** *(receiver migration, source compatibility)*: The rules above guarantee source compatibility for users of the interface.
+**§3.4** *(receiver migration, source compatibility)*: The rules above guarantee source compatibility for users of the interface.
 
 ## Use cases
 
@@ -230,7 +231,7 @@ This is a recollection and categorization of the different use cases we have fou
 
 ### As implicits
 
-**§A** *(implicit use case)*: In this case, the context parameter is thought of as a set of services available to a piece of code, but without the ceremony of passing those services explicitly in every call. In most cases, those contexts are introduced with an explicit name.
+**§4.1** *(implicit use case)*: In this case, the context parameter is thought of as a set of services available to a piece of code, but without the ceremony of passing those services explicitly in every call. In most cases, those contexts are introduced with an explicit name.
 
 A `Repository` class for a particular entity or a `Logger` are good examples of this mode of use.
 
@@ -240,7 +241,7 @@ context(users: UserRepository) fun User.getFriends() = ...
 
 ### As scopes
 
-**§B** *(scope use case)*: In this case we use the context parameter as a marker of being inside a particular scope, which unlocks additional abilities. A prime example is `CoroutineScope`, which adds `launch`, `async`, and so on. In this mode of use:
+**§4.2** *(scope use case)*: In this case we use the context parameter as a marker of being inside a particular scope, which unlocks additional abilities. A prime example is `CoroutineScope`, which adds `launch`, `async`, and so on. In this mode of use:
 
 * The `Scope` type is carefully designed, and the functions are exposed using bridge functions,
 * In most cases, the context parameter has no name or is irrelevant.
@@ -256,7 +257,7 @@ context(_: ResourceScope) fun File.open(): InputStream
 
 ### For extending DSLs
 
-**§C** *(DSLs use case)*: In this case, contexts are used to provide new members available in a domain-specific language. Currently, this is approached by declaring an interface that represents the "DSL context", and then having member or extension functions on that interface.
+**§4.3** *(DSLs use case)*: In this case, contexts are used to provide new members available in a domain-specific language. Currently, this is approached by declaring an interface that represents the "DSL context", and then having member or extension functions on that interface.
 
 ```kotlin
 interface HtmlScope {
@@ -271,7 +272,7 @@ Context parameters lift two of the main restrictions of this mode of use:
 
 ### Context-oriented dispatch / externally-implemented interface / type classes
 
-**§D** *(context-oriented dispatch use case)*: Context parameters can be used to simulate functions available for a type, by requiring an interface that uses the type as an argument. This is very similar to type classes in other languages.
+**§4.4** *(context-oriented dispatch use case)*: Context parameters can be used to simulate functions available for a type, by requiring an interface that uses the type as an argument. This is very similar to type classes in other languages.
 
 ```kotlin
 interface ToJson<T> {
@@ -302,27 +303,27 @@ context(_: Comparator<T>) fun <T> max(x: T, y: T) =
 
 ### Dependency injection
 
-**§E.1** *(dependency injection use case)*: You can view context parameters as values that must be "injected" from the context for the code to work. Since context arguments are completely resolved at compile-time, this provides something like dependency injection in the language.
+**§4.5.1** *(dependency injection use case)*: You can view context parameters as values that must be "injected" from the context for the code to work. Since context arguments are completely resolved at compile-time, this provides something like dependency injection in the language.
 
-**§E.1** *(dependency injection use case, companion object)*: In some cases, you may want to define that instantiating a certain class requires some value — this creates the typical hierarchy of dependency we see in DI frameworks. We can accomplish this by faking a constructor with those contexts:
+**§4.5.2** *(dependency injection use case, companion object)*: In some cases, you may want to define that instantiating a certain class requires some value — this creates the typical hierarchy of dependency we see in DI frameworks. We can accomplish this by faking a constructor with those contexts:
 
 ```kotlin
 interface Logger { ... }
 interface UserService { ... }
 
-class DbUserService(val logger: Logger, val connection: DbConnection) {
+class DbUserService(val logger: Logger, val connection: DbConnection): UserService {
   companion object {
-    context(logger: Logger, connection: Connection)
+    context(logger: Logger, connection: DbConnection)
     operator fun invoke(): DbUserService = DbUserService(logger, connection)
   }
 }
 ```
 
-**§E.2** *(dependency injection use case, discouragement)*: Note that we suggest against this feature, since having parameters explicitly reduces the need to nest too many `context` calls.
+**§4.5.3** *(dependency injection use case, discouragement)*: Note that we suggest against this feature, since having parameters explicitly reduces the need to nest too many `context` calls.
 
 ```kotlin
 // do not do this
-context(ConsoleLogger(), ConnectionPool(2)) {
+context(ConsoleLogger(), DbConnectionPool(2)) {
   context(DbUserService()) {
     ...
   }
@@ -330,7 +331,7 @@ context(ConsoleLogger(), ConnectionPool(2)) {
 
 // better be explicit about object creation
 val logger = ConsoleLogger()
-val pool = ConnectionPool(2)
+val pool = DbConnectionPool(2)
 val userService = DbUserService(logger, pool)
 // and then inject everything you need in one go
 context(logger, userService) {
@@ -340,7 +341,7 @@ context(logger, userService) {
 
 ## Callable references
 
-**§15** *(callable references, eager resolution)*: References to callables declared with context parameters are resolved **eagerly**:
+**§5.1** *(callable references, eager resolution)*: References to callables declared with context parameters are resolved **eagerly**:
 
 * The required context parameters must be resolved in the context in which the reference is created,
 * The resulting type does not mention context.
@@ -361,7 +362,7 @@ context(users: UserService) fun example() {
 }
 ```
 
-**§16** *(callable references, motivation)*: This design was motivated by the pattern of having a set of functions sharing a common context parameter, like in the example below.
+**§5.2** *(callable references, motivation)*: This design was motivated by the pattern of having a set of functions sharing a common context parameter, like in the example below.
 
 ```kotlin
 context(users: UserService) fun save(u: User): Unit { ... }
@@ -369,15 +370,15 @@ context(users: UserService) fun saveAll(users: List<User>): Unit =
   users.forEach(::save) // ::save is resolved as (User) -> Unit
 ```
 
-**§17** *(callable references, future)*: We consider as **future** improvement a more complex resolution of callables, in which the context is taken into account when the callable is used as an argument of a function that expects a function type with context.
+**§5.3** *(callable references, future)*: We consider as **future** improvement a more complex resolution of callables, in which the context is taken into account when the callable is used as an argument of a function that expects a function type with context.
 
 ## Context and classes
 
-**§18** *(no contexts in constructors)*: We do **not** support context parameters in constructor declarations (neither primary nor secondary). There are some issues around their design, especially when mixed with inheritance and private/protected visibility.
+**§6.1** *(no contexts in constructors)*: We do **not** support context parameters in constructor declarations (neither primary nor secondary). There are some issues around their design, especially when mixed with inheritance and private/protected visibility.
 
-**§19** *(no contexts in constructors, workaround)*: Note that Kotlin is very restrictive with constructors, as it doesn't allow them to be `suspend` either; the same workarounds (companion object + `invoke``, function with the name of the class) are available in this case.
+**§6.2** *(no contexts in constructors, workaround)*: Note that Kotlin is very restrictive with constructors, as it doesn't allow them to be `suspend` either; the same workarounds (companion object + `invoke``, function with the name of the class) are available in this case.
 
-**§20** *(no contexts in constructors, future)*: We have defined levels of increasing support for contexts in classes, which steer how the feature may evolve:
+**§6.3** *(no contexts in constructors, future)*: We have defined levels of increasing support for contexts in classes, which steer how the feature may evolve:
 
 1. No context for constructors (current one),
 2. Contexts only for secondary constructors,
@@ -385,13 +386,13 @@ context(users: UserService) fun saveAll(users: List<User>): Unit =
 4. Support for `val`/`var` for context parameter, but without entering the context,
 5. Context parameters declared with `val`/`var` enter the context of every declaration.
 
-**§21** *(no contexts in class declarations)*: The prototype also contains a "context in class" feature, which both adds a context parameter to the constructor and makes that value available implicitly in the body of the class. We've explored some possibilities, but the conclusion was that we do not know at this point which is the right one. Furthermore, we think that "scoped properties" may bring a better overall solution to this problem; and adding this feature now would get in the way.
+**§6.4** *(no contexts in class declarations)*: At this point, we include no "context in class" feature, which would both add a context parameter to the constructor and make that value available implicitly in the body of the class. We've explored some possibilities, but the conclusion was that we do not know at this point which is the right one. Furthermore, we think that "scoped properties" may bring a better overall solution to this problem; and adding this feature now would get in the way.
 
 ## Technical design
 
 ### Syntax
 
-**§22** *(`context` is a modifier)*: Everybody's favorite topic! Although the current implementation places some restrictions on the location of the context block, the intention is to turn it (syntactically) into a modifier. In terms of the Kotlin grammar,
+**§7.1** *(`context` is a modifier)*: Everybody's favorite topic! Although the current implementation places some restrictions on the location of the context block, the intention is to turn it (syntactically) into a modifier. In terms of the Kotlin grammar,
 
 ```
 functionModifier: ... | context
@@ -407,11 +408,11 @@ functionContext: 'context' '(' receiverType { ',' receiverType } [ ',' ] ')'
 
 ### Extended resolution algorithm
 
-**§23** *(declaration with context parameters)*: The context parameters declared for a callable are available in the same way as "regular" value parameters in the body of the function. Both value and context parameters are introduced in the same scope, there is no shadowing between them.
+**§7.2** *(declaration with context parameters)*: The context parameters declared for a callable are available in the same way as "regular" value parameters in the body of the function. Both value and context parameters are introduced in the same scope, there is no shadowing between them (remember that parameters names must be unique across both value and context parameters),
 
-**§24** *(applicability, lambdas)*: Building the constraint system is modified for lambda arguments. Compared with the [Kotlin specification](https://kotlinlang.org/spec/overload-resolution.html#description), the type of the parameter _U<sub>m</sub>_ is replaced with _nocontext(U<sub>m</sub>)_, where _nocontext_ removes the initial `context` block from the function type.
+**§7.3** *(applicability, lambdas)*: Building the constraint system is modified for lambda arguments. Compared with the [Kotlin specification](https://kotlinlang.org/spec/overload-resolution.html#description), the type of the parameter _U<sub>m</sub>_ is replaced with _nocontext(U<sub>m</sub>)_, where _nocontext_ removes the initial `context` block from the function type.
 
-**§25** *(applicability, context resolution)*: After the first phase of function applicability -- checking the type constraint problem -- an additional **context resolution** phase is inserted. For each potentially applicable callable, for each context parameter, we traverse the tower of scopes looking for **exactly one** default receiver or context parameter with a compatible type.
+**§7.4** *(applicability, context resolution)*: After the first phase of function applicability -- checking the type constraint problem -- an additional **context resolution** phase is inserted. For each potentially applicable callable, for each context parameter, we traverse the tower of scopes looking for **exactly one** default receiver or context parameter with a compatible type.
 
 There are three possible outcomes of this process:
 
@@ -433,15 +434,19 @@ context(logger: Logger) fun logWithTime(message: String) = ...
 context(console: ConsoleLogger, file: FileLogger) fun example1() =
   logWithTime("hello")  // ambiguity error
   
-context(file: FileLogger) fun example2() = context(ConsoleLogger()) { 
-  logWithTime("hello")  // no ambiguity, uses the new ConsoleLogger
-}
+context(file: FileLogger) fun example2() = 
+  context(ConsoleLogger()) { 
+    logWithTime("hello")  // no ambiguity, uses the new ConsoleLogger
+  }
 
 context(console: ConsoleLogger, file: FileLogger) fun example3() =
+  context(console) { logWithTime("hello") }  // no ambiguity, uses 'console'
+
+context(console: ConsoleLogger, file: FileLogger) fun example4() =
   with(console) { logWithTime("hello") }  // no ambiguity, uses 'console'
 ```
 
-**§26** *(applicability, `DslMarker`)*: During context resolution, if at a certain scope there is a potential contextual value in scope (either coming from a context parameter or from an implicit receiver) marked with an annotation `@X` which is itself annotated with [`@DslMarker`](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-dsl-marker/) then:
+**§7.5** *(applicability, `DslMarker`)*: During context resolution, if at a certain scope there is a potential contextual value in scope (either coming from a context parameter or from an implicit receiver) marked with an annotation `@X` which is itself annotated with [`@DslMarker`](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-dsl-marker/) then:
 
 - It is an _error_ for two such values to be available in the same scope.
 - If context resolution chooses a contextual value with the same annotation, but in an outer scope, it is a compilation _error_.
@@ -449,23 +454,53 @@ context(console: ConsoleLogger, file: FileLogger) fun example3() =
 
 These rules extend the usual behavior of `@DslMarker` to cover both receivers and context parameters uniformly.
 
-**§27** *(most specific candidate)*: When choosing the **most specific candidate** we follow the [Kotlin specification](https://kotlinlang.org/spec/overload-resolution.html#choosing-the-most-specific-candidate-from-the-overload-candidate-set), with one addition:
+```kotlin
+@DslMarker annotation class ExampleMarker
+
+@ExampleMarker class ExampleScope<A> {
+  fun exemplify(): A
+}
+
+fun <A, T> withExampleReceiver(value: A, block: ExampleScope<A>.() -> T): T = ...
+fun <A, T> withExampleContext(value: A, block: context(example: ExampleScope<A>) () -> T): T =
+  withExampleReceiver(value) { block() }
+
+fun dslMarkerExample() =
+  withExample(3) {
+    withExampleReceiver("b") {
+      // at this point you can only use
+      // the ExampleScope introduced in "b"
+      // to resolve context parameters
+
+      withExample(true) {
+        // at this point you can only use
+        // the ExampleScope introduced in "c"
+        // to resolve context parameters
+
+        // the receiver from "b" is also inaccessible
+        this.exemplify()  // rejected: DSL scope violation
+      }
+    }
+  }
+```
+
+**§7.6** *(most specific candidate)*: When choosing the **most specific candidate** we follow the [Kotlin specification](https://kotlinlang.org/spec/overload-resolution.html#choosing-the-most-specific-candidate-from-the-overload-candidate-set), with one addition:
 
 * Candidates with context parameters are considered more specific than those without them.
 * But there is no other prioritization coming from the length of the context parameter list or their types.
 
 ### Extended type inference algorithm
 
-**§28** *(lambda literal inference)*: the type inference process in the [Kotlin specification](https://kotlinlang.org/spec/type-inference.html#statements-with-lambda-literals) should take context parameters into account. Note that unless a function type with context is "pushed" as a type for the lambda, context parameters are never inferred.
+**§7.7** *(lambda literal inference)*: the type inference process in the [Kotlin specification](https://kotlinlang.org/spec/type-inference.html#statements-with-lambda-literals) should take context parameters into account. Note that unless a function type with context is "pushed" as a type for the lambda, context parameters are never inferred.
 
 ### JVM ABI and Java compatibility
 
-**§29** *(JVM and Java compatibility)*: In the JVM a function with context parameters is represented as a function with additional parameters. In particular, the order is:
+**§7.8** *(JVM and Java compatibility)*: In the JVM a function with context parameters is represented as a function with additional parameters. In particular, the order is:
 1. Context parameters, if present;
 2. Extension receiver, if present;
 3. Regular value parameters.
 
-* Note that parameter names do not impact JVM ABI compatibility, but we use the names given in parameter declarations as far as possible.
+Note that parameter names do not impact JVM ABI compatibility, but we use the names given in parameter declarations as far as possible.
 
 ## Q&A about design decisions
 
