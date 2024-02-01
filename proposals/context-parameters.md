@@ -471,7 +471,7 @@ These rules extend the usual behavior of `@DslMarker` to cover both receivers an
 ```kotlin
 @DslMarker annotation class ExampleMarker
 
-@ExampleMarker class ExampleScope<A> {
+@ExampleMarker interface ExampleScope<A> {
   fun exemplify(): A
 }
 
@@ -479,20 +479,27 @@ fun <A, T> withExampleReceiver(value: A, block: ExampleScope<A>.() -> T): T = ..
 fun <A, T> withExampleContext(value: A, block: context(example: ExampleScope<A>) () -> T): T =
   withExampleReceiver(value) { block() }
 
+context(ExampleScope<A>) fun <A> similarExampleTo(other: A): A = ...
+
 fun dslMarkerExample() =
-  withExample(3) {
-    withExampleReceiver("b") {
+  withExampleContext(3) { // (1)
+    withExampleReceiver("b") { // (2)
       // at this point you can only use
-      // the ExampleScope introduced in "b"
+      // the ExampleScope introduced (2)
       // to resolve context parameters
 
-      withExample(true) {
+      similarExampleTo("hello") // correct, uses (2)
+      similarExampleTo(1) // rejected: DSL scope violation
+                          // since it resolved to (1)
+
+      withExampleContext(true) { // (3)
         // at this point you can only use
-        // the ExampleScope introduced in "c"
+        // the ExampleScope introduced (3)
         // to resolve context parameters
 
-        // the receiver from "b" is also inaccessible
         this.exemplify()  // rejected: DSL scope violation
+                          // since it binds the receiver from (2)
+        similarExampleTo("bye")  // rejected: DSL scope violation
       }
     }
   }
