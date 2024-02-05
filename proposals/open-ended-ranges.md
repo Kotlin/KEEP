@@ -3,7 +3,7 @@
 * **Type**: Design proposal / Standard Library API proposal
 * **Author**: Ilya Gorbunov
 * **Contributors**: Roman Elizarov, Vsevolod Tolstopyatov, Abduqodiri Qurbonzoda, Leonid Startsev, Egor Tolstoy
-* **Status**: Experimental
+* **Status**: Implemented
 * **Prototype**: Implemented in 1.7.20-Beta
 * **Related issues**: [KT-15613](https://youtrack.jetbrains.com/issue/KT-15613)
 * **Discussion**: [KEEP-314](https://github.com/Kotlin/KEEP/issues/314)
@@ -212,7 +212,7 @@ in these range types an open-ended range is equal to the closed range with the s
 0..<10 == 0..9 // true
 ```
 
-## Experimental status
+## Experimental status before Kotlin 1.9.0
 
 Both the language feature of `rangeUntil` operator and its supporting standard library API
 are to be released in Kotlin 1.7.20 in [Experimental](https://kotlinlang.org/docs/components-stability.html#stability-levels-explained) status.
