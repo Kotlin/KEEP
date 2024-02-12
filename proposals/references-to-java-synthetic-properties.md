@@ -3,7 +3,7 @@
 * **Type**: Design proposal
 * **Author**: Pavel Mikhailovskii
 * **Status**: Proposed
-* **Prototype**: Supported under a flag in 1.3.70 and enabled by default in .gradle.kts. Preview in 1.8.20 with `-language-version 1.9`. Planned to be enabled by default in 1.9.
+* **Prototype**: Supported under a flag in 1.3.70 and enabled by default in .gradle.kts. Preview in 1.8.20 with `-language-version 1.9`. Planned to be enabled by default in 2.1.
 * **Related issues**: [KT-8575](https://youtrack.jetbrains.com/issue/KT-8575), [KT-35933](https://youtrack.jetbrains.com/issue/KT-35933), [KT-54525](https://youtrack.jetbrains.com/issue/KT-54525), [KT-54770](https://youtrack.jetbrains.com/issue/KT-54770)
 
 Discussion of this proposal is held in [this issue](https://github.com/Kotlin/KEEP/issues/328).
