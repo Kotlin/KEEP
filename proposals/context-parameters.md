@@ -142,6 +142,7 @@ withConsoleLogger {
 **§2.1** *(`context` function)*: The `context` function adds a new value to the context, in an anonymous manner.
 
 * The implementation may be built into the compiler, instead of having a plethora of functions defined in the standard library.
+* Implementations are encouraged, but not required, to mark these functions as `inline`.
 
 ```kotlin
 fun <A, R> context(context: A, block: context(A) () -> R): R = block(context)
@@ -151,11 +152,13 @@ fun <A, B, C, R> context(a: A, b: B, c: C, block: context(A, B, C) () -> R): R =
 
 **§2.2** *(`implicit` function)*: We also provide a generic way to obtain a value by type from the context. It allows access to context parameters even when declared using `_`, or within the body of a lambda.
 
+* Implementations are encouraged, but not required, to mark this function as `inline`.
+
 ```kotlin
 context(ctx: A) fun <A> implicit(): A = ctx
 ```
 
-This function replaces the uses of `this@Type` in the previous iteration of the design.
+_Note:_ This function replaces the uses of `this@Type` in the previous iteration of the design.
 
 ### Reflection
 
@@ -200,7 +203,7 @@ context(_: Raise<E>) fun <E, A> Either<E, A>.bind(): A =
   }
 ```
 
-We do this by introducing a **bridge function** that simply wraps the access to the context parameter.
+We do this by introducing a **bridge function** at top level that simply wraps the access to the context parameter.
 
 ```kotlin
 context(r: Raise<E>) inline fun raise(error: Error): Nothing = r.raise(error)
@@ -271,7 +274,7 @@ context(_: ResourceScope) fun File.open(): InputStream
 
 ### For extending DSLs
 
-**§4.3** *(DSLs use case)*: In this case, contexts are used to provide new members available in a domain-specific language. Currently, this is approached by declaring an interface that represents the "DSL context", and then having member or extension functions on that interface.
+**§4.3.1** *(DSLs use case)*: In this case, contexts are used to provide new members available in a domain-specific language. Currently, this is approached by declaring an interface that represents the "DSL context", and then having member or extension functions on that interface.
 
 ```kotlin
 interface HtmlScope {
@@ -283,6 +286,8 @@ Context parameters lift two of the main restrictions of this mode of use:
 
 * It's possible to add new members with an extension receiver without modifying the Scope class itself.
 * It's possible to add members which are only available when the DSL Scope has certain type arguments.
+
+**§4.3.1** *(`DslMarker`)*: we strive to make `@DslMarker` annotations work uniformly across receivers and context parameters, as described in §7.5.
 
 ### Context-oriented dispatch / externally-implemented interface / type classes
 
