@@ -25,7 +25,7 @@ This document is not (yet) formally a KEEP, since it lacks some of the technical
 * [Abstract](#abstract)
   * [Summary of changes from the previous proposal](#summary-of-changes-from-the-previous-proposal)
 * [Table of contents](#table-of-contents)
-* [Members with context parameters](#members-with-context-parameters)
+* [Declarations with context parameters](#declarations-with-context-parameters)
 * [Standard library support](#standard-library-support)
   * [Reflection](#reflection)
 * [Simulating receivers](#simulating-receivers)
@@ -46,11 +46,11 @@ This document is not (yet) formally a KEEP, since it lacks some of the technical
 * [Acknowledgments](#acknowledgments)
 
 
-## Members with context parameters
+## Declarations with context parameters
 
-**§1.1** *(declaration)*: Every callable member (functions — but not constructors — and properties) gets additional support for **context parameters**. Context parameters are declared with the `context` keyword followed by a list of parameters, each of the form `name: Type`.
+**§1.1** *(declaration)*: Every callable declaration (functions — but not constructors — and properties) gets additional support for **context parameters**. Context parameters are declared with the `context` keyword followed by a list of parameters, each of the form `name: Type`.
 
-* Within the body of the declared member, the value of the context parameter is accessible using its name, similar to value parameters.
+* Within the body of the declaration, the value of the context parameter is accessible using its name, similar to value parameters.
 * It is allowed to use `_` as a name; in that case, the value is not accessible through any name (but still participates in context resolution).
 
 ```kotlin
@@ -80,7 +80,7 @@ val firstUser: User? get() = users.getById(1)
 
 The underlying reason is that the value for the context parameter is not available until the property is accessed, and may change according to the context.
 
-**§1.4** *(implicitness)*: When calling a member with context parameters, those are not spelled out. Rather, the value for each of those arguments is **resolved** from two sources: in-scope context parameters, and implicit receivers ([as defined by the Kotlin specification](https://kotlinlang.org/spec/overload-resolution.html#receivers)). We say that context parameters are **implicit**.
+**§1.4** *(implicitness)*: When calling a function or property with context parameters, those are not spelled out. Rather, the value for each of those arguments is **resolved** from two sources: in-scope context parameters, and implicit receivers ([as defined by the Kotlin specification](https://kotlinlang.org/spec/overload-resolution.html#receivers)). We say that context parameters are **implicit**.
 
 ```kotlin
 context(logger: Logger) fun logWithTime(message: String) =
@@ -162,7 +162,7 @@ _Note:_ This function replaces the uses of `this@Type` in the previous iteration
 
 ### Reflection
 
-**§2.3** *(callable reflection)*: The following additions to the `kotlin.reflect` are required for information about members.
+**§2.3** *(callable reflection)*: The following additions to the `kotlin.reflect` are required for information about context parameters.
 
 ```kotlin
 interface KParameter {
