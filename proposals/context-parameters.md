@@ -287,7 +287,7 @@ Context parameters lift two of the main restrictions of this mode of use:
 * It's possible to add new members with an extension receiver without modifying the Scope class itself.
 * It's possible to add members which are only available when the DSL Scope has certain type arguments.
 
-**§4.3.1** *(`DslMarker`)*: we strive to make `@DslMarker` annotations work uniformly across receivers and context parameters, as described in §7.5.
+**§4.3.2** *(`DslMarker`)*: we strive to make `@DslMarker` annotations work uniformly across receivers and context parameters, as described in §7.5.
 
 ### Context-oriented dispatch / externally-implemented interface / type classes
 
