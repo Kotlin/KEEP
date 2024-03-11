@@ -54,11 +54,16 @@ This document is not (yet) formally a KEEP, since it lacks some of the technical
 * It is allowed to use `_` as a name; in that case, the value is not accessible through any name (but still participates in context resolution).
 
 ```kotlin
+interface Type {
+  context(analysisScope: AnalysisScope)
+  val isNullable: Boolean = ...
+}
+
 context(analysisScope: AnalysisScope)
 fun Type.equalTo(other: Type): Boolean = ...
 
-context(analysisScope: AnalysisScope)
-val Type.isNullable: Boolean get() = ...
+context(_: AnalysisScope)
+val Type.isBoolean: Boolean = this.equalTo(BuiltIns.Boolean)
 ```
 
 **§1.2** *(restrictions)*:
@@ -405,7 +410,29 @@ context(users: UserService) fun saveAll(users: List<User>): Unit =
 4. Support for `val`/`var` for context parameter, but without entering the context,
 5. Context parameters declared with `val`/`var` enter the context of every declaration.
 
-**§6.4** *(no contexts in class declarations)*: At this point, we include no "context in class" feature, which would both add a context parameter to the constructor and make that value available implicitly in the body of the class. We've explored some possibilities, but the conclusion was that we do not know at this point which is the right one. Furthermore, we think that "scoped properties" may bring a better overall solution to this problem; and adding this feature now would get in the way.
+**§6.4** *(no contexts in class declarations)*: At this point, we include no "context in class" feature, which would both add a context parameter to the constructor and make that value available implicitly in the body of the class. We've explored some possibilities, but the conclusion was that we do not know at this point which is the right one.
+
+In the code above we show a piece of code not allowed by the current design, and two different ways we can provide a similar behavior using constructs that are available.
+
+```kotlin
+// this was allowed in the previous iteration
+context(AnalysisScope) class TypeScope {
+  fun Type.equalTo(other: Type): Boolean = ...
+}
+
+// possibility 1: scope stored once for the entire lifetime of an instance
+class TypeScope(val analysisScope: AnalysisScope) {
+  fun Type.equalTo(other: Type): Boolean = ...
+}
+
+// possibility 2: scope required on each operation
+class TypeScope {
+  context(analysisScope: AnalysisScope)
+  fun Type.equalTo(other: Type): Boolean = ...
+}
+```
+
+Furthermore, we think that "scoped properties" may bring a better overall solution to this problem; and adding this feature now would get in the way.
 
 ## Technical design
 
