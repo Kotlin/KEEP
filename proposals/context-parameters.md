@@ -41,7 +41,7 @@ This document is not (yet) formally a KEEP, since it lacks some of the technical
   * [Syntax](#syntax)
   * [Extended resolution algorithm](#extended-resolution-algorithm)
   * [Extended type inference algorithm](#extended-type-inference-algorithm)
-  * [JVM ABI and Java compatibility](#jvm-abi-and-java-compatibility)
+  * [ABI compatibility](#abi-compatibility)
 * [Q\&A about design decisions](#qa-about-design-decisions)
 * [Acknowledgments](#acknowledgments)
 
@@ -71,7 +71,7 @@ val Type.isBoolean: Boolean = this.equalTo(BuiltIns.Boolean)
 * It is an *error* to declare an **empty** list of context parameters.
 * It is an *error* if the **name** of a context parameter **coincides** with the name of another context or value parameter to the callable (except for multiple uses of `_`).
 
-**§1.3** *(properties)*: Properties declared with context parameters may **not** declare an _initializer_, nor use _delegation_.
+**§1.3** *(properties)*: Properties declared with context parameters may **not** declare an _initializer_, nor use _delegation_. It is **not** possible to declare context parameters for the getter or setter.
 
 ```kotlin
 // not allowed (property with initializer)
@@ -97,10 +97,12 @@ context(logger: Logger) fun User.doAction() {
 }
 ```
 
-**§1.5** *(override)*: Context parameters are part of the signature, and follow the same rules as regular value parameters concerning overriding:
+**§1.5** *(override and overloading)*: Context parameters are part of the signature, and follow the same rules as regular value parameters concerning overriding:
 
 * The type and order of context parameters must coincide.
 * It is allowed (yet discouraged) to change the name of a context parameter.
+
+It is a conflict to declare overloads which only differ in the order of the context parameters.
 
 **§1.6** *(naming ambiguity)*: We use the term **context** with two meanings:
 
@@ -167,7 +169,21 @@ _Note:_ This function replaces the uses of `this@Type` in the previous iteration
 
 ### Reflection
 
-**§2.3** *(callable reflection)*: The following additions to the `kotlin.reflect` are required for information about context parameters.
+**§2.3** *(callable references)*: As described in the corresponding section below, callable references eagerly resolve all the context parameters, so no changes are needed to the API when working with those.
+
+```kotlin
+context(users: UserService) val User.name: String = ...
+
+context(users: UserService) fun doSomething() {
+  val nameProperty = User::name
+  // type is KProperty1<User, String>
+  // the context 'users' is already resolved in the reference
+}
+```
+
+The following two paragraphs describe the extensions required when contextual declarations are accessed via [reflection](https://kotlinlang.org/docs/reflection.html); usually via the [`kotlin.reflect` package](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin.reflect/). For example, when using the `declaredMembers` property from a `KClass`.
+
+**§2.4** *(callable reflection)*: We extend the `kotlin.reflect` API to with information about context parameters.
 
 ```kotlin
 interface KParameter {
@@ -184,7 +200,7 @@ val KCallable<*>.contextParameters: List<KParameter>
 
 ```
 
-**§2.4** *(property reflection)*: Properties with context parameters are not `KProperty0`, `1`, nor `2`, but rather simply `KProperty`.
+**§2.5** *(property reflection)*: Properties with context parameters are represented as extending `KProperty` and also the function type corresponding to their getter. At this point, we do not extend the hierarchy of `KProperty0/1/2` to account for the additional context parameters.
 
 ## Simulating receivers
 
@@ -542,11 +558,22 @@ fun dslMarkerExample() =
 * Candidates with context parameters are considered more specific than those without them.
 * But there is no other prioritization coming from the length of the context parameter list or their types.
 
+For example, the following call to `foo` is declared ambiguous, since `"hello"` may work both as `String` or `Any` context parameter.
+
+```kotlin
+context(Any) fun foo() {}
+context(String) fun foo() {}
+
+fun test() = with("hello") {
+    foo()
+}
+```
+
 ### Extended type inference algorithm
 
 **§7.7** *(lambda literal inference)*: the type inference process in the [Kotlin specification](https://kotlinlang.org/spec/type-inference.html#statements-with-lambda-literals) should take context parameters into account. Note that unless a function type with context is "pushed" as a type for the lambda, context parameters are never inferred.
 
-### JVM ABI and Java compatibility
+### ABI compatibility
 
 **§7.8** *(JVM and Java compatibility, functions)*: In the JVM a function with context parameters is represented as a function with additional parameters. In particular, the order is:
 1. Context parameters, if present;
@@ -556,6 +583,8 @@ fun dslMarkerExample() =
 Note that parameter names do not impact JVM ABI compatibility, but we use the names given in parameter declarations as far as possible.
 
 **§7.9** *(JVM and Java compatibility, properties)*: In the JVM a property with context parameters is represented by its corresponding getter and/or setter. This representation follows the same argument order described in §7.8.
+
+**§7.10** *(other targets)*: Targets may not follow the same ABI compatibility guarantees as those described for the JVM.
 
 ## Q&A about design decisions
 
