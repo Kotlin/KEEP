@@ -48,8 +48,9 @@ This document is not (yet) formally a KEEP, since it lacks some of the technical
 
 ## Declarations with context parameters
 
-**§1.1** *(declaration)*: Every callable declaration (functions — but not constructors — and properties) gets additional support for **context parameters**. Context parameters are declared with the `context` keyword followed by a list of parameters, each of the form `name: Type`.
+**§1.1** *(declaration)*: Function and property declarations gets support for **context parameters**. Context parameters are declared with the `context` keyword followed by a list of parameters, each of the form `name: Type`.
 
+* Constructors may **not** declare context parameters.
 * Within the body of the declaration, the value of the context parameter is accessible using its name, similar to value parameters.
 * It is allowed to use `_` as a name; in that case, the value is not accessible through any name (but still participates in context resolution).
 
@@ -118,7 +119,7 @@ context(Transaction) (UserId) -> User?
 context(Logger) User.() -> Int
 ```
 
-Note that, like in the case of extension receivers, those types are considered equivalent (for typing purposes, **not** for resolution purposes) to the function types in which all parameters are declared as value parameters _in the same order_.
+Note that, like in the case of extension receivers, those types are [considered equivalent (for typing purposes, **not** for resolution purposes)](https://kotlinlang.org/spec/type-system.html#function-types) to the function types in which all parameters are declared as value parameters _in the same order_.
 
 ```kotlin
 // these are all equivalent types
@@ -214,7 +215,7 @@ interface Raise<in Error> {
 }
 ```
 
-we want to let users call `raise` whenever `Raise<E>` is in scope, without having to mention the context parameter, but ensuring that the corresponding value is part of the context.
+the authors of the API want to let users call `raise` whenever `Raise<E>` is in scope, without having to mention the context parameter, but ensuring that the corresponding value is part of the context.
 
 ```kotlin
 context(_: Raise<E>) fun <E, A> Either<E, A>.bind(): A =
@@ -224,13 +225,13 @@ context(_: Raise<E>) fun <E, A> Either<E, A>.bind(): A =
   }
 ```
 
-We do this by introducing a **bridge function** at top level that simply wraps the access to the context parameter.
+They can do this by introducing a **bridge function** at top level that simply wraps the access to the context parameter.
 
 ```kotlin
 context(r: Raise<E>) inline fun raise(error: Error): Nothing = r.raise(error)
 ```
 
-**§3.2** *(receiver migration, members)*: If your library exposes a "scope" or "context" type, we suggest moving to context parameters:
+**§3.2** *(receiver migration, members)*: If a library exposes a "scope" or "context" type, we suggest reworking the API to use context parameters:
 
 1. functions with the scope type as extension receiver should be refactored to use context parameters,
 2. operations defined as members and extending other types should be taken out of the interface definition, if possible,
