@@ -570,6 +570,8 @@ fun test() = with("hello") {
 }
 ```
 
+The reasoning for this particular rule is that, since contexts are implicit, there is no way for the user to resolve to the other function if required. This implicitness also means that it's harder to figure out which overload is called from the program code -- once again, there's no value you can easily point to. In contrast, in the case of an explicit parameter, you can always use `f("hello" as Any)` to force using `(Any) -> R` over `(String) -> R`.
+
 ### Extended type inference algorithm
 
 **§7.7** *(lambda literal inference)*: the type inference process in the [Kotlin specification](https://kotlinlang.org/spec/type-inference.html#statements-with-lambda-literals) should take context parameters into account. Note that unless a function type with context is "pushed" as a type for the lambda, context parameters are never inferred.
