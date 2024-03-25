@@ -48,7 +48,7 @@ This document is not (yet) formally a KEEP, since it lacks some of the technical
 
 ## Declarations with context parameters
 
-**§1.1** *(declaration)*: Function and property declarations gets support for **context parameters**. Context parameters are declared with the `context` keyword followed by a list of parameters, each of the form `name: Type`.
+**§1.1** *(declaration)*: Function and property declarations get support for **context parameters**. Context parameters are declared with the `context` keyword followed by a list of parameters, each of the form `name: Type`.
 
 * Constructors may **not** declare context parameters.
 * Within the body of the declaration, the value of the context parameter is accessible using its name, similar to value parameters.
