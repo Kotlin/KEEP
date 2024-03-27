@@ -228,7 +228,7 @@ context(_: Raise<E>) fun <E, A> Either<E, A>.bind(): A =
 They can do this by introducing a **bridge function** at top level that simply wraps the access to the context parameter.
 
 ```kotlin
-context(r: Raise<E>) inline fun raise(error: Error): Nothing = r.raise(error)
+context(r: Raise<E>) fun raise(error: Error): Nothing = r.raise(error)
 ```
 
 **§3.2** *(receiver migration, members)*: If a library exposes a "scope" or "context" type, we suggest reworking the API to use context parameters:
