@@ -72,19 +72,30 @@ val Type.isBoolean: Boolean = this.equalTo(BuiltIns.Boolean)
 * It is an *error* to declare an **empty** list of context parameters.
 * It is an *error* if the **name** of a context parameter **coincides** with the name of another context or value parameter to the callable (except for multiple uses of `_`).
 
-**§1.3** *(properties)*: Properties declared with context parameters may **not** declare an _initializer_, nor use _delegation_. It is **not** possible to declare context parameters for the getter or setter.
+**§1.3** *(properties)*: As mentioned in §1.1, properties may declare context parameters. Those context parameters should be understood of the property "as a whole".
+
+```kotlin
+context(users: UserRepository)
+val firstUser: User? get() = users.getById(1)
+```
+
+Properties declared with context parameters have [**no** _backing field_](https://kotlinlang.org/spec/declarations.html#getters-and-setters). In turn, that means that they may **not** declare an _initializer_. The underlying reason is that the value for the context parameter is not available until the property is accessed, and may change according to the context.
 
 ```kotlin
 // not allowed (property with initializer)
 context(users: UserRepository)
 val firstUser: User? = users.getById(1)
-
-// allowed
-context(users: UserRepository)
-val firstUser: User? get() = users.getById(1)
 ```
 
-The underlying reason is that the value for the context parameter is not available until the property is accessed, and may change according to the context.
+It is **not** possible to declare context parameters solely for the getter or setter. It is unclear how a property reference (`::firstUser`) should behave if the set of context parameters differs between the getter and the setter.
+
+```kotlin
+// not allowed (context parameter in getter)
+val firstUser: User? 
+  context(users: UserRepository) get() = users.getById(1)
+```
+
+At this point, properties with context parameters may **not** use [_delegation_](https://kotlinlang.org/spec/declarations.html#delegated-property-declaration). It is unclear at this point what should be the correct semantics for such a declaration.
 
 **§1.4** *(implicitness)*: When calling a function or property with context parameters, those are not spelled out. Rather, the value for each of those arguments is **resolved** from two sources: in-scope context parameters, and implicit receivers ([as defined by the Kotlin specification](https://kotlinlang.org/spec/overload-resolution.html#receivers)). We say that context parameters are **implicit**.
 
