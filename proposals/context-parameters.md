@@ -467,7 +467,17 @@ functionType: [ functionContext ] [ receiverType '.' ] ...
 functionContext: 'context' '(' receiverType { ',' receiverType } [ ',' ] ')'
 ```
 
-**Recommended style:** annotations, context parameters, other modifiers as per the [usual style guide](https://kotlinlang.org/docs/coding-conventions.html#modifiers-order).
+**Recommended style:** annotations, context parameters, then other modifiers as per the [usual style guide](https://kotlinlang.org/docs/coding-conventions.html#modifiers-order).
+
+**§7.1bis** *(disambiguating `context`)*: We do not enforce `context` as a hard keyword, leading to potential ambiguities in the body of declarations. In particular, `context(` may be both the beginning of:
+
+1. A call to a function named `context`,
+2. The context parameter list of a local declaration.
+
+The compiler should perform a lookahead of two additional tokens to disambiguate:
+
+- If the opening parenthesis is followed by an identifier and a ':', then it should be treated as the beginning of a local declaration.
+- Otherwise, it should be treated as the beginning of a function call.
 
 ### Extended resolution algorithm
 
@@ -575,6 +585,8 @@ The reasoning for this particular rule is that, since contexts are implicit, the
 ### Extended type inference algorithm
 
 **§7.7** *(lambda literal inference)*: the type inference process in the [Kotlin specification](https://kotlinlang.org/spec/type-inference.html#statements-with-lambda-literals) should take context parameters into account. Note that unless a function type with context is "pushed" as a type for the lambda, context parameters are never inferred.
+
+Context parameters take part in [builder-style type inference](https://kotlinlang.org/spec/type-inference.html#builder-style-type-inference), or any similar process defined by the implementation and whose goal is to infer better types for receivers.
 
 ### ABI compatibility
 
