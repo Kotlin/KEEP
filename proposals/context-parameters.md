@@ -498,6 +498,8 @@ The compiler should perform a lookahead of two additional tokens to disambiguate
 
 **§7.4** *(applicability, context resolution)*: After the first phase of function applicability -- checking the type constraint problem -- an additional **context resolution** phase is inserted. For each potentially applicable callable, for each context parameter, we traverse the tower of scopes looking for **exactly one** default receiver or context parameter with a compatible type.
 
+If a type of a declared context parameter of a candidate uses a **generic type** whose value is not determined yet, then the corresponding type constraints are added to the constraint system of this candidate call. If solving this system fails, then the candidate is considered to be inapplicable, without trying to substitute different implicit receivers available in the context.
+
 There are three possible outcomes of this process:
 
 1. If _no_ compatible context value is found for at least one context parameter, then the call is _not_ applicable, and it is removed from the candidate set as a result.
