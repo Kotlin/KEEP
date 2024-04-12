@@ -1904,7 +1904,8 @@ adapters between the corresponding stable and experimental coroutine interfaces 
   * Part 1 (prototype design): [Coroutines in Kotlin](https://www.youtube.com/watch?v=4W3ruTWUhpw) 
     (Andrey Breslav at JVMLS 2016)
   * Part 2 (current design): [Kotlin Coroutines Reloaded](https://www.youtube.com/watch?v=3xalVUY69Ok&feature=youtu.be) 
-    (Roman Elizarov at JVMLS 2017, [slides](https://www.slideshare.net/elizarov/kotlin-coroutines-reloaded)) 
+    (Roman Elizarov at JVMLS 2017, [slides](https://www.slideshare.net/elizarov/kotlin-coroutines-reloaded))
+  * [Kotlin coroutines: design and implementation](https://dl.acm.org/doi/10.1145/3486607.3486751) (Roman Elizarov, Mikhail Belyaev, Marat Akhin, Ilmir Usmanov)
 
 ### Feedback
 
