@@ -51,6 +51,7 @@ This document is not (yet) formally a KEEP, since it lacks some of the technical
 **§1.1** *(declaration)*: Function and property declarations get support for **context parameters**. Context parameters are declared with the `context` keyword followed by a list of parameters, each of the form `name: Type`.
 
 * Constructors may **not** declare context parameters.
+* Context parameters are allowed in operators, except for those related to [property delegation](https://kotlinlang.org/spec/declarations.html#delegated-property-declaration).
 * Within the body of the declaration, the value of the context parameter is accessible using its name, similar to value parameters.
 * It is allowed to use `_` as a name; in that case, the value is not accessible through any name (but still participates in context resolution).
 
@@ -172,6 +173,7 @@ fun <A, B, C, R> context(a: A, b: B, c: C, block: context(A, B, C) () -> R): R =
 **§2.2** *(`implicit` function)*: We also provide a generic way to obtain a value by type from the context. It allows access to context parameters even when declared using `_`, or within the body of a lambda.
 
 * Implementations are encouraged, but not required, to mark this function as `inline`.
+* If possible, type inference for type variable `A` should be restricted (for example, using `@NoInfer`). Developers are expected to use the function with explicit type arguments. 
 
 ```kotlin
 context(ctx: A) fun <A> implicit(): A = ctx
