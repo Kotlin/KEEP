@@ -5,7 +5,7 @@
 * **Status**: In discussion
 * **Prototype**: Implemented in [this branch](https://github.com/JetBrains/kotlin/compare/rr/serras/improved-resolution-expected-type)
 * **Discussion**: ??
-* **Related issues**: [KT-9493](https://youtrack.jetbrains.com/issue/KT-9493/Allow-short-enum-names-in-when-expressions), [KT-44729](https://youtrack.jetbrains.com/issue/KT-44729/Context-sensitive-resolution), [KT-16768](https://youtrack.jetbrains.com/issue/KT-16768/Context-sensitive-resolution-prototype-Resolve-unqualified-enum-constants-based-on-expected-type)
+* **Related issues**: [KT-9493](https://youtrack.jetbrains.com/issue/KT-9493/Allow-short-enum-names-in-when-expressions), [KT-44729](https://youtrack.jetbrains.com/issue/KT-44729/Context-sensitive-resolution), [KT-16768](https://youtrack.jetbrains.com/issue/KT-16768/Context-sensitive-resolution-prototype-Resolve-unqualified-enum-constants-based-on-expected-type), [KT-58939](https://youtrack.jetbrains.com/issue/KT-58939/K2-Context-sensitive-resolution-of-Enum-leads-to-Unresolved-Reference-when-Enum-has-the-same-name-as-one-of-its-Entries)
 
 ## Abstract
 
@@ -58,7 +58,7 @@ This KEEP addresses many of these problems by considering explicit expected type
 
 ### The issue with overloading
 
-We leave out of this KEEP the improvement of resolution for arguments of functions. Taking the example above, you still need to qualify the argument to `message`.
+We leave out of this KEEP any extension to the propagation of information from function calls to their argument. One particularly visible implication of this choice is that you still need to qualify enumeration entries that appear as arguments as currently done in Kotlin. Following with the example above, you still need to qualify the argument to `message`.
 
 ```kotlin
 val s = message(Problem.CONNECTION)
@@ -68,7 +68,7 @@ What sets function calls apart from the constructs mentioned before is overloadi
 
 1. Infer the types of non-lambda arguments.
 2. Choose an overload for the function based on the gathered type.
-3. Check the types of lambda arguments (including inferring some remaining type arguments if `@BuilderInference` is present).
+3. Check the types of lambda arguments.
 
 Improving the resolution of arguments based on the function call would amount to reversing the order of (1) and (2), at least partially. There are potential techniques to solve this problem, but another KEEP seems more appropriate.
 
@@ -101,11 +101,16 @@ If a type `T` is propagated to a block, then the type is propagated to every ret
 For other statements and expressions, we have the following rules. Here "known type of `x`" includes any additional typing information derived from smart casting.
 
 * _Assignments_: in `x = e`, the known type of `x` is propagated to `e`,
-* _Branching_: if type `T` is propagated to a conditional (`if`) or `when` expressions, the type `T` is propagated to each of their branches,
 * _`when` expression with subject_: in `when (x) { e -> ... }`, then known type of `x` is propagated to `e`, when `e` is not of the form `is T` or `in e`,
+* _Branching_: if type `T` is propagated to an expression with several branches, the type `T` is propagated to each of them,
+    * _Conditionals_, either `if` or `when`,
+    * _`try` expressions_, where the type `T` is propagated to the `try` block and each of the `catch` handlers,
 * _Elvis operator_: if type `T` is propagated to `e1 ?: e2`, then we propagate `T?` to `e1` and `T` to `e2`.
+* _Not-null assertion_: if type `T` is propagated to `e!!`, then we propagate `T?` to `e`,
 * _Type cast_: in `e as T` and `e as? T`, the type `T` is propagated to `e`,
     * This rule follows from the similarity to doing `val x: T = e`.
+  
+All other operators and compound assignments (such as `x += e`) do not propagate information. The reason is that those operators may be _overloaded_, so we cannot guarantee their type.
 
 ### Additional type resolution scope
 
