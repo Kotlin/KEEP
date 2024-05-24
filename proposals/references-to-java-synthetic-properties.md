@@ -101,28 +101,73 @@ In the future, we could possibly consider introducing a separate property for th
 
 ## Reference resolution strategy
 
-The existing reference resolution strategy seems to be consistent and doesn't require any modification, even
-though the logic behind it may look puzzling at a first glance.
+```java
+class Jaba {
+    public boolean isFoo; // (0) physical val
+    public boolean isFoo() {return true;} // (1) physical method, (2) synthetic val
 
-First of all, synthetic members always have lesser priority than any "physical" declarations. If a Java synthetic property is
-shadowed by "physical" declaration with the same name, and both members satisfy the expected type, or no expected type constraint is present,
-the compiler will prefer the physical member without reporting ambiguity. 
+    public boolean clazz() {return true;} // (3) physical method
+    public class clazz {} // (4) physical class
 
-In particular, it means that for "is"-prefixed boolean synthetic Java properties a reference expression without
-an expected type annotation will return a reference to the getter, not the property:
-```kotlin
-val isActiveRef = widget::isActive // returns a KFunction0<Boolean> reference the getter method
+    public String getField() {return "";} // (5) physical method, (6) synthetic val
+    public int field = 2; // (7) physical val
+
+    public int bar() {return 1;}  // (8) physical method
+    public int bar; // (9) physical val
+
+    public int getGetGoo() {return 1;} // (10) physical method, (11) synthetic val
+    public int getGoo = 2; // (12) physical val
+
+    public String getIsBaz() {return "getIsBaz";} // (15) physical method, (16) synthetic val
+    public boolean isBaz() {return true;} // (17) physical method, (18) synthetic val
+}
 ```
 
-If a situation when the expected type is known, it will be taken into account, so that only declarations satisfying the
-expected type will take part in resolution. This rule is not specific to synthetic Java properties and applies to all 
-kinds of callable references in Kotlin. It makes it possible to obtain a reference to a synthetic Java property even if the
-latter is overshadowed by a physical member with the same name:
 ```kotlin
-val isActivePropertyRef: KMutableProperty0<Boolean> = widget::isActive // now it's a reference to the property, not the getter
+import kotlin.reflect.KProperty
+
+class Kt {
+    val prop: Int = 42 // (13)
+}
+
+val Kt.prop: String get() = "extension" // (14)
+
+fun main() {
+    // Case (a)
+    Jaba::isFoo // Conflict between physical members (0) and (1)
+    Jaba::clazz // Conflict between physical members (3) and (4)
+    Jaba::bar // Conflict between physical members (8) and (9)
+
+    // Case (b)
+    Jaba::field // Resolves to (7). Physical member (7) is preferred over synthetic val (6)
+    Jaba::getGoo // Resolves to (12). physical val (12) is preferred over synthetic val (11)
+
+    // Case (c)
+    val z: KProperty<Boolean> = Jaba::isFoo // Resolves to (0). A different member is chosen in conflicting situation.
+                                            //                  The conflict is resolved
+
+    // Case (d)
+    val x: KProperty<String> = Jaba::field // Resolves to (6). A different member is chosen in non-conflicting situation
+    val y: KProperty<String> = Kt::prop // Resolves to (14). A different member is chosen in non-conflicting situation
+
+    // Case (e)
+    val w: KProperty<*> = Jaba::isBaz // Conflict between synthetic members (16) and (18)
+
+    // Case (f)
+    val v: KProperty<String> = Jaba::isBaz // Resolves to (16). The conflict is resolved
+    val h: KProperty<Boolean> = Jaba::isBaz // Resolves to (18). The conflict is resolved
+}
 ```
 
-We believe that it should be enough to simply explain this logic in user documentation.
+The following resolution rules apply:
+1. If the candidates are physical members, the conflict is reported. Case **(a)**
+2. If the candidates are physical and synthetic members, physical member will be chosen. Case **(b)**
+3. Sometimes conflict can be resolved with the help of expected type. Cases **(c)** and **(f)**
+4. Synthetic member can be chosen over physical member with the help of expected type. Case **(d)**
+5. If the candidates are synthetic members, the conflict is reported. Case **(e)**
+
+Even though the code might look puzzling at a glance (why `Jaba::isFoo` results in a conflict but `Jaba::field` doesn't?),
+the resolution rules are in fact consistent.
 
 ## The proposed solution
 
