@@ -129,8 +129,6 @@ For other statements and expressions, we have the following rules. Here "known t
     * _`try` expressions_, where the type `T` is propagated to the `try` block and each of the `catch` handlers,
 * _Elvis operator_: if type `T` is propagated to `e1 ?: e2`, then we propagate `T?` to `e1` and `T` to `e2`.
 * _Not-null assertion_: if type `T` is propagated to `e!!`, then we propagate `T?` to `e`,
-* _Type cast_: in `e as T` and `e as? T`, the type `T` is propagated to `e`,
-    * This rule follows from the similarity to doing `val x: T = e`.
 * _Equality_: in `a == b` and `a != b`, the known type of `a` is propagated to `b`.
     * This helps in common cases like `p == Problem.CONNECTION`.
     * Note that in this case the expected type should only be propagated for the purposes of name resolution. The [specification](https://kotlinlang.org/spec/expressions.html#value-equality-expressions) mandates `a == b` to be equivalent to `(A as? Any)?.equals(B as Any?) ?: (B === null)` in the general case, so from a typing perspective there should be no constraint on the type of `b`.
@@ -142,6 +140,7 @@ All other operators and compound assignments (such as `x += e`) do not propagate
 We introduce the additional scope during type solution in the following cases:
 
 * _Type check_: in `e is T`, `e !is T`, the known type of `e` is propagated to `T`.
+* _Type cast_: in `e as T` and `e as? T`, the known type of `e` is propagated to `T`.
 * _`when` expression with subject_: in `when (x) { is T -> ... }`, then known type of `x` is propagated to `T`.
 
 ## Design decisions
