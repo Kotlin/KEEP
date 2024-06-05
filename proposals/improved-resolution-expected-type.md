@@ -16,13 +16,13 @@ We propose an improvement of the name resolution rules of Kotlin based on the ex
 * [Abstract](#abstract)
 * [Table of contents](#table-of-contents)
 * [Motivating example](#motivating-example)
-    * [The issue with overloading](#the-issue-with-overloading)
-    * [Importing the entire static scope](#importing-the-entire-static-scope)
+  * [The issue with overloading](#the-issue-with-overloading)
+  * [Importing the entire scopes](#importing-the-entire-scopes)
 * [Technical details](#technical-details)
-    * [Additional candidate resolution scope](#additional-candidate-resolution-scope)
-    * [Additional type resolution scope](#additional-type-resolution-scope)
+  * [Additional candidate resolution scope](#additional-candidate-resolution-scope)
+  * [Additional type resolution scope](#additional-type-resolution-scope)
 * [Design decisions](#design-decisions)
-    * [Risks](#risks)
+  * [Risks](#risks)
 * [Implementation note](#implementation-note)
 
 ## Motivating example
@@ -74,9 +74,9 @@ Improving the resolution of arguments based on the function call would amount to
 
 As a consequence, operators in Kotlin that are desugared to function calls which in turn get resolved, like `in` or `thing[x]`, are also outside of the scope of this KEEP. Note that [value equalities](https://kotlinlang.org/spec/expressions.html#value-equality-expressions) (`==`, `!=`) are not part of that group, since they are always resolved to `kotlin.Any.equals`.
 
-### Importing the entire static scope
+### Importing the entire scopes
 
-The current proposal imports the _entire_ static scope, which includes classes, properties, and functions. Whereas the first two are needed to cover common cases like enumeration entries, and comparison with objects, the usefulness of methods seems debatable. However, it allows some interesting constructions where we compare against a value coming from a factory:
+The current proposal imports the _entire_ static and companion object scopes, which include classes, properties, and functions. Whereas the first two are needed to cover common cases like enumeration entries, and comparison with objects, the usefulness of methods seems debatable. However, it allows some interesting constructions where we compare against a value coming from a factory:
 
 ```kotlin
 class Color(...) {
@@ -145,7 +145,7 @@ We introduce the additional scope during type solution in the following cases:
 
 ## Design decisions
 
-**Priority level**: the current proposal puts the additional scope to be searched when the expected type is known at the same level as `*`-imports. This means that this feature is _not_ 100% backward-compatible, as we have the risk of ambiguity between a declaration imported in such a way, and one available in the static scope of the expected type.
+**Priority level**: the current proposal puts the additional scope to be searched when the expected type is known at the same level as `*`-imports. This means that this feature is _not_ 100% backward-compatible, as we have the risk of ambiguity between a declaration imported in such a way, and one available in the static or companion object scope of the expected type.
 
 The most conservative option is for the new scope to have the lowest priority. In practical terms, that means that even built-ins and automatically imported declarations have higher priority, which seems like an odd choice too. As mentioned above, the mental model of these scopes working as `*`-imports seems like a useful tool for understanding the feature, so making them have the same priority level feels like a natural next step.
 
