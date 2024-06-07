@@ -94,13 +94,13 @@ when (color) {
 }
 ```
 
-An additional advantage is that of uniformity. In particular, the code behaves as you had `*`-imported the `Color` type.
+In addition, note that the rules to filter out which functions should or shouldn't be available are far from clear; potential generic substitutions are one such complex example.
 
 ## Technical details
 
 We introduce an additional scope, present both in type and candidate resolution, which always depends on a type `T` (we say we **propagate `T`**). This scope contains the static and companion object callables of the aforementioned type `T`, as defined by the [specification](https://kotlinlang.org/spec/overload-resolution.html#call-with-an-explicit-type-receiver).
 
-This scope has the same priority as `*`-imports. That way, the user may have the mental model that using the name of an enumeration entry without qualification, for example, is the same as if the enumeration was `*`-imported into the file.
+This scope has the lowest priority and _should keep_ that lowest priority even after further extensions to the language. The mental model is that the expected type is only use for resolution purposes after any other possibility has failed.
 
 This scope is **not** propagated to children of the node in question. For example, when resolving `val x: T = f(x, y)`, the additional scope is present when resolving `f`, but not when resolving `x` and `y`. After all, `x` and `y` no longer have an expected type `T`.
 
@@ -145,9 +145,28 @@ We introduce the additional scope during type solution in the following cases:
 
 ## Design decisions
 
-**Priority level**: the current proposal puts the additional scope to be searched when the expected type is known at the same level as `*`-imports. This means that this feature is _not_ 100% backward-compatible, as we have the risk of ambiguity between a declaration imported in such a way, and one available in the static or companion object scope of the expected type.
+**Priority level**: the current proposal makes this new scope have the lowest priority. In practical terms, that means that even built-ins and automatically imported declarations have higher priority. In a previous iteration, we made it have the same level as `*`-imports; but added ambiguity where currently there is not.
 
-The most conservative option is for the new scope to have the lowest priority. In practical terms, that means that even built-ins and automatically imported declarations have higher priority, which seems like an odd choice too. As mentioned above, the mental model of these scopes working as `*`-imports seems like a useful tool for understanding the feature, so making them have the same priority level feels like a natural next step.
+```kotlin
+enum class Test: List<Int> {
+    FIRST;
+
+    companion object {
+        fun <T> emptyList(): Test {
+            return FIRST
+        }
+    }
+}
+
+fun foo(x: Test){
+    when(x) {
+        emptyList<Int>() -> 1
+        else -> 2
+    }
+}
+```
+
+Note however that this KEEP not only states that the scope coming from the expected type has the lowest priority, but also that this should _keep being the case_ in the future. We foresee that further extensions to the language (like contexts) may add new scopes, but still the one from the type should be regarded as the "fallback mechanism".
 
 **No `.value` syntax**: Swift has a very similar feature to the one proposed in this KEEP, namely [implicit member expressions](https://docs.swift.org/swift-book/documentation/the-swift-programming-language/expressions#Implicit-Member-Expression). The main difference is that one has to prepend `.` to access this new type-resolution-guided scope.
 
