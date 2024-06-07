@@ -172,7 +172,7 @@ sealed interface Either<out E, out A> {
 
 One way in which we can improve resolution even more is by considering the subclasses of the known type of an expression. Making every potential subclass available would be quite surprising, but sealed hierarchies form an interesting subset (and the information is directly accessible to the compiler).
 
-At this point, we have decided against it for practical reasons. If the subclasses are defined inside the parent class (like in `Either` above), this proposal already helps because the subclasses are in the static scope of the parent. If they are inside the parent, then we are not making the particular piece of code any smaller, only avoiding one import. Since imports are usually disregarded by the developers anyway, it seems that adding all sealed subclasses to the scope brings no additional benefit.
+At this point, we have decided against it for practical reasons. If the subclasses are defined inside the parent class (like in `Either` above), this proposal already helps because the subclasses are in the static scope of the parent. If they are defined outside of the parent, then we are not making the particular piece of code any smaller, only avoiding one import. Since imports are usually disregarded by the developers anyway, it seems that adding all sealed subclasses to the scope brings no additional benefit.
 
 ### Risks
 
