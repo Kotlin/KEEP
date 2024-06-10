@@ -52,7 +52,7 @@ fun problematic(x: String): Problem = when (x) {
 This KEEP addresses many of these problems by considering explicit expected types when doing name resolution. We try to propagate the information from argument and return types, declarations, and similar constructs. As a result, the following constructs are usually improved:
 
 * conditions on `when` expressions with subject,
-* type checks and casts (`is`, `as`),
+* type checks (`is`),
 * `return`, both implicit and explicit,
 * equality checks (`==`, `!=`).
 
@@ -140,7 +140,6 @@ All other operators and compound assignments (such as `x += e`) do not propagate
 We introduce the additional scope during type solution in the following cases:
 
 * _Type check_: in `e is T`, `e !is T`, the known type of `e` is propagated to `T`.
-* _Type cast_: in `e as T` and `e as? T`, the known type of `e` is propagated to `T`.
 * _`when` expression with subject_: in `when (x) { is T -> ... }`, then known type of `x` is propagated to `T`.
 
 ## Design decisions
@@ -180,6 +179,11 @@ The current choice is obviously not symmetric: it might be surprising that `p ==
 
 On the other hand, the proposed flow of information is consistent with the ability to refactor `when (x) { A -> ...}` into `when { x == A -> ...}`, without any further qualification required. We think that this uniformity is important for developers.
 
+**On type cast**: a previous iteration included the additional rule "in `e as T` and `e as? T`, the known type of `e` is propagated to `T`", but this has been dropped. There are two reasons for this change:
+
+1. On a conceptual level, it is not immediately obvious what happens if `e as T` as a whole also has an expected type: should `T` be resolved using the known type of `e` or that expected type? It's possible to create an example where depending on the answer the resolution differs, and this could be quite surprising to users.
+2. On a technical level, the compiler _sometimes_ uses the type `T` to guide generic instantiation of `e`. This conflicts with the rule above.
+
 **Sealed subclasses**: the rules above handle enumeration, and it's also useful when defining a hierarchy of classes nested on the parent.
 
 ```kotlin
@@ -203,4 +207,4 @@ The third potential risk is whether this additional scope may lead to surprises.
 
 ## Implementation note
 
-In the current K2 compiler, these rules amount to considering those places in which `WithExpectedType` is passed as the `ResolutionMode`, plus adding special rules for `as`, `is`, and `==`. Since `when` with subject is desugared as either `x == e` or `x is T`, we need no additional rules to cover them.
+In the current K2 compiler, these rules amount to considering those places in which `WithExpectedType` is passed as the `ResolutionMode`, plus adding special rules for `is`, and `==`. Since `when` with subject is desugared as either `x == e` or `x is T`, we need no additional rules to cover them.
