@@ -424,7 +424,9 @@ context(users: UserService) fun saveAll(users: List<User>): Unit =
   users.forEach(::save) // ::save is resolved as (User) -> Unit
 ```
 
-**§5.3** *(callable references, future)*: We consider as **future** improvement a more complex resolution of callables, in which the context is taken into account when the callable is used as an argument of a function that expects a function type with context.
+**§5.3** *(callable references, equality)*: Captured context parameters should be treated in the same way as captured receivers for the purposes of function equality and hashing.
+
+**§5.4** *(callable references, future)*: We consider as **future** improvement a more complex resolution of callables, in which the context is taken into account when the callable is used as an argument of a function that expects a function type with context.
 
 ## Context and classes
 
