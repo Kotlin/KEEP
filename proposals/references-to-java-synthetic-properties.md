@@ -104,22 +104,22 @@ In the future, we could possibly consider introducing a separate property for th
 ```java
 class Jaba {
     public boolean isFoo; // (0) physical val
-    public boolean isFoo() {return true;} // (1) physical method, (2) synthetic val
+    public boolean isFoo() { return true; } // (1) physical method, (2) synthetic val
 
-    public boolean clazz() {return true;} // (3) physical method
+    public boolean clazz() { return true; } // (3) physical method
     public class clazz {} // (4) physical class
 
-    public String getField() {return "";} // (5) physical method, (6) synthetic val
+    public String getField() { return ""; } // (5) physical method, (6) synthetic val
     public int field = 2; // (7) physical val
 
-    public int bar() {return 1;}  // (8) physical method
+    public int bar() { return 1; }  // (8) physical method
     public int bar; // (9) physical val
 
-    public int getGetGoo() {return 1;} // (10) physical method, (11) synthetic val
+    public int getGetGoo() { return 1; } // (10) physical method, (11) synthetic val
     public int getGoo = 2; // (12) physical val
 
-    public String getIsBaz() {return "getIsBaz";} // (15) physical method, (16) synthetic val
-    public boolean isBaz() {return true;} // (17) physical method, (18) synthetic val
+    public String getIsBaz() { return "getIsBaz"; } // (15) physical method, (16) synthetic val
+    public boolean isBaz() { return true; } // (17) physical method, (18) synthetic val
 }
 ```
 
