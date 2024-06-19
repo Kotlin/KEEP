@@ -96,6 +96,19 @@ when (color) {
 
 In addition, note that the rules to filter out which functions should or shouldn't be available are far from clear; potential generic substitutions are one such complex example.
 
+Extension functions defined in the static and companion object scopes are also available.
+
+```kotlin
+class Duration {
+  companion object {
+    val Int.seconds: Duration get() = ...
+  }
+}
+
+// we can use 'seconds' without additional imports
+val d: Duration = 1.seconds
+```
+
 ## Technical details
 
 We introduce an additional scope, present both in type and candidate resolution, which always depends on a type `T` (we say we **propagate `T`**). This scope contains the static and companion object callables of the aforementioned type `T`, as defined by the [specification](https://kotlinlang.org/spec/overload-resolution.html#call-with-an-explicit-type-receiver).
@@ -169,9 +182,11 @@ Note however that this KEEP not only states that the scope coming from the expec
 
 **No `.value` syntax**: Swift has a very similar feature to the one proposed in this KEEP, namely [implicit member expressions](https://docs.swift.org/swift-book/documentation/the-swift-programming-language/expressions#Implicit-Member-Expression). The main difference is that one has to prepend `.` to access this new type-resolution-guided scope.
 
-The big drawback of this choice is that new syntax ambiguities may arise, and these are very difficult to predict upfront. Code that compiled perfectly may now have an ambiguous reading by the compiler.
+The big drawback of this choice is that new syntax ambiguities may arise, and these are very difficult to predict upfront. Code that compiled perfectly may now have an ambiguous reading by the compiler. The reason is that `foo<newline>.bar`, now unambiguously a field access, would get an additional interpretation as part of an infix function call following with `.bar`. Note that using `<newline>.` is very common in Kotlin code, so we should be extremely careful on that regard.
 
-Furthermore, Kotliners _already_ use a pattern to avoid re-writing the name of an enumeration over and over, namely importing all the enumeration entries, which makes them available without any `.` at the front. It seems better to support the style that the community already uses than trying to make people change their habits.
+One possibility would be to make the parsing dependent on some compiler flag. However, that means that now parsing the file depends on some external input (Gradle file), so tools need to be updated to consult this (which is not always trivial). This goes against the efforts in toolability from the Kotlin team.
+
+One very important difference with Swift is that we take a restrictive route, in which we are very clear about when you can expect types to guide resolution. Swift, on the other hand, allows `.value` syntax everywhere, and tries its best to decide which is the correct way to resolve it. We explicitly do not want to take Swift's route, because it makes the complexity of type checking and resolution much worse; which again goes against giving great tooling.
 
 **On equality**: using the rules above, equalities propagate type information from left to right. But there are other two options: propagating from right to left, or even not propagating any information at all.
 
