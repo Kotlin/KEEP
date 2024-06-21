@@ -74,6 +74,12 @@ Improving the resolution of arguments based on the function call would amount to
 
 As a consequence, operators in Kotlin that are desugared to function calls which in turn get resolved, like `in` or `thing[x]`, are also outside of the scope of this KEEP. Note that [value equalities](https://kotlinlang.org/spec/expressions.html#value-equality-expressions) (`==`, `!=`) are not part of that group, since they are always resolved to `kotlin.Any.equals`.
 
+Expected type information is propagate to _none_ of the arguments, and that includes trailing lambda arguments. For example, the following fails to compile:
+
+```kotlin
+fun problemByNumber(n: Int): Problem = n.let { UNKNOWN }
+```
+
 ### Importing the entire scopes
 
 The current proposal imports the _entire_ static and companion object scopes, which include classes, properties, and functions. Whereas the first two are needed to cover common cases like enumeration entries, and comparison with objects, the usefulness of methods seems debatable. However, it allows some interesting constructions where we compare against a value coming from a factory:
@@ -132,6 +138,12 @@ If a type `T` is propagated to a block, then the type is propagated to every ret
 
 * _Explicit `return`_: `return e`,
 * _Implicit `return`_: the last statement.
+
+If a functional type `(...) -> R` is propagated to a lambda, then the return type `R` is propagated to the body of the lambda (alongside the parameter types being propagated to the formal parameters, if available).
+
+```kotlin
+val unknown: () -> Problem = { UNKNOWN }
+```
 
 For other statements and expressions, we have the following rules. Here "known type of `x`" includes any additional typing information derived from smart casting.
 
