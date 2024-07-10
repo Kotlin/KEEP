@@ -164,7 +164,7 @@ public fun String.hexToByteArray(format: HexFormat = HexFormat.Default): ByteArr
 
 // Parses a numeric value
 // N is Byte, Short, Int, Long, and their unsigned counterparts
-public fun String.hexToN(format: HexFormat = HexFormat.Default): String
+public fun String.hexToN(format: HexFormat = HexFormat.Default): N
 ```
 
 ## Contracts
