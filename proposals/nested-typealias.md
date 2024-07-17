@@ -17,6 +17,7 @@ Right now type aliases can only be used at the top level. The goal of this docum
 * [Table of contents](#table-of-contents)
 * [Motivation](#motivation)
 * [Proposed solution](#proposed-solution)
+    * [Reflection](#reflection)
 * [Design questions](#design-questions)
 
 ## Motivation
@@ -110,6 +111,12 @@ class Big {
   inner typealias D = Inner   // ok
 }
 ```
+
+### Reflection
+
+The main reflection capabilities in [`kotlin.reflect`](https://kotlinlang.org/api/core/kotlin-stdlib/kotlin.reflect/) work with expanded types. As a result, this KEEP does not affect this part of the library.
+
+The current version of [`kotlinx-metadata`](https://kotlinlang.org/api/kotlinx-metadata-jvm/) already supports [type aliases within any declaration](https://kotlinlang.org/api/kotlinx-metadata-jvm/kotlin-metadata-jvm/kotlin.metadata/-km-declaration-container/type-aliases.html). So in principle the public API is already prepared for this change.
 
 ## Design questions
 
