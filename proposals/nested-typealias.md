@@ -68,7 +68,7 @@ We extend the syntax of type aliases as follows. A type alias declaration marked
 [modifiers] ['inner'] 'typealias' simpleIdentifier [{typeParameters}] '=' type
 ```
 
-**Rule 1 (visibility)**: the visibility of a type alias must be equal to or weaker than the visibility of every type present in its left-hand side.
+**Rule 1 (visibility)**: the visibility of a type alias must be equal to or weaker than the visibility of every type present on its left-hand side.
 
 ```kotlin
 class Outer {
@@ -82,7 +82,16 @@ class Outer {
 }
 ```
 
-**Rule 2 (inner)**: type aliases referring to inner classes must be marked as `inner`.
+**Rule 2 (type parameters)**: nested type aliases may refer to the type parameters of the enclosing classifier. They may also add their own, as usual with type aliases.
+
+```kotlin
+class Example<T> {
+    typealias Bar = List<T>
+    typealias Quux<A> = Map<T, A>
+}
+```
+
+**Rule 3 (inner)**: type aliases referring to inner classes must be marked as `inner`.
 
 - Inner type aliases may also refer only to non-inner classes.
 
