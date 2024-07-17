@@ -22,6 +22,7 @@ We propose modifications to how value classes are exposed in JVM, with the goal 
   * [Serialization](#serialization)
   * [Other design choices](#other-design-choices)
 * [Expose operations and members](#expose-operations-and-members)
+  * [No argument constructors](#no-argument-constructors)
   * [Other design choices](#other-design-choices-1)
 * [Further problems with reflection](#further-problems-with-reflection)
   * [Other design choices](#other-design-choices-2)
@@ -151,6 +152,20 @@ public duplicate($this: PositiveInt): PositiveInt =
 // mangled version
 fun duplicate-26b4($this: Int): Int
 ```
+
+### No argument constructors
+
+Frameworks like Java Persistence require classes to have a [default no argument constructor](https://www.baeldung.com/jpa-no-argument-constructor-entity-class). We propose to expose a no argument constructor whenever a default value is given to the underlying property of the value class (in addition to the factory methods). Continuing with our example of positive integers, the following code,
+
+```kotlin
+@JvmInline value class PositiveInt(val number: Int = 0) {
+  init { require(number >= 0) }
+}
+```
+
+generates (1) `PositiveInt.of(n: Int)`, (2) `PositiveInt.of()` which uses the default value, and (3) a constructor `PositiveInt()` with the same visibility as the one defined in the class.
+
+Note that exposing this constructor directly is OK, as we expect the given default value to satisfy any requirement in the `init` block.
 
 ### Other design choices
 
