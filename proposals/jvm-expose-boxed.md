@@ -18,9 +18,8 @@ We propose modifications to how value classes are exposed in JVM, with the goal 
 * [Table of contents](#table-of-contents)
 * [Motivation](#motivation)
   * [Design goals](#design-goals)
-* [Expose boxed constructors](#expose-boxed-constructors)
+* [Expose factory method](#expose-factory-method)
   * [Serialization](#serialization)
-  * [No argument constructors](#no-argument-constructors)
   * [Other design choices](#other-design-choices)
 * [Expose operations and members](#expose-operations-and-members)
   * [Other design choices](#other-design-choices-1)
@@ -55,7 +54,7 @@ The main drawback of this compilation scheme is that a type like `PositiveInt` c
 
 ### Design goals
 
-"Exposing" a `value` class is not a single entity. We have found (at least) four different scenarios that we would like to support:
+"Exposing" a `value` class is not a single entity. The following are some scenarios that we would like to support:
 
 1. Creating boxed values: for example, creating an actual instance of `PositiveInt`.
 2. Calling operations defined over value classes over their boxed representations.
@@ -71,9 +70,13 @@ Apart from the particular problems, we set the following cross-cutting goals for
 
 **Compatibility with current compilation scheme**: if we alter the way inline classes are currently compiled in a non backward compatible way, we could create a huge split in the community. Or even worse, we will end up supporting two different schemes in the compiler.
 
-## Expose boxed constructors
+---
 
-The [current compilation scheme](https://github.com/Kotlin/KEEP/blob/master/proposals/inline-classes.md#inline-classes-abi-jvm) exposes the constructor of the boxed class as _synthetic_, which makes it unavailable from Java. We propose to remove that modifier from the constructor, and use the same visibility in the constructor as the one defined in the value class.
+It is a **non-goal** for this KEEP to decide what may happen in a world in which value classes are part of the JVM platform ("post-Valhalla") and potentially do not need inlining and boxing. Any future KEEP touching those parts of the language should also consider its interactions with this proposal.
+
+## Expose factory method
+
+The [current compilation scheme](https://github.com/Kotlin/KEEP/blob/master/proposals/inline-classes.md#inline-classes-abi-jvm) exposes the constructor of the boxed class as _synthetic_, which makes it unavailable from Java. Note that this constructor does _not_ execute the `init` block, it's essentially boxing the value. We propose to introduce a static factory method `of` that executes any prerequisites and builds the value, with the same visibility as the constructor of the value class.
 
 ```kotlin
 @JvmInline value class PositiveInt(val number: Int) {
@@ -83,31 +86,22 @@ The [current compilation scheme](https://github.com/Kotlin/KEEP/blob/master/prop
 // compiles down to
 class PositiveInt {
   public <init>(Int): void
-
+  public constructor-impl(Int): Int  // executes the 'init' block
   // and others
+
+  public static of(number: Int): PositiveInt =
+    <init>(constructor-impl(number))
 }
 ```
 
 We think this is the right choice for a couple of reasons:
 
-1. It does not increase the binary size, as it only exposes a constructor that was already there (albeit synthetic);
+1. Using `of` as a factory method is well-known in the Java ecosystem (for example, to create collections);
 2. It is binary compatible with previous users of this code.
 
 ### Serialization
 
 `kotlinx.serialization` currently ensures that [value classes are correctly serialized](https://github.com/Kotlin/kotlinx.serialization/blob/master/docs/value-classes.md#serializable-value-classes), even when allocated. This must remain the case once this KEEP is implemented.
-
-### No argument constructors
-
-Frameworks like Java Persistence require classes to have a [default no argument constructor](https://www.baeldung.com/jpa-no-argument-constructor-entity-class). This case would be covered by a combination of the proposal above, and the ability to give default values to arguments of a value class. Continuing with our example of positive integers, the following code,
-
-```kotlin
-@JvmInline value class PositiveInt(val number: Int = 0) {
-  init { require(number >= 0) }
-}
-```
-
-generates the constructor taking a single integer, but also another one without the optional argument. Since value classes may only have one argument, this means that making it optional creates a no argument constructor.
 
 ### Other design choices
 
@@ -115,17 +109,17 @@ generates the constructor taking a single integer, but also another one without 
 
 The only drawback is that the ABI exposed in the JVM changes from one version of the compiler to the next, albeit in a binary compatible way. There is a risk involved in downgrading the compiler version, as it may break Java clients, but this scenario is quite rare.
 
-**Exposing a factory method**: instead of exposing the constructor, use `PositiveInt.of(3)`. This option is nowadays quite idiomatic in the Java world (for example, in `List.of(1, 2)`), but not as much as constructors. Using a factory method also has the drawback of possible clashes for the name of the factory method, which we avoid when using the constructor.
+**Exposing a constructor directly**: instead of using a factory method, `PositiveInt.of(3)`, expose a constructor, `PositiveInt(3)`. The problem is that the current compilation scheme already defines a constructor, which does _not_ execute the `init` block. Changing the behavior is possible -- after all, we just add more checks -- but this may have a significant performance impact.
 
 ## Expose operations and members
 
-The current compilation scheme transforms every operation where a value class is involved into a static function that takes the unboxed variants, and whose name is mangled to prevent clashes. This means those operations are not available for Java consumers. We propose introducing a new `@JvmExposeBoxed` annotation that exposes a variant of the function taking the boxed versions instead.
+The current compilation scheme transforms every operation where a value class is involved into a static function that takes the unboxed variants, and whose name is mangled to prevent clashes. This means those operations are not available for Java consumers. We propose introducing a new `@JvmExposeBoxed` annotation that exposes a variant of the function taking and returning the boxed versions instead (if more than one argument or return type is a value class, the aforementioned variant uses the boxed versions for _all_ of them). We call it the _boxed variant_ of the function.
 
 The `@JvmExposeBoxed` annotation may be applied to a declaration, or a declaration container (classes, files). In the latter case, it should be taken as applied to every single declaration within it.
 
-If the `@JvmExposeBoxed` annotation is applied to a member of a value class (or the value class itself, or the containing file), then it is compiled to a member function of the corresponding boxed class, not as a static method.
+If the `@JvmExposeBoxed` annotation is applied to a member of a value class (or the value class itself, or the containing file), the boxed variant is compiled to a member function of the corresponding boxed class. The unboxed variant is still compiled as a static member of the class.
 
-The name of the declaration must coincide with the name given in the Kotlin code unless a `@JvmName` annotation is present. In that case, the name defined in the annotation should be used.
+The name of the boxed variant coincides with the name given in the Kotlin code unless a `@JvmName` annotation is present. In that case, the name defined in the annotation should be used.
 
 The following is an example of the compilation of some operations over `PositiveInt`. The `box-impl` and `unbox-impl` refer to the operations defined in the [current compilation scheme](https://github.com/Kotlin/KEEP/blob/master/proposals/inline-classes.md#inline-classes-abi-jvm) for boxing and unboxing without checks.
 
