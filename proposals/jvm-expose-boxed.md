@@ -106,7 +106,7 @@ We think this is the right choice for a couple of reasons:
 
 ### Other design choices
 
-**Put it under a flag**, in other words, only expose the boxed constructor when some annotation or compiler flag is present. In this case, we could not find a realistic scenario where this expose would be counter-productive; in the worst case in which you expose the constructor but not operations you just have a way to create useless values.
+**Put it under a flag**, in other words, only expose the boxed constructor when some annotation or compiler flag is present. In this case, we could not find a realistic scenario where this expose would be counter-productive; in the worst case in which you expose the factory method but not operations you just have a way to create useless values.
 
 The only drawback is that the ABI exposed in the JVM changes from one version of the compiler to the next, albeit in a binary compatible way. There is a risk involved in downgrading the compiler version, as it may break Java clients, but this scenario is quite rare.
 
@@ -116,11 +116,19 @@ The only drawback is that the ABI exposed in the JVM changes from one version of
 
 The current compilation scheme transforms every operation where a value class is involved into a static function that takes the unboxed variants, and whose name is mangled to prevent clashes. This means those operations are not available for Java consumers. We propose introducing a new `@JvmExposeBoxed` annotation that exposes a variant of the function taking and returning the boxed versions instead (if more than one argument or return type is a value class, the aforementioned variant uses the boxed versions for _all_ of them). We call it the _boxed variant_ of the function.
 
+```kotlin
+annotation class JvmExposedBoxed(val jvmName: String = "")
+```
+
 The `@JvmExposeBoxed` annotation may be applied to a declaration, or a declaration container (classes, files). In the latter case, it should be taken as applied to every single declaration within it.
 
 If the `@JvmExposeBoxed` annotation is applied to a member of a value class (or the value class itself, or the containing file), the boxed variant is compiled to a member function of the corresponding boxed class. The unboxed variant is still compiled as a static member of the class.
 
-The name of the boxed variant coincides with the name given in the Kotlin code unless a `@JvmName` annotation is present. In that case, the name defined in the annotation should be used.
+The name of the boxed variant coincides with the name given in the Kotlin code unless the `jvmName` argument of the annotation is present. In that case, the name defined in the annotation should be used. Note that `@JvmName` applies to the unboxed variant.
+
+> [!NOTE]
+> There is a corner case in which `@JvmExposeBoxed` with a name is always needed: when the function has no argument which is a value class, but returns a value class.
+> In that case the compilation scheme performs no mangling, so not renaming the boxed version results in a platform clash.
 
 The following is an example of the compilation of some operations over `PositiveInt`. The `box-impl` and `unbox-impl` refer to the operations defined in the [current compilation scheme](https://github.com/Kotlin/KEEP/blob/master/proposals/inline-classes.md#inline-classes-abi-jvm) for boxing and unboxing without checks.
 
@@ -132,7 +140,7 @@ value class PositiveInt(val number: Int) {
   fun add(other: PositiveInt): PositiveInt = ...
 }
 
-@JvmExposeBoxed
+@JvmExposeBoxed("dupl")
 fun PositiveInt.duplicate(): PositiveInt = ...
 
 // compiles down to
@@ -147,7 +155,7 @@ class PositiveInt {
   // and others
 }
 
-public duplicate($this: PositiveInt): PositiveInt =
+public dupl($this: PositiveInt): PositiveInt =
   box-impl(duplicate-26b4(unbox-impl($this)))
 // mangled version
 fun duplicate-26b4($this: Int): Int
