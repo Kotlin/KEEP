@@ -9,8 +9,6 @@
 
 This is an updated proposal for [KEEP-259](https://github.com/Kotlin/KEEP/issues/259), formerly known as _context receivers_. The new design addresses the issues raised by the users of the prototype implementing that previous iteration of the design and across the community at large. 
 
-This document is not (yet) formally a KEEP, since it lacks some of the technical elements. Those are going to be provided at a later time, but we thought it would be interesting to open the discussion even if the design is not fully formalized.
-
 ### Summary of changes from the [previous proposal](https://github.com/Kotlin/KEEP/issues/259)
 
 1. Introduction of named context parameters,
@@ -65,7 +63,7 @@ context(analysisScope: AnalysisScope)
 fun Type.equalTo(other: Type): Boolean = ...
 
 context(_: AnalysisScope)
-val Type.isBoolean: Boolean = this.equalTo(BuiltIns.Boolean)
+val Type.isBoolean: Boolean get() = this.equalTo(BuiltIns.Boolean)
 ```
 
 **§1.2** *(restrictions)*:
@@ -84,17 +82,11 @@ Properties declared with context parameters have [**no** _backing field_](https:
 
 ```kotlin
 // not allowed (property with initializer)
-context(users: UserRepository)
-val firstUser: User? = users.getById(1)
+context(_: AnalysisScope)
+val Type.isBoolean: Boolean = this.equalTo(BuiltIns.Boolean)
 ```
 
-It is **not** possible to declare context parameters solely for the getter or setter. It is unclear how a property reference (`::firstUser`) should behave if the set of context parameters differs between the getter and the setter.
-
-```kotlin
-// not allowed (context parameter in getter)
-val firstUser: User? 
-  context(users: UserRepository) get() = users.getById(1)
-```
+It is **not** possible to declare context parameters solely for the getter or setter. It is unclear how a property reference should behave if the set of context parameters differs between the getter and the setter.
 
 At this point, properties with context parameters may **not** use [_delegation_](https://kotlinlang.org/spec/declarations.html#delegated-property-declaration). It is unclear at this point what should be the correct semantics for such a declaration.
 
