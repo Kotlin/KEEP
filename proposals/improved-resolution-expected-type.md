@@ -115,6 +115,21 @@ class Duration {
 val d: Duration = 1.seconds
 ```
 
+#### Intersection types
+
+Sometimes the type to be propagated is an [intersection type](https://kotlinlang.org/spec/type-system.html#intersection-types); for example, when dealing with smart casting. In that case, prior to obtaining the static and companion object scopes, we should perform [type approximation](https://kotlinlang.org/spec/type-system.html#type-approximation), but only with the subset of intersected types which is _not_ a type parameter.
+
+For example, in the following code, at the `d == 1.seconds` expression, the known type of `d` is `T & Any & Duration`. When approximating, the `T` is dropped, and the intersection becomes the trivial `Duration`.
+
+```kotlin
+fun <T> foo(d: T): Int = when {
+  d is Duration && d == 1.seconds -> 0
+  else -> 1
+}
+```
+
+With this design, it is always clear which is the sole type from which we obtain the companion object. This should cover the common case in which the smartcasted type is a subtype of the original one. Another possibility is to check all the companion objects of the intersected types.
+
 ## Technical details
 
 We introduce an additional scope, present both in type and candidate resolution, which always depends on a type `T` (we say we **propagate `T`**). This scope contains the static and companion object callables of the aforementioned type `T`, as defined by the [specification](https://kotlinlang.org/spec/overload-resolution.html#call-with-an-explicit-type-receiver).
@@ -132,6 +147,7 @@ For declarations, a type `T` is propagated to the body, which may be an expressi
 * _Default parameters of functions_: `x: T = e`;
 * _Initializers of properties with explicit type_: `val x: T = e`;
 * _Explicit return types of functions_: `fun f(...): T = e` or `fun f(...): T { ... }`,
+  * This includes _accessors_ with explicit type: `val x get(): T = e`,
 * _Getters of properties with explicit type_: `val x: T get() = e` or `val x: T get() { ... }`.
 
 If a type `T` is propagated to a block, then the type is propagated to every return point of the block.
@@ -142,13 +158,18 @@ If a type `T` is propagated to a block, then the type is propagated to every ret
 If a functional type `(...) -> R` is propagated to a lambda, then the return type `R` is propagated to the body of the lambda (alongside the parameter types being propagated to the formal parameters, if available).
 
 ```kotlin
-val unknown: () -> Problem = { UNKNOWN }
+val unknown: () -> Problem = {
+                // ^ propagated as type of the lambda
+
+  UNKNOWN       // implicit return: we use 'Problem' for resolution
+}
 ```
 
 For other statements and expressions, we have the following rules. Here "known type of `x`" includes any additional typing information derived from smart casting.
 
 * _Assignments_: in `x = e`, the known type of `x` is propagated to `e`,
-* _`when` expression with subject_: in `when (x) { e -> ... }`, then known type of `x` is propagated to `e`, when `e` is not of the form `is T` or `in e`,
+* _`when` expression with subject_: in `when (x) { t -> ... }`, then known type of `x` is propagated to `t`, when `c` is an expression (that is, not of the form `is S`, `in l`, or their negations),
+    * For [guards](https://github.com/Kotlin/KEEP/blob/guards/proposals/guards.md) `when (x) { t if c -> ... }`, the type is propagated to `t`, but not to the guard `c`,
 * _Branching_: if type `T` is propagated to an expression with several branches, the type `T` is propagated to each of them,
     * _Conditionals_, either `if` or `when`,
     * _`try` expressions_, where the type `T` is propagated to the `try` block and each of the `catch` handlers,
@@ -165,7 +186,8 @@ All other operators and compound assignments (such as `x += e`) do not propagate
 We introduce the additional scope during type solution in the following cases:
 
 * _Type check_: in `e is T`, `e !is T`, the known type of `e` is propagated to `T`.
-* _`when` expression with subject_: in `when (x) { is T -> ... }`, then known type of `x` is propagated to `T`.
+* _`when` expression with subject_: in `when (x) { is T -> ... }`, then known type of `x` is propagated to `T`,
+      * For [guards](https://github.com/Kotlin/KEEP/blob/guards/proposals/guards.md) `when (x) { is T if c -> ... }`, the type is propagated to `T`, but not to the guard `c`.
 
 ## Design decisions
 
