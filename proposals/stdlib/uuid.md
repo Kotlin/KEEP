@@ -136,7 +136,7 @@ Java, however, only provides an API for constructing a UUID from two `Long`s. De
 designed their logic and applications around this representation of a UUID. To ensure an easy transition
 from `java.util.UUID` to Kotlin `Uuid`, we have introduced an API for constructing UUIDs from two `Long`s as well.
 This will also facilitate the sharing of existing code that uses `java.util.UUID` among multiple platforms.
-Additionally, we have decided to introduce an API for constructing UUIDs from two `ULongs`to improve the clarity
+Additionally, we have decided to introduce an API for constructing UUIDs from two `ULong`s to improve the clarity
 of the bits being provided, especially when the sign bit of a `Long` would be set. For example:
 ```kotlin
 val uuid1 = Uuid.fromLongs(-0x0AF17BFF1D64BE2CL, -0x58E9BB99AABC0000L)
@@ -144,7 +144,7 @@ val uuid2 = Uuid.fromULongs(0xF50E8400E29B41D4uL, 0xA716446655440000uL)
 
 // Both create the same Uuid value
 println(uuid1 == uuid2) // true
-// Two ULong values better reflect the value of the Uuid bits
+// Two ULong literals better reflect the value of the Uuid bits
 println(uuid1) // f50e8400-e29b-41d4-a716-446655440000
 ```
 
