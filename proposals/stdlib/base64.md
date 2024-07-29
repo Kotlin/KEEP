@@ -6,7 +6,7 @@
 * **Status**: Implemented in Kotlin 1.8.20
 * **Prototype**: Implemented
 * **Target issue**: [KT-57762](https://youtrack.jetbrains.com/issue/KT-55978/)
-* **Discussion**: TBD
+* **Discussion**: [KEEP-373](https://github.com/Kotlin/KEEP/issues/373)
 
 ## Summary
 
@@ -92,6 +92,8 @@ operations is required, the following operations are proposed:
 
 ### Proposed API
 
+#### Encode and decode functions
+
 It is proposed to introduce a `Base64` class that declare the operations above as member functions:
 ```kotlin
 public open class Base64 {
@@ -138,8 +140,10 @@ public open class Base64 {
 }
 ```
 
-However, the class won't have public constructors. It is not supposed to be instantiated or inherited.
-Instead, a predefined instance of this class will be provided for each supported Base64 variant:
+#### Construction
+
+The class won't have public constructors, and it is not supposed to be inherited or instantiated by calling its
+constructor. Instead, a predefined instance of this class will be provided for each supported Base64 variant:
 ```kotlin
 public open class Base64 {
 
@@ -151,7 +155,45 @@ public open class Base64 {
 }
 ```
 
-### Decoding and encoding of input and output streams in Kotlin/JVM
+#### Padding options
+
+The padding option for all predefined instances is set to `PRESENT`.
+This means they pad on encode and require padding on decode.
+New instances with different padding options can be created using the `withPadding` function:
+```kotlin
+public open class Base64 {
+    
+    public enum class PaddingOption {
+      PRESENT,
+      ABSENT,
+      PRESENT_OPTIONAL,
+      ABSENT_OPTIONAL
+    }
+
+    public fun withPadding(option: PaddingOption): Base64
+}
+```
+
+The `withPadding` function does not modify the receiving instance.
+Instead, it creates a new instance using the same alphabet but configured with the specified padding option.
+The table below explains how each option impacts encoding and decoding results:
+
+| PaddingOption    | On encode    | On decode                |
+|------------------|--------------|--------------------------|
+| PRESENT          | Emit padding | Padding is required      |
+| ABSENT           | Omit padding | Padding must not present |
+| PRESENT_OPTIONAL | Emit padding | Padding is optional      |
+| ABSENT_OPTIONAL  | Omit padding | Padding is optional      |
+
+These options provide flexibility in handling the padding characters (`'='`) and enable compatibility with
+various Base64 libraries and protocols.
+
+Optional padding on decode means the input may be either padded or unpadded.
+When padding is allowed and the input contains a padding character, the correct amount of padding
+character(s) must be present. In this case, the padding character `'='` marks the end of the encoded data,
+and subsequent symbols are prohibited.
+
+#### Decoding and encoding of input and output streams in Kotlin/JVM
 
 On JVM, it is beneficial to provide an input stream that decodes Base64 symbols from the underlying input stream and supplies binary data:
 ```kotlin
@@ -169,24 +211,19 @@ into an email.
 ## Contracts
 
 For encode operations:
-* All `Base64` variants pad the result with `'='` to make it an integral multiple of 4 symbols if the number of bytes to be encoded is not an integral multiple of 3.
+* Whether a `Base64` instance pads the result with `'='` to make it an integral multiple of 4 symbols depends on the
+  padding option set for the instance. The padding option for all predefined instances is set to `PaddingOption.PRESENT`.
 * `Base64.Default` and `Base64.UrlSafe` do not separate the result into multiple lines.
-* `Base64.Mime` adds CRLF every 76 symbols, but it does not add a CRLF at the end of the encoded output.
+* `Base64.Mime` adds a CRLF every 76 symbols, but it does not add a CRLF at the end of the encoded output.
 
 For decode operations:
-* All `Base64` variants do not require the symbols to be padded. However, if a padding character is present, the correct amount of it is required.
-* All `Base64` variants interpret the padding character as the end of the encoded binary data, and subsequent symbols are prohibited.
-* All `Base64` variants allow the padded bits to be non-zero.
-* `Base64.Default` throws if it encounters a character outside "The Base64 Alphabet" specified in Table 1 of RFC 4648.
-* `Base64.UrlSafe` throws if it encounters a character outside "The URL and Filename safe Base 64 Alphabet" specified in Table 2 of RFC 4648.
-* `Base64.Mime` ignores all line separators and other characters outside "The Base64 Alphabet" specified in Table 1 of RFC 2045.
-
-As one can see, encoding and decoding adhere to the RFC standards. However, the standards do not specify all corner
-cases and allow deviations in some areas. For example, they do not mandate that decoders verify the padded bits are zeros,
-and allow for both padded and non-padded encodings. Additionally, there is no consensus among the implementations available in
-other programming languages and libraries. Therefore, we have selected a strict approach for encoding and a lenient
-approach for decoding to maximize interoperability with Base64 strings generated by other libraries. As a result, while
-different binary data will be encoded into different strings, different strings may be decoded into the same binary data.
+* Whether a `Base64` instance requires, prohibits, or allows padding in the input symbols is determined by the
+  padding option set for the instance. The padding option for all predefined instances is set to `PaddingOption.PRESENT`.
+* All `Base64` instances interpret the padding character as the end of the encoded binary data, and subsequent symbols are prohibited.
+* All `Base64` instances require the pad bits to be zeros.
+* `Base64.Default` throws if it encounters a character outside "The Base64 Alphabet" as specified in Table 1 of RFC 4648.
+* `Base64.UrlSafe` throws if it encounters a character outside "The URL and Filename safe Base 64 Alphabet" as specified in Table 2 of RFC 4648.
+* `Base64.Mime` ignores all line separators and other characters outside "The Base64 Alphabet" as specified in Table 1 of RFC 2045.
 
 ### Examples
 
@@ -197,6 +234,8 @@ val foBytes = "fo".map { it.code.toByte() }.toByteArray()
 Base64.Default.encode(foBytes) // "Zm8="
 // Alternatively:
 // Base64.encode(foBytes)
+
+Base64.withPadding(Base64.PaddingOption.ABSENT).encode(foBytes) // "Zm8"
 
 val foobarBytes = "foobar".map { it.code.toByte() }.toByteArray()
 Base64.UrlSafe.encode(foobarBytes) // "Zm9vYmFy"
@@ -263,11 +302,5 @@ Only a subset of Kotlin Standard Library available on all supported platforms is
 
 ## Future advancements
 
-* Adding the ability encode without padding
-    * e.g., `fun Base64.withoutPadding(): Base64` could be introduced
-    * Related request: [KT-60787](https://youtrack.jetbrains.com/issue/KT-57998/)
-* Adding the ability to force presence or absence of padding chars when decoding
-    * e.g., `fun Base64.strictPaddingRules(): Base64` could be introduced
-* Adding ability to force the padded bits are zeros
-    * e.g., `fun Base64.strictPaddedBits(): Base64` could be introduced
-    * Related request: [KT-56135](https://youtrack.jetbrains.com/issue/KT-56135/)
+* Adding ability to allow non-zero pad bits
+    * e.g., `fun Base64.allowNonZeroPadBits(): Base64` could be introduced
