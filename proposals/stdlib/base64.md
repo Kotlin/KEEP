@@ -178,12 +178,12 @@ The `withPadding` function does not modify the receiving instance.
 Instead, it creates a new instance using the same alphabet but configured with the specified padding option.
 The table below explains how each option impacts encoding and decoding results:
 
-| PaddingOption    | On encode    | On decode                |
-|------------------|--------------|--------------------------|
-| PRESENT          | Emit padding | Padding is required      |
-| ABSENT           | Omit padding | Padding must not present |
-| PRESENT_OPTIONAL | Emit padding | Padding is optional      |
-| ABSENT_OPTIONAL  | Omit padding | Padding is optional      |
+| PaddingOption    | On encode    | On decode                   |
+|------------------|--------------|-----------------------------|
+| PRESENT          | Emit padding | Padding is required         |
+| ABSENT           | Omit padding | Padding must not be present |
+| PRESENT_OPTIONAL | Emit padding | Padding is optional         |
+| ABSENT_OPTIONAL  | Omit padding | Padding is optional         |
 
 These options provide flexibility in handling the padding characters (`'='`) and enable compatibility with
 various Base64 libraries and protocols.
@@ -192,6 +192,13 @@ Optional padding on decode means the input may be either padded or unpadded.
 When padding is allowed and the input contains a padding character, the correct amount of padding
 character(s) must be present. In this case, the padding character `'='` marks the end of the encoded data,
 and subsequent symbols are prohibited.
+
+There are two padding configurations that are not provided in the `PaddingOption` enum:
+* `PRESENT_ABSENT` (pad on encode and prohibit padding on decode)
+* `ABSENT_PRESENT` (do not pad on encode and require padding on decode)
+
+We did not find convincing use cases for such padding configurations.
+Therefore, we decided not to introduce them for now.
 
 #### Decoding and encoding of input and output streams in Kotlin/JVM
 
