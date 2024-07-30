@@ -5,7 +5,7 @@
 * **Status**: Implemented in Kotlin 1.9.0
 * **Prototype**: Implemented
 * **Target issue**: [KT-57762](https://youtrack.jetbrains.com/issue/KT-57762/)
-* **Discussion**: TBD
+* **Discussion**: [KEEP-362](https://github.com/Kotlin/KEEP/issues/362)
 
 ## Summary
 
@@ -63,6 +63,7 @@ For formatting a numeric value:
 * The prefix of the hex representation
 * The suffix of the hex representation
 * Whether to remove leading zeros in the hex representation
+* The minimum number of hexadecimal digits to be used in the hex representation
 
 For formatting `ByteArray`:
 * Whether upper case or lower case hexadecimal digits should be used
@@ -116,25 +117,32 @@ public class HexFormat internal constructor(
     public class NumberHexFormat internal constructor(
         val prefix: String,
         val suffix: String,
-        val removeLeadingZeros: Boolean
+        val removeLeadingZeros: Boolean,
+        val minLength: Int
     ) {
 
         public class Builder internal constructor() {  
             var prefix: String = ""  
             var suffix: String = ""  
             var removeLeadingZeros: Boolean = false  
+            var minLength: Int = 1
         }
     }
 }
 ```
 
 `BytesHexFormat` and `NumberHexFormat` classes hold format options for `ByteArray` and numeric values, correspondingly.
-`upperCase` option, which is common to both `ByteArray` and numeric values, is stored in `HexFormat`.
+The `upperCase` option, which is common to both `ByteArray` and numeric values, is stored in `HexFormat`.
 
 It's not possible to instantiate a `HexFormat` or its builder directly. The following function is provided instead:
 ```
 public inline fun HexFormat(builderAction: HexFormat.Builder.() -> Unit): HexFormat
 ```
+
+Additionally, two predefined `HexFormat` instances are provided for convenience:
+* `HexFormat.Default` - the hexadecimal format with all options set to their default values.
+* `HexFormat.UpperCase` - the hexadecimal format with all options set to their default values,
+  except for the `upperCase` option, which is set to `true`.
 
 ### Formatting
 
@@ -145,7 +153,7 @@ public fun ByteArray.toHexString(format: HexFormat = HexFormat.Default): String
 
 public fun ByteArray.toHexString(  
     startIndex: Int = 0,  
-    endIndex: Int = size,  
+    endIndex: Int = this.size,  
     format: HexFormat = HexFormat.Default  
 ): String
 
@@ -154,27 +162,58 @@ public fun ByteArray.toHexString(
 public fun N.toHexString(format: HexFormat = HexFormat.Default): String
 ```
 
+When formatting a byte array, one can assume the following steps:
+1. The bytes are split into lines with `bytesPerLine` bytes in each line,
+   except for the last line, which may have fewer bytes.
+2. Each line is split into groups with `bytesPerGroup` bytes in each group,
+   except for the last group in a line, which may have fewer bytes.
+3. All bytes are converted to their two-digit hexadecimal representation,
+   each prefixed by `bytePrefix` and suffixed by `byteSuffix`.
+   The `upperCase` option determines the case (`A-F` or `a-f`) of the hexadecimal digits.
+4. Adjacent formatted bytes within each group are separated by `byteSeparator`.
+5. Adjacent groups within each line are separated by `groupSeparator`.
+6. Adjacent lines are separated by the line feed (LF) character `'\n'`.
+
+When formatting a numeric value, the result consists of a `prefix` string,
+the hex representation of the numeric value, and a `suffix` string.
+The hex representation of a value is calculated by mapping each four-bit chunk of its binary representation
+to the corresponding hexadecimal digit, starting with the most significant bits.
+The `upperCase` option determines the case of the hexadecimal digits (`A-F` or `a-f`).
+If the `removeLeadingZeros` option is `true` and the hex representation is longer than `minLength`,
+leading zeros are removed until the length matches `minLength`. However, if `minLength` exceeds the length of the
+hex representation, `removeLeadingZeros` is ignored, and zeros are added to the start of the representation to
+achieve the specified `minLength`.
+
 ### Parsing
 
-It is critical to be able to parse the results of the formatting functions above.
+It is critical to be able to parse the results of the formatting functions mentioned above.
 For parsing, the following extension functions are proposed:
 ```
-// Parses a byte array
+// Parses a byte array using HexFormat.bytes
 public fun String.hexToByteArray(format: HexFormat = HexFormat.Default): ByteArray
 
-// Parses a numeric value
-// N is Byte, Short, Int, Long, and their unsigned counterparts
+// Parses a numeric value using HexFormat.number
+// N represents Byte, Short, Int, Long, and their unsigned counterparts
 public fun String.hexToN(format: HexFormat = HexFormat.Default): N
 ```
 
-## Contracts
+When parsing, the input string must conform to the structure defined by the specified format options.
+However, parsing is somewhat lenient:
+* For byte arrays:
+  * Parsing is performed in a case-insensitive manner for both the hexadecimal digits and the format elements
+    (prefix, suffix, separators) defined in the `HexFormat.bytes` property.
+  * Any of the char sequences CRLF (`"\r\n"`), LF (`"\n"`) and CR (`"\r"`) is considered a valid line separator.
+* For numeric values:
+  * Parsing is performed in a case-insensitive manner for both the hexadecimal digits and the format elements
+    (prefix, suffix) defined in the `HexFormat.number` property.
+  * The `removeLeadingZeros` and `minLength` options are ignored.
+    However, the input string must contain at least one hexadecimal digit between the `prefix` and `suffix`.
+    If the number of hexadecimal digits exceeds the capacity of the type being parsed, based on its bit size,
+    the excess leading digits must be zeros.
 
-* When formatting a `ByteArray`, the LF character is used to separate lines.
-* When parsing a `ByteArray`, any of the char sequences CRLF (`"\r\n"`), LF (`"\n"`) and CR (`"\r"`) are considered a valid line separator.
-* Parsing is performed in a case-insensitive manner.
-* `NumberHexFormat.removeLeadingZeros` is ignored when parsing.
-* Assigning a non-positive value to `BytesHexFormat.Builder.bytesPerLine/bytesPerGroup` is prohibited.
-  In this case `IllegalArgumentException` is thrown.
+### Contracts
+* Assigning a non-positive value to `BytesHexFormat.Builder.bytesPerLine/bytesPerGroup`
+  and `NumberHexFormat.Builder.minLength` is prohibited. In this case `IllegalArgumentException` is thrown.
 * Assigning a string containing LF or CR character to `BytesHexFormat.Builder.byteSeparator/bytePrefix/byteSuffix`
   and  `NumberHexFormat.Builder.prefix/suffix` is prohibited. In this case `IllegalArgumentException` is thrown.
 
@@ -303,11 +342,6 @@ Only a subset of Kotlin Standard Library available on all supported platforms is
 
 ## Future advancements
 
-* Adding the ability to limit the number of hex digits when formatting numeric values
-  * `NumberHexFormat.maxLength` could be introduced
-    * When formatting an `Int`, combination of `maxLength = 6` and `removeLeadingZeros = false` results to exactly 6 least significant hex digits
-    * Combination of `maxLength = 6` and `removeLeadingZeros = true` returns at most 6 hex (least-significant) digits without leading zeros
-  * Related request: [KT-60787](https://youtrack.jetbrains.com/issue/KT-60787)
 * Overloads for parsing a substring: [KT-58277](https://youtrack.jetbrains.com/issue/KT-58277)
 * Overloads for appending format result to an `Appendable`
   * `toHexString` might need to be renamed to `hexToString/Appendable` or `hexifyToString/Appendable`, because 
