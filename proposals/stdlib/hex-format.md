@@ -189,10 +189,10 @@ achieve the specified `minLength`.
 It is critical to be able to parse the results of the formatting functions mentioned above.
 For parsing, the following extension functions are proposed:
 ```
-// Parses a byte array using HexFormat.bytes
+// Parses a byte array using the options from HexFormat.bytes
 public fun String.hexToByteArray(format: HexFormat = HexFormat.Default): ByteArray
 
-// Parses a numeric value using HexFormat.number
+// Parses a numeric value using the options from HexFormat.number
 // N represents Byte, Short, Int, Long, and their unsigned counterparts
 public fun String.hexToN(format: HexFormat = HexFormat.Default): N
 ```
