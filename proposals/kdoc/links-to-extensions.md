@@ -12,9 +12,9 @@ Define clear logic on how to resolve links to extensions when writing documentat
 
 ## Motivation
 
-During the migration of Dokka analysis to K2, several questions arose around KDoc reference resolution.
+During the migration of Dokka analysis to K2, several questions arose around KDoc links resolution.
 In particular, it was unclear how a link to an extension should be resolved in the presence of type parameters.
-Reference resolution in KDoc is not fully specified, and for this reason some cases are currently implemented
+Link resolution in KDoc is not fully specified, and for this reason some cases are currently implemented
 differently in K1 and K2 analysis.
 
 The goal of this document is to try to describe consistent rules on how KDoc links to extensions should be resolved.
@@ -38,11 +38,15 @@ fun testLists() {}
 
 ## Overview
 
-### Syntax for references to extensions
+### Syntax for links to extensions
 
-References to extension functions/properties can be done in two ways: via simple reference like `[functionName]` or with
-additional receiver `Type` like `[Type.functionName]`. The behaviour for extension properties is the same as for
-extension functions and while a document will mostly use `function` wording, it could be treated as `function/property`.
+To refer to an extension function/property, it's possible to use one of the following syntax constructs:
+
+* `[functionName]` - like with top-level functions or members in class scope
+* `[Type.functionName]` where `Type` is a receiver - like with member functions outside class scope
+
+> Note: the behaviour for links to extension properties is the same as for links to extension functions and while a
+> document will mostly use `function` in text, it could be treated as `function/property`.
 
 ```kotlin
 fun String.extension() {}
@@ -54,13 +58,14 @@ fun String.extension() {}
 fun testStringExtension() {}
 ```
 
-Extension function can be referenced in the same way as just top level function (`[functionName]`), but, there are cases
-when there are multiple extensions with the same name in the same package and so in this case `[Type.functionName]` can
-be used to resolve reference to specific function (specific case of
-overloads: [KT-15984](https://youtrack.jetbrains.com/issue/KT-15984/Quick-documentation-Kdoc-doesnt-support-specifying-a-particular-overloaded-function-or-variable-in-a-link), [dokka/80](https://github.com/Kotlin/dokka/issues/80)).
-It can also be used to represent reference in comment more naturally so that reference to extensions will look the same
-way as reference to members. References to extensions functions via `[Type.functionName]` was tracked (most likely)
-in [KT-13299](https://youtrack.jetbrains.com/issue/KT-13299).
+In case there are multiple extensions with the same name in the same package but different receiver, it's possible to
+refer to a specific extension via `[Type.functionName]` (this is a specific case of links to overloaded declarations:
+[KT-15984](https://youtrack.jetbrains.com/issue/KT-15984/Quick-documentation-Kdoc-doesnt-support-specifying-a-particular-overloaded-function-or-variable-in-a-link),
+[dokka/80](https://github.com/Kotlin/dokka/issues/80)).
+Additionally, it could be used to represent a link in a KDoc more naturally,
+so that the links to extensions will look in the same way as links to members.
+Support for resolution of links to extensions functions via `[Type.functionName]` was tracked in scope
+of [KT-13299](https://youtrack.jetbrains.com/issue/KT-13299) (most likely).
 
 Simple example for such an ambiguity is from kotlinx-coroutines `CoroutineScope.isActive` and
 `CoroutineContext.isActive`:
@@ -77,10 +82,10 @@ fun CoroutineContext.isActive() {}
 fun testCoroutines() {}
 ```
 
-### Multiple ways to reference the same declaration
+### Multiple ways to refer to the same declaration
 
-References to member functions are resolved only via `Type.functionName` where `Type` could be both type where the
-function is declared, and all it’s inheritors:
+Links to member functions outside class scope are resolved only via `[Type.functionName]` where `Type` could be both
+type where the function is declared, and all it’s inheritors:
 
 ```kotlin
 interface Parent {
@@ -97,7 +102,7 @@ interface Child : Parent
 fun testMember() {}
 ```
 
-As with references to member functions, it’s possible to reference extensions not only on `Type` declared as receiver in
+As with links to member functions, it’s possible to refer to an extension not only on `Type` declared as receiver in
 extensions, but also on its inheritor, f.e:
 
 ```kotlin
@@ -115,7 +120,7 @@ fun Parent.extension() {}
 fun testExtension() {}
 ```
 
-References to extensions where receiver is generic work in the same way. In this case, implicit bound is `Any?`:
+Links to extensions where the receiver is generic follow the same rules. In this case, implicit bound is `Any?`:
 
 ```kotlin
 interface Parent
@@ -132,8 +137,8 @@ fun <T> T.genericExtension() {}
 fun testGenericExtension() {}
 ```
 
-It’s also possible to define explicit bound `Type` for generic. In this case extensions will be resolved on all types
-which are matched by generic:
+It’s also possible to define explicit bound `Type` for type parameter.
+In this case extensions will be resolved on all types which match this bound:
 
 ```kotlin
 interface Parent
@@ -184,14 +189,14 @@ fun testLet() {}
 
 ## Problem description
 
-As stated in the beginning, on current moment references to extensions where receiver has type parameters, such as
-`List<T>` or `KSerializer<T>` works differently in K1 comparing to K2 as there is no clear specification on how it
+As stated at the beginning of the document, on current moment links to extensions where receiver has type parameters,
+such as `List<T>` or `KSerializer<T>`, works differently in K1 and K2 as there is no clear specification on how it
 should work.
 
-The following examples will use those shared declarations:
+To illustrate the problem, the following examples will use those shared declarations:
 
 ```kotlin
-// simple root interface with generic: List, Deferred, KSerializer, etc.
+// simple root interface with type parameter: List, Deferred, KSerializer, etc.
 interface Container<A> {
     fun containerMember(): A
 }
@@ -199,16 +204,16 @@ interface Container<A> {
 // intermediate interface (which can contain other methods): MutableList, CompletableDeferred, etc.
 interface TContainer<B> : Container<B>
 
-// interface with added bound for generic: custom KSerializer which could encapsulate serialization logic for numbers
+// interface with bound for type parameter: custom KSerializer which could encapsulate serialization logic for numbers
 abstract class TNumberBoundContainer<C : Number> : Container<C>
 
-// final implementations with fixed generic 
+// final implementations with fixed type parameter 
 class NumberContainer : Container<Number>
 object IntContainer : Container<Int>
 object StringContainer : Container<String>
 ```
 
-There is no difference when referencing member functions from types with or without type parameters as well as for
+There is no difference when referring to member functions from types with or without type parameters as well as for
 extensions with star-projection:
 
 ```kotlin
@@ -247,7 +252,8 @@ fun Container<*>.containerExtension() {}
 fun testContainerExtension() {}
 ```
 
-In the case of extensions with fixed generics, we have several unexpected unresolved references, both with K1 and K2:
+In the case of extensions with receivers with fixed type parameters,
+we have several unexpected unresolved links, both with K1 and K2:
 
 ```kotlin
 // shared declarations, copied, for sample completeness
@@ -260,7 +266,7 @@ class NumberContainer : Container<Number>
 object IntContainer : Container<Int>
 object StringContainer : Container<String>
 
-// type parameter is fixed to final class
+// type parameter is fixed to the final class
 fun Container<Int>.containerIntExtension() {}
 
 /**
@@ -273,7 +279,7 @@ fun Container<Int>.containerIntExtension() {}
  */
 fun testContainerIntExtension() {}
 
-// type parameter is fixed to abstract class
+// type parameter is fixed to an abstract class
 fun Container<Number>.containerFixedNumberExtension() {}
 
 /**
@@ -286,7 +292,7 @@ fun Container<Number>.containerFixedNumberExtension() {}
  */
 fun testContainerFixedNumberExtension() {}
 
-// type parameter is out projection of abstract class
+// type parameter is out projection of an abstract class
 fun Container<out Number>.containerOutNumberExtension() {}
 
 /**
@@ -300,13 +306,14 @@ fun Container<out Number>.containerOutNumberExtension() {}
 fun testContainerOutNumberExtension() {}
 ```
 
-We can’t resolve `TContainer.containerIntExtension` even if `TContainer` just extends `Container` propagating `T`
-without any additional constraints. The same is applied for a case with bounded generic (`TNumberBoundContainer`).  
+We can’t resolve `[TContainer.containerIntExtension]` even if `TContainer` just extends `Container` propagating `T`
+without any additional constraints. The same is applied for a case with bounded type parameter
+(`TNumberBoundContainer`).  
 Both those cases can be successfully resolved by compiler, and those functions could be called on corresponding
 receivers.
 
-Initially it was not possible to reference in such a way functions which has generic with bound type arguments (at least
-on IDEA side), it was fixed for K1
+Initially it was not possible to refer to functions which has receiver with bound type parameters in a such way
+(at least on IDEA side), it was fixed for K1
 in [https://youtrack.jetbrains.com/issue/KTIJ-24576](https://youtrack.jetbrains.com/issue/KTIJ-24576).  
 In K2 on the current moment the simplest solution is implemented, where only receiver of extension function is resolved
 as `Type`:
@@ -346,7 +353,7 @@ fun <T : Number> Container<T>.containerGenericBoundExtension() {}
 fun testContainerGenericBoundExtension() {}
 ```
 
-Note: K2 compiler resolves declarations which are unresolved only in K2 when used in code.
+Note: K2 compiler resolves declarations which are "UNRESOLVED ONLY in K2" when used in code.
 
 More complex scenarios:
 
@@ -371,24 +378,25 @@ fun testModifyComparable() {}
 
 ## Proposed solution
 
-**Resolve references for any `Type` which can be used as a receiver in code (resolved by compiler).**
+**Resolve `[Type.functionName]` links with any `Type` which can be used as a receiver in code (resolved by compiler).**
 
-References to extensions in a form of `Type.functionName` should be treated in the same way as with member functions, so
-it should be possible to reference extensions defined for supertypes. When functions have generics or bounds, those
-functions which can be called on `Type` should be resolved.
+Links to extensions in a form of `[Type.functionName]` should be treated in the same way as with member functions, so
+it should be possible to refer to extensions defined for supertypes.
+When functions have type parameters, with or without bounds, those functions which can be called on `Type` should be
+resolved.
 
 This is conformed to the behavior of current analysis with fixes of some issues with resolve mentioned with `UNEXPECTED`
 comment in examples (there could be other examples not mentioned in the document), so there are no breaking changes to
-how we resolve references but rather an attempt at defining the general rules.
+how we resolve links but rather an attempt at defining the general rules.
 
 Such resolution logic brings several benefits such as:
 
-1. References to members and extensions are defined in the same way for types and its inheritors;
-2. References in KDoc and function calls use the same semantics;
-3. If a member is converted to an extension (and vice versa), all KDoc references still will be resolved;
+1. Links to members and extensions are defined in the same way for types and its inheritors;
+2. Links in KDoc and function calls use the same semantics;
+3. If a member is converted to an extension (and vice versa), all KDoc links will be still resolved.
 
-When thinking about type parameters matching in KDoc, it's possible to infer type constraints/requirements to better see
-matching rules.
+When thinking about type parameters matching in KDoc, it's possible to infer constraints/requirements for them to better
+see matching rules.
 The rules in compiler are more complex than that, this is just a basic idea:
 
 * requirements are coming from extensions:
@@ -427,9 +435,10 @@ fun testLists() {}
 
 There were a few alternatives considered but were rejected because of various reasons:
 
-* Resolve references where `Type` is the same type which is used as receiver in an extension. If receiver is
-  generic, resolve only `functionName` syntax. Rejected because:
-    * in case of migration from member to extension or widening of a receiver type, old KDoc references will be broken.
+* Resolve links where `Type` is the same type which is used as receiver in an extension.
+  If receiver is generic, resolve only `functionName` syntax.
+  Rejected because:
+    * in the case of migration from member to extension or widening of a receiver type, old KDoc links will be broken.
       F.e:
       ```kotlin
       // version 1 of the lib
@@ -454,10 +463,11 @@ There were a few alternatives considered but were rejected because of various re
         "".doSomething() // still resolved
       }
       ```
-    * in case of type hierarchies with extensions on supertypes, it's easy to leak an abstraction when referencing
-      links. F.e in the following example `[HeadersBuilder.append]` will be unresolved, and so we
-      need to use `[MessageBuilder.append]` which looks and inconsistent and when reading requires more attention, as
-      you now need to know the hierarchy:
+    * in the case of type hierarchies with extensions on supertypes, it's easy to leak an abstraction when referring to
+      both members and extensions or extensions on different super types in the same KDoc block.
+      F.e in the following example `[HeadersBuilder.append]` will be unresolved, and so we
+      need to use `[MessageBuilder.append]` which looks inconsistent and when reading requires more attention, as
+      you now need to know the full hierarchy:
       ```kotlin
       interface MessageBuilder { fun build(): String }
       interface HeadersBuilder: MessageBuilder
@@ -471,20 +481,21 @@ There were a few alternatives considered but were rejected because of various re
        */
       fun testHeaders(builder: HeadersBuilder) {}
       ```
-* Resolve references only by `functionName` and do not resolve `Type.functionName` at all, so treat extension functions
-  as just functions. Rejected because:
+* Resolve links only via `[functionName]` and do not resolve `[Type.functionName]` at all, so treat extension
+  functions as just functions.
+  Rejected because:
     * extensions in Kotlin are first-class entities, and from a call-site perspective they look like regular functions.
-      So it's not convenient when in KDoc you should reference them a lot differently then in code.
-    * big breaking change with no clear benefits
+      So it's not convenient when in KDoc you should refer to them a lot differently than in code.
+    * major breaking change with no clear benefits
 
 ## Other languages
 
 * [Java](https://docs.oracle.com/en/java/javase/22/docs/specs/javadoc/doc-comment-spec.html):
     * No extensions
-    * Member references are referenced in the same way as in Kotlin (including inheritors)
+    * The semantics of referring to members are the same as in Kotlin (including inheritors)
 * [Scala](https://docs.scala-lang.org/overviews/scaladoc/for-library-authors.html)
     * Extensions are defined similar to Kotlin
-    * Referencing extensions is possible only by top-level `functionName` without relying on receiver
+    * Referring to extensions is possible only by top-level `functionName` without relying on receiver
 
 ```scala
 class Point(val x: Int)
@@ -501,8 +512,8 @@ def test(): Unit = {}
 ```
 
 * [Dart](https://dart.dev/language/comments\#documentation-comments)
-    * Extensions are defined in named `objects`
-    * Extensions can be referenced only via this named object
+    * Extensions are defined in named sections
+    * Referring to extensions is possible only via this named section
 
 ```dart
 class DateTime {
@@ -520,7 +531,7 @@ void test () {}
 
 * [Rust](https://doc.rust-lang.org/rustdoc/how-to-write-documentation.html)
     * Same as dart, but extensions are defined in traits
-    * Extensions can be referenced only via trait
+    * Referring to extensions is possible only via trait
     * RustRover supports resolving via the main type while `cargo doc` can’t resolve them
 
 ```rust
@@ -541,8 +552,8 @@ fn main () {}
 * [Swift](https://www.swift.org/documentation/docc/)
     * Extensions are declared in `unnamed` blocks
     * Generics have different semantics/syntax for structs and protocols
-    * Referencing extensions is possible in the same way as in Kotlin
-    * Mostly tries to resolve those references, which can be called in code (resolved by compiler)
+    * Referring to extensions is possible in the same way as in Kotlin
+    * Mostly tries to resolve those links, which can be called in code (resolved by compiler)
     * When there are generics involved results are not always predictable and `Docc` works inconsistently comparing to
       `XCode`
 
@@ -634,11 +645,13 @@ public protocol Test {}
 
 ## Appendix
 
-Some notes regarding references to extension functions, which are nice to know.
+Some notes regarding links to extension functions, which are nice to know.
 
-### It’s not possible to use generics or nullable types as `Type` during referencing extensions
+### Extensions on receivers with type parameters and nullability
 
-So it’s not possible to distinguish references between such extensions (same issues as with overloading by arguments):
+It’s not possible to specify type parameters or nullability in KDoc links.
+So it’s not possible to refer to a specific extension which differs only in receiver type parameter or nullability
+(similar to overloading by function parameters):
 
 ```kotlin
 /**
@@ -665,9 +678,10 @@ fun List<Int>.listExtension() {}
 fun List<Long>.listExtension() {}
 ```
 
-### If an extension has the same name as a member, it’s possible to reference an extension only via
+### Extension and member with the same name
 
-`functionName` syntax
+If an extension has the same name as a member, it’s possible to refer to an extension only via `[functionName]`, as
+`[Type.functionName]` will always prefer members during link resolution:
 
 ```kotlin
 interface Something {
@@ -683,7 +697,8 @@ fun Something.doWork(argument: String) {}
 fun testSomething() {}
 ```
 
-It's possible to overcome this on the user side via import aliases:
+It's still possible to distinguish links to member and extensions in a form of `[Type.functionName]` using import
+aliases:
 
 ```kotlin
 package org.example
@@ -703,12 +718,13 @@ fun Something.doWork(argument: String) {}
 fun testSomething() {}
 ```
 
-### Absolute and relative references
+### Absolute and relative links
 
-It’s possible to reference declarations both absolutely (with package and class name) and relatively (based on scope and
-imports where declaration is defined). Though, with extension functions referenced by `Type` like `[Type.functionName]`
-it’s possible to use absolute reference only for `Type`. While when using `[functionName]` absolute reference is
-possible only for `functionName`.
+It’s possible to refer to declarations both absolutely (using fully qualified names) and relatively (based on scope and
+imports where the link is defined).
+Though, with links to extensions with `Type` like `[Type.functionName]` it’s possible to refer via fully qualified name
+only for `Type`.
+While when using `[functionName]` fully qualified name is possible only for `functionName`.
 
 ```kotlin
 package com.example
@@ -773,21 +789,21 @@ import kotlin.time.Duration.Companion.seconds
 fun testDuration() {}
 ```
 
-Rules for the resolve of references could be described like this:
+Rules for the link resolution could be described like this:
 
 * `[FUNCTION]` / `[PROPERTY]` / `[CLASS]`
-    * relative references to **top-level** declarations (including extensions)
-    * relative references to **imported** declarations (f.e from `companion object`)
-* `[PACKAGE.FUNCTION]` / `[PACKAGE.PROPERTY]` / `[PACKAGE.CLASS]` - absolute references to top level declarations
+    * relative links to **top-level** declarations (including extensions)
+    * relative links to **imported** declarations (f.e from `companion object`)
+* `[PACKAGE.FUNCTION]` / `[PACKAGE.PROPERTY]` / `[PACKAGE.CLASS]` - absolute links to top level declarations
   (including extensions)
-* `[CLASS.CLASS]` - relative references to inner classes
-* `[PACKAGE.CLASS.CLASS]` - absolute references to inner classes
+* `[CLASS.CLASS]` - relative links to inner classes
+* `[PACKAGE.CLASS.CLASS]` - absolute links to inner classes
 * `[CLASS.FUNCTION]` / `[CLASS.PROPERTY]`:
-    * relative references to **members** defined in CLASS (or its inheritors)
-    * relative references to **extensions** defined for CLASS (or its inheritors)
+    * relative links to **members** defined in CLASS (or its inheritors)
+    * relative links to **extensions** defined for CLASS (or its inheritors)
 * `[PACKAGE.CLASS.FUNCTION]` / `[PACKAGE.CLASS.PROPERTY]`:
-    * absolute references to **members** defined in PACKAGE.CLASS (or its inheritors)
-    * **partially** absolute references to **extensions** defined for PACKAGE.CLASS (or its inheritors).  
+    * absolute links to **members** defined in PACKAGE.CLASS (or its inheritors)
+    * **partially** absolute links to **extensions** defined for PACKAGE.CLASS (or its inheritors).  
       Partially means that we can specify PACKAGE for CLASS, but if FUNCTION is from different package, this package
       should be imported
 
@@ -795,17 +811,17 @@ Rules for the resolve of references could be described like this:
 
 With the introduction
 of [Context parameters](https://github.com/Kotlin/KEEP/blob/context-parameters/proposals/context-parameters.md) in case
-we do nothing, the situation will not change and `context` will not affect how references will be resolved. If we treat
-`context parameters` (at least initially) as just other function parameters then it falls into the “function parameters
-overload” problem mentioned in the begging of the document and will be discussed separately.
+we do nothing, the situation will not change and `context` will not affect how links will be resolved.
+If we treat `context parameters` (at least initially) as just other function parameters then it falls into the “function
+parameters overload” problem mentioned in the begging of the document and will be discussed separately.
 
 ```kotlin
 fun function() {}
-fun String.extension() {}
+fun Scope.extension() {}
 
 context(scope: Scope) fun contextFunction() {}
-context(scope: Scope, scope2: String) fun contextFunction() {}
-context(scope: String) fun contextFunction() {}
+context(scope: Scope, otherScope: OtherScope) fun contextFunction() {}
+context(otherScope: OtherScope) fun contextFunction() {}
 
 context(scope: Scope) fun String.contextExtension() {}
 
@@ -819,7 +835,7 @@ context(scope: Scope) fun String.contextExtension() {}
  * [contextExtension] - resolved
  * [String.contextExtension] - resolved
  *
- * With the possibility of overload by context parameters
+ * With an imaginary syntax of overload by context parameters
  * [(Scope) contextFunction]
  * [(Scope) String.contextExtension]
  * or
@@ -829,7 +845,7 @@ context(scope: Scope) fun String.contextExtension() {}
 fun testContext() {}
 ```
 
-Even if we introduce the possibility of overload by context parameters, most likely it will not affect how references to
-extension functions will be resolved. Context parameters just add a layer of reference overloads additionally
-to extension functions. It’s out of scope of this document and should be discussed in the scope of support for
-referencing specific overloads.
+Even if we introduce the possibility of overload by context parameters, most likely it will not affect how links to
+extensions will be resolved.
+Context parameters are just an additional set of parameters to perform overload additionally to functions parameters.
+It’s out of scope of this document and should be discussed in the scope of support for referring to specific overloads.
