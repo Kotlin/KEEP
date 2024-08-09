@@ -12,8 +12,12 @@ Define clear logic on how to resolve links to extensions when writing documentat
 
 ## Motivation
 
-References to extensions where receiver has type parameters, such as `List<T>` or `KSerializer<T>` currently works
-differently in K1 comparing to K2 as described in [dokka/3555](https://github.com/Kotlin/dokka/issues/3555).
+During the migration of Dokka analysis to K2, several questions arose around KDoc reference resolution.
+In particular, it was unclear how a link to an extension should be resolved in the presence of type parameters.
+Reference resolution in KDoc is not fully specified, and for this reason some cases are currently implemented
+differently in K1 and K2 analysis.
+
+The goal of this document is to try to describe consistent rules on how KDoc links to extensions should be resolved.
 
 ```kotlin
 /**
@@ -374,8 +378,8 @@ it should be possible to reference extensions defined for supertypes. When funct
 functions which can be called on `Type` should be resolved.
 
 This is conformed to the behavior of current analysis with fixes of some issues with resolve mentioned with `UNEXPECTED`
-in examples (there could be other examples not mentioned in the document), so there are no breaking changes but rather
-an attempt at defining the general rules.
+comment in examples (there could be other examples not mentioned in the document), so there are no breaking changes to
+how we resolve references but rather an attempt at defining the general rules.
 
 Such resolution logic brings several benefits such as:
 
