@@ -21,19 +21,19 @@ The goal of this document is to try to describe consistent rules on how KDoc lin
 
 ```kotlin
 /**
- * resolved with both K1 and K2 analysis (all extensions are defined on [Iterable])
- * - [Iterable.map]
- * - [Iterable.flatMap]
- * - [Iterable.flatten]
- * - [Iterable.min]
- * resolved with K1, unresolved with K2 analysis ([List] implements [Iterable])
+ * resolved with both K1 and K2 analysis
+ * - [Iterable.map]      (fun <T, R> Iterable<T>.map)
+ * - [Iterable.flatMap]  (fun <T, R> Iterable<T>.flatMap)
+ * - [Iterable.flatten]  (fun <T> Iterable<Iterable<T>>.flatten)
+ * - [Iterable.min]      (fun <T : Comparable<T>> Iterable<T>.min)
+ * resolved with K1, UNRESOLVED with K2 analysis
  * - [List.map]
  * - [List.flatMap]
- * unresolved with both K1 and K2 analysis
- * - [List.flatten] (defined as `fun <T> Iterable<Iterable<T>>.flatten()`)
- * - [List.min]     (defined as `fun <T : Comparable<T>> Iterable<T>.min()`)
+ * UNRESOLVED with both K1 and K2 analysis
+ * - [List.flatten]
+ * - [List.min]
  */
-fun testLists() {}
+fun test() {}
 ```
 
 ## Overview
@@ -45,9 +45,6 @@ To refer to an extension function/property, it's possible to use one of the foll
 * `[functionName]` - like with top-level functions or members in class scope
 * `[Type.functionName]` where `Type` is a receiver - like with member functions outside class scope
 
-> Note: the behaviour for links to extension properties is the same as for links to extension functions and while a
-> document will mostly use `function` in text, it could be treated as `function/property`.
-
 ```kotlin
 fun String.extension() {}
 
@@ -57,6 +54,9 @@ fun String.extension() {}
  */
 fun testStringExtension() {}
 ```
+
+> Note: the behaviour for links to extension properties is the same as for links to extension functions and while a
+> document will mostly use `function` in text, it could be treated as `function/property`.
 
 In case there are multiple extensions with the same name in the same package but different receiver, it's possible to
 refer to a specific extension via `[Type.functionName]` (this is a specific case of links to overloaded declarations:
@@ -395,40 +395,119 @@ Such resolution logic brings several benefits such as:
 2. Links in KDoc and function calls use the same semantics;
 3. If a member is converted to an extension (and vice versa), all KDoc links will be still resolved.
 
-When thinking about type parameters matching in KDoc, it's possible to infer constraints/requirements for them to better
-see matching rules.
-The rules in compiler are more complex than that, this is just a basic idea:
+As a general rule, KDoc links to extensions in a form of `[Type.functionName]` should be resolved in all cases
+when it's possible to write a [callable reference](https://kotlinlang.org/docs/reflection.html#callable-references)
+in a form of `Type::functionName`. If `Type` has type parameters, e.g `interface Container<T, C: Iterable<T>>`,
+then the link should be resolved if it's possibly to substitute them with some concrete types in callable reference,
+e.g `Something<Any, List<Any>>`, so that `functionName` is resolved.
 
-* requirements are coming from extensions:
-    * for `fun <T> List<T>.something()` - generic type requirement will be `out Any?`
-    * for `fun <T: Number> List<T>.somethingNumber()` - generic type requirement will be `out Number`
-* constraints are coming from types:
-    * for `interface List<out T>` - generic type constraint will be `out Any?`
-    * for `interface Container<T> : List<T>` - generic type constraint will be `out Any?`
-    * for `interface NContainer<T: Number> : List<T>` - generic type constraint will be `out Number`
-    * for `interface NNContainer : List<Number>` - generic type constraint will be `out Number`
-    * for `interface SContainer : List<String>` - generic type constraint will be `out String`
-    * for `interface NoVariance<T>` - generic type constraint will be still `out Any?` as any type is possible
-    * for `interface NNoVariance : NoVariance<Number>` - generic type constraint will be `Number` (no `out` variance)
-* Matching:
-    * `something` should match any subtype of `List` as it's a type constraint is `out Any?`
-    * `somethingNumber` should match only when `Type` is subtype which have matching constraint `out Number`.
-      So f.e `SContainer` is not available.
+Here are two examples to illustrate this behaviour:
 
-Coming back to the first example, with this proposal all links should be resolved:
+1. Simple case, no variance:
+    ```kotlin
+    interface NoVariance<T>
+    interface NumberNoVariance : NoVariance<Number>
+    
+    fun <T> NoVariance<T>.extension() {}
+    
+    /**
+     * [NoVariance.extension] - should be resolved
+     * [NumberNoVariance.extension] - should be resolved
+     */
+    fun testExtension() {
+        NoVariance<Any>::extension // resolved
+        NoVariance<Nothing>::extension // resolved
+        NoVariance<String>::extension // resolved
+    
+        NumberNoVariance::extension // resolved
+    }
+    
+    fun NoVariance<String>.stringExtension() {}
+    
+    /**
+     * [NoVariance.stringExtension] - should be resolved
+     * [NumberNoVariance.stringExtension] - should be UNRESOLVED
+     */
+    fun testStringExtension() {
+        NoVariance<Any>::stringExtension // UNRESOLVED: compiler produces 'Unresolved reference' error
+        NoVariance<Nothing>::stringExtension // UNRESOLVED: compiler produces 'Unresolved reference' error
+        NoVariance<String>::stringExtension // resolved
+    
+        NumberNoVariance::stringExtension // UNRESOLVED: compiler produces 'Unresolved reference' error
+    }
+    ```
+
+2. Lists and iterables from the initial example:
+    ```kotlin
+    // definitions of interfaces and functions from kotlin-stdlib for example completness
+    
+    interface Iterable<out T>
+    interface Collection<out E> : Iterable<E>
+    interface List<out E> : Collection<E>
+    
+    fun <T, R> Iterable<T>.map(transform: (T) -> R): List<R> = TODO()
+    fun <T, R> Iterable<T>.flatMap(transform: (T) -> Iterable<R>): List<R> = TODO()
+    fun <T> Iterable<Iterable<T>>.flatten(): List<T> = TODO()
+    fun <T : Comparable<T>> Iterable<T>.min(): T? = TODO()
+    
+    /**
+     * all should be resolved
+     * - [Iterable.map]
+     * - [Iterable.flatMap]
+     * - [Iterable.flatten]
+     * - [Iterable.min]
+     * - [List.map]
+     * - [List.flatMap]
+     * - [List.flatten]
+     * - [List.min]
+     */
+    fun test() {
+        Iterable<Any>::map // resolved
+        Iterable<Any>::flatMap // resolved
+        Iterable<Iterable<Any>>::flatten // resolved
+        Iterable<Comparable<Comparable<*>>>::min // resolved
+    
+        List<Any>::map // resolved
+        List<Any>::flatMap // resolved
+        List<Iterable<Any>>::flatten // resolved
+        List<Comparable<Comparable<*>>>::min // resolved
+    }
+    ```
+
+> Note: technically speaking, callable references to `map` and `flatMap` in this case will not compile.
+>
+> There will be an error from the compiler: Not enough information to infer type variable R.
+> That's correct, as type parameters of functions cannot be specified in a generic callable reference and could be
+> inferred only based on an expected type.
+>
+> Still, it doesn't affect call resolution, as in such cases those type parameters are not used in receiver,
+> and so the compiler resolves the callable reference correctly: there is no 'Unresolved reference' error produced.
+> This means that declarations should be resolved also in KDoc links.
+
+All of the above could be described like this:
+
+**KDoc link to an extension in a form of `[Type.functionName]` should be resolved
+if and only if call `typeInstance.functionName(_)` is resolved by compiler where `typeInstance` is of type `Type<_>`:**
+
+> Note: `_` here are just placeholders (a.k.a. typed hole)
 
 ```kotlin
 /**
- * - [Iterable.map]
- * - [Iterable.flatMap]
- * - [Iterable.flatten]
- * - [Iterable.min]
- * - [List.map]
- * - [List.flatMap]
- * - [List.flatten] (defined as `fun <T> Iterable<Iterable<T>>.flatten()`)
- * - [List.min]     (defined as `fun <T : Comparable<T>> Iterable<T>.min()`)
+ * - [Iterable.map]     - should be resolved if `iterable.map(_)` is resolved
+ * - [Iterable.flatMap] - should be resolved if `iterable.flatMap(_)` is resolved
+ * - [List.map]         - should be resolved if `list.map(_)` is resolved
+ * - [List.flatMap]     - should be resolved if `list.flatMap(_)` is resolved
  */
-fun testLists() {}
+fun testExplicit(
+    iterable: Iterable<Any>,
+    list: List<Any>
+) {
+    iterable.map {} // resolved
+    iterable.flatMap { listOf(0) } // resolved
+
+    list.map {} // resolved
+    list.flatMap { listOf(0) } // resolved
+}
 ```
 
 ## Alternatives considered
