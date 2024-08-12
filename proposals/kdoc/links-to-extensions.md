@@ -42,8 +42,8 @@ fun test() {}
 
 To refer to an extension function/property, it's possible to use one of the following syntax constructs:
 
-* `[functionName]` - like with top-level functions or members in class scope
-* `[Type.functionName]` where `Type` is a receiver - like with member functions outside class scope
+* `[extensionName]` - like with top-level functions or members in class scope
+* `[Type.extensionName]` where `Type` is a receiver - like with member functions outside class scope
 
 ```kotlin
 fun String.extension() {}
@@ -59,12 +59,12 @@ fun testStringExtension() {}
 > document will mostly use `function` in text, it could be treated as `function/property`.
 
 In case there are multiple extensions with the same name in the same package but different receiver, it's possible to
-refer to a specific extension via `[Type.functionName]` (this is a specific case of links to overloaded declarations:
+refer to a specific extension via `[Type.extensionName]` (this is a specific case of links to overloaded declarations:
 [KT-15984](https://youtrack.jetbrains.com/issue/KT-15984/Quick-documentation-Kdoc-doesnt-support-specifying-a-particular-overloaded-function-or-variable-in-a-link),
 [dokka/80](https://github.com/Kotlin/dokka/issues/80)).
 Additionally, it could be used to represent a link in a KDoc more naturally,
 so that the links to extensions will look in the same way as links to members.
-Support for resolution of links to extensions functions via `[Type.functionName]` was tracked in scope
+Support for resolution of links to extensions functions via `[Type.extensionName]` was tracked in scope
 of [KT-13299](https://youtrack.jetbrains.com/issue/KT-13299) (most likely).
 
 Simple example for such an ambiguity is from kotlinx-coroutines `CoroutineScope.isActive` and
@@ -84,7 +84,7 @@ fun testCoroutines() {}
 
 ### Multiple ways to refer to the same declaration
 
-Links to member functions outside class scope are resolved only via `[Type.functionName]` where `Type` could be both
+Links to member functions outside class scope are resolved only via `[Type.extensionName]` where `Type` could be both
 type where the function is declared, and all it’s inheritors:
 
 ```kotlin
@@ -378,9 +378,9 @@ fun testModifyComparable() {}
 
 ## Proposed solution
 
-**Resolve `[Type.functionName]` links with any `Type` which can be used as a receiver in code (resolved by compiler).**
+**Resolve `[Type.extensionName]` links with any `Type` which can be used as a receiver in code (resolved by compiler).**
 
-Links to extensions in a form of `[Type.functionName]` should be treated in the same way as with member functions, so
+Links to extensions in a form of `[Type.extensionName]` should be treated in the same way as with member functions, so
 it should be possible to refer to extensions defined for supertypes.
 When functions have type parameters, with or without bounds, those functions which can be called on `Type` should be
 resolved.
@@ -395,11 +395,11 @@ Such resolution logic brings several benefits such as:
 2. Links in KDoc and function calls use the same semantics;
 3. If a member is converted to an extension (and vice versa), all KDoc links will be still resolved.
 
-As a general rule, KDoc links to extensions in a form of `[Type.functionName]` should be resolved in all cases
+As a general rule, KDoc links to extensions in a form of `[Type.extensionName]` should be resolved in all cases
 when it's possible to write a [callable reference](https://kotlinlang.org/docs/reflection.html#callable-references)
-in a form of `Type::functionName`. If `Type` has type parameters, e.g `interface Container<T, C: Iterable<T>>`,
+in a form of `Type::extensionName`. If `Type` has type parameters, e.g `interface Container<T, C: Iterable<T>>`,
 then the link should be resolved if it's possibly to substitute them with some concrete types in callable reference,
-e.g `Something<Any, List<Any>>`, so that `functionName` is resolved.
+e.g `Something<Any, List<Any>>`, so that `extensionName` is resolved.
 
 Here are two examples to illustrate this behaviour:
 
@@ -486,8 +486,8 @@ Here are two examples to illustrate this behaviour:
 
 All of the above could be described like this:
 
-**KDoc link to an extension in a form of `[Type.functionName]` should be resolved
-if and only if call `typeInstance.functionName(_)` is resolved by compiler where `typeInstance` is of type `Type<_>`:**
+**KDoc link to an extension in a form of `[Type.extensionName]` should be resolved
+if and only if call `typeInstance.extensionName(_)` is resolved by compiler where `typeInstance` is of type `Type<_>`:**
 
 > Note: `_` here are just placeholders (a.k.a. typed hole)
 
@@ -515,7 +515,7 @@ fun testExplicit(
 There were a few alternatives considered but were rejected because of various reasons:
 
 * Resolve links where `Type` is the same type which is used as receiver in an extension.
-  If receiver is generic, resolve only `functionName` syntax.
+  If receiver is generic, resolve only `[extensionName]` syntax.
   Rejected because:
     * in the case of migration from member to extension or widening of a receiver type, old KDoc links will be broken.
       F.e:
@@ -560,7 +560,7 @@ There were a few alternatives considered but were rejected because of various re
        */
       fun testHeaders(builder: HeadersBuilder) {}
       ```
-* Resolve links only via `[functionName]` and do not resolve `[Type.functionName]` at all, so treat extension
+* Resolve links only via `[extensionName]` and do not resolve `[Type.extensionName]` at all, so treat extension
   functions as just functions.
   Rejected because:
     * extensions in Kotlin are first-class entities, and from a call-site perspective they look like regular functions.
@@ -574,7 +574,7 @@ There were a few alternatives considered but were rejected because of various re
     * The semantics of referring to members are the same as in Kotlin (including inheritors)
 * [Scala](https://docs.scala-lang.org/overviews/scaladoc/for-library-authors.html)
     * Extensions are defined similar to Kotlin
-    * Referring to extensions is possible only by top-level `functionName` without relying on receiver
+    * Referring to extensions is possible only by top-level `[[extensionName]]` without relying on receiver
 
 ```scala
 class Point(val x: Int)
@@ -759,8 +759,8 @@ fun List<Long>.listExtension() {}
 
 ### Extension and member with the same name
 
-If an extension has the same name as a member, it’s possible to refer to an extension only via `[functionName]`, as
-`[Type.functionName]` will always prefer members during link resolution:
+If an extension has the same name as a member, it’s possible to refer to an extension only via `[extensionName]`, as
+`[Type.extensionName]` will always prefer members during link resolution:
 
 ```kotlin
 interface Something {
@@ -776,7 +776,7 @@ fun Something.doWork(argument: String) {}
 fun testSomething() {}
 ```
 
-It's still possible to distinguish links to member and extensions in a form of `[Type.functionName]` using import
+It's still possible to distinguish links to member and extensions in a form of `[Type.extensionName]` using import
 aliases:
 
 ```kotlin
@@ -801,9 +801,9 @@ fun testSomething() {}
 
 It’s possible to refer to declarations both absolutely (using fully qualified names) and relatively (based on scope and
 imports where the link is defined).
-Though, with links to extensions with `Type` like `[Type.functionName]` it’s possible to refer via fully qualified name
+Though, with links to extensions with `Type` like `[Type.extensionName]` it’s possible to refer via fully qualified name
 only for `Type`.
-While when using `[functionName]` fully qualified name is possible only for `functionName`.
+While when using `[extensionName]` fully qualified name is possible only for `extensionName`.
 
 ```kotlin
 package com.example
