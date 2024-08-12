@@ -4,7 +4,7 @@
 * **Author**: Oleg Yukhnevich
 * **Status**: Submitted
 * **Target issue**: [dokka/3555](https://github.com/Kotlin/dokka/issues/3555)
-* **Discussion**: TBD
+* **Discussion**: [KEEP-385](https://github.com/Kotlin/KEEP/issues/385)
 
 ## Summary
 
