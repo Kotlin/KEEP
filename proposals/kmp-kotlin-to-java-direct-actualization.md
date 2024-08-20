@@ -7,20 +7,31 @@
 * **Status**: Submitted
 * **Related YouTrack issue**: [KT-67202](https://youtrack.jetbrains.com/issue/KT-67202)
 
+**Definition.** ClassId is class identifier that consists of three independent components: the package where class is declared in, names of all outer classes (if presented), and the name of the class itself.
+In Kotlin, it could be represented as the data class:
+```kotlin
+data class ClassId(val package: String, val outerClasses: List<String>, val className: String)
+```
+
+Two ClassIds are equal if their respective components are equal.
+Example: `ClassId("foo.bar", emptyListOf(), "baz")` and `ClassId("foo", listOf("bar"), "baz")` are different ClassIds
+
+## Introduction
+
 In Kotlin, there are **two ways** to write an actual declaration for the existing expect declaration.
-You can either write an actual declaration with the same FQN as its appropriate expect and mark the appropriate declarations with `expect` and `actual` keywords (From now on, we will call such actualizations _direct actualizations_),
+You can either write an actual declaration with the same ClassId as its appropriate expect and mark the appropriate declarations with `expect` and `actual` keywords (From now on, we will call such actualizations _direct actualizations_),
 or you can use `actual typealias`.
 
 **The first way.**
-_direct actualization_ has a nice property that two declarations share the same FQN.
+_direct actualization_ has a nice property that two declarations share the same ClassId.
 It's good because when users move code between common and platform fragments, their imports stay unchanged.
 But _direct actualization_ has a "downside" that it doesn't allow declaring actuals in external binaries (jars or klibs).
 In other words, expect declaration and its appropriate actual must be located in the same "compilation unit".
 [Below](#direct-actualization-forces-expect-and-actual-to-be-in-the-same-compilation-unit) we say why, in fact, it's not a "downside" but a "by design" restriction that reflects the reality.
 
 **The second way.**
-Contrary, `actual typealias` forces users to change the FQN of the actual declaration.
-(An attempt to specify the very same FQN in the `typealias` target leads to `RECURSIVE_TYPEALIAS_EXPANSION` diagnostic)
+Contrary, `actual typealias` forces users to change the ClassId of the actual declaration.
+(An attempt to specify the very same ClassId in the `typealias` target leads to `RECURSIVE_TYPEALIAS_EXPANSION` diagnostic)
 But we gain the possibility to declare expect and actual declarations in different "compilation units".
 
 > [!NOTE]
@@ -29,7 +40,7 @@ But we gain the possibility to declare expect and actual declarations in differe
 
 |                                                                     | _Direct actualization_ | `actual typealias` |
 | ------------------------------------------------------------------- | ---------------------- | ------------------ |
-| Do expect and actual share the same FQN?                            | Yes                    | No                 |
+| Do expect and actual share the same ClassId?                        | Yes                    | No                 |
 | Can expect and actual be declared in different "compilation units"? | No                     | Yes                |
 
 While `actual typealias` already allows actualizing Kotlin expect declarations with Java declarations (Informally: Kotlin-to-Java actualization), _direct actualization_ only allows Kotlin-to-Kotlin actualizations.
@@ -37,60 +48,71 @@ The idea of this proposal is to support _direct actualization_ for Kotlin-to-Jav
 
 ## Motivation
 
-As stated in the introduction, unlike `actual typealias`, _direct actualization_ allows to keep the same FQNs for common and platform declarations in case of Kotlin-to-Java actualization.
+As stated in the [introduction](#introduction), unlike `actual typealias`, _direct actualization_ allows to keep the same ClassIds for common and platform declarations in case of Kotlin-to-Java actualization.
 
 One popular use case for Kotlin-to-Java actualization is KMP-fying existing Java libraries.
-For library authors, the possibility to keep the same FQNs between common and platform declarations provides the following gains:
+For library authors, the possibility to keep the same ClassIds between common and platform declarations provides the following gains:
 
-- Since it avoids the creation of two FQNs that refer to the same object, it avoids the confusion on which FQN should be used
+- Since it avoids the creation of two ClassIds that refer to the same object, it avoids the confusion on which ClassId should be used
 - It simplifies the migration of client code from Java library to KMP version of the same library (no need to replace imports)
-- It's especially cumbersome to have duplicated FQNs for an entire API surface
+- It's especially cumbersome to have duplicated ClassIds for an entire API surface
 - Later replacing the Java actualization with a Kotlin `actual` class requires keeping the `typealias` in place indefinitely
 
 ## The proposal
 
 **(1)** Introduce `kotlin.jvm.KotlinActual` annotation in Kotlin stdlib
 ```
-package kotlin.jvm;
-
-@Target({ElementType.METHOD, ElementType.TYPE})
-@Retention(RetentionPolicy.SOURCE)
-@kotlin.SinceKotlin(version = "2.1")
-public @interface KotlinActual {
-}
-
-// Or in Kotlin
 package kotlin.jvm
 
-@Target(AnnotationTarget.CLASS, AnnotationTarget.FUNCTION)
+@Target(AnnotationTarget.CLASS, AnnotationTarget.FUNCTION, AnnotationTarget.CONSTRUCTOR)
 @Retention(AnnotationRetention.SOURCE)
 @SinceKotlin("2.1")
 public annotation class KotlinActual
 ```
 
--   The annotation is intended to be used on Java declarations
--   **Any usage** of the annotation in Kotlin will be prohibited (even as type, even as reference)
--   The annotation in Java will function similarly to the `actual` keyword in Kotlin
--   It doesn't make sense to mark the annotation with `@ExperimentalMultiplatform` since `OPT_IN_USAGE_ERROR` is not reported in Java
--   `ElementType.FIELD` annotation target is not specified by design. It's not possible to actualize Kotlin properties with Java fields
--   If Kotlin stdlib infrastructure allows it, we should prefer to declare the annotation in Java programming language rather than Kotlin.
-    (because the annotation is going to be used to annotate Java sources)
-    (not a hard requirement)
+- The annotation is intended to be used on Java declarations
+- **Any usage** of the annotation in Kotlin will be prohibited (even as type, even as reference)
+- The annotation in Java will function similarly to the `actual` keyword in Kotlin
+- It doesn't make sense to mark the annotation with `@ExperimentalMultiplatform` since `OPT_IN_USAGE_ERROR` is not reported in Java
+- `ElementType.FIELD` annotation target is not specified by design. It's not possible to actualize Kotlin properties with Java fields
 
-**(2)** If Kotlin expect and Java class have the same FQN, Kotlin compiler should consider Kotlin expect class being actualized with the appropriate Java class.
+**(2)** If Kotlin expect and Java class have the same ClassId, Kotlin compiler should consider Kotlin expect class being actualized with the appropriate Java class.
 In other words, support _direct actualization_ for Kotlin-to-Java actualization.
 
 **(3)** Kotlin compiler should require using `@KotlinActual` on the Java top level class and its respective members.
+The rules must be similar to the one with `actual` keyword requirement in Kotlin-to-Kotlin actualization.
 
 **(4)** If `@KotlinActual` is used on Java class members that don't have respective Kotlin expect members, it should be reported by the Kotlin compiler.
+The rules must be similar to the one with `actual` keyword requirement in Kotlin-to-Kotlin actualization.
 Please note that Kotlin can only detect excessive `@KotlinActual` annotations on methods of the classes that actualize some existing Kotlin expect classes.
 Since Kotlin doesn't traverse all Java files, it's not possible to detect excessive `@KotlinActual` annotation on the top-level Java classes for which a respective Kotlin expect class doesn't exist.
 For the same reason, it's not possible to detect excessive `@KotlinActual` annotation on members of such Java classes.
 For these cases, it's proposed to implement Java IDE inspection.
 
+**Worth noting.**
+1. Kotlin top level functions cannot be actualized in any way by Java.
+2. Kotlin expect classes are not capable of expressing Java static members [KT-29882](https://youtrack.jetbrains.com/issue/KT-29882)
+
+Example of a valid Kotlin-to-Java direct actualization:
+```kotlin
+// MODULE: common
+expect class Foo() {
+    fun foo()
+}
+
+// MODULE: JVM
+@kotlin.jvm.KotlinActual public class Foo {
+    @kotlin.jvm.KotlinActual public Foo() {}
+    @kotlin.jvm.KotlinActual public void foo() {}
+
+    @Override
+    public String toString() { return "Foo"; } // No @KotlinActual is required
+}
+```
+
 ## actual keyword is a virtue
 
-An alternative suggestion is to match only by FQNs, and to drop `actual` keyword in Kotlin-to-Kotlin actualizations, and to drop `@KotlinActual` annotation in Kotlin-to-Java actualization.
+An alternative suggestion is to match only by ClassIds, and to drop `actual` keyword in Kotlin-to-Kotlin actualizations, and to drop `@KotlinActual` annotation in Kotlin-to-Java actualization.
 
 The suggestion was rejected because we consider `actual` keyword being beneficial for readers, much like the `override` keyword.
 
@@ -120,7 +142,7 @@ The reporting may be improved in future versions of Kotlin.
 
 ## Direct actualization forces expect and actual to be in the same compilation unit
 
-In the introduction, we mentioned that _direct actualization_ forces expect and actual to be in the same "compilation unit".
+In the [introduction](#introduction), we mentioned that _direct actualization_ forces expect and actual to be in the same "compilation unit".
 It's an implementation limitation that we believe is beneficial, because it reflects the reality.
 
 It's a common pattern for libraries to use a unique package prefix.
@@ -144,7 +166,7 @@ Given frontend technical restriction, it's proposed, to implement Kotlin-to-Java
 
 ## Alternatives considered
 
-- Implicitly match Kotlin-to-Java with the same FQN if some predefined stdlib annotation is presented on the expect declaration
+- Implicitly match Kotlin-to-Java with the same ClassId if some predefined stdlib annotation is presented on the expect declaration
 - `actual typealias` in Kotlin without target in RHS
 
 See [actual keyword is a virtue](#actual-keyword-is-a-virtue) to understand why alternatives were discareded.
