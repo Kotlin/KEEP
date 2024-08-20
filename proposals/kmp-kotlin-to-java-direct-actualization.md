@@ -82,6 +82,12 @@ In other words, support _direct actualization_ for Kotlin-to-Java actualization.
 
 **(3)** Kotlin compiler should require using `@KotlinActual` on the Java top level class and its respective members.
 
+**(4)** If `@KotlinActual` is used on Java class members that don't have respective Kotlin expect members, it should be reported by the Kotlin compiler.
+Please note that Kotlin can only detect excessive `@KotlinActual` annotations on methods of the classes that actualize some existing Kotlin expect classes.
+Since Kotlin doesn't traverse all Java files, it's not possible to detect excessive `@KotlinActual` annotation on the top-level Java classes for which a respective Kotlin expect class doesn't exist.
+For the same reason, it's not possible to detect excessive `@KotlinActual` annotation on members of such Java classes.
+For these cases, it's proposed to implement Java IDE inspection.
+
 ## actual keyword is a virtue
 
 An alternative suggestion is to match only by FQNs, and to drop `actual` keyword in Kotlin-to-Kotlin actualizations, and to drop `@KotlinActual` annotation in Kotlin-to-Java actualization.
