@@ -119,7 +119,7 @@ The suggestion was rejected because we consider `actual` keyword being beneficia
 -   **Misspelling prevention.**
     The explicit `actual` keyword (or `@KotlinActual` annotation) helps against misspelling
     (esp. when Kotlin supports expect declarations with bodies [KT-20427](https://youtrack.jetbrains.com/issue/KT-20427))
--   **Explicit intend.**
+-   **Explicit intent.**
     Declarations may be written solely to fullfil the "expect requirement" but the declarations may not be directly used by the platform code.
     The `actual` keyword (or `@KotlinActual` annotation) explictly signals the intention to actualize member rather than accidentally defining a new one.
     (too bad that members of `actual typealias` break the design in this place)
@@ -146,6 +146,10 @@ If users want to keep their JVM part free of Kotlin, they have to be accurate an
 [The proposal](#the-proposal) doesn't cover that case well since the design would become more complicated.
 The current proposal is a small incremental addition to the existing model, and it doesn't block us from covering the second case later if needed.
 
+`KotlinActual` annotation has `SOURCE` retention by design.
+This way, the annotation is least invasive for the Java sources, and it should be enough to have compile-only dependency on `kotlin-annotations-jvm.jar`.
+Which doesn't contradict the "pure Java project" case.
+
 ## Kotlin-to-Java expect-actual incompatibilities diagnostics reporting
 
 **Invariant 1.** Kotlin compiler cannot report compilation errors in non-kt files.
@@ -165,8 +169,8 @@ It's a common pattern for libraries to use a unique package prefix.
 We want people to stick to that pattern.
 _Direct actualization_ for external declarations encourages wrong behavior.
 
-Besides:
--   If it were possible to write an expect declaration for the existing JVM library via _direct actualization_ mechanism, it would lead to the "split package" problem in JPMS.
+-   Imagine that it is possible to write an expect declaration for the existing JVM library via _direct actualization_ mechanism.
+    Users may as easily decide to declare non-expect declarations in the same package, which leads to the "split package" problem in JPMS.
 -   Test case: there is an existing JVM library A.
     Library B is a KMP wrapper around library A.
     Library B provides expect declarations for the library A.
