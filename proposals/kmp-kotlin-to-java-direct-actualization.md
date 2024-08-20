@@ -60,7 +60,7 @@ For library authors, the possibility to keep the same ClassIds between common an
 
 ## The proposal
 
-**(1)** Introduce `kotlin.jvm.KotlinActual` annotation in `kotlin-annotations-jvm.jar`
+**(1)** Introduce `kotlin.annotations.jvm.KotlinActual` annotation in `kotlin-annotations-jvm.jar`
 ```java
 package kotlin.annotations.jvm;
 
