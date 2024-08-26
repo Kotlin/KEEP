@@ -4,7 +4,7 @@
 * **Author**: Vadim Mishenev
 * **Status**: Submitted
 * **Issues**: [dokka/#3451](https://github.com/Kotlin/dokka/issues/3451), [dokka/#3179](https://github.com/Kotlin/dokka/issues/3179), [dokka/#3334](https://github.com/Kotlin/dokka/issues/3334) 
-* **Discussion**: [#TBD](https://github.com/Kotlin/KEEP/issues/0)
+* **Discussion**: [#389](https://github.com/Kotlin/KEEP/issues/389)
 
 # Summary
 
