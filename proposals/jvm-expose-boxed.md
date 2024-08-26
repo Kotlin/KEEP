@@ -21,6 +21,7 @@ We propose modifications to how value classes are exposed in JVM, with the goal 
 * [Expose boxed constructors](#expose-boxed-constructors)
   * [Serialization](#serialization)
   * [No argument constructors](#no-argument-constructors)
+  * [JVM value classes](#jvm-value-classes)
   * [Other design choices](#other-design-choices)
 * [Expose operations and members](#expose-operations-and-members)
   * [Other design choices](#other-design-choices-1)
@@ -80,10 +81,6 @@ Apart from the particular problems, we set the following cross-cutting goals for
 **Ensure that invariants are never broken**: especially in the "frontier" between Kotlin and Java, we need to provide an API that does all the corresponding checks. We are OK with introducing some performance penalties when using the API from Java, but no additional penalties should be paid if the class is used in Kotlin.
 
 **Compatibility with current compilation scheme**: if we alter the way inline classes are currently compiled in a non-backward compatible way, we could create a huge split in the community. Or even worse, we will end up supporting two different schemes in the compiler.
-
----
-
-It is a **non-goal** for this KEEP to decide what may happen in a world in which value classes are part of the JVM platform ("post-Valhalla") and potentially do not need inlining and boxing. Any future KEEP touching those parts of the language should also consider its interactions with this proposal.
 
 ## Expose boxed constructors
 
@@ -149,6 +146,10 @@ class PositiveInt {
   public <init>(): void = <init>(0)
 }
 ```
+
+### JVM value classes
+
+It is not a goal of this KEEP to decide what should happen with Kotlin value classes once the JVM exposes that feature ([JEP-401](https://openjdk.org/jeps/401)). The compilation scheme presented above follows the guidelines for _Migration of existing classes_, so it should be possible to neatly migrate to a JVM value class without further changes.
 
 ### Other design choices
 
