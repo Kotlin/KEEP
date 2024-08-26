@@ -18,7 +18,7 @@ We propose modifications to how value classes are exposed in JVM, with the goal 
 * [Table of contents](#table-of-contents)
 * [Motivation](#motivation)
   * [Design goals](#design-goals)
-* [Expose factory method](#expose-factory-method)
+* [Expose boxed constructors](#expose-boxed-constructors)
   * [Serialization](#serialization)
   * [No argument constructors](#no-argument-constructors)
   * [Other design choices](#other-design-choices)
@@ -38,7 +38,7 @@ We propose modifications to how value classes are exposed in JVM, with the goal 
 }
 ```
 
-In order to keep its lightweight nature, the Kotlin compiler tries to use the _unboxed_ variant -- in the case above, an integer itself -- instead of its _boxed_ variant -- the `PositiveInt` class -- whenever possible. To prevent clashes between different overloads, the names of some of those functions must be _mangled_, that is, transformed in a specific way. The mangled functions operate directly on the underlying unboxed representation, with additional checks coming from the `init` block. The [inline classes](https://github.com/Kotlin/KEEP/blob/master/proposals/inline-classes.md) KEEP defines the whole compilation scheme, for this example is enough to know that `constructor-impl` is where the `init` block ends up living.
+In order to keep its lightweight nature, the Kotlin compiler tries to use the _unboxed_ variant — in the case above, an integer itself — instead of its _boxed_ variant — the `PositiveInt` class — whenever possible. To prevent clashes between different overloads, the names of some of those functions must be _mangled_, that is, transformed in a specific way. The mangled functions operate directly on the underlying unboxed representation, with additional checks coming from the `init` block. The [inline classes](https://github.com/Kotlin/KEEP/blob/master/proposals/inline-classes.md) KEEP defines the whole compilation scheme, for this example is enough to know that `constructor-impl` is where the `init` block ends up living.
 
 ```kotlin
 fun PositiveInt.add(other: PositiveInt): PositiveInt =
@@ -85,9 +85,22 @@ Apart from the particular problems, we set the following cross-cutting goals for
 
 It is a **non-goal** for this KEEP to decide what may happen in a world in which value classes are part of the JVM platform ("post-Valhalla") and potentially do not need inlining and boxing. Any future KEEP touching those parts of the language should also consider its interactions with this proposal.
 
-## Expose factory method
+## Expose boxed constructors
 
-The [current compilation scheme](https://github.com/Kotlin/KEEP/blob/master/proposals/inline-classes.md#inline-classes-abi-jvm) exposes the constructor of the boxed class as _synthetic_, which makes it unavailable from Java. Note that this constructor does _not_ execute the `init` block, so it is just boxing the value. We propose to introduce a static factory method called `of` that executes any prerequisites and builds the value, with the same visibility as the constructor of the value class.
+The [current compilation scheme](https://github.com/Kotlin/KEEP/blob/master/proposals/inline-classes.md#inline-classes-abi-jvm) exposes the constructor of the boxed class as _synthetic_, which makes it unavailable from Java. This constructor does _not_ execute the `init` block, it just boxes the value.
+
+Note that when boxing needs to occur, the compilation scheme does not call this constructor directly. Rather, it uses the static `box-impl` method for that type.
+
+```kotlin
+fun positiveIntSingleton(number: PositiveInt): List<PositiveInt> = listOf(number)
+// is "translated" into the following code
+fun positiveIntSingleton-3bd7(number: Int): List<PositiveInt> = listOf(PositiveInt.box-impl(number))
+```
+
+We propose a new compilation scheme which _replaces_ the previous one with respect to constructors.
+
+- The previous synthetic constructor, which does not execute the `init` block, now takes an additional `BoxingConstructorMarker` argument. This argument is always passed as `null`, but allows us to differentiate the constructor from other (like `DefaultConstructorMarker`). The implementation of `box-impl` is updated to call this constructor.
+- We get a new constructor with the same visibility in the constructor as the one defined in the value class. This constructor is exposed to Java, and should execute any `init` block; in the current compilation scheme, this amounts to calling `constructor-impl` over the input value.
 
 ```kotlin
 @JvmInline value class PositiveInt(val number: Int) {
@@ -96,19 +109,21 @@ The [current compilation scheme](https://github.com/Kotlin/KEEP/blob/master/prop
 
 // compiles down to
 class PositiveInt {
-  public <init>(Int): void
-  public static constructor-impl(Int): Int  // executes the 'init' block
-  // and others
+  private synthetic <init>(number: Int, marker: BoxingConstructorMarker)
 
-  public static of(number: Int): PositiveInt =
-    <init>(constructor-impl(number))
+  public <init>(number: Int): void = <init>(constructor-impl(number), null)
+
+  public static constructor-impl(Int): Int  // executes the 'init' block
+  public static box-impl(number: Int): PositiveInt = <init>(number, null)
+  // and others
 }
 ```
 
-We think this is the right choice for a couple of reasons:
+Note that this change is binary compatible with previous users of this code:
 
-1. Using `of` as a factory method is well-known in the Java ecosystem (for example, to create collections);
-2. It is binary compatible with previous users of this code.
+- The previous compilation scheme never calls the constructor directly; it always uses `box-impl` if boxing is required in the Kotlin side. But the signature of `box-impl` is not changed, only its implementation.
+- Java users were not able to call the constructor, since it was marked as synthetic (and private). So exposing the constructor is compatible.
+- In the scenario in which the constructor was called directly (for example, by reflection), the code is still correct. There might be some performance hit, since now the `init` block is executed, but this is not a big concern.
 
 ### Serialization
 
@@ -124,15 +139,22 @@ Frameworks like Java Persistence require classes to have a [default no argument 
 }
 ```
 
-generates both the factory method `PositiveInt.of(n: Int)` and the no argument constructor `PositiveInt()` with the same visibility as the one defined in the class.
+exposes both the constructor taking a single integer, but also another one without the optional argument.
 
-Note that exposing this constructor directly is OK, as we expect the given default value to satisfy any requirement in the `init` block.
+```kotlin
+class PositiveInt {
+  private synthetic <init>(number: Int, marker: BoxingConstructorMarker)
+
+  public <init>(number: Int): void = <init>(constructor-impl(number), null)
+  public <init>(): void = <init>(0)
+}
+```
 
 ### Other design choices
 
-**Put it under a flag or annotation**, in other words, only introduce the factory method when some annotation `@JvmExposeFactory` or compiler flag is present. In this case, we could not find a realistic scenario where this expose would be counter-productive; in the worst case in which you expose the factory method but not operations you just have a way to create useless values.
+**Put it under a flag or annotation**, in other words, move to the new generation scheme only when some annotation `@JvmExposeFactory` or compiler flag is present. In this case, we could not find a realistic scenario where this expose would be counter-productive; in the worst case in which you expose the new constructor but not operations you just have a way to create useless values.
 
-**Exposing a constructor directly**: instead of using a factory method, `PositiveInt.of(3)`, expose a constructor, `PositiveInt(3)`, also when no default value is given. The problem here is backward compatibility: the current compilation scheme already defines a constructor, which does _not_ execute the `init` block. Changing the behavior is possible -- after all, we just add more checks -- but this may have a significant performance impact.
+**Exposing a factory method**: instead of exposing the constructor, use `PositiveInt.of(3)`. This option is nowadays quite idiomatic in the Java world (for example, in `List.of(1, 2)`), but not as much as constructors. Using a factory method also has the drawback of possible clashes for the name of the factory method, which we avoid when using the constructor.
 
 ## Expose operations and members
 
