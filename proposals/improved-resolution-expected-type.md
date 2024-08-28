@@ -132,9 +132,9 @@ With this design, it is always clear which is the sole type from which we obtain
 
 ## Technical details
 
-We introduce an additional scope, present both in type and candidate resolution, which always depends on a type `T` (we say we **propagate `T`**). This scope contains the static and companion object callables of the aforementioned type `T`, as defined by the [specification](https://kotlinlang.org/spec/overload-resolution.html#call-with-an-explicit-type-receiver).
+We introduce an additional scope, present both in type and candidate resolution, which always depends on a type `T` (we say we **propagate `T`**). This scope contains the static and companion object callables of the aforementioned type `T`, as defined by the [specification](https://kotlinlang.org/spec/overload-resolution.html#call-with-an-explicit-type-receiver). In platforms that allow defining static callables directly on types, like the JVM, those are included too.
 
-This scope has the lowest priority and _should keep_ that lowest priority even after further extensions to the language. The mental model is that the expected type is only use for resolution purposes after any other possibility has failed.
+This scope has the lowest priority (even lower than that of default and star imports) and _should keep_ that lowest priority even after further extensions to the language. The mental model is that the expected type is only use for resolution purposes after any other possibility has failed.
 
 This scope is **not** propagated to children of the node in question. For example, when resolving `val x: T = f(x, y)`, the additional scope is present when resolving `f`, but not when resolving `x` and `y`. After all, `x` and `y` no longer have an expected type `T`.
 
@@ -168,7 +168,7 @@ val unknown: () -> Problem = {
 For other statements and expressions, we have the following rules. Here "known type of `x`" includes any additional typing information derived from smart casting.
 
 * _Assignments_: in `x = e`, the known type of `x` is propagated to `e`,
-* _`when` expression with subject_: in `when (x) { t -> ... }`, then known type of `x` is propagated to `t`, when `c` is an expression (that is, not of the form `is S`, `in l`, or their negations),
+* _`when` expression with subject_: in `when (x) { t -> ... }`, then known type of `x` is propagated to `t`, when `t` is an expression (that is, not of the form `is S`, `in l`, or their negations),
     * For [guards](https://github.com/Kotlin/KEEP/blob/guards/proposals/guards.md) `when (x) { t if c -> ... }`, the type is propagated to `t`, but not to the guard `c`,
 * _Branching_: if type `T` is propagated to an expression with several branches, the type `T` is propagated to each of them,
     * _Conditionals_, either `if` or `when`,
