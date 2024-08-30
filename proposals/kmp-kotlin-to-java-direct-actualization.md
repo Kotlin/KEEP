@@ -56,7 +56,7 @@ For library authors, the possibility to keep the same ClassIds between common an
 - Since it avoids the creation of two ClassIds that refer to the same object, it avoids the confusion on which ClassId should be used
 - It simplifies the migration of client code from the Java library to a KMP version of the same library (no need to replace imports)
 - It avoid duplication of potentially entire API surface, which can otherwise become cumbersome
-- Later replacing the Java actualization with a Kotlin `actual` class requires keeping the `typealias` in place indefinitely
+- Later replacing the Java actualization with a Kotlin `actual` class is possible without keeping the previous `actual typealias` in place indefinitely
 
 ## The proposal
 
