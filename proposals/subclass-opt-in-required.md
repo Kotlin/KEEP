@@ -2,7 +2,9 @@
 
 * **Type**: Design proposal
 * **Author**: Vsevolod Tolstopyatov
-* **Contributors**: Mikhail Glukhikh, Vsevolod Tolstopyatov, Roman Elizarov, Ilya Gorbunov
+* **Contributors**: Mikhail Glukhikh, Vsevolod Tolstopyatov, Roman Elizarov, Ilya Gorbunov, Anastasia Pikalova,
+  Stanislav Ruban
+
 * **Status**: Implemented in Kotlin 1.8.0 as experimental
 * **Discussion**: [KEEP-320](https://github.com/Kotlin/KEEP/issues/320) 
 
@@ -101,12 +103,16 @@ Other alternatives are:
 
  * `RequireInheritanceOptiIn`
  * `SubclassesRequireOptIn`
+ * `SubclassRequiresOptIn`
+ * `InheritanceRequiresOptIn`
  * Various attempts to leverage the notion of `sealed` and `open`: 
     * `SemiOpen` and `SemiSealed`
     * `OptInToOpen` and `OptInToSubclass`
 
 `SubclassOptInRequired` was chosen as the most appropriate and likely the most familiar for developers 
 to grasp from at first glance.
+The name indicates that subclasses must opt in. 
+`Required` highlights this obligation more effectively than `Requires`.
 
 ### SubclassOptInRequired marker contagiousness (lexical scopes)
 
@@ -184,8 +190,76 @@ may be used within its body or signatures (`UnstableApi` types or overridden met
 between
 opting-in into extension and opting-in into overall uses.
 
+### Design downsides
+Although one of the goals of this proposal is consistency with the existing `OptIn` API,
+`SubclassOptInRequired` doesn't support passing annotation arguments, unlike experimental annotations.
+For example:
+```kotlin
+@RequiresOptIn
+annotation class ExperimentalAPI(val message: String)
+
+@ExperimentalAPI("Some message")
+class ExperimentalA
+
+// Unable to set 'message'
+@SubclassOptInRequired(ExperimentalAPI::class)
+open class ExperimentalB
+```
+It's allowed to pass a custom message as an annotation argument in `ExperimentalAPI`,
+but this is not possible with `SubclassOptInRequired`.
+This design limitation is considered minor
+because no significant use cases or valid scenarios for annotation arguments in experimental annotations have been identified.
+
+### Alternative approaches
+1. `@RequiresOptIn` injects a new `scope` parameter with the default value `ALL` to an experimental annotation.
+    ```kotlin
+    @RequiresOptIn // injects 'scope' param
+    annotation class Ann
+    
+    @Ann(scope = Scope.Inheritance) 
+    open class Foo
+    ```
+    The design was rejected due to concerns about preserving source compatibility with explicitly declared and injected parameters.
+
+
+2. Users can define a special annotation parameter named `scope`.
+    ```kotlin
+    @RequiresOptIn
+    annotation class Ann(val scope: Scope = Scope.All)
+    
+    @Ann(scope = Scope.Inheritance)
+    open class Foo
+    ```
+    The design was rejected because it creates an implicit contract between the compiler logic and the parameter names,
+    leading to potential fragility dependencies.
+
+
+3. Pass annotation instances as arguments to the `@SubclassOptInRequired` annotation.
+    ```kotlin
+    @RequiresOptIn
+    annotation class Ann(val message: String)
+    
+    @SubclassOptInRequired(@Ann("message"))
+    open class Foo
+    ```
+   The design was rejected because the `Annotation` type, which is common to all annotations,
+    cannot be used as an annotation parameter type.
+
+
+4. Add the `scope` parameter to the `RequiresOptIn` annotation.
+    ```kotlin
+    @RequiresOptIn(scope = Scope.All)
+    annotation class PoisonAll(val message: String)
+    
+    @RequiresOptIn(scope = Scope.Inheritance)
+    annotation class PoisonOnlySubclasses(val message: String)
+    ```
+   This design was rejected because it limits the ability to use the same experimental annotation marker for different scopes:
+   either marking the entire API as unstable or marking only inheritance as unstable.   
+    
+
 ### Status and timeline
 
 The feature is available since Kotlin 2.0.0 as experimental (it itself requires an opt-in
 into `ExperimentalSubclassOptIn`)
-and is expected to be promoted to stable in Kotlin 2.1.0.
+and stable in Kotlin 2.1.0.
