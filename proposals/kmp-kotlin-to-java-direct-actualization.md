@@ -70,11 +70,12 @@ public @interface KotlinActual {
 }
 ```
 
-- The annotation is intended to be used on Java declarations
-- **Any usage** of the annotation in Kotlin will be prohibited (even as a type, even as a reference)
-- The annotation in Java will function similarly to the `actual` keyword in Kotlin
-- It doesn't make sense to mark the annotation with `@ExperimentalMultiplatform` since `OPT_IN_USAGE_ERROR` is not reported in Java
-- `ElementType.FIELD` annotation target is not specified by design. It's not possible to actualize Kotlin properties with Java fields
+-   The annotation is intended to be used on Java declarations
+-   **Any usage** of the annotation in Kotlin will be prohibited (even as a type, even as a reference).
+    As if `KotlinActual` was annotated with `@kotlin.Deprecated(level = DeprecationLevel.ERROR)`
+-   The annotation in Java will function similarly to the `actual` keyword in Kotlin
+-   It doesn't make sense to mark the annotation with `@ExperimentalMultiplatform` since `OPT_IN_USAGE_ERROR` is not reported in Java
+-   `ElementType.FIELD` annotation target is not specified by design. It's not possible to actualize Kotlin properties with Java fields
 
 **(2)** If Kotlin expect and Java class have the same ClassId, Kotlin compiler should consider Kotlin expect class being actualized with the appropriate Java class.
 In other words, support _direct actualization_ for Kotlin-to-Java actualization.
