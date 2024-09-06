@@ -54,7 +54,8 @@ This KEEP addresses many of these problems by considering explicit expected type
 * conditions on `when` expressions with subject,
 * type checks (`is`),
 * `return`, both implicit and explicit,
-* equality checks (`==`, `!=`).
+* equality checks (`==`, `!=`),
+* assignments.
 
 ### The issue with overloading
 
@@ -115,11 +116,30 @@ class Duration {
 val d: Duration = 1.seconds
 ```
 
-#### Intersection types
+#### Scopes from supertypes
 
-Sometimes the type to be propagated is an [intersection type](https://kotlinlang.org/spec/type-system.html#intersection-types); for example, when dealing with smart casting. In that case, prior to obtaining the static and companion object scopes, we should perform [type approximation](https://kotlinlang.org/spec/type-system.html#type-approximation), but only with the subset of intersected types which is _not_ a type parameter.
+When supertypes are involved, we may have more than one static and companion object scope to choose from.
 
-For example, in the following code, at the `d == 1.seconds` expression, the known type of `d` is `T & Any & Duration`. When approximating, the `T` is dropped, and the intersection becomes the trivial `Duration`.
+```kotlin
+interface A {
+  companion object {
+    val Foo: A = ...
+  }
+}
+
+class B: A { }
+
+// now when we match on a B...
+when (b) {
+  Foo -> ...  // is Foo in scope?
+}
+```
+
+The current proposal answers "yes" to the question in the code above. We look at the static and companion object scopes of the type and every supertype. There are two reasons for this decision.
+
+The first one is that enables _safe refactoring_. Imagine that you have some code in which you know that a variable is of type 'A', so when you use `when` on it you can use `Foo` directly. However, because of changes on your code, now at the point in which `when` is performed, you know more about that variable: that the type is 'B'. However, if we don't look at the supertypes, the code you had written becomes incorrect, since 'Foo' would no longer be found. This breaks the basic expectation of subtyping in which you can always replace of value of a type with one of a subtype.
+
+The second reason is that it allows us to give a clean behavior for [intersection type](https://kotlinlang.org/spec/type-system.html#intersection-types). Although these types are not denotable by the developer, the arise often in combination with smart casting. For example, in the following code, at the `d == 1.seconds` expression, the known type of `d` is `T & Any & Duration`. Looking at all supertypes means in particular looking at `Duration`, which allows us to resolve the call to `seconds`.
 
 ```kotlin
 fun <T> foo(d: T): Int = when {
@@ -128,19 +148,21 @@ fun <T> foo(d: T): Int = when {
 }
 ```
 
-With this design, it is always clear which is the sole type from which we obtain the companion object. This should cover the common case in which the smartcasted type is a subtype of the original one. Another possibility is to check all the companion objects of the intersected types.
+One downside of this extended search is potential performance problems. Fortunately, most Kotlin code have a relatively shallow type hierarchy, so this should not be a problem. Our preliminary benchmarks against the Kotlin and IntelliJ codebases show no performance degradation.
 
 ## Technical details
 
-We introduce an additional scope, present both in type and candidate resolution, which always depends on a type `T` (we say we **propagate `T`**). This scope contains the static and companion object callables of the aforementioned type `T`, as defined by the [specification](https://kotlinlang.org/spec/overload-resolution.html#call-with-an-explicit-type-receiver). In platforms that allow defining static callables directly on types, like the JVM, those are included too.
+We introduce an additional scope, present both in type and candidate resolution, which always depends on a type `T` (we say we **propagate `T`**). This scope contains the static and companion object callables of the aforementioned type `T`and its supertypes, as defined by the [specification](https://kotlinlang.org/spec/overload-resolution.html#call-with-an-explicit-type-receiver). In platforms that allow defining static callables directly on types, like the JVM, those are included too.
 
 This scope has the lowest priority (even lower than that of default and star imports) and _should keep_ that lowest priority even after further extensions to the language. The mental model is that the expected type is only use for resolution purposes after any other possibility has failed.
 
 This scope is **not** propagated to children of the node in question. For example, when resolving `val x: T = f(x, y)`, the additional scope is present when resolving `f`, but not when resolving `x` and `y`. After all, `x` and `y` no longer have an expected type `T`.
 
+There is no relative precedence between the members coming from the type `T` and those coming from their supertypes. For example, if two of the involved types define a property with the same name in the companion object, none of them hides the other, which means it leads to an ambiguity error.
+
 ### Additional candidate resolution scope
 
-We propagate `T` to an expression `e` whenever the specification states _"the type of `e` must be a subtype of `T`"_. 
+We propagate `T` to an expression `e` whenever the specification states _"the type of `e` must be a subtype of `T`"_.
 
 For declarations, a type `T` is propagated to the body, which may be an expression or a block. Note that we only propagate types given _explicitly_ by the developer.
 
