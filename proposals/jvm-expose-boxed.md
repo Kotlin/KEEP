@@ -1,4 +1,4 @@
-# Expose boxed inline value classes
+# Expose boxed inline value classes in JVM
 
 * **Type**: Design proposal
 * **Author**: Alejandro Serrano
@@ -173,7 +173,7 @@ The name of the boxed variant coincides with the name given in the Kotlin code u
 
 > [!NOTE]
 > There is a corner case in which `@JvmExposeBoxed` with a name is always needed: when the function has no argument which is a value class, but returns a value class.
-> In that case the compilation scheme performs no mangling, so not renaming the boxed version results in a platform clash.
+> In that case the compilation scheme performs no mangling. As a result, without the annotation the Java compiler would produce an ambiguity error while resolving the name.
 
 The following is an example of the compilation of some operations over `PositiveInt`. The `box-impl` and `unbox-impl` refer to the operations defined in the [current compilation scheme](https://github.com/Kotlin/KEEP/blob/master/proposals/inline-classes.md#inline-classes-abi-jvm) for boxing and unboxing without checks.
 
