@@ -111,7 +111,7 @@ Other alternatives are:
 
 `SubclassOptInRequired` was chosen as the most appropriate and likely the most familiar for developers 
 to grasp from at first glance.
-The name indicates that subclasses must opt in. 
+The name indicates that subclasses must opt in to the specified opt-in marker(s).
 `Required` highlights this obligation more effectively than `Requires`.
 
 ### SubclassOptInRequired marker contagiousness (lexical scopes)
@@ -190,9 +190,9 @@ may be used within its body or signatures (`UnstableApi` types or overridden met
 between
 opting-in into extension and opting-in into overall uses.
 
-### Design downsides
+### Design considerations
 Although one of the goals of this proposal is consistency with the existing `OptIn` API,
-`SubclassOptInRequired` doesn't support passing annotation arguments, unlike experimental annotations.
+`SubclassOptInRequired` doesn't support passing annotation arguments, unlike opt-in marker annotations.
 For example:
 ```kotlin
 @RequiresOptIn
@@ -219,7 +219,7 @@ because no significant use cases or valid scenarios for annotation arguments in 
     @Ann(scope = Scope.Inheritance) 
     open class Foo
     ```
-    The design was rejected due to concerns about preserving source compatibility with explicitly declared and injected parameters.
+   The design was rejected due to concerns about potential clashes between explicitly declared and injected parameters.
 
 
 2. Users can define a special annotation parameter named `scope`.
@@ -230,8 +230,8 @@ because no significant use cases or valid scenarios for annotation arguments in 
     @Ann(scope = Scope.Inheritance)
     open class Foo
     ```
-    The design was rejected because it creates an implicit contract between the compiler logic and the parameter names,
-    leading to potential fragility dependencies.
+    The design was rejected because it creates an implicit contract between the compiler logic,
+    the parameter names, and the presence or absence of the @RequiresOptIn annotation.
 
 
 3. Pass annotation instances as arguments to the `@SubclassOptInRequired` annotation.
@@ -254,9 +254,18 @@ because no significant use cases or valid scenarios for annotation arguments in 
     @RequiresOptIn(scope = Scope.Inheritance)
     annotation class PoisonOnlySubclasses(val message: String)
     ```
-   This design was rejected because it limits the ability to use the same experimental annotation marker for different scopes:
+   The design was rejected because it limits the ability to use the same experimental annotation marker for different scopes:
    either marking the entire API as unstable or marking only inheritance as unstable.   
-    
+
+5. Consider using a single marker with `@Repeatable` instead of vararg for `@SubclassOptInRequired`
+   During the design process, we also considered an alternative approach:
+   instead of allowing `@SubclassOptInRequired` to accept multiple markers via the `vararg` parameter (similar to `@OptIn`),
+   we explored the possibility of designing the annotation to accept only one marker and making `@SubclassOptInRequired` `@Repeatable`.
+   The design was rejected for two key reasons.
+   First, introducing a repeatable annotation would break consistency with the existing `@OptIn` annotation.
+   Maintaining consistency between these annotations is crucial for ensuring a predictable user experience.
+   Second, we want to avoid introducing `@Repeatable` annotations unless absolutely necessary,
+   as they tend to complicate code readability and increase the mental load for developers.
 
 ### Status and timeline
 
