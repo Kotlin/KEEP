@@ -82,6 +82,12 @@ Apart from the particular problems, we set the following cross-cutting goals for
 
 **Compatibility with current compilation scheme**: if we alter the way inline classes are currently compiled in a non-backward compatible way, we could create a huge split in the community. Or even worse, we will end up supporting two different schemes in the compiler.
 
+> [!IMPORTANT]
+> This KEEP changes _nothing_ about how value classes are handled in Kotlin code.
+> The new boxed variants are only accessible to other JVM languages,
+> the Kotlin compiler shall hide them, as it currently does with the
+> already-implemented compilation scheme.
+
 ## Expose boxed constructors
 
 The [current compilation scheme](https://github.com/Kotlin/KEEP/blob/master/proposals/inline-classes.md#inline-classes-abi-jvm) exposes the constructor of the boxed class as _synthetic_, which makes it unavailable from Java. This constructor does _not_ execute the `init` block, it just boxes the value.
