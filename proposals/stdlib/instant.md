@@ -918,7 +918,7 @@ The format used is also mostly compatible with
 <https://www.rfc-editor.org/rfc/rfc3339#section-5.6>.
 Both of these formats are widely used, but also human-readable.
 
-Example: `2024-08024T16:22:34Z`.
+Example: `2024-08-24T16:22:34Z`.
 
 ##### Advanced parsing and formatting
 
