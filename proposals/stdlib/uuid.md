@@ -365,7 +365,26 @@ val javaUuid = kotlinUuid.toJavaUuid()
 // Pass javaUuid to an API that takes a java.util.UUID
 ```
 
-## Alternatives
+## Alternative approach
+
+We have also considered making the Kotlin UUID class a [mapped type](https://kotlinlang.org/docs/java-interop.html#mapped-types)
+of the Java UUID class. In Kotlin/JVM, the Kotlin UUID class would be compiled to Java UUID, so at runtime,
+there would be no difference between them. This is similar to how Kotlin `String`, primitive types,
+and collection types are mapped to their Java equivalents in Kotlin/JVM.
+Such mapping would allow us to design a new API surface for the type, yet compile it to Java UUID.
+This approach would enable Kotlin UUID to seamlessly work with APIs that use Java UUID,
+keeping [platform types](https://kotlinlang.org/docs/java-interop.html#null-safety-and-platform-types) in mind.
+
+One downside of this approach is that we would not be able to implement the `Comparable` interface in the future,
+even if we find convincing arguments to do so. This limitation arises because Java `UUID.compareTo()`
+[conducts signed `Long` comparisons](https://bugs.openjdk.org/browse/JDK-7025832), leading to non-lexical order.
+We would not be comfortable bringing this behavior to the Kotlin UUID implementation on other platforms.
+
+Additionally, it's worth mentioning that switching to the mapped type approach would change the `Serialization`
+implementation currently in place; specifically, the serial representation would become larger.
+Also, this approach would require special treatment by the Kotlin compiler.
+
+## Alternatives to stdlib UUID
 
 Because Kotlin did not previously provide a type for representing a UUID in common code,
 the community has implemented several libraries to address this gap:
