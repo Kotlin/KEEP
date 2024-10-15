@@ -26,7 +26,7 @@ Overview
 
 ### `Instant`
 
-`Instant` denotes a moment in time, regardless of the observer.
+`Instant` denotes a moment in time.
 Examples:
 
 * The moment clocks showed 2024-08-05, 14:34:31 in New York.
@@ -210,7 +210,7 @@ The specifics of what gets added is given below.
  * A point in time must be uniquely identified in a way that is independent of a time zone.
  * For example, `1970-01-01, 00:00:00` does not represent a moment in time since this would happen at different times
  * in different time zones: someone in Tokyo would think it is already `1970-01-01` several hours earlier than someone in
- * Berlin would. To represent such entities, use the `kotlinx-datetime` library.
+ * Berlin would. To represent such entities, use the `kotlin-time time.
  * In contrast, "the moment the clocks in London first showed 00:00 on Jan 1, 2000" is a specific moment
  * in time, as is "1970-01-01, 00:00:00 UTC+0", so it can be represented as an [Instant].
  *
@@ -250,7 +250,7 @@ The specifics of what gets added is given below.
  * ### Platform specifics
  *
  * On the JVM, there are `Instant.toJavaInstant()` and `java.time.Instant.toKotlinInstant()`
- * extension functions to convert between `kotlinx.datetime` and `java.time` objects used for the same purpose.
+ * extension functions to convert between `kotlin.time` and `java.time` objects used for the same purpose.
  * Similarly, on the Darwin platforms, there are `Instant.toNSDate()` and `NSDate.toKotlinInstant()`
  * extension functions.
  *
@@ -385,7 +385,7 @@ public expect class Instant : Comparable<Instant> {
     public override fun toString(): String
 
     public companion object {
-        @Deprecated("Use Clock.System.now() instead", ReplaceWith("Clock.System.now()", "kotlinx.datetime.Clock"), level = DeprecationLevel.ERROR)
+        @Deprecated("Use Clock.System.now() instead", ReplaceWith("Clock.System.now()", "kotlin.time.Clock"), level = DeprecationLevel.ERROR)
         public fun now(): Instant
 
         /**
@@ -486,8 +486,9 @@ public val Instant.isDistantFuture: Boolean
 All parts of this API have existed in `kotlinx-datetime` for a while now and
 have stable, widely used and thoroughly tested implementations.
 
-This API is based on the eponymous API entry in `java.time`:
-<https://docs.oracle.com/javase/8/docs/api/java/time/Instant.html>.
+This API is based on the eponymous API entry in JSR 310 (available in
+the 310bp project and the standard library of Java9 and later):
+<https://github.com/ThreeTen/threetenbp/blob/b833efe7ac2f1a02c016deb188fd7ce3b124ed2e/src/main/java/org/threeten/bp/Instant.java>.
 There are some differences between the behaviors of the two, but they are minor.
 
 What follows is the rationale for every part of the API, along with the
@@ -810,6 +811,7 @@ println(runCatching {
     java.time.Instant.ofEpochSecond(Long.MAX_VALUE)
 }) // Failure(java.time.DateTimeException: Instant exceeds minimum or maximum instant)
 println(runCatching {
+    // As well as kotlin.time.Instant after the migration
     kotlinx.datetime.Instant.fromEpochSeconds(Long.MAX_VALUE)
 }) // Success(+1000000000-12-31T23:59:59.999999999Z)
 
@@ -819,6 +821,7 @@ println(runCatching {
         .plusSeconds(Long.MAX_VALUE)
 }) // Failure(java.time.DateTimeException: Instant exceeds minimum or maximum instant)
 println(runCatching {
+    // As well as kotlin.time.Instant after the migration
     kotlinx.datetime.Instant.fromEpochMilliseconds(0)
         .plus(kotlin.time.Duration.INFINITE)
 }) // Success(+1000000000-12-31T23:59:59.999999999Z)
@@ -1024,7 +1027,7 @@ public val DISTANT_FUTURE: Instant // +100000-01-01T00:00:00Z
 
 With the introduction of `Instant` to the standard library, we can now make it
 not just a pure library solution but a compiler-supported one.
-In practice, this means that we may map `kotlinx.datetime.Instant` to
+In practice, this means that we may map `kotlin.time.Instant` to
 `java.time.Instant`.
 
 This would give us several advantages over keeping `Instant` our own class:
@@ -1039,7 +1042,7 @@ This would give us several advantages over keeping `Instant` our own class:
 Disadvantages also exist:
 
 * As noted above, there are several differences between how methods in
-  `java.time.Instant` and `kotlinx.datetime.Instant` work.
+  `java.time.Instant` and `kotlin.time.Instant` work.
   Most notably, several APIs that have the same name behave differently:
   `now` is deprecated, and `parse` does not accept the same set of strings.
   All remaining methods that have different behaviors between Kotlin and Java
@@ -1271,9 +1274,45 @@ fun epochSecondsLaterThanMaxInstant(epochSeconds: Long): Boolean =
    Instant.fromEpochSeconds(epochSeconds - 1)
 ```
 
-#### Process 1: pure library solutions
+#### Process 0: break everything
 
-* Standard Library publishes its own `kotlin.time.Instant`.
+* Standard Library publishes its own `kotlin.time.Instant` and `Clock`.
+* `kotlinx-datetime` removes `kotlinx.datetime.Instant` and `Clock`
+  and depends on the new release of the Standard Library,
+  changing the API entries that used to work on `kotlinx.datetime.Instant`
+  to instead use `kotlin.time.Instant`.
+
+That's it, we've migrated.
+
+##### Analysis
+
+`Instant` and `Clock` will be moved to the Standard Library,
+but the existing consumers of `kotlinx-datetime` will all be broken,
+because basically all of them rely on `kotlinx.datetime.Instant`.
+
+###### First-party entities
+
+`kotlinx-datetime` functions operating on `kotlinx.datetime.Instant` or
+`kotlinx.datetime.Clock` immediately stop working after a `kotlinx-datetime`
+upgrade.
+
+`kotlinx.datetime.Instant` instances serialized using `java.io.Serializable` will
+have to deserialize into `kotlin.time.Instant` instead, as there is nothing else
+it can deserialize into.
+
+`Instant` serializers in `kotlinx.datetime.serializers` are also removed.
+
+###### Third-party code
+
+Third-party code using `kotlinx.datetime.Instant` simply breaks and will always
+fail with a `ClassNotFoundException` until it is rewritten to use
+`kotlin.time.Instant` and a new version is published.
+This renders most libraries relying on `kotlinx.datetime.Instant`
+(even internally) completely useless overnight.
+
+#### Process 1: pure library solutions against breakage
+
+* Standard Library publishes its own `kotlin.time.Instant` and `Clock`.
 * `kotlinx-datetime`:
   - And adds conversion functions between `kotlinx.datetime.Instant`
     and `kotlin.time.Instant`, as well as between `kotlinx.datetime.Clock` and
