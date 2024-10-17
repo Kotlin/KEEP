@@ -183,7 +183,7 @@ If a functional type `(...) -> R` is expected for a lambda expression, then the 
 val unknown: () -> Problem = {
                 // ^ propagated as type of the lambda
 
-  UNKNOWN       // implicit return: we use 'Problem' for resolution
+  _.UNKNOWN       // implicit return: we use 'Problem' for resolution
 }
 ```
 
