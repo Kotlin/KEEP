@@ -87,7 +87,7 @@ In order to describe what this proposal allows as contextually-scoped identifier
 * _Type position_: as the right-hand side of `is`, both in standalone and branch conditions.
 * _Expression position_: in any place where an expression is expected.
 
-Note the restrictive nature of the type position. You are _not_ allowed to use `_.` to access types in anywhere else; not in type adscriptions for variables, not in the list of supertypes or generic constraints, and so on.
+Note the restrictive nature of the type position. You are _not_ allowed to use `_.` to access types in anywhere else; not in type annotations for variables, not in the list of supertypes or generic constraints, and so on.
 
 In **type position** only classifiers which are both _nested_ and _sealed inheritors_ of the expected type are available.
 
