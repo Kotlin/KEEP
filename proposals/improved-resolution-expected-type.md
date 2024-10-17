@@ -321,7 +321,7 @@ fun <T> Box<T>.foo() = when (value) {
 }
 ```
 
-The problem is that at the expression `value == .UNKNOWN`, the known type of `value` is `T & Problem`, a case for which the single definite expected type is undefined. There are two reasons for this choice:
+The problem is that at the expression `value == _.UNKNOWN`, the known type of `value` is `T & Problem`, a case for which the single definite expected type is undefined. There are two reasons for this choice:
 
 - It is unclear in general how to treat intersection types, since other cases may not be as simple as dropping a type argument.
 - If in the future Kotlin gets a feature similar to GADTs, we may piggy back on the knowledge that `T` is equal to `Problem`, and face no problem in computing the single definite expected type.
