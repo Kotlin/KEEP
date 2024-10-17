@@ -103,7 +103,7 @@ fun <E, A> Either<E, A>.getOrElse(default: A) = when (this) {
 }
 ```
 
-In **expression position** the _entire_ static and companion object scope of the expected type is available, including classifiers, properties, and functions. Whereas the first two are needed to cover common cases like enumeration entries, and comparison with objects, the usefulness of methods seems debatable. However, it allows some interesting constructions where we compare against a value coming from a factory:
+In **expression position** the _entire_ static and companion object scope of the expected type is available, including classifiers, properties, and functions, and also extension function defined over the companion object. Whereas the first two are needed to cover common cases like enumeration entries, and comparison with objects, the usefulness of methods seems debatable. However, it allows some interesting constructions where we compare against a value coming from a factory:
 
 ```kotlin
 class Color(...) {
@@ -114,10 +114,13 @@ class Color(...) {
   }
 }
 
+val Color.Companion.BLUE: Color = ...
+
 // now when we match on a color...
 when (color) {
   _.WHITE -> ...
   _.fromRGB(10, 10, 10) -> ...
+  _.BLUE -> ...
 }
 ```
 
@@ -126,6 +129,18 @@ In addition, note that the rules to filter out which functions should or shouldn
 We do **not** look in the static and companion object scopes of **supertypes** of the expected type. This is in accordance to the rules of [resolution with an explicit type receiver](https://kotlinlang.org/spec/overload-resolution.html#call-with-an-explicit-type-receiver). Technically, we perform some pre-processing of the expected type to simplify it, but the general rule is that only _one_ classifier is searched.
 
 **Extension** callables defined in the static and companion object scopes are **not** available. In most cases those callables can be imported without requiring any additional qualification on the call site.
+
+```kotlin
+class Color(...) {
+  companion object {
+    val Int.grey get() = ...
+  }
+}
+
+when (color) {
+  10.grey -> ... // this is not allowed
+}
+```
 
 > [!NOTE]
 > In previous iterations of this proposal extension callables were included. However, the interaction with `_.` syntax is not clear, so this feature has been dropped.
@@ -144,9 +159,15 @@ Each of these steps influence the following one: the types inferred in (1) drive
 
 In order to support contextually-scoped identifiers as arguments, the proposal is to treat them in the same way as lambda arguments. The main consequence is that an argument using `_.` may _not_ influence the choice of overload, which must be unique after step (2).
 
-For example, consider the following declarations in addition to those at the beginning of this section.
+For example, consider the following declarations, which extend those defined at the beginning of this section.
 
 ```kotlin
+enum class Problem {
+    CONNECTION, AUTHENTICATION, DATABASE, UNKNOWN
+}
+
+fun message(problem: Problem): String = ...
+
 enum class Result {
   OK, FAILURE
 }
