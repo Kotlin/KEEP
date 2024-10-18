@@ -15,7 +15,7 @@ Properties defined in primary constructor positions define several use-site targ
 
 * [Motivation](#motivation)
   * [Potential misunderstandings](#potential-misunderstandings)
-  * [Alignment with JVM](#alignment-with-jvm)
+  * [Alignment with Java](#alignment-with-java)
 * [Technical details](#technical-details)
   * [Impact](#impact)
   * [Migration period](#migration-period)
@@ -53,7 +53,7 @@ class Person(@NotBlank var name: String, @PositiveOrZero var age: Int)
 
 Following the defaulting rule, the validation annotations `@NotBlank` and `@PositiveOrZero` are applied _solely_ to the constructor parameter. In practical terms, this means that their values are validated only when first creating the instance, but not on later modifications of the properties. This does not seem like the intended behavior, and may lead to broken invariants.
 
-### Alignment with JVM
+### Alignment with Java
 
 Java provides [records](https://openjdk.org/jeps/395) since version 16 (experimental since 14). Records are syntactically very close to definition of properties in primary constructors, and they also expand to several declarations in the underlying JVM platform.
 
@@ -64,6 +64,12 @@ record Person(String name, int age) { }
 The rules for [annotations on record components](https://openjdk.org/jeps/395#Annotations-on-record-components) are very similar for those in this proposal: apply to every declaration.
 
 Since JVM is one of the main targets for Kotlin, we think alignment with the rest of the players is very important. One reason is to make it easier for developers to work on multi-language projects, without having to remember small quirks per language. On top of that, libraries developed with Java in mind may assume the behavior of records, and they would then fail in a very similar scenario in Kotlin.
+
+For full comparison, Scala also applies a [defaulting rule](https://www.scala-lang.org/api/current/scala/annotation/meta.html) giving preference to parameters:
+
+> By default, annotations on (`val`-, `var`- or plain) constructor parameters end up on the parameter, not on any other entity.
+
+However, they provide a way to create a version of an annotation with a specific target. That way the correct defaulting can be chosen per annotation.
 
 ## Technical details
 
