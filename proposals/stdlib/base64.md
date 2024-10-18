@@ -154,6 +154,13 @@ public open class Base64 {
 
 }
 ```
+The instances can be used to encode and decode using the encoding scheme of the corresponding Base64 variant. For example:
+```kotlin
+Base64.encode(...)
+Base64.Default.encode(...) // same as above
+Base64.UrlSafe.encode(...)
+Base64.Mime.encode(...)
+```
 
 #### Padding options
 
@@ -309,5 +316,6 @@ Only a subset of Kotlin Standard Library available on all supported platforms is
 
 ## Future advancements
 
-* Adding ability to allow non-zero pad bits
+* Adding an option to allow non-zero pad bits on decoding
     * e.g., `fun Base64.allowNonZeroPadBits(): Base64` could be introduced
+* Supporting the override of the default line length for `Base64.Mime` encoder: [KT-70456](https://youtrack.jetbrains.com/issue/KT-70456)
