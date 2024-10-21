@@ -137,8 +137,10 @@ Java, however, only provides an API for constructing a UUID from two `Long`s. De
 designed their logic and applications around this representation of a UUID. To ensure an easy transition
 from `java.util.UUID` to Kotlin `Uuid`, we have introduced an API for constructing UUIDs from two `Long`s as well.
 This will also facilitate the sharing of existing code that uses `java.util.UUID` among multiple platforms.
-Additionally, we have decided to introduce an API for constructing UUIDs from two `ULong`s to improve the clarity
-of the bits being provided, especially when the sign bit of a `Long` would be set. For example:
+
+Additionally, we have decided to introduce APIs for constructing UUIDs from a `UByteArray` or two `ULong`s.
+These improve the clarity of the bits being provided, especially when the sign bit of a `Byte` or a `Long` would be set.
+For example:
 ```kotlin
 val uuid1 = Uuid.fromLongs(-0x0AF17BFF1D64BE2CL, -0x58E9BB99AABC0000L)
 val uuid2 = Uuid.fromULongs(0xF50E8400E29B41D4uL, 0xA716446655440000uL)
@@ -149,8 +151,8 @@ println(uuid1 == uuid2) // true
 println(uuid1) // f50e8400-e29b-41d4-a716-446655440000
 ```
 
-Symmetrically, we have introduced APIs for retrieving `Uuid` bits in the form of a `ByteArray`, two `Long`s,
-or two `ULong`s.
+Symmetrically, we have introduced APIs for retrieving `Uuid` bits in the form of a `ByteArray`, `UByteArray`,
+two `Long`s, or two `ULong`s.
 
 #### Accessing UUID fields
 
@@ -216,6 +218,11 @@ public class Uuid : Serializable {
      */
     public fun toByteArray(): ByteArray
 
+    /**
+     * Returns an unsigned byte array representation of this uuid.
+     */
+    public fun toUByteArray(): UByteArray
+
     public companion object {
         /**
          * The uuid with all bits set to zero.
@@ -246,6 +253,11 @@ public class Uuid : Serializable {
          * Creates a uuid from a byte array containing 128 bits split into 16 bytes.
          */
         public fun fromByteArray(byteArray: ByteArray): Uuid
+
+        /**
+         * Creates a uuid from an unsigned byte array containing 128 bits split into 16 unsigned bytes.
+         */
+        public fun fromUByteArray(ubyteArray: UByteArray): Uuid
 
         /**
          * Parses a uuid from the standard string representation as described in [Uuid.toString].
@@ -324,11 +336,11 @@ This is an example of how the proposed `Uuid` API could be used:
 
 ```kotlin
 // Constructing Uuid from bits and parsing from string
-val byteArray = byteArrayOf(
-    0x55, 0x0E, 0x84.toByte(), 0x00, 0xE2.toByte(), 0x9B.toByte(), 0x41, 0xD4.toByte(),
-    0xA7.toByte(), 0x16, 0x44, 0x66, 0x55, 0x44, 0x00, 0x00
+val ubyteArray = ubyteArrayOf(
+    0x55u, 0x0Eu, 0x84u, 0x00u, 0xE2u, 0x9Bu, 0x41u, 0xD4u,
+    0xA7u, 0x16u, 0x44u, 0x66u, 0x55u, 0x44u, 0x00u, 0x00u
 )
-val uuid1 = Uuid.fromByteArray(byteArray)
+val uuid1 = Uuid.fromUByteArray(ubyteArray)
 val uuid2 = Uuid.fromULongs(0x550E8400E29B41D4uL, 0xA716446655440000uL)
 val uuid3 = Uuid.parse("550e8400-e29b-41d4-a716-446655440000")
 
@@ -393,8 +405,9 @@ For these reasons, it was decided to provide the following functions on the `Uui
 * For constructing from two `Long`s: `fromLongs()`
 * For constructing from two `ULong`s: `fromULongs()`
 * For constructing from a `ByteArray`: `fromByteArray()`
+* For constructing from a `UByteArray`: `fromUByteArray()`
 
-For retrieving `Uuid` bits in the form of a byte array, `toByteArray()` was introduced. Retrieving bits
+For retrieving `Uuid` bits in the form of a byte array, `toByteArray()` and `toUByteArray()` were introduced. Retrieving bits
 in the form of `Long`s and `ULong`s required some creativity. Introducing separate functions (or properties)
 to retrieve the most significant 64 bits and the least significant 64 bits is not extensible. We would need to
 provide four functions for both `Long` and `ULong`. Coming up with good names for these functions to
