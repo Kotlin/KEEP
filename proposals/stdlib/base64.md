@@ -283,12 +283,17 @@ public fun ByteArray.decodeToString(...): String
 ### Proposed naming
 
 When researching usages of Java `Base64`, we observed two patterns that influenced our design and naming.
+
 First, the vast majority of users obtain an encoder or decoder and use it immediately,
 e.g., `Base64.getDecoder().decode(...)`. This led us to avoid separating the encoder and decoder into different entities.
 We also didn't find evidence that the benefits of such a separation outweigh the usage inconvenience. 
+
 Second, encoding to `String` and decoding from `String` are considerably more popular than encoding to `ByteArray` and
 decoding from `ByteArray`. Thus, we decided to make the more frequently used functions shorter.
+Another reason for this decision is that a compound operation, such as encoding a `ByteArray` to a Base64 `String` and
+then encoding that `String` to a UTF-8 `ByteArray`, should have a compound name.
 
+As a result, the following names are proposed:
 * Encode and return the result in `String` form: `encode`.
 * Encode and return the result in `ByteArray` form: `encodeToByteArray`.
 * Encode and append the result to a specified `Appendable`: `encodeToAppendable`.
