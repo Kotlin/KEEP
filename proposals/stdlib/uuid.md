@@ -482,6 +482,12 @@ Duration.toIsoString(): String
 ByteArray.toHexString(format: HexFormat = HexFormat.Default): String
 ```
 
+An alternative approach is to support several formats in `parse()` and introduce `parseHexDash()`
+and `toHexDashString()` functions for parsing from and formatting to the standard "hex-and-dash" representation.
+The concern with supporting multiple formats in `parse()` is that supporting an additional format in the future
+could be a breaking change. This situation occurs when code that relies on the rejection of formats not
+currently supported is linked with a newer version of the Standard Library that accepts other formats.
+
 ## Dependencies
 
 The dependencies of the proposed API:
