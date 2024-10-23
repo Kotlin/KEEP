@@ -1355,7 +1355,7 @@ fun kotlinx.datetime.Instant.toLocalDateTime(): LocalDateTime
 fun LocalDateTime.toInstant(): kotlinx.datetime.Instant
 
 // 0.X+1.0
-@Deprecated(level = DeprecationLevel.HIDDEN)
+@Deprecated(level = DeprecationLevel.WARNING)
 fun kotlinx.datetime.Instant.toLocalDateTime(): LocalDateTime
 
 @Deprecated(level = DeprecationLevel.HIDDEN)
@@ -1367,6 +1367,9 @@ fun kotlin.time.Instant.toLocalDateTime(): LocalDateTime
 fun LocalDateTime.toInstant(): kotlin.time.Instant
 
 // 0.X+2.0
+@Deprecated(level = DeprecationLevel.ERROR)
+fun kotlinx.datetime.Instant.toLocalDateTime(): LocalDateTime
+
 fun kotlin.time.Instant.toLocalDateTime(): LocalDateTime
 
 @Deprecated(level = DeprecationLevel.HIDDEN)
@@ -1390,8 +1393,22 @@ Library, so the main goal will be fulfilled.
 `kotlinx-datetime` functions operating on `kotlinx.datetime.Instant` or
 `kotlinx.datetime.Clock` will keep working,
 preserving runtime compatibility for one major release.
-Compile-time compatibility will be preserved for one major release as well,
-albeit with warnings.
+Compile-time compatibility will be mostly preserved for one major release
+as well, albeit with warnings, except in the case when a value of the
+type `kotlin.time.Instant` is now returned but `kotlinx.datetime.Instant`
+is explicitly expected:
+
+```kotlin
+// works
+val instant = LocalDate(2024, 10, 5).atTime(12, 00).toInstant(TimeZone.UTC)
+instant.plus(5, DateTimeUnit.DAY).toLocalDateTime(TimeZone.UTC)
+
+// doesn't compile: `toInstant` returns `kotlin.time.Instant`,
+// not `kotlinx.datetime.Instant`
+val instant: kotlinx.datetime.Instant =
+    LocalDate(2024, 10, 5).atTime(12, 00).toInstant(TimeZone.UTC)
+instant.plus(5, DateTimeUnit.DAY).toLocalDateTime(TimeZone.UTC)
+```
 
 `java.io.Serializable` implementation of `kotlinx.datetime.Instant` will
 keep working at runtime, returning `kotlinx.datetime.Instant`.
