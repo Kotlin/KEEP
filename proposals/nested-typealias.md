@@ -40,7 +40,7 @@ class Dijkstra {
 }
 ```
 
-It is a **non-goal** of this KEEP to provide abstraction capabilities over type aliases, like [abstract type members](https://docs.scala-lang.org/tour/abstract-type-members.html) in Scala or [associated type synonyms](https://wiki.haskell.org/GHC/Type_families) in Haskell. Roughly speaking, this would entail declaring a type alias without its left-hand side in an interface or abstract class, and "overriding" it in an implementing class.
+It is a **non-goal** of this KEEP to provide abstraction capabilities over type aliases, like [abstract type members](https://docs.scala-lang.org/tour/abstract-type-members.html) in Scala or [associated type synonyms](https://wiki.haskell.org/GHC/Type_families) in Haskell. Roughly speaking, this would entail declaring a type alias without its right-hand side in an interface or abstract class, and "overriding" it in an implementing class.
 
 ```kotlin
 interface Collection {
@@ -73,7 +73,7 @@ We extend the syntax of type aliases as follows. A type alias declaration marked
 
 - In particular, type aliases cannot be overriden in child classes. Creating a new type alias with the same name as in a parent class merely _hides_ the parent one.
 
-**Rule 2 (visibility)**: the visibility of a type alias must be equal to or weaker than the visibility of every type present on its left-hand side.
+**Rule 2 (visibility)**: the visibility of a type alias must be equal to or weaker than the visibility of every type present on its right-hand side.
 
 ```kotlin
 class Outer {
@@ -130,7 +130,7 @@ class Foo(val big: Big) {  // 'Big' as above
 
 One important question here is what is the semantics of such a definition:
 
-- Is the left-hand side chosen during initialization?
+- Is the type side chosen during initialization?
 - Should we ensure that the type alias is somehow "stable"? If so, what are the rules for such stable references to types?
 
 **Question 2 (expect / actual)**: should we allow nested `expect` (and correspondingly, `actual`) type aliases?
