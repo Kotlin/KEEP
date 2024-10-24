@@ -20,7 +20,7 @@ todo
 ## Motivation
 
 1.  Marketing.
-    A lot of modern languages have this feature.
+    A lot of modern languages have collection literals.
     The presence of this feature makes a good first impression on the language.
 2.  Collections (not literals) are very widely used in programs.
     They deserve a separate literal.
@@ -29,11 +29,11 @@ todo
     Collection literals is a widely understood concept with more or less the same syntax across different languages.
     And new users have the right to naively believe that Kotlin supports it.
 4.  Avoid unnecessary intermediate vararg array allocation in `listOf`.
-5.  Resolve the `emptyList`/`listOf` hussle.
+5.  Special syntax for collection literals helps to resolve the `emptyList`/`listOf` hussle.
     Whenever the argument list in `listOf` reduces down to zero, some might prefer to cleanup the code to change `listOf` to `emptyList`.
-    And vice-versa, whenever the argument list in `emptyList` needs to grow above zero, the programmer needs to replace `emptyList` with `listOf`
+    And vice-versa, whenever the argument list in `emptyList` needs to grow above zero, the programmer needs to replace `emptyList` with `listOf`.
     It creates a small hussle of `listOf` to `emptyList` back and forth movement.
-    It's by no means a big problem, but it is just a small annoyance, which is nice to see to be resolved by introduction of collection literals.
+    It's by no means a big problem, but it is just a small annoyance, which is nice to see to be resolved by the introduction of collection literals.
 
 The feature doesn't bring a lot of value to the existing users, and primarly targets newcomers.
 
@@ -52,21 +52,16 @@ _Overloading group_ is a set of overloads located in one package or classifier.
 
 It's proposed to use square brackets because the syntax is already used in Kotlin for array literals inside annotation constructor arguments,
 because it's the syntax a lot of programmers are already familiar with coming from other programming languages,
-and because it honors mathematical notation [for matrices](#rejected-proposal-built-in-matrices).
+and because it honors mathematical notation [for matrices](#rejected-idea-built-in-matrices).
 
 **Informally**, the proposal strives to make it possible for users to use collection literals syntax to express user-defined types `val foo: MyCustomList<Int> = [1, 2, 3]`.
 And when the expected type is unspecified, expression must fallback to `kotlin.List` type: `val foo = [1, 2, 3] // List<Int>`.
 
 **More formally**, before the collection literal could be used at the use-site, an appropriate type needs to declare `operator fun of` function in its _static scope_.
-The `operator fun of` functions must adhere to the following restrictions:
-1. One and only one overload in the _overloading group_ must have single `vararg` parameter.
-2. All overloads must have the return type equal by `ClassId` to the type in whom static scope the overload is declared in.
-3. All `of` overloads must be either extension on `Companion` of the target type, or be declared inside the companion and have zero extension receivers.
-4. The overloads must have zero context parameters
+The `operator fun of` functions must adhere to [the restrictions](#todo).
+[Alternative collection builder](#todo) conventions were rejected.
 
-The logic behind the restrictions and what happens if they are violated are described [further](#overload-resolution-and-operator-function-restrictions).
-
-Once `operator fun of` is declared, the collection literal can be used at the use-site.
+Once proper `operator fun of` is declared, the collection literal can be used at the use-site.
 1. When the collection literal is used in the _position with expected type_, it's proposed to literally desugar collection literal `[expr1, expr2, expr3]` to `_.of(expr1, expr2, expr3)`.
 2. In all other cases, it's proposed to desugar collection literal to `List.of(expr1, expr2, expr3)`.
 
@@ -86,15 +81,12 @@ fun main() {
 }
 ```
 
-Please notice that it is not necessaty for the type to extend any predifined type in the Kotlin stdlib (necessary for `kotlin.Array<T>` type),
-nor it necessaty for the user-defined type to declare mandatory generic type parameters (necessary for specialized arrays like `kotlin.IntArray`, `kotlin.LongArray`, etc.).
+Please note that it is not necessary for the type to extend any predifined type in the Kotlin stdlib (needed to support `kotlin.Array<T>` type),
+nor it necessary for the user-defined type to declare mandatory generic type parameters (needed to support specialized arrays like `kotlin.IntArray`, `kotlin.LongArray`, etc.).
 
-## Overload resolution and operator function restrictions
+## Overload resolution motivation
 
-Readers of this section are encouraged to familiarize themselves with how [type inference](https://github.com/JetBrains/kotlin/blob/master/docs/fir/inference.md) and 
-[overload resolution](https://kotlinlang.org/spec/overload-resolution.html#overload-resolution) work in Kotlin.
-
-The reasoning behind the restrictions on `operator fun of`, introduced in the [proposal](#proposal) section, are closely related to overload resolution and type inference.
+The reasoning behind [the restrictions](#todo) on `operator fun of` are closely related to overload resolution and type inference.
 Consider the following real-world example:
 ```kotlin
 @JvmName("sumDouble") fun sum(set: List<Double>): Double = TODO("not implemented") // (1)
@@ -106,10 +98,14 @@ fun main() {
 ```
 
 We want to make the overload resolution work for such examples.
-We have conducted an analysis to see what kinds of overloads are out there [KT-71574](https://youtrack.jetbrains.com/issue/KT-71574) (private link).
+We have conducted an analysis to see what kinds of overloads are out there [KT-71574](https://youtrack.jetbrains.com/issue/KT-71574). (private link)
 In short, there are all kinds of overloads, there are `List<Int>` vs `Set<Int>` kinds of overloads, there are `List<String>` vs `List<Path>` kinds of overloads, and even `List<Int>` vs `Set<Double>`.
 
--   `List<Int>` vs `Set<Int>` typically emerges when 
+> [!NOTE]  
+> When we say `List` vs `Set` kinds of overloads we mean all sorts of overloads where the "outer" type is different.
+> When we say `List<Int>` vs `List<Double>` kinds of overloads we mean all sorts of overloads where the "inner" type is different.
+
+-   `List<Int>` vs `Set<Int>` typically emerges when when one of the overloads is the "main" overload, and another one is just a convenience overload that delegates to the "main" overload.
 -   `List<Int>` vs `List<Double>` is self explanatory. (for example, consider the `sum` example above)
 -   `List<Int>` vs `Set<Double>`. This pattern is less clear and generally much more rare. 
     The pattern may emerge accidentially, when different overloads come from different packages.
@@ -117,17 +113,19 @@ In short, there are all kinds of overloads, there are `List<Int>` vs `Set<Int>` 
     We don't target to support it, but as you will see it will be supported just because of the general approach that we are taking.
 
 The restrictions and the overload resolution algorithm suggested further will help us to make the resolution algorithm distinguish `List<Int>` vs `List<Double>` overloads.
+`List<Int>` vs `Set<Int>` won't be supported because it's generally unknown which of the overloads is the "main" overload,
+and because collection literal syntax doesn't make it possible to syntactically distinguish `List` vs `Set`.
+But if we ever change our mind, [it's possible to support `List` vs `Set` kind of overloads](#todo) in the language in backwards compatible way in the future.
 
-Let's recall the restrictions.
+### Operator function restrictions
+
+The restrictions:
 1. One and only one overload in the _overloading group_ must have single `vararg` parameter.
-2. All overloads must have the return type equal by `ClassId` to the type in whom static scope the overload is declared in.
+2. All overloads must have the return type equal by `ClassId` to the type in whom _static scope_ the overload is declared in.
 3. All `of` overloads must be either extension on `Companion` of the target type, or be declared inside the companion and have zero extension receivers.
-4. The overloads must have zero context parameters
+4. The overloads must have zero context parameters.
 
-**Definition.** 
-For the given use-site, A _collection literal element type_ of type `A` is the type of the single `vararg` parameter of the `A.Companion.of` function available at the use-site.
-If there are none or multiple `A.Companion.of` functions available with single `vararg` parameter (those overloads must be coming from different _overloading groups_)
-then we say that _collection literal element type_ is undefined.
+If the `of` function is marked with the `operator` keyword then the compiler should check and enforce all the restrictions.
 
 ```kotlin
 // Examples of valid declarations
@@ -172,9 +170,71 @@ then we say that _collection literal element type_ is undefined.
     }}
 ```
 
-### Overload resolution
+**Definition.** 
+For the given use-site `x`,
+A _collection literal element type_ of type `A` is the type of the single `vararg` parameter of the `A.Companion.of` function (see the restriction 1) available at the use-site `x`.
+If there are none or multiple `A.Companion.of` functions available with single `vararg` parameter (those overloads must be coming from different _overloading groups_)
+then we say that _collection literal element type_ is undefined.
 
-One particular example
+Examples:
+```kotlin
+// File: a.kt
+package a
+class Array<T> {
+    companion object { operator fun <T> of(vararg t: T) = Array<T>() }
+}
+fun test1() {
+    val s: Array<Int> = [1, 2] // At this use-site, collection literal element type of Array is generic parameter T
+}
+
+// File: b.kt
+package b
+import a.*
+operator fun Array.Companion.of(vararg t: Int) = Array<Int>()
+fun test2() {
+    val s: Array<Int> = [1, 2] // At this use-site, collection literal element type of Array is undefined (because there are multiple `of` overloads with single `vararg` parameter.)
+}
+
+// File: c.kt
+package c
+class IntArray {
+    companion object { operator fun of(vararg t: Int) = IntArray() }
+}
+fun test3() {
+    val s: IntArray = [1, 2] // At this use-site, collection literal element type of IntArray is Int
+}
+```
+
+### Overload resolution and type inference
+
+> Readers of this section are encouraged to familiarize themselves with how [type inference](https://github.com/JetBrains/kotlin/blob/master/docs/fir/inference.md) and 
+> [overload resolution](https://kotlinlang.org/spec/overload-resolution.html#overload-resolution) already work in Kotlin.
+
+On the top-level, overload resolution algorithm is very simple and logical.
+There are two stages:
+1.  Filter out all the overload candidates that certainly don't fit based on types of the arguments.
+    Only types of non-lambda and non-reference arguments are considered.
+    (it's important to understand that we don't keep the candidates that fit, but we filter out those that don't)
+    https://kotlinlang.org/spec/overload-resolution.html#determining-function-applicability-for-a-specific-call
+2.  Of the remaining candidates, we keep the most specific ones by comparing every two distinct overload candidates.
+    https://kotlinlang.org/spec/overload-resolution.html#choosing-the-most-specific-candidate-from-the-overload-candidate-set
+
+All the problems with overload resolution and collection literals come down to examples when collection literals are used at the argument position.
+```kotlin
+fun <T> materialize(): T = null!!
+fun outerCall(a: List<Int>) = Unit
+fun outerCall(a: Set<Double>) = Unit
+
+fun test() {
+    outerCall([1, 2, materialize()])
+}
+```
+
+Similar to how lambdas and callable references receive a special treatment on the first stage of overload resolution,
+it's proposed to give a special treatment for `_.of` syntactic construct.
+
+
+
 
 
 
@@ -245,6 +305,76 @@ class MyCustomList {
 ```
 
 
+## Similarities with @OverloadResolutionByLambdaReturnType
+
+todo
+
+## Theoretical possibility to support List vs Set overloads
+
+todo
+
+
+
+## Rejected proposals and ideas
+
+todo
+
+### Rejected idea: built-in matrices
+
+todo
+
+### Rejected proposal: use improved overload resolution algorithm only to refine non-empty overload candidates set on the fixated tower level
+
+**Fact.** `foo` in the following code resolves to (2). Although (1) is a more specific overload, (2) is prefered because it's more local.
+
+```kotlin
+fun foo(a: Int) {} // (1)
+class Foo {
+    fun foo(a: Any) {} // (2)
+    fun test() {
+        foo(1) // Resolves to (2)
+    }
+}
+```
+
+It was proposed to use improved overload resolution algorithm for `_.of` literal to refine already non-empty overload candidates set to avoid resolving to functions which are "too far away".
+
+```kotlin
+fun foo(a: List<Int>) {} // (1)
+class Foo {
+    fun foo(a: List<String>) {} // (2)
+    fun test() {
+        foo([1]) // It's proposed to resolve to (2) and fail with TYPE_MISMATCH error
+    }
+}
+```
+
+The proposal was rejected because the analogical "improved overload resolution for references" already allows resolving to functions which are "too far away".
+
+```kotlin
+fun x(a: Int) = Unit
+fun foo(a: (Int) -> Unit) {} // (1)
+class Foo {
+    fun foo(a: (String) -> Unit) {} // (2)
+    fun test() {
+        foo(::x) // Resolves to (1)
+    }
+}
+```
+
+We prefer to keep the language concistent in such small details rather than "fixing" the behavior, even if the suggested behavior would be better in general.
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -280,7 +410,6 @@ todo: dilemma. is it ok for `operator` keyword to affect overload resolution? I 
 
 ## Similar features in other languages
 
-### Rejected proposal: built-in matrices
 
 ## What implementation to use in List.of
 
