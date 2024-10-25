@@ -487,7 +487,7 @@ All parts of this API have existed in `kotlinx-datetime` for a while now and
 have stable, widely used and thoroughly tested implementations.
 
 This API is based on the eponymous API entry in JSR 310 (available in
-the 310bp project and the standard library of Java9 and later):
+the 310bp project and the standard library of JDK-8 and later):
 <https://github.com/ThreeTen/threetenbp/blob/b833efe7ac2f1a02c016deb188fd7ce3b124ed2e/src/main/java/org/threeten/bp/Instant.java>.
 There are some differences between the behaviors of the two, but they are minor.
 
