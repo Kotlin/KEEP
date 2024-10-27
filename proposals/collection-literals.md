@@ -2,7 +2,7 @@
 
 * **Type**: Design proposal
 * **Author**: Nikita Bobko
-* **Contributors**: Alejandro Serrano Mena, Marat Akhin, Mikhail Zarechenskii, todo
+* **Contributors**: Alejandro Serrano Mena, Denis Zharkov, Marat Akhin, Mikhail Zarechenskii, todo
 * **Issue:** [KT-43871](https://youtrack.jetbrains.com/issue/KT-43871)
 * **Discussion**: todo
 
@@ -43,8 +43,9 @@ The feature doesn't bring a lot of value to the existing users, and primarly tar
 _Position with expected type_ is the position in function arguments, variable assignment, variable declaration with explict type, lambda return expression, etc.
 From the implementation point of view, position with expected type is already represented in compiler sources as `ResolutionMode.ContextIndependent`.
 
-**Definition.** 
-_Type static scope_ is the set that contains callables (functions and properties) declared inside the `Type.Companion` nested `companion object`, or declared as extensions for `Type.Companion`.
+**Definition.**
+_Type static scope_ is the set that contains callables (functions and properties) declared inside the `Type.Companion` nested `companion object`,
+as an extensions for `Type.Companion`, or static members of the type in Java.
 Once statics feature comes to Kotlin, it becomes part of the _type static scope_.
 
 **Definition.**
@@ -101,13 +102,13 @@ We want to make the overload resolution work for such examples.
 We have conducted an analysis to see what kinds of overloads are out there [KT-71574](https://youtrack.jetbrains.com/issue/KT-71574). (private link)
 In short, there are all kinds of overloads, there are `List<Int>` vs `Set<Int>` kinds of overloads, there are `List<String>` vs `List<Path>` kinds of overloads, and even `List<Int>` vs `Set<Double>`.
 
-> [!NOTE]  
+> [!NOTE]
 > When we say `List` vs `Set` kinds of overloads we mean all sorts of overloads where the "outer" type is different.
 > When we say `List<Int>` vs `List<Double>` kinds of overloads we mean all sorts of overloads where the "inner" type is different.
 
 -   `List<Int>` vs `Set<Int>` typically emerges when when one of the overloads is the "main" overload, and another one is just a convenience overload that delegates to the "main" overload.
 -   `List<Int>` vs `List<Double>` is self explanatory. (for example, consider the `sum` example above)
--   `List<Int>` vs `Set<Double>`. This pattern is less clear and generally much more rare. 
+-   `List<Int>` vs `Set<Double>`. This pattern is less clear and generally much more rare.
     The pattern may emerge accidentially, when different overloads come from different packages.
     Or when users don't know about `@JvmName`, so they use different types to circumvent `CONFLICTING_JVM_DECLARATIONS`.
     We don't target to support it, but as you will see it will be supported just because of the general approach that we are taking.
@@ -120,12 +121,13 @@ But if we ever change our mind, [it's possible to support `List` vs `Set` kind o
 ### Operator function restrictions
 
 The restrictions:
-1. One and only one overload in the _overloading group_ must have single `vararg` parameter.
-2. All overloads must have the return type equal by `ClassId` to the type in whom _static scope_ the overload is declared in.
-3. All `of` overloads must be either extension on `Companion` of the target type, or be declared inside the companion and have zero extension receivers.
-4. The overloads must have zero context parameters.
+1. In the _overloading group_, one and only one `of` overload must have single `vararg` parameter.
+2. All `of` overloads must have the return type equal by `ClassId` to the type in whom _static scope_ the overload is declared in.
+3. All `of` overloads must be either extension on `Companion`, be declared inside the companion and have zero extension receivers, or be a static function declared in Java.
+4. All `of` overloads must have zero context parameters.
 
-If the `of` function is marked with the `operator` keyword then the compiler should check and enforce all the restrictions.
+If the `of` function is marked with the `operator` keyword, then the compiler should check and enforce all the restrictions
+(except for Java, because Kotlin compiler cannot issue diagnostics in Java code).
 
 ```kotlin
 // Examples of valid declarations
@@ -170,11 +172,21 @@ If the `of` function is marked with the `operator` keyword then the compiler sho
     }}
 ```
 
-**Definition.** 
+### CLET and CLT
+
+**Definition.**
 For the given use-site `x`,
-A _collection literal element type_ of type `A` is the type of the single `vararg` parameter of the `A.Companion.of` function (see the restriction 1) available at the use-site `x`.
-If there are none or multiple `A.Companion.of` functions available with single `vararg` parameter (those overloads must be coming from different _overloading groups_)
-then we say that _collection literal element type_ is undefined.
+A _collection literal element type_ (_CLET_ in short) of type `A` is the type of the single `vararg` parameter of the `A.of`/`A.Companion.of` function (see the restriction 1) available at the use-site `x`.
+If there are none or multiple `A.Companion.of` functions available with single `vararg` parameter, (those overloads must be coming from different _overloading groups_)
+then we say that _CLET_ is undefined.
+
+**Definition.**
+For the given use-site `x`,
+A _collection literal type_ (_CLT_ in short) of type `A` is the return type of of `A.of`/`A.Companion.of` overload with the single `vararg` parameter (see the restriction 1) available at the use-site `x`.
+If there are none or multiple `A.Companion.of` functions available with single `vararg` parameter, (those overloads must be coming from different _overloading groups_)
+then we say that _CLT_ is undefined.
+
+**Informally**, CLET is the type of `vararg` parameter (NB! don't confuse parameters and arguments), and CLT is the return type of the appropriate `of` function.
 
 Examples:
 ```kotlin
@@ -184,7 +196,7 @@ class Array<T> {
     companion object { operator fun <T> of(vararg t: T) = Array<T>() }
 }
 fun test1() {
-    val s: Array<Int> = [1, 2] // At this use-site, collection literal element type of Array is generic parameter T
+    val s: Array<Int> = [1, 2] // At this use-site, CLET of `Array` is generic parameter `T`. CLT of `Array` is `Array<T>`
 }
 
 // File: b.kt
@@ -192,7 +204,7 @@ package b
 import a.*
 operator fun Array.Companion.of(vararg t: Int) = Array<Int>()
 fun test2() {
-    val s: Array<Int> = [1, 2] // At this use-site, collection literal element type of Array is undefined (because there are multiple `of` overloads with single `vararg` parameter.)
+    val s: Array<Int> = [1, 2] // At this use-site, CLET and CLT of `Array` is undefined (because there are multiple `of` overloads with single `vararg` parameter.)
 }
 
 // File: c.kt
@@ -201,16 +213,28 @@ class IntArray {
     companion object { operator fun of(vararg t: Int) = IntArray() }
 }
 fun test3() {
-    val s: IntArray = [1, 2] // At this use-site, collection literal element type of IntArray is Int
+    val s: IntArray = [1, 2] // At this use-site, CLET of IntArray is Int, CLT of IntArray is IntArray
 }
 ```
 
 ### Overload resolution and type inference
 
-> Readers of this section are encouraged to familiarize themselves with how [type inference](https://github.com/JetBrains/kotlin/blob/master/docs/fir/inference.md) and 
+> Readers of this section are encouraged to familiarize themselves with how [type inference](https://github.com/JetBrains/kotlin/blob/master/docs/fir/inference.md) and
 > [overload resolution](https://kotlinlang.org/spec/overload-resolution.html#overload-resolution) already work in Kotlin.
 
-On the top-level, overload resolution algorithm is very simple and logical.
+All the problems with overload resolution and collection literals come down to examples when collection literals are used at the argument position.
+```kotlin
+fun <K> materialize(): K = null!!
+fun outerCall(a: List<Int>) = Unit
+fun outerCall(a: Set<Double>) = Unit
+
+fun test() {
+    outerCall([1, 2, materialize()])
+    outerCall(_.of(1, 2, materialize()))
+}
+```
+
+On the high-level, overload resolution algorithm is very simple and logical.
 There are two stages:
 1.  Filter out all the overload candidates that certainly don't fit based on types of the arguments.
     Only types of non-lambda and non-reference arguments are considered.
@@ -219,100 +243,72 @@ There are two stages:
 2.  Of the remaining candidates, we keep the most specific ones by comparing every two distinct overload candidates.
     https://kotlinlang.org/spec/overload-resolution.html#choosing-the-most-specific-candidate-from-the-overload-candidate-set
 
-All the problems with overload resolution and collection literals come down to examples when collection literals are used at the argument position.
+Before performing any overload resolution, it's proposed to literally desugar the collection literal syntax with square brackets `[1, 2, 3]` to `_.of(1, 2, 3)`.
+We do so to make sure that collection literal was really just a syntactic sugar for `_.of`.
+
+For our case to distinguish `List<Int>` vs `List<Double>` kinds of overloads, the first stage of overload resolution is the most appropriate one.
+That's exactly what we want to do - to filter out definitely inapplicable `outerCall` overloads.
+Similar to how lambdas and callable references receive a special treatment on the first stage of overload resolution,
+it's proposed to give a _special treatment_ for `_.of` syntactic construct in the arguments position.
+
+During the first stage of overload resolution for the `outerCall`,
+when `_.of` appears in the argument position, we will collect all `ParameterType.of`/`ParameterType.Companion.of` functions available at the use-site.
+(`ParameterType` is the type of the parameter that maps to `_.of` argument)
+1.  If any of the collected `of` functions are not marked with `operator` keyword and don't come from Java, then `_.of` doesn't receive any _special treatment_.
+2.  If [_CLET_](#clet-and-clt) of type `ParameterType` is undefined, then `_.of` doesn't receive any _special treatment_.
+3.  If the two conditions above are satisfied, then we will run the type inference for collection literal elements in so-called "dependent" mode.
+    (see [type inference](https://github.com/JetBrains/kotlin/blob/master/docs/fir/inference.md))
+    After infering types for collection literal elements, we add the following constraints to the constraint system of `outerCall` candidate:
+    1. For each collection literal element `e`, we add `type(e) <: CLET(ParameterType)` constraint.
+    2. We also add the following constraint: `CLT(ParameterType) <: ParameterType`.
+
+Please note that constraints described above are only added to the constraint system of `outerCall` and not to constraint system of `_.of` functions themselves.
+(overload resolution for which will be performed later)
+
+Example:
 ```kotlin
-fun <T> materialize(): T = null!!
-fun outerCall(a: List<Int>) = Unit
-fun outerCall(a: Set<Double>) = Unit
+operator fun <T> List.Companion.of(vararg t: T): List<T> = TODO("not implemented")
+operator fun <T> Set.Companion.of(vararg t: T): Set<T> = TODO("not implemented")
+
+fun <K> materialize(): K = null!!
+fun outerCall(a: List<Int>) = Unit // (1)
+fun outerCall(a: Set<Double>) = Unit // (2)
 
 fun test() {
+    // The initial constraint system for candidate (1) looks like:
+    //                type(1) <: T
+    //                type(2) <: T
+    // type(materialize<K>()) <: T
+    //                List<T> <: List<Int>
+    // The constraint system is sound => the candidate is not filtered out
+
+    // The initial constraint system for candidate (2) looks like:
+    //                type(1) <: T
+    //                type(2) <: T
+    // type(materialize<K>()) <: T
+    //                List<T> <: Set<Double>
+    // The constraint system is unsound => the candidate is filtered out
     outerCall([1, 2, materialize()])
 }
 ```
 
-Similar to how lambdas and callable references receive a special treatment on the first stage of overload resolution,
-it's proposed to give a special treatment for `_.of` syntactic construct.
+It's important to understand that until we pick the `outerCall` overload, we don't start the full-blown overload resolution process for nested `_.of` calls.
+If we did so, it'd lead to exponential complexity of `outerCall` overload resolution.
+Consdier the `outerCall(_.of(_.of(_.of(1, 2, 3))))` example.
 
+Once the particular overload for `outerCall` is choosen, we proceed with resolving `_.of` arguments according to regular resolution rules for `_.of` literals.
+Thanks to already fixated `outerCall` overload, when, at argument position, we resolve `_.of` literal, we already know the exact expected type for the `_.of` literal.
 
+> One may argue that it feels wrong to treat `_.of` literal in a special way just because of the name.
+> This question is understandable.
 
+### Theoretical possibility to support List vs Set overloads in the future
 
-
-
-
-
-
-
-
-Since the overload needs to be placed in the _static scope_ of the target class, the overload can either have 
-
-
-the following shape: `operator fun of(vararg t: <INPUT_TYPE>): <RETURN_TYPE>`.
-The overload must have single `vararg` parameter.
-The overload may have as many type parameters as needed.
-The overload is allowed to be declared in 
-
-
-
-1.  It's allowed to provide several `of` overloads.
-2.  One of the `of` overloads must accept single `vararg` of arguments.
-3.  All other overloads are allowed to differ from the `vararg` overload only by number of parameters, and parameter names.
-    Everything else must be the same (type parameters, return types, parameter types)
-4.  Types of all parameters across all `of` overloads must be the same.
-    We will call this specific type `T` a **collection element type** of `MyCustomList`.
-
-
-One and only one overload in the _overloading group_ must have the following shape: `operator fun of(vararg t: <INPUT_TYPE>): <RETURN_TYPE>`.
-The overload must have single `vararg` parameter.
-The overload may have as many type parameters as needed.
-
-Examples:
-
-
-```kotlin
-class MyCustomList {
-    companion object {
-        operator fun <T> of(vararg t: T): MyCustomList = TODO("")
-        operator fun of(a: Int) = ""
-    }
-}
-
-fun foo(a: MyCustomList) = Unit
-fun foo(a: String) = Unit
-
-fun main() {
-    foo(_.of(1)) // Argument type mismatch: expected 'MyCustomList' actual 
-    foo([1]) // Argument type mismatch: expected ''
-}
-```
-
-
-```kotlin
-// Valid operator `of` declaration
-class MyCustomList {
-    companion object {
-        operator fun <T> of(t: T): MyCustomList = TODO("")
-        operator fun <T> of(t1: T, t2: T): MyCustomList = TODO("")
-        operator fun <T> of(vararg t: T): MyCustomList = TODO("")
-    }
-}
-
-// Invalid operator `of` declaration
-class MyCustomList {
-    companion object {
-        operator fun <T> of(t: Int, t: String): MyCustomList = TODO("")
-    }
-}
-```
-
+todo
 
 ## Similarities with @OverloadResolutionByLambdaReturnType
 
 todo
-
-## Theoretical possibility to support List vs Set overloads
-
-todo
-
 
 
 ## Rejected proposals and ideas
@@ -362,59 +358,22 @@ class Foo {
 }
 ```
 
-We prefer to keep the language concistent in such small details rather than "fixing" the behavior, even if the suggested behavior would be better in general.
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-The invariants
-
-
-
-
-
-
-The complete example:
-
-```kotlin
-class MyCustomList {
-    companion object {
-        operator fun <T> of(vararg t: T): MyCustomList<T> = TODO()
-    }
-}
-fun main() {
-    val foo 
-}
-```
-
-todo: dilemma. is it ok for `operator` keyword to affect overload resolution? I think yes, it's ok.
+We prefer to keep the language concistent rather than "fixing" the behavior, even if the suggested behavior would be better in general.
 
 ## Interop with Java ecosystem
 
 ## Similar features in other languages
 
 
-## What implementation to use in List.of
+## List.of implementation
 
-todo
-Should it return EmptyList when args are 0, should it return ArrayList or ImmutableList?
+Kotlin's `listOf` returns:
+- `kotlin.collections.EmptyList` when there are zero elements
+- `java.util.Collections$SingletonList` when there is single element
+- `java.util.Arrays$ArrayList` (NB! don't confuse with `java.util.ArrayList`) when there is more than 1 element
+
+Java's `List.of` returns:
+- `java.util.ImmutableCollections$ListN` when there are zero elements
 
 ## IDE support
 
