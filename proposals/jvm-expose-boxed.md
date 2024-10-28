@@ -24,6 +24,7 @@ We propose modifications to how value classes are exposed in JVM, with the goal 
   * [JVM value classes](#jvm-value-classes)
   * [Other design choices](#other-design-choices)
 * [Expose operations and members](#expose-operations-and-members)
+  * [`Result` is excluded](#result-is-excluded)
   * [Other design choices](#other-design-choices-1)
   * [Further problems with reflection](#further-problems-with-reflection)
 * [Discarded potential features](#discarded-potential-features)
@@ -211,6 +212,21 @@ public dupl($this: PositiveInt): PositiveInt =
 // mangled version
 fun duplicate-26b4($this: Int): Int
 ```
+
+### `Result` is excluded
+
+Even though on paper the [`Result`](https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-result/) in the standard library should be covered by this KEEP, this is _not_ the case. The reason is that the compiler performs no mangling, and every `Result` value is treated as `java.lang.Object`.
+
+```kotlin
+fun weirdIncrement(x: Result<Int>): Result<Int> =
+    if (x.isSuccess) Result.success(x.getOrThrow() + 1)
+    else x
+
+// compiles down to
+fun weirdIncrement(x: java.lang.Object): java.lang.Object
+```
+
+More concretely, if `@JvmExposeBoxed` is applied to a callable using `Result` either as parameter or return type, that position should be treated as a non-value class.
 
 ### Other design choices
 
