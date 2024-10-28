@@ -2,7 +2,7 @@
 
 * **Type**: Design proposal
 * **Author**: Alejandro Serrano
-* **Contributors**: Alexander Udalov, Ilmir Usmanov
+* **Contributors**: Alexander Udalov, Ilmir Usmanov, Mikhail Zarechenskii
 * **Discussion**:
 * **Status**: In discussion
 * **Related YouTrack issue**: [KT-19289](https://youtrack.jetbrains.com/issue/KT-19289/Hibernate-Validator-Annotations-Dropped), [KTIJ-31300](https://youtrack.jetbrains.com/issue/KTIJ-31300/Draft-Validation-Annotation-Email-Doesnt-Work-in-Kotlin-Constructor)
@@ -17,6 +17,7 @@ Properties defined in primary constructor positions define several use-site targ
   * [Potential misunderstandings](#potential-misunderstandings)
   * [Alignment with Java](#alignment-with-java)
 * [Technical details](#technical-details)
+  * [Examples](#examples)
   * [Impact](#impact)
   * [Migration period](#migration-period)
 
@@ -82,24 +83,87 @@ The technical content of this KEEP is quite short. The defaulting rule should be
 >
 > It is an error if there are multiple targets and none of `param`, `property` and `field` is applicable.
 
+### Examples
+
+Consider [`Email` from Jakarta Bean Validation](https://jakarta.ee/specifications/bean-validation/3.0/apidocs/jakarta/validation/constraints/email), whose targets are defined as follows.
+
+```java
+@Target(value={METHOD,FIELD,ANNOTATION_TYPE,CONSTRUCTOR,PARAMETER,TYPE_USE})
+public @interface Email { }
+```
+
+Those Java targets are mapped to the [corresponding ones in Kotlin](https://kotlinlang.org/spec/annotations.html#annotation-targets). Note that `PROPERTY` is _not_ a target (in fact, annotations from Java can _never_ have them).
+
+Consider now the following code which uses the annotation in two different places.
+
+```kotlin
+data class User(val username: String, /* 1️⃣ */ @Email val email: String) {
+  /* 2️⃣ */ @Email val secondaryEmail: String? = null
+}
+```
+
+Before this proposal, in position 1️⃣ the annotation is applied to the constructor parameter only (target `param`). With this proposa, now it is applied to targets `param` and `field`. There is no change in position 2️⃣, the annotation is still applied only to use-site target `field`.
+
+```kotlin
+// equivalent to
+data class User(val username: String, @param:Email @field:Email val email: String) {
+  @field:Email val secondaryEmail: String? = null
+}
+```
+
+This behavior is not only for Java annotations. Another example is [`IntRange` from `androidx.annotations`](https://developer.android.com/reference/androidx/annotation/IntRange), which is defined ["natively" in Kotlin](https://cs.android.com/androidx/platform/frameworks/support/+/androidx-main:annotation/annotation/src/commonMain/kotlin/androidx/annotation/IntRange.kt?q=file:androidx%2Fannotation%2FIntRange.kt%20class:androidx.annotation.IntRange).
+
+An example in which the `property` target is involved is given by [`JSONName` from `kjson`](https://github.com/pwall567/kjson-annotations/blob/main/src/main/kotlin/io/kjson/annotation/JSONName.kt).
+
+```kotlin
+@Target(AnnotationTarget.VALUE_PARAMETER, AnnotationTarget.FIELD, AnnotationTarget.PROPERTY)
+annotation class JSONName(val name: String)
+```
+
+If we consider again the two position in which the annotation may appear,
+
+```kotlin
+data class User(val username: String, /* 1️⃣ */ @JSONName("mail1") val email: String) {
+  /* 2️⃣ */ @JSONName("mail2") val secondaryEmail: String? = null
+}
+```
+
+there is a change in behavior in 1️⃣ -- with this proposal `@JSONName` is applied to both the parameter and the property --, and no change in 2️⃣ -- `property` is still chosen as the use-site target.
+
+```kotlin
+data class User(val username: String, @param:JSONName("mail1") @property:JSONName("mail1") val email: String) {
+  @property:JSONName("mail2") val secondaryEmail: String? = null
+}
+```
+
 ### Impact
 
-To understand the impact of this change, we need to consider whether the annotation was defined in Java or in Kotlin. The reason is that annotations defined in Java may _not_ define `property` as one of their targets. As a consequence, the new defaulting rule effectively works as "apply to all possible targets". This is exactly the behavior we want, as described in the _Motivation_ section.
+To understand the impact of this change, we need to consider whether the annotation was defined in Java or in Kotlin. The reason is that annotations defined in Java may _not_ define `property` as one of their targets. As a consequence, the proposed defaulting rule effectively works as "apply to all possible targets". This is exactly the behavior we want, as described in the _Motivation_ section.
 
-To understand whether the choice between `property` and `field` is required in the rule above, we have consulted open source repositories (for example, [query in GitHub Search](https://github.com/search?q=%40Target%28AnnotationTarget.PROPERTY%2C+AnnotationTarget.FIELD%29+lang%3AKotlin&type=code&p=2)). The conclusion is there is an important amount of annotations with both potential targets in the wild, which makes is dangerous to scrape the defaulting between `property` and `field` altogether.
+To understand whether the choice between `property` and `field` is required in the rule above, we have consulted open source repositories (for example, [query in GitHub Search](https://github.com/search?q=%40Target%28AnnotationTarget.PROPERTY%2C+AnnotationTarget.FIELD%29+lang%3AKotlin&type=code)). The conclusion is there is an important amount of annotations with both potential targets in the wild, which makes is dangerous to scrape the defaulting between `property` and `field` altogether.
 
 ### Migration period
 
 The complicated part in this case is to ensure an orderly transition between the two different worlds. For that matter, we define three different behaviors for the compiler:
 
-1. Apply the old defaulting rule,
-2. Apply the old defaulting rule, but warn when more than one target is applicable,
-3. Apply the new default rule.
+1. Apply the only-first defaulting rule (the "old" one),
+2. Apply the only-first defaulting rule, but warn when more than one target is applicable,
+3. Apply the proposed defaulting rule, which applies to both parameter and property/field.
 
-The Kotlin compiler currently behaves as (1). We propose to change the behavior to (2) for a period of time to be defined by the implementation, and then move to (3). During this transitional period the user may silence the warnings by explicitly choosing (1) or (3).
+The Kotlin compiler currently behaves as (1). We propose to change the behavior to (2) for a period of time to be defined by the implementation, and then move to (3). During this transitional period the user may silence the warnings by explicitly choosing (1) or (3), or making use-site targets explicit.
 
 > [!NOTE]
 > If the Kotlin compiler supports flags, the behavior may be controlled by them.
-> - `-Xannotation-defaulting=old` applies the old rule,
-> - `-Xannotation-defaulting=old-warn` applies the old rule and warns,
-> - `-Xannotation-defaulting=new` applies the new rule.
+> - `-Xannotation-defaulting=only-first` corresponds to (1),
+> - `-Xannotation-defaulting=only-first-warn` corresponds to (2),
+> - `-Xannotation-defaulting=param-property` corresponds to (3).
+
+More concretely, the warning in case (2) should only appear when the behavior between (1) and (3) differs. This means that:
+
+- The annotation should _not_ have a explicit use-site target,
+- Both the `param` and one of `property` or `field` targets should be allowed for the specific element.
+
+If the user wants to keep the only-first behavior but _not_ receive any warnings, the workaround is to explicitly write the use-site target. This is also a future-proof way to keep the current behavior.
+
+> [!TIP]
+> _Tooling support_: in response to this warning, editors supporting Kotlin are suggested to include actions to make them go away. That may include enabling the proposed flag project-wise, or making the use-site target for an annotation explicit.
