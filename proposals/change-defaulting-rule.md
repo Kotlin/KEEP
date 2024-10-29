@@ -102,7 +102,7 @@ data class User(val username: String, /* 1️⃣ */ @Email val email: String) {
 }
 ```
 
-Before this proposal, in position 1️⃣ the annotation is applied to the constructor parameter only (target `param`). With this proposa, now it is applied to targets `param` and `field`. There is no change in position 2️⃣, the annotation is still applied only to use-site target `field`.
+Before this proposal, in position 1️⃣ the annotation is applied to the constructor parameter only (target `param`). With this proposal, now it is applied to targets `param` and `field`. There is no change in position 2️⃣, the annotation is still applied only to use-site target `field`.
 
 ```kotlin
 // equivalent to
