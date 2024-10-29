@@ -120,7 +120,7 @@ An example in which the `property` target is involved is given by [`JSONName` fr
 annotation class JSONName(val name: String)
 ```
 
-If we consider again the two position in which the annotation may appear,
+If we consider again the two positions in which the annotation may appear,
 
 ```kotlin
 data class User(val username: String, /* 1️⃣ */ @JSONName("mail1") val email: String) {
