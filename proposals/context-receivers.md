@@ -303,7 +303,7 @@ and `context(B, A) () -> Unit`). In 1.6.20, it won't be supported.
 ### Referencing specific receiver
 
 Context receivers can never be referenced using a plain `this` expression and never change the meaning of `this`.
-However, this proposal introduces another option to reference a receiver of any type, including context one, via the
+However, this proposal introduces another option to reference a receiver of any type, including a context receiver, via the
 [labeled `this` expression](https://kotlinlang.org/docs/reference/grammar.html#THIS_AT).
 For every receiver in the scope, the compiler generates the label from the name of its type with the following rules:
 
