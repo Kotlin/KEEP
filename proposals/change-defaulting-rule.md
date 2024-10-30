@@ -9,7 +9,7 @@
 
 ## Abstract
 
-Properties defined in primary constructor positions define several use-site targets for annotations. If an annotation is applied, one of those targets is chosen using the [defaulting rule](https://kotlinlang.org/docs/annotations.html#java-annotations). This KEEP proposes to change that behavior to choose several targets instead.
+Several kinds of declarations in Kotlin define more than one use-site target for annotations. If an annotation is applied, one of those targets is chosen using the [defaulting rule](https://kotlinlang.org/docs/annotations.html#java-annotations). This KEEP proposes to change that behavior to choose several targets instead, and introduce a new `all` target to select all of them.
 
 ## Table of contents
 
@@ -42,7 +42,7 @@ Declaring a use-site target is not mandatory, though. In case none is given, the
 
 > If you don't specify a use-site target, the target is chosen according to the `@Target` annotation of the annotation being used. If there are multiple applicable targets, the first applicable target from the following list is used: `param`, `property`, `field`.
 
-We shall argue below that the defaulting rule should be changed for the case of properties defined in primary constructors. Instead, the annotation should be applied to _both_ the constructor parameter and the property or field.
+We shall argue below that the defaulting rule should be changed for the case of properties defined in primary constructors. Instead, the annotation should be applied to _both_ the constructor parameter and the property or field. Furthermore, sometimes it is also important to apply the same annotation to getters and setters, a scenario that currently requires duplication.
 
 ### Potential misunderstandings
 
@@ -62,7 +62,7 @@ Java provides [records](https://openjdk.org/jeps/395) since version 16 (experime
 record Person(String name, int age) { }
 ```
 
-The rules for [annotations on record components](https://openjdk.org/jeps/395#Annotations-on-record-components) are very similar for those in this proposal: apply to every declaration.
+The rules for [annotations on record components](https://openjdk.org/jeps/395#Annotations-on-record-components) go even further than the tryad of `param`, `property`, and `field`; they also apply to the property getter and to the Java-only `RECORD_COMPONENT` target.
 
 Since JVM is one of the main targets for Kotlin, we think alignment with the rest of the players is very important. One reason is to make it easier for developers to work on multi-language projects, without having to remember small quirks per language. On top of that, libraries developed with Java in mind may assume the behavior of records, and they would then fail in a very similar scenario in Kotlin.
 
@@ -74,7 +74,9 @@ However, they provide a way to create a version of an annotation with a specific
 
 ## Technical details
 
-The technical content of this KEEP is quite short. The defaulting rule should be changed to:
+The technical content of this KEEP consists of two parts.
+
+**Param-and-property defaulting rule**: the defaulting rule should read as follows.
 
 > If you don't specify a use-site target, the target is chosen according to the `@Target` annotation of the annotation being used. If there are multiple targets, choose one or more as follows:
 > 
@@ -82,6 +84,14 @@ The technical content of this KEEP is quite short. The defaulting rule should be
 > - If any of the property target `property` or field target `field` is applicable, use the first of those.
 >
 > It is an error if there are multiple targets and none of `param`, `property` and `field` is applicable.
+
+**New `all` annotation use-site target**: in addition to the existing use-site targets, we define a new meta-target.
+
+- An annotation with the `all` use-site target should behave as applied to every applicable use-site target.
+- It is an error to use the `all` annotation target if there is no applicable target for the declaration.
+- It is an error to apply the same annotation with both the `all` and another annotation target.
+
+In addition, if a class is annotated with `@JvmRecord`, the Java-only target `RECORD_COMPONENT` is considered when selecting applicable targets. That way the behavior of a `@JvmRecord` with annotations using `all` as use-site target aligns perfectly with Java records.
 
 ### Examples
 
@@ -111,7 +121,17 @@ data class User(val username: String, @param:Email @field:Email val email: Strin
 }
 ```
 
-This behavior is not only for Java annotations. Another example is [`IntRange` from `androidx.annotations`](https://developer.android.com/reference/androidx/annotation/IntRange), which is defined ["natively" in Kotlin](https://cs.android.com/androidx/platform/frameworks/support/+/androidx-main:annotation/annotation/src/commonMain/kotlin/androidx/annotation/IntRange.kt?q=file:androidx%2Fannotation%2FIntRange.kt%20class:androidx.annotation.IntRange).
+If the `Email` annotation is used with the `all` target instead,
+
+```kotlin
+data class User(val username: String, /* 1️⃣ */ @all:Email val email: String) {
+  /* 2️⃣ */ @all:Email val secondaryEmail: String? = null
+}
+```
+
+Then the annotation is additionally applied as `@get:Email` in the two marked positions. In this case the `get` target comes from "translating" Java's `METHOD` target. If the property was defined as `var`, the additional `set_param` target would also be selected.
+
+This behavior does not only apply to Java annotations. For example, [`IntRange` from `androidx.annotations`](https://developer.android.com/reference/androidx/annotation/IntRange) is defined ["natively" in Kotlin](https://cs.android.com/androidx/platform/frameworks/support/+/androidx-main:annotation/annotation/src/commonMain/kotlin/androidx/annotation/IntRange.kt?q=file:androidx%2Fannotation%2FIntRange.kt%20class:androidx.annotation.IntRange).
 
 An example in which the `property` target is involved is given by [`JSONName` from `kjson`](https://github.com/pwall567/kjson-annotations/blob/main/src/main/kotlin/io/kjson/annotation/JSONName.kt).
 
@@ -136,15 +156,17 @@ data class User(val username: String, @param:JSONName("mail1") @property:JSONNam
 }
 ```
 
+The developer may select the three potential targets by using `@all:JSONName("mail1")` in the definition.
+
 ### Impact
 
-To understand the impact of this change, we need to consider whether the annotation was defined in Java or in Kotlin. The reason is that annotations defined in Java may _not_ define `property` as one of their targets. As a consequence, the proposed defaulting rule effectively works as "apply to all possible targets". This is exactly the behavior we want, as described in the _Motivation_ section.
+To understand the impact of this change, we need to consider whether the annotation was defined in Java or in Kotlin. The reason is that annotations defined in Java may _not_ define `property` as one of their targets. As a consequence, the proposed defaulting rule effectively works as "apply to parameter and field". This is exactly the behavior we want, as described in the _Motivation_ section.
 
 To understand whether the choice between `property` and `field` is required in the rule above, we have consulted open source repositories (for example, [query in GitHub Search](https://github.com/search?q=%40Target%28AnnotationTarget.PROPERTY%2C+AnnotationTarget.FIELD%29+lang%3AKotlin&type=code)). The conclusion is there is an important amount of annotations with both potential targets in the wild, which makes is dangerous to scrape the defaulting between `property` and `field` altogether.
 
 ### Migration period
 
-The complicated part in this case is to ensure an orderly transition between the two different worlds. For that matter, we define three different behaviors for the compiler:
+The complicated part in this case is to ensure an orderly transition between the two different defaulting rules. For that matter, we define three different behaviors for the compiler:
 
 1. Apply the only-first defaulting rule (the "old" one),
 2. Apply the only-first defaulting rule, but warn when more than one target is applicable,
