@@ -397,6 +397,8 @@ fun test() {
 On the second stage of overload resolution, `Int` is considered more specific than `Long`, `Short`, `Byte`.
 In the similar way, `List` can be theoretically made more specific than any other type that can represent collection literals.
 
+But right now, we **don't plan** to do that, since both `List` and `Set` overloads can equally represent the "main" overload.
+
 ## What happens if user forgets operator keyword
 
 Basic example (similar to how other operators work in Kotlin):
