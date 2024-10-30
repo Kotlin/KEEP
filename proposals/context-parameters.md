@@ -528,6 +528,16 @@ context(console: ConsoleLogger, file: FileLogger) fun example4() =
   with(console) { logWithTime("hello") }  // no ambiguity, uses 'console'
 ```
 
+**§7.4bis** *(context resolution, smart casting)*: During context resolution any smart cast over available contexts should be considered. For example, the following code should be accepted:
+
+```kotlin
+context(ctx: Any) fun foo() {
+  if (ctx is String) bar()
+}
+
+context(s: String) fun bar() { }
+```
+
 **§7.5** *(applicability, `DslMarker`)*: During context resolution, if at a certain scope there is a potential contextual value in scope (either coming from a context parameter or from an implicit receiver) marked with an annotation `@X` which is itself annotated with [`@DslMarker`](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-dsl-marker/) then:
 
 - It is an _error_ for two such values to be available in the same scope.
