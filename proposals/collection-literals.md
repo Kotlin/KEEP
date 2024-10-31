@@ -22,11 +22,14 @@ In simpliest form, if users want to create a collection, instead of writing `val
 - [Similarities with @OverloadResolutionByLambdaReturnType](#similarities-with-overloadresolutionbylambdareturntype)
 - [Interop with Java ecosystem](#interop-with-Java-ecosystem)
 - [Similar features in other languages](#similar-features-in-other-languages)
-- [List.of implementation](#listof-implementation)
 - [IDE support](#ide-support)
-- [Overload resolution for collection literals](#overload-resolution-for-collection-literals)
+- [listOf deprecation](#listof-deprecation)
+- [Change to stdlib](#change-to-stdlib)
+- [Future evolution](#future-evolution)
 - [Rejected proposals and ideas](#rejected-proposals-and-ideas)
+  - [Rejected proposal: more granular operators](#rejected-proposal-more-granular-operators)
   - [Rejected idea: built-in matrices](#rejected-idea:-built-in-matrices)
+  - [Rejected idea: self-sufficient collection literals with defined type](#rejected-idea-self-sufficient-collection-literals-with-defined-type)
   - [Rejected proposal: use improved overload resolution algorithm only to refine non-empty overload candidates set on the fixated tower level](#rejected-proposal-use-improved-overload-resolution-algorithm-only-to-refine-non-empty-overload-candidates-set-on-the-fixated-tower-level)
 
 ## Motivation
@@ -111,8 +114,8 @@ In short, there are all kinds of overloads.
 The restrictions and the overload resolution algorithm suggested further will help us to make the resolution algorithm distinguish `List<Int>` vs `List<Double>` kinds of overloads.
 
 > [!NOTE]
-> When we say `List` vs `Set` kinds of overloads we mean all sorts of overloads where the "outer" type is different.
-> When we say `List<Int>` vs `List<Double>` kinds of overloads we mean all sorts of overloads where the "inner" type is different.
+> When we say `List` vs `Set` kinds of overloads, we mean all sorts of overloads where the "outer" type is different.
+> When we say `List<Int>` vs `List<Double>` kinds of overloads, we mean all sorts of overloads where the "inner" type is different.
 
 -   `List<Int>` vs `Set<Int>` typically emerges when one of the overloads is the "main" overload, and another one is just a convenience overload that delegates to the "main" overload.
     Such overloads won't be supported because it's generally unknown which of the overloads is the "main" overload,
@@ -136,6 +139,7 @@ The restrictions:
 2. All `of` overloads must have the return type equal by `ClassId` to the type in whom _static scope_ the overload is declared in.
 3. All `of` overloads must be either top-level extension on `Companion`, be declared as companion object members and have zero extension receivers, or be a static function declared in Java.
 4. All `of` overloads must have zero context parameters.
+5. All `of` overloads must be more specific than the overload with single `vararg` parameter.
 
 If the `of` function is marked with the `operator` keyword, then the compiler should check and enforce all the restrictions.
 All `of` overloads must be marked with `operator` keyword,
@@ -182,6 +186,30 @@ except for Java, because Kotlin compiler cannot issue diagnostics in Java code.
         operator fun of(vararg t: Int): Bad5<Int> = Bad5() // too many vararg overloads in one overloading group
         operator fun of(vararg t: String): Bad5<String> = Bad5()
     }}
+
+    class Bad6<T> { companion object {
+        operator fun of(vararg t: Int): Bad6<T> = Bad6<T>()
+        operator fun of(t: String): Bad6<T> = Bad6<T>() // Violation. This overload must be 
+    }}
+```
+
+The motivation behind restriction 1 is to make // todo
+
+The motivation behind restriction 5 is to avoid cases like this:
+```kotlin
+class Array { companion object {
+    operator fun of(vararg t: Int) = Array()
+    operator fun of(t: String) = Array()
+}}
+
+fun foo(a: Array) = Unit // (1)
+fun foo(a: List<String>) = Unit // (2)
+
+fun main() {
+    val s: Array = [""] // green
+    foo(s) // (1)
+    foo([""]) // (2)
+}
 ```
 
 ### Overload resolution and type inference
@@ -274,6 +302,10 @@ Once the particular overload for `outerCall` is choosen, we know what definite e
 We desugar collection literal to `DefiniteExpectedType.of(expr1, expr2, expr3)`, and we proceed resolving overloads of `DefiniteExpectedType.of` according to regular Kotlin overload resolution rules.
 The `DefiniteExpectedType.of` function itself is resolved according regular Kotlin _operator convention_ rules (e.g. we only consider those functions that are marked with `operator` keyword).
 
+Now the idea behind `of` functions restrictions should be clear.
+The idea is to make it possible to treat the `vararg` overload as "leading"/"fallback" overload that we can always use for overload resolution for `outerCall` without paying the cost of performing overload resolution for `of` function.
+And the cost for full-blown overload resolution for nested `of` calls is big, as it's been said, it's exponential.
+
 ### Theoretical possibility to support List vs Set overloads in the future
 
 We don't plan to, but if we ever change our mind, it's possible to support `List` vs `Set` kinds of overloads in the way similar to how Kotlin prefers `Int` overload over `Long` overload:
@@ -299,44 +331,124 @@ todo
 
 ## Similar features in other languages
 
-
-## List.of implementation
-
-Kotlin's `listOf` returns:
-- `kotlin.collections.EmptyList` when there are zero elements
-- `java.util.Collections$SingletonList` when there is single element
-- `java.util.Arrays$ArrayList` (NB! don't confuse with `java.util.ArrayList`) when there is more than 1 element
-
-Java's `List.of` returns:
-- `java.util.ImmutableCollections$ListN` when there are zero elements
-
 ## IDE support
+
+The IDE should implement an inspection to replace `listOf`/`setOf`/etc. with collection literals where it doesn't lead to overload resolution ambiguity.
+It's under the question if the inspection for for `listOf`/`setOf` should be enabled by default. (most probably not)
+
+The IDE should implement an inspection to replace explict use of operator function `Type.of` with collection literals where it doesn't lead to overload resolution ambiguity.
+The inspection should be enabled by default.
 
 todo
 
-## Similar features in other languages
+## listOf deprecation
 
-todo add to toc
-todo 
+We **don't** plan to deprecate any of the `smthOf` functions in Kotlin stdlib.
+They are too much widespread, even some 3rd party Kotlin libraries follow `smthOf` pattern.
+
+Besides, this proposal doesn't allow to eliminate `smthOf` pattern completely.
+`listOfNotNull` isn't going anywhere.
+
+Unfortunatelly, introduction of `List.of` functions in stdlib makes the situation harder for newcomers.
+
+For the reference, here is the full list of `smthOf` functions that we managed to find in stdlib:
+
+List like
+- `listOf()`
+- `listOfNotNull()`
+- `setOfNotNull()`
+- `mutableListOf()`
+- `sequenceOf()`
+- `arrayListOf()`
+- `arrayOf()`
+- `intArrayOf()`, `shortArrayOf()`, `byteArrayOf()`, `longArrayOf()`, `ushortArrayOf()` // etc
+- `setOf()`
+- `mutableSetOf()`
+- `hashSetOf()`
+- `linkedSetOf()`
+- `sortedSetOf()`
+
+Map like
+- `mapOf()`
+- `mutableMapOf()`
+- `hashMapOf()`
+- `sortedMapOf()`
+
+Other collections
+- `arrayOfNulls()`
+- `arrayOf().copyOf()` // vs spread in collection literals?
+- `mutableListOf<String>().copyOf()` // red code. We don't have stdlib function to copy list in Kotlin
+
+Others, not collections, but things that could be literals of their own
+- `lazyOf()`
+- `typeOf<String>()` // Defined in kotlin-reflect. returns KType
+- `enumValueOf<E>(String)`
+- `CharDirectionality.valueOf(Int)` // Int to Enum entry
+- `java.lang.Boolean.valueOf(true)` // Java
+- `java.lang.Byte.valueOf("")` // Java
+- `java.math.BigInteger.valueOf(1l)` // Java
 
 ## Change to stdlib
 
-todo
+The following API change is proposed to stdlib:
+```diff
+diff --git a/libraries/stdlib/src/kotlin/Collections.kt b/libraries/stdlib/src/kotlin/Collections.kt
+index e692a8c05ede..7509cc55b9c6 100644
+--- a/libraries/stdlib/src/kotlin/Collections.kt
++++ b/libraries/stdlib/src/kotlin/Collections.kt
+@@ -175,6 +175,13 @@ public expect interface List<out E> : Collection<E> {
+      * Structural changes in the base list make the behavior of the view undefined.
+      */
+     public fun subList(fromIndex: Int, toIndex: Int): List<E>
++
++    public companion object {
++        public operator fun <T> of(vararg t: T): List<T>
++        public operator fun <T> of(t1: T, t2: T): List<T>
++        public operator fun <T> of(t1: T, t2: T, t3: T): List<T>
++        // 10 overloads?
++    }
+ }
 
-## Overload resolution for collection literals
+ /**
+```
 
-What if collection is only constructable with a builder
+The analogical API changes are proposed to the following classes:
+- `kotlin.collections.ArrayList`
+- `kotlin.collections.MutableList`
+- `kotlin.collections.Set`
+- `kotlin.collections.HashSet`
+- `kotlin.collections.LinkedHashSet`
+- `kotlin.collections.MutableSet`
+- `kotlin.sequences.Sequence`
+- `kotlin.Array`, `kotlin.IntArray`, `kotlin.LongArray`, `kotlin.ShortArray`, `kotlin.UIntArray` etc.
 
-3 operators:
-1. Create the builder
-2. Append elements
-3. Invoke ".build()"
+Please note that on JVM, `kotlin.collections.List` is a mapped type.
+Which means that we cannot change the runtime `java.util.List`.
+It's suggested to do mapped `companion object` in the way similar to `Int.Companion` (which maps to `kotlin.jvm.internal.IntCompanionObject`).
 
-Observation: nobody cares about `vararg` in `listOf`
+**Observations**
 
-Providing 3 functions seems like an overkill
+Kotlin's `listOf` always returns immutable implementations:
+-   `kotlin.collections.EmptyList` when there are zero elements
+-   `java.util.Collections$SingletonList` when there is single element
+-   `java.util.Arrays$ArrayList` when there is more than 1 element.
+    NB! don't confuse with `java.util.ArrayList`.
+    Contrary to `java.util.ArrayList`, `Arrays$ArrayList` doesn't allow list modifications.
 
-My proposal restricts `.whatever` literals.
+Java's `List.of` always returns immutable implementations:
+-   `java.util.ImmutableCollections$ListN` when there are zero elements.
+-   Specialized `java.util.ImmutableCollections$List12` when there is single element.
+-   Specialized `java.util.ImmutableCollections$List12` when there are two element.
+-   `java.util.ImmutableCollections$ListN` when there more than 1 element.
+
+As for what particular implementation that should be returned.
+Conceptually, both `listOf` implementations are immutable and `List.of` implementations are immutable, which is a good thing.
+The big showstopper is that `List.of` doesn't accept `null` arguments.
+We leave the question of particular implementation to the developers of Kotlin stdlib.
+
+## Future evolution
+
+In future, Kotlin may provide `@VarargOverloads` (similar to `@JvmOverloads`), or `inline vararg` to eliminate unnecessary array allocations even further.
 
 ## Rejected proposals and ideas
 
@@ -344,17 +456,74 @@ This section lists some common proposals and ideas that were rejected
 
 ### Rejected proposal: more granular operators
 
-// todo add to toc
-
 In [the proposal](#proposal), we give users possibility to add overloads for the `vararg` operator.
-It's clear that the possibility is given to avoid unnecessary array allocations at least for most popular cases when collection sizes are small.
-What if instead of a single operator, collections had to declare 3 operators: `createEmpty`, `add`, `freeze`?
+It's clear that we do so to avoid unnecessary array allocations at least for most popular cases when collection sizes are small.
+What if instead of a single operator, collections had to declare 3 operators: `createCollectionBuilder`, `plusAssign`, `freeze` (we even already have the `plusAssign` operator!)?
 
-We even already have operator for `add`, it's called `plusAssign`.
+Please note, that we need the third `freeze` operator to make it possible to create collection literals for immutable collections.
+
+Then the use-site could be desugared by the compiler:
+```kotlin
+fun main() {
+    val s = [1, 2, 3]
+    // desugared to
+    val s = run {
+        val tmp = createCollectionBuilder<Int>()
+        tmp.plusAssign(1)
+        tmp.plusAssign(2)
+        tmp.plusAssign(2)
+        List.freeze(tmp)
+    }
+}
+```
+
+The declaration site looks like:
+```kotlin
+class List<T> {
+    companion object {
+        operator fun createCollectionBuilder<T>(capacity: Int): MutableList<T> = ArrayList(capacity)
+        operator fun <T> freeze(a: MutableList<T>): List<T> = a.toList()
+    }
+}
+
+class MutableList<T> {
+    fun add(t: T): Boolean = TODO("")
+
+    companion object {
+        operator fun createCollectionBuilder<T>(capacity: Int): MutableList<T> = ArrayList(capacity)
+        operator fun <T> freeze(a: MutableList<T>): MutableList<T> = this
+    }
+}
+
+operator fun <T> MutableList<T>.plusAssign(t: T) { add(t) }
+```
+
+The main problem with this approach is that the type of the collection builder is exposed in public API.
+The type of the builder is an implementation detail, and users might want to change it over time.
+Users may also want to use different builder types depending on the number of elements in the collection literal.
 
 ### Rejected idea: built-in matrices
 
 todo
+
+### Rejected idea: self-sufficient collection literals with defined type
+
+The type of collection literals is infered from the expected type.
+Unfortunatelly, that may lead to overload resolution ambiguity when collection literal is used in argument position.
+
+```kotlin
+fun foo(a: Set<Int>) = Unit
+fun foo(a: List<Int>) = Unit
+
+fun test() {
+    foo([1, 2]) // overload resolution ambiguity
+    // but what if...
+    foo(List [1, 2])
+}
+```
+
+The rejected proposal was to allow writing `List [1, 2]`.
+The proposal was rejected because users can anyway desugar `[1, 2]` to `List.of(1, 2)` or `listOf(1, 2)`.
 
 ### Rejected proposal: use improved overload resolution algorithm only to refine non-empty overload candidates set on the fixated tower level
 
