@@ -314,7 +314,7 @@ Context parameters lift two of the main restrictions of this mode of use:
 * It's possible to add new members with an extension receiver without modifying the Scope class itself.
 * It's possible to add members which are only available when the DSL Scope has certain type arguments.
 
-**§4.3.2** *(`DslMarker`)*: we strive to make `@DslMarker` annotations work uniformly across receivers and context parameters, as described in §7.5.
+**§4.3.2** *(`DslMarker`)*: we strive to make `@DslMarker` annotations work uniformly across receivers and context parameters, as described in §7.7.
 
 ### Context-oriented dispatch / externally-implemented interface / type classes
 
@@ -476,7 +476,7 @@ functionContext: 'context' '(' receiverType { ',' receiverType } [ ',' ] ')'
 
 **Recommended style:** annotations, context parameters, then other modifiers as per the [usual style guide](https://kotlinlang.org/docs/coding-conventions.html#modifiers-order).
 
-**§7.1bis** *(disambiguating `context`)*: We do not enforce `context` as a hard keyword, leading to potential ambiguities in the body of declarations. In particular, `context(` may be both the beginning of:
+**§7.2** *(disambiguating `context`)*: We do not enforce `context` as a hard keyword, leading to potential ambiguities in the body of declarations. In particular, `context(` may be both the beginning of:
 
 1. A call to a function named `context`,
 2. The context parameter list of a local declaration.
@@ -488,11 +488,11 @@ The compiler should perform a lookahead of two additional tokens to disambiguate
 
 ### Extended resolution algorithm
 
-**§7.2** *(declaration with context parameters)*: The context parameters declared for a callable are available in the same way as "regular" value parameters in the body of the function. Both value and context parameters are introduced in the same scope, there is no shadowing between them (remember that parameters names must be unique across both value and context parameters),
+**§7.3** *(declaration with context parameters)*: The context parameters declared for a callable are available in the same way as "regular" value parameters in the body of the function. Both value and context parameters are introduced in the same scope, there is no shadowing between them (remember that parameters names must be unique across both value and context parameters),
 
-**§7.3** *(applicability, lambdas)*: Building the constraint system is modified for lambda arguments. Compared with the [Kotlin specification](https://kotlinlang.org/spec/overload-resolution.html#description), the type of the parameter _U<sub>m</sub>_ is replaced with _nocontext(U<sub>m</sub>)_, where _nocontext_ removes the initial `context` block from the function type.
+**§7.4** *(applicability, lambdas)*: Building the constraint system is modified for lambda arguments. Compared with the [Kotlin specification](https://kotlinlang.org/spec/overload-resolution.html#description), the type of the parameter _U<sub>m</sub>_ is replaced with _nocontext(U<sub>m</sub>)_, where _nocontext_ removes the initial `context` block from the function type.
 
-**§7.4** *(applicability, context resolution)*: After the first phase of function applicability -- checking the type constraint problem -- an additional **context resolution** phase is inserted. For each potentially applicable callable, for each context parameter, we traverse the tower of scopes looking for **exactly one** default receiver or context parameter with a compatible type.
+**§7.5** *(applicability, context resolution)*: After the first phase of function applicability -- checking the type constraint problem -- an additional **context resolution** phase is inserted. For each potentially applicable callable, for each context parameter, we traverse the tower of scopes looking for **exactly one** default receiver or context parameter with a compatible type.
 
 If a type of a declared context parameter of a candidate uses a **generic type** whose value is not determined yet, then the corresponding type constraints are added to the constraint system of this candidate call. If solving this system fails, then the candidate is considered to be inapplicable, without trying to substitute different implicit receivers available in the context.
 
@@ -528,7 +528,17 @@ context(console: ConsoleLogger, file: FileLogger) fun example4() =
   with(console) { logWithTime("hello") }  // no ambiguity, uses 'console'
 ```
 
-**§7.5** *(applicability, `DslMarker`)*: During context resolution, if at a certain scope there is a potential contextual value in scope (either coming from a context parameter or from an implicit receiver) marked with an annotation `@X` which is itself annotated with [`@DslMarker`](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-dsl-marker/) then:
+**§7.6** *(context resolution, smart casting)*: During context resolution any smart cast over available contexts should be considered. For example, the following code should be accepted:
+
+```kotlin
+context(ctx: Any) fun foo() {
+  if (ctx is String) bar()
+}
+
+context(s: String) fun bar() { }
+```
+
+**§7.7** *(applicability, `DslMarker`)*: During context resolution, if at a certain scope there is a potential contextual value in scope (either coming from a context parameter or from an implicit receiver) marked with an annotation `@X` which is itself annotated with [`@DslMarker`](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-dsl-marker/) then:
 
 - It is an _error_ for two such values to be available in the same scope.
 - If context resolution chooses a contextual value with the same annotation, but in an outer scope, it is a compilation _error_.
@@ -573,7 +583,7 @@ fun dslMarkerExample() =
   }
 ```
 
-**§7.6** *(most specific candidate)*: When choosing the **most specific candidate** we follow the [Kotlin specification](https://kotlinlang.org/spec/overload-resolution.html#choosing-the-most-specific-candidate-from-the-overload-candidate-set), with one addition:
+**§7.8** *(most specific candidate)*: When choosing the **most specific candidate** we follow the [Kotlin specification](https://kotlinlang.org/spec/overload-resolution.html#choosing-the-most-specific-candidate-from-the-overload-candidate-set), with one addition:
 
 * Candidates with context parameters are considered more specific than those without them.
 * But there is no other prioritization coming from the length of the context parameter list or their types.
@@ -593,22 +603,22 @@ The reasoning for this particular rule is that, since contexts are implicit, the
 
 ### Extended type inference algorithm
 
-**§7.7** *(lambda literal inference)*: the type inference process in the [Kotlin specification](https://kotlinlang.org/spec/type-inference.html#statements-with-lambda-literals) should take context parameters into account. Note that unless a function type with context is "pushed" as a type for the lambda, context parameters are never inferred.
+**§7.9** *(lambda literal inference)*: the type inference process in the [Kotlin specification](https://kotlinlang.org/spec/type-inference.html#statements-with-lambda-literals) should take context parameters into account. Note that unless a function type with context is "pushed" as a type for the lambda, context parameters are never inferred.
 
 Context parameters take part in [builder-style type inference](https://kotlinlang.org/spec/type-inference.html#builder-style-type-inference), or any similar process defined by the implementation and whose goal is to infer better types for receivers.
 
 ### ABI compatibility
 
-**§7.8** *(JVM and Java compatibility, functions)*: In the JVM a function with context parameters is represented as a function with additional parameters. In particular, the order is:
+**§7.10** *(JVM and Java compatibility, functions)*: In the JVM a function with context parameters is represented as a function with additional parameters. In particular, the order is:
 1. Context parameters, if present;
 2. Extension receiver, if present;
 3. Regular value parameters.
 
 Note that parameter names do not impact JVM ABI compatibility, but we use the names given in parameter declarations as far as possible.
 
-**§7.9** *(JVM and Java compatibility, properties)*: In the JVM a property with context parameters is represented by its corresponding getter and/or setter. This representation follows the same argument order described in §7.8.
+**§7.11** *(JVM and Java compatibility, properties)*: In the JVM a property with context parameters is represented by its corresponding getter and/or setter. This representation follows the same argument order described in §7.10.
 
-**§7.10** *(other targets)*: Targets may not follow the same ABI compatibility guarantees as those described for the JVM.
+**§7.12** *(other targets)*: Targets may not follow the same ABI compatibility guarantees as those described for the JVM.
 
 ## Q&A about design decisions
 
