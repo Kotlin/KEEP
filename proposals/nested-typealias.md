@@ -61,7 +61,7 @@ interface IntArray: Collection {
 We need to care about two separate axes for nested type aliases.
 
 - **Visibility**: we should guarantee that type aliases do not expose types to a broader scope than originally intended.
-- **Inner**: classifiers defined inside another classifier may be marked as [inner](https://kotlinlang.org/spec/declarations.html#nested-and-inner-classifiers), which requires an instance of the outer type to be in the context. Once again, nested type aliases should not break those guarantees.
+- **Inner**: classifiers defined inside another classifier may be marked as [inner](https://kotlinlang.org/spec/declarations.html#nested-and-inner-classifiers), which means they capture the type parameters of the enclosing type. Once again, nested type aliases should not break those guarantees.
 
 We extend the syntax of type aliases as follows. A type alias declaration marked with the `inner` keyword is said to be _inner_, otherwise we refer to it as _nested_.
 
@@ -73,7 +73,7 @@ We extend the syntax of type aliases as follows. A type alias declaration marked
 
 - In particular, type aliases cannot be overriden in child classes. Creating a new type alias with the same name as in a parent class merely _hides_ the parent one.
 
-**Rule 2 (visibility)**: the visibility of a type alias must be equal to or weaker than the visibility of every type present on its right-hand side.
+**Rule 2 (visibility)**: the visibility of a type alias must be equal to or weaker than the visibility of every type present on its right-hand side. Type parameters mentioned in the right-hand side should not be accounted.
 
 ```kotlin
 class Outer {
@@ -87,29 +87,50 @@ class Outer {
 }
 ```
 
-**Rule 3 (type parameters)**: nested type aliases may refer to the type parameters of the enclosing classifier. They may also add their own, as usual with type aliases.
+**Rule 3 (type parameters)**: nested type aliases may _not_ refer to the type parameters of the enclosing classifier. Inner type aliases may do. In both cases type parameters may be included as part of the type alias declaration itself.
 
 ```kotlin
 class Example<T> {
-    typealias Bar = List<T>
-    typealias Quux<A> = Map<T, A>
+    // this alias is not allowed to capture `T`
+    typealias Foo = List<Int>
+
+    // these aliases capture the type parameter `T`
+    inner typealias Bar = List<T>
+    inner typealias Qux<A> = Map<T, A>
+
+    // inner type aliases may, but need not capture
+    inner typealias Moo = Int
 }
 ```
 
-**Rule 4 (inner)**: type aliases referring to inner classes must be marked as `inner`. The same [restrictions to inner classes](https://kotlinlang.org/spec/declarations.html#nested-and-inner-classifiers) apply to inner type aliases.
-
-- Inner type aliases may also refer only to non-inner classes.
+We refer to nested and inner typealiases in the same way that we do with nested and inner classifiers.
 
 ```kotlin
-class Big {
-  class Nested { }
-  inner class Inner { }
+fun example1(
+  foo: Example.Foo,
+  bar: Example<String>.Bar,
+  qux: Example<String>.Qux<Int>,
+  moo: Example<String>.Moo,
+)
+```
 
-  typealias A = Nested  // ok
-  typealias B = Inner   // wrong
-  inner typealias C = Nested  // ok
-  inner typealias D = Inner   // ok
+**Rule 4 (inner classes)**: type aliases which refer to inner classes within the same classifier and do not prefix it with a path must be marked as `inner`. The reasoning behind it is that inner classes implicitly capture the type parameters of the outer class.
+
+- Note that it is possible to create a nested type alias when a full type is given.
+
+```kotlin
+class Example<T> {
+  inner class Inner
+
+  inner typealias One = Inner
+  typealias Two = Example<Int>.Inner
 }
+
+fun example2(
+  inner: Example<String>.Inner,
+  one: Example<String>.One,
+  two: Example.Two, // expands to Example<Int>.Inner
+)
 ```
 
 ### Reflection
@@ -120,19 +141,6 @@ The current version of [`kotlinx-metadata`](https://kotlinlang.org/api/kotlinx-m
 
 ## Design questions
 
-**Question 1 (inner on other values)**: should we allow inner type aliases to depend not only on the outer instance but also on other properties?
-
-```kotlin
-class Foo(val big: Big) {  // 'Big' as above
-  inner typealias X = big.Inner
-}
-```
-
-One important question here is what is the semantics of such a definition:
-
-- Is the type side chosen during initialization?
-- Should we ensure that the type alias is somehow "stable"? If so, what are the rules for such stable references to types?
-
-**Question 2 (expect / actual)**: should we allow nested `expect` (and correspondingly, `actual`) type aliases?
+**Expect / actual**: should we allow nested `expect` (and correspondingly, `actual`) type aliases?
 
 - This is very close to abstracting over types, which is a non-goal of this KEEP.
