@@ -314,7 +314,7 @@ Context parameters lift two of the main restrictions of this mode of use:
 * It's possible to add new members with an extension receiver without modifying the Scope class itself.
 * It's possible to add members which are only available when the DSL Scope has certain type arguments.
 
-**§4.3.2** *(`DslMarker`)*: we strive to make `@DslMarker` annotations work uniformly across receivers and context parameters, as described in §7.5.
+**§4.3.2** *(`DslMarker`)*: we strive to make `@DslMarker` annotations work uniformly across receivers and context parameters, as described in §7.7.
 
 ### Context-oriented dispatch / externally-implemented interface / type classes
 
@@ -616,7 +616,7 @@ Context parameters take part in [builder-style type inference](https://kotlinlan
 
 Note that parameter names do not impact JVM ABI compatibility, but we use the names given in parameter declarations as far as possible.
 
-**§7.11** *(JVM and Java compatibility, properties)*: In the JVM a property with context parameters is represented by its corresponding getter and/or setter. This representation follows the same argument order described in §7.8.
+**§7.11** *(JVM and Java compatibility, properties)*: In the JVM a property with context parameters is represented by its corresponding getter and/or setter. This representation follows the same argument order described in §7.10.
 
 **§7.12** *(other targets)*: Targets may not follow the same ABI compatibility guarantees as those described for the JVM.
 
