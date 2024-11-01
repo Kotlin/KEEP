@@ -17,9 +17,10 @@ Several kinds of declarations in Kotlin define more than one use-site target for
   * [Potential misunderstandings](#potential-misunderstandings)
   * [Alignment with Java](#alignment-with-java)
 * [Technical details](#technical-details)
+  * [Compiler flags](#compiler-flags)
+    * [Migration](#migration)
   * [Examples](#examples)
   * [Impact](#impact)
-  * [Migration period](#migration-period)
 
 ## Motivation
 
@@ -74,8 +75,6 @@ However, they provide a way to create a version of an annotation with a specific
 
 ## Technical details
 
-The technical content of this KEEP consists of two parts.
-
 **Param-and-property defaulting rule**: the defaulting rule should read as follows.
 
 > If you don't specify a use-site target, the target is chosen according to the `@Target` annotation of the annotation being used. If there are multiple targets, choose one or more as follows:
@@ -92,6 +91,29 @@ The technical content of this KEEP consists of two parts.
 - It is an error to apply the same annotation with both the `all` and another annotation target.
 
 In addition, if a class is annotated with `@JvmRecord`, the Java-only target `RECORD_COMPONENT` is considered when selecting applicable targets. That way the behavior of a `@JvmRecord` with annotations using `all` as use-site target aligns perfectly with Java records.
+
+### Compiler flags
+
+The Kotlin compiler shall provide a flag to change the defaulting behavior.
+
+- `-Xannotation-defaulting=first-only` corresponds to the defaulting rule in version 1.9 of the Kotlin specification.
+- `-Xannotation-defaulting=param-property` corresponds to the new proposed param-and-property defaulting rule.
+- `-Xannotation-defaulting=all` behaves as if the `all` target was applied to every annotation without an explicit one.
+
+#### Migration
+
+The param-and-property defaulting rule should become the new defaulting rule in the language. For an orderly transition between the two worlds, we define an additional compiler flag.
+
+- `-Xannotation-defaulting=first-only-warn` behaves as `first-only`; in addition, it raises a warning whenever the following are true:
+  - The annotation does _not_ have a explicit use-site target,
+  - Both the `param` and one of `property` or `field` targets are allowed for the specific element.
+
+If the user wants to keep the `first-onlt` behavior but _not_ receive any warnings, the workaround is to explicitly write the use-site target. This is also a future-proof way to keep the current behavior.
+
+> [!TIP]
+> _Tooling support_: in response to this warning, editors supporting Kotlin are suggested to include actions to make them go away. That may include enabling the proposed flag project-wise, or making the use-site target for an annotation explicit.
+
+In the next version of the Kotlin compiler after this KEEP is approved, the default value of the flag should be `first-only-warn`. After this transitional period, the default value should change to `param-property`.
 
 ### Examples
 
@@ -163,29 +185,3 @@ The developer may select the three potential targets by using `@all:JSONName("ma
 To understand the impact of this change, we need to consider whether the annotation was defined in Java or in Kotlin. The reason is that annotations defined in Java may _not_ define `property` as one of their targets. As a consequence, the proposed defaulting rule effectively works as "apply to parameter and field". This is exactly the behavior we want, as described in the _Motivation_ section.
 
 To understand whether the choice between `property` and `field` is required in the rule above, we have consulted open source repositories (for example, [query in GitHub Search](https://github.com/search?q=%40Target%28AnnotationTarget.PROPERTY%2C+AnnotationTarget.FIELD%29+lang%3AKotlin&type=code)). The conclusion is there is an important amount of annotations with both potential targets in the wild, which makes is dangerous to scrape the defaulting between `property` and `field` altogether.
-
-### Migration period
-
-The complicated part in this case is to ensure an orderly transition between the two different defaulting rules. For that matter, we define three different behaviors for the compiler:
-
-1. Apply the only-first defaulting rule (the "old" one),
-2. Apply the only-first defaulting rule, but warn when more than one target is applicable,
-3. Apply the proposed defaulting rule, which applies to both parameter and property/field.
-
-The Kotlin compiler currently behaves as (1). We propose to change the behavior to (2) for a period of time to be defined by the implementation, and then move to (3). During this transitional period the user may silence the warnings by explicitly choosing (1) or (3), or making use-site targets explicit.
-
-> [!NOTE]
-> If the Kotlin compiler supports flags, the behavior may be controlled by them.
-> - `-Xannotation-defaulting=only-first` corresponds to (1),
-> - `-Xannotation-defaulting=only-first-warn` corresponds to (2),
-> - `-Xannotation-defaulting=param-property` corresponds to (3).
-
-More concretely, the warning in case (2) should only appear when the behavior between (1) and (3) differs. This means that:
-
-- The annotation should _not_ have a explicit use-site target,
-- Both the `param` and one of `property` or `field` targets should be allowed for the specific element.
-
-If the user wants to keep the only-first behavior but _not_ receive any warnings, the workaround is to explicitly write the use-site target. This is also a future-proof way to keep the current behavior.
-
-> [!TIP]
-> _Tooling support_: in response to this warning, editors supporting Kotlin are suggested to include actions to make them go away. That may include enabling the proposed flag project-wise, or making the use-site target for an annotation explicit.
