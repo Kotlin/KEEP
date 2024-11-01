@@ -61,7 +61,7 @@ interface IntArray: Collection {
 We need to care about two separate axes for nested type aliases.
 
 - **Visibility**: we should guarantee that type aliases do not expose types to a broader scope than originally intended.
-- **Inner**: classifiers defined inside another classifier may be marked as [inner](https://kotlinlang.org/spec/declarations.html#nested-and-inner-classifiers), which means they capture the type parameters of the enclosing type. Once again, nested type aliases should not break those guarantees.
+- **Inner**: classifiers defined inside another classifier may be marked as [inner](https://kotlinlang.org/spec/declarations.html#nested-and-inner-classifiers), which means they capture the type parameters of the enclosing type. Type aliases should not break any type system guarantees.
 
 We extend the syntax of type aliases as follows. A type alias declaration marked with the `inner` keyword is said to be _inner_, otherwise we refer to it as _nested_.
 
@@ -71,19 +71,19 @@ We extend the syntax of type aliases as follows. A type alias declaration marked
 
 **Rule 1 (scope)**: nested type aliases live in the same scope as nested classifiers and inner type aliases live in the same scope as inner classifiers.
 
-- In particular, type aliases cannot be overriden in child classes. Creating a new type alias with the same name as in a parent class merely _hides_ the parent one.
+- In particular, type aliases cannot be overriden in child classes. Creating a new type alias with the same name as in a parent class merely _hides_ that from the parent.
 
 **Rule 2 (visibility)**: the visibility of a type alias must be equal to or weaker than the visibility of every type present on its right-hand side. Type parameters mentioned in the right-hand side should not be accounted.
 
 ```kotlin
-class Outer {
-    internal class Inner { }
+class Service {
+    internal class Info { }
 
     // wrong: public typealias mentions internal class
-    typealias One = List<Inner>
+    typealias One = List<Info>
 
     // ok: private typealias mentions only public and internal classes
-    private typealias Two = Map<String, Inner>
+    private typealias Two = Map<String, Info>
 }
 ```
 
@@ -103,7 +103,7 @@ class Example<T> {
 }
 ```
 
-We refer to nested and inner typealiases in the same way that we do with nested and inner classifiers.
+We refer to nested and inner typealiases in the same way that we do with other nested and inner classifiers.
 
 ```kotlin
 fun example1(
@@ -116,7 +116,7 @@ fun example1(
 
 **Rule 4 (inner classes)**: type aliases which refer to inner classes within the same classifier and do not prefix it with a path must be marked as `inner`. The reasoning behind it is that inner classes implicitly capture the type parameters of the outer class.
 
-- Note that it is possible to create a nested type alias when a full type is given.
+- Note that it is possible to create a nested (not inner!) type alias when a full type is given.
 
 ```kotlin
 class Example<T> {
