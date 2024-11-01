@@ -2,7 +2,7 @@
 
 * **Type**: Design proposal
 * **Author**: Alejandro Serrano
-* **Contributors**: 
+* **Contributors**: Ivan Kochurkin
 * **Discussion**: 
 * **Status**: 
 * **Related YouTrack issue**: [KT-45285](https://youtrack.jetbrains.com/issue/KT-45285/Support-nested-and-local-type-aliases)
