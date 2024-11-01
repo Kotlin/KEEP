@@ -79,6 +79,7 @@ Once proper `operator fun of` is declared, the collection literal can be used at
 2.  When the collection literal is used in the position with definite expected type, the collection literal is literally desugared to `Type.of(expr1, expr2, expr3)`,
     where `Type` is the definite expected type.
 3.  In all other cases, it's proposed to desugar collection literal to `List.of(expr1, expr2, expr3)`.
+4.  todo. whenCondition. But what about other cases?
 
 The basic example:
 ```kotlin
@@ -267,14 +268,15 @@ For every overload candidate, when a collection literal maps to its appropriate 
 Please note that constraints described above are only added to the constraint system of `outerCall` and not to constraint system of `of` function themselves.
 (overload resolution for which will be performed later)
 
+// todo change example to int vs string
+
 Example:
 ```kotlin
 operator fun <T> List.Companion.of(vararg t: T): List<T> = TODO("not implemented")
-operator fun <T> Set.Companion.of(vararg t: T): Set<T> = TODO("not implemented")
 
 fun <K> materialize(): K = null!!
 fun outerCall(a: List<Int>) = Unit // (1)
-fun outerCall(a: Set<Double>) = Unit // (2)
+fun outerCall(a: List<Double>) = Unit // (2)
 
 fun test() {
     // The initial constraint system for candidate (1) looks like:
@@ -288,7 +290,7 @@ fun test() {
     //                type(1) <: T
     //                type(2) <: T
     // type(materialize<K>()) <: T
-    //                List<T> <: Set<Double>
+    //               List<T> <: List<Double>
     // The constraint system is unsound => the candidate is filtered out
     outerCall([1, 2, materialize()]) // We resolve to the single candidate (1)
 }
