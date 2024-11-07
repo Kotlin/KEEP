@@ -581,8 +581,8 @@ fun dslMarkerExample() =
 For example, the following call to `foo` is declared ambiguous, since `"hello"` may work both as `String` or `Any` context parameter.
 
 ```kotlin
-context(Any) fun foo() {}
-context(String) fun foo() {}
+context(_: Any) fun foo() {}
+context(_: String) fun foo() {}
 
 fun test() = with("hello") {
     foo()
