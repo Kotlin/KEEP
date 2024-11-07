@@ -27,6 +27,7 @@ We propose modifications to how value classes are exposed in JVM, with the goal 
   * [`Result` is excluded](#result-is-excluded)
   * [Other design choices](#other-design-choices-1)
   * [Further problems with reflection](#further-problems-with-reflection)
+* [Explicit API mode](#explicit-api-mode)
 * [Discarded potential features](#discarded-potential-features)
 * [Comparison with Scala](#comparison-with-scala)
 
@@ -166,13 +167,15 @@ It is not a goal of this KEEP to decide what should happen with Kotlin value cla
 
 ## Expose operations and members
 
-The current compilation scheme transforms every operation where a value class is involved into a static function that takes the unboxed variants, and whose name is mangled to prevent clashes. This means those operations are not available for Java consumers. We propose introducing a new `@JvmExposeBoxed` annotation that exposes a variant of the function taking and returning the boxed versions instead (if more than one argument or return type is a value class, the aforementioned variant uses the boxed versions for _all_ of them). We call it the _boxed variant_ of the function.
+The current compilation scheme transforms every operation where a value class is involved into a static function that takes the unboxed variants, and whose name is mangled to prevent clashes. This means those operations are not available for Java consumers. We propose introducing a new `@JvmExposeBoxed` annotation.
 
 ```kotlin
-annotation class JvmExposedBoxed(val jvmName: String = "")
+annotation class JvmExposedBoxed(val jvmName: String = "", val expose: Boolean = true)
 ```
 
-The `@JvmExposeBoxed` annotation may be applied to a declaration, or a declaration container (classes, files). In the latter case, it should be taken as applied to every single declaration within it.
+If the `expose` argument is set to `true` (the default), then a new variant of the function taking and returning the boxed versions is produced (if more than one argument or return type is a value class, the aforementioned variant uses the boxed versions for _all_ of them). We call it the _boxed variant_ of the function.
+
+If the `expose` argument is set to `false`, then only the unboxed variant is produced. This corresponds to the behavior of the compiler prior to this KEEP. Having such a boolean argument is needed in the [explicit API mode](#explicit-api-mode).
 
 If the `@JvmExposeBoxed` annotation is applied to a member of a value class (or the value class itself, or the containing file), the boxed variant is compiled to a member function of the corresponding boxed class. The unboxed variant is still compiled as a static member of the class.
 
@@ -181,6 +184,8 @@ The name of the boxed variant coincides with the name given in the Kotlin code u
 > [!NOTE]
 > There is a corner case in which `@JvmExposeBoxed` with a name is always needed: when the function has no argument which is a value class, but returns a value class.
 > In that case the compilation scheme performs no mangling. As a result, without the annotation the Java compiler would produce an ambiguity error while resolving the name.
+
+The `@JvmExposeBoxed` annotation may be applied to a declaration, or a declaration container (classes, files). In the latter case, it should be taken as applied to every single declaration within it, with the same value for `expose`. It is not allowed to give an explicit value to `jvmName` when using the annotation in a declaration container.
 
 The following is an example of the compilation of some operations over `PositiveInt`. The `box-impl` and `unbox-impl` refer to the operations defined in the [current compilation scheme](https://github.com/Kotlin/KEEP/blob/master/proposals/inline-classes.md#inline-classes-abi-jvm) for boxing and unboxing without checks.
 
@@ -254,6 +259,17 @@ class Person {
 In the case above, libraries may inadvertently break some of the requirements of `PositiveInt` if a `Person` instance is created using reflection.
 
 We are currently investigating the required additional support. Some Java serialization libraries, like [Jackson](https://github.com/FasterXML/jackson-module-kotlin/blob/master/docs/value-class-support.md) already include specialized support for value classes. At this point, collaboration with the maintainers of the main libraries in the Java ecosystem seems like the most productive route.
+
+## Explicit API mode
+
+Whether an operation is available or not in its boxed variant is very important for interoperability with other languages. For that reason, this KEEP mandates that whenever an operation mentions a value class, and [explicit API mode](https://github.com/Kotlin/KEEP/blob/master/proposals/explicit-api-mode.md) is enabled, the developer _must_ indicate whether the operation should or not be exposed. The latter is done using `@JvmExposeBoxed(expose = false)`.
+
+We expect in most cases for the annotation to be applied file-wise, `@file:JvmExposeBoxed`, since this uniformly enables or disables the feature.
+
+> [!NOTE]
+> If the developer wants to disable any usage of the value class from Java, the following two actions need to be performed:
+> 1. Mark the constructor as `private`, so that no new instances may be created from Java;
+> 2. Annotate every operation with `@JvmExposeBoxed(expose = false)`.
 
 ## Discarded potential features
 
