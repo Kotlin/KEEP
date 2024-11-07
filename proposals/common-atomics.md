@@ -6,6 +6,7 @@
 * **Prototype**: The prototype will be available soon.
 * **Status**: JVM/JS/Wasm Atomics are not implemented yet, there are K/N Atomics in `kotlin.concurrent` package, but their API will be changed, according to the final common atomic API.
 * **Target issue**: [KT-62423](https://youtrack.jetbrains.com/issue/KT-62423/Consider-providing-Common-atomic-types)
+* **Discussion and feedback**: [#398](https://github.com/Kotlin/KEEP/issues/398)
 
 ## Summary
 
