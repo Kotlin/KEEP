@@ -18,6 +18,8 @@ We propose modifications to how value classes are exposed in JVM, with the goal 
 * [Table of contents](#table-of-contents)
 * [Motivation](#motivation)
   * [Design goals](#design-goals)
+* [The `JvmExposeBoxed` annotation](#the-jvmexposeboxed-annotation)
+  * [Explicit API mode](#explicit-api-mode)
 * [Expose boxed constructors](#expose-boxed-constructors)
   * [Serialization](#serialization)
   * [No argument constructors](#no-argument-constructors)
@@ -27,7 +29,6 @@ We propose modifications to how value classes are exposed in JVM, with the goal 
   * [`Result` is excluded](#result-is-excluded)
   * [Other design choices](#other-design-choices-1)
   * [Further problems with reflection](#further-problems-with-reflection)
-* [Explicit API mode](#explicit-api-mode)
 * [Discarded potential features](#discarded-potential-features)
 * [Comparison with Scala](#comparison-with-scala)
 
@@ -90,6 +91,47 @@ Apart from the particular problems, we set the following cross-cutting goals for
 > the Kotlin compiler shall hide them, as it currently does with the
 > already-implemented compilation scheme.
 
+## The `JvmExposeBoxed` annotation
+
+We propose introducing a new `@JvmExposeBoxed` annotation, defined as follows.
+
+```kotlin
+@Target(
+  CONSTRUCTOR, PROPERTY, FUNCTION, // callables
+  CLASS, FILE,                     // containers
+)
+annotation class JvmExposedBoxed(val jvmName: String = "", val expose: Boolean = true)
+```
+
+Whenever a _callable declaration_ (function, property, constructor) is annotated with `@JvmExposeBoxed` and `expose` is set to `true` (the default), a new _boxed_ variant of that declaration should be generated. How this is done differs between constructors and other operations, as discussed below.
+
+Since annotating every single callable declaration would be incredibly tiresome, the annotation may also be applied to declaration _containers_, such as classes and files. In that case, it should be taken as applied to every single declaration within it, with the same value for `expose`. It is not allowed to give an explicit value to `jvmName` when using the annotation in a declaration container.
+
+The consequence of the rules above is that if we annotate a class,
+
+```kotlin
+@JvmExposeBoxed @JvmInline value class PositiveInt(val number: Int) {
+  fun add(other: PositiveInt): PositiveInt = ...
+}
+```
+
+this is equivalent to annotating the constructor and every callable member,
+
+```kotlin
+@JvmInline value class PositiveInt @JvmExposeBoxed constructor (val number: Int) {
+  @JvmExposeBoxed fun add(other: PositiveInt): PositiveInt = ...
+}
+```
+
+We actually expect in most cases for the annotation to be applied class-wise or even file-wise, `@file:JvmExposeBoxed`, since this uniformly enables or disables the feature.
+
+> [!IMPORTANT]
+> Whether you expose the (boxing) constructor of value class has no influence on whether you can expose boxed variants of operations over that same class. The compilation scheme never calls that constructor, moving between the boxed and unboxed worlds is done via `box-impl` and `unbox-impl`, as described below.
+
+### Explicit API mode
+
+Whether an operation is available or not in its boxed variant is very important for interoperability with other languages. For that reason, this KEEP mandates that whenever an operation mentions a value class, and [explicit API mode](https://github.com/Kotlin/KEEP/blob/master/proposals/explicit-api-mode.md) is enabled, the developer _must_ indicate whether the operation should or not be exposed. The latter is done using `@JvmExposeBoxed(expose = false)`.
+
 ## Expose boxed constructors
 
 The [current compilation scheme](https://github.com/Kotlin/KEEP/blob/master/proposals/inline-classes.md#inline-classes-abi-jvm) exposes the constructor of the boxed class as _synthetic_, which makes it unavailable from Java. This constructor does _not_ execute the `init` block, it just boxes the value.
@@ -105,10 +147,10 @@ fun positiveIntSingleton-3bd7(number: Int): List<PositiveInt> = listOf(PositiveI
 We propose a new compilation scheme which _replaces_ the previous one with respect to constructors.
 
 - The previous synthetic constructor, which does not execute the `init` block, now takes an additional `BoxingConstructorMarker` argument. This argument is always passed as `null`, but allows us to differentiate the constructor from other (like `DefaultConstructorMarker`). The implementation of `box-impl` is updated to call this constructor.
-- We get a new constructor with the same visibility in the constructor as the one defined in the value class. This constructor is exposed to Java, and should execute any `init` block; in the current compilation scheme, this amounts to calling `constructor-impl` over the input value.
+- We get a new non-synthetic constructor which executes any `init` block; in the current compilation scheme, this amounts to calling `constructor-impl` over the input value. The visibility of this new constructor should coincide with that of the constructor of the value class if the boxed variant of the constructor ought to be exposed, and be `private` otherwise.
 
 ```kotlin
-@JvmInline value class PositiveInt(val number: Int) {
+@JvmExposeBoxed @JvmInline value class PositiveInt(val number: Int) {
   init { require(number >= 0) }
 }
 
@@ -139,7 +181,7 @@ Note that this change is binary compatible with previous users of this code:
 Frameworks like Java Persistence require classes to have a [default no argument constructor](https://www.baeldung.com/jpa-no-argument-constructor-entity-class). We propose to expose a no argument constructor whenever a default value is given to the underlying property of the value class (in addition to the factory methods). Continuing with our example of positive integers, the following code,
 
 ```kotlin
-@JvmInline value class PositiveInt(val number: Int = 0) {
+@JvmExposeBoxed @JvmInline value class PositiveInt(val number: Int = 0) {
   init { require(number >= 0) }
 }
 ```
@@ -161,31 +203,19 @@ It is not a goal of this KEEP to decide what should happen with Kotlin value cla
 
 ### Other design choices
 
-**Put it under a flag or annotation**, in other words, move to the new generation scheme only when some annotation `@JvmExposeFactory` or compiler flag is present. In this case, we could not find a realistic scenario where this expose would be counter-productive; in the worst case in which you expose the new constructor but not operations you just have a way to create useless values.
-
 **Exposing a factory method**: instead of exposing the constructor, use `PositiveInt.of(3)`. This option is nowadays quite idiomatic in the Java world (for example, in `List.of(1, 2)`), but not as much as constructors. Using a factory method also has the drawback of possible clashes for the name of the factory method, which we avoid when using the constructor.
 
 ## Expose operations and members
 
-The current compilation scheme transforms every operation where a value class is involved into a static function that takes the unboxed variants, and whose name is mangled to prevent clashes. This means those operations are not available for Java consumers. We propose introducing a new `@JvmExposeBoxed` annotation.
+The current compilation scheme transforms every operation where a value class is involved into a static function that takes the unboxed variants, and whose name is mangled to prevent clashes. This means those operations are not available for Java consumers.
 
-```kotlin
-annotation class JvmExposedBoxed(val jvmName: String = "", val expose: Boolean = true)
-```
+In the new compilation scheme, if a boxed variant is requested, the compiler shall produce a callable taking and returning the boxed versions. If more than one argument or return type is a value class, the aforementioned variant uses the boxed versions for _all_ of them.
 
-If the `expose` argument is set to `true` (the default), then a new variant of the function taking and returning the boxed versions is produced (if more than one argument or return type is a value class, the aforementioned variant uses the boxed versions for _all_ of them). We call it the _boxed variant_ of the function.
-
-If the `expose` argument is set to `false`, then only the unboxed variant is produced. This corresponds to the behavior of the compiler prior to this KEEP. Having such a boolean argument is needed in the [explicit API mode](#explicit-api-mode).
-
-If the `@JvmExposeBoxed` annotation is applied to a member of a value class (or the value class itself, or the containing file), the boxed variant is compiled to a member function of the corresponding boxed class. The unboxed variant is still compiled as a static member of the class.
-
-The name of the boxed variant coincides with the name given in the Kotlin code unless the `jvmName` argument of the annotation is present. In that case, the name defined in the annotation should be used. Note that `@JvmName` applies to the unboxed variant.
+The name of the boxed variant coincides with the name given in the Kotlin code unless the `jvmName` argument of the annotation is present. In that case, the name defined in the annotation should be used. Note that `@JvmName` annotations apply to the unboxed variant.
 
 > [!NOTE]
 > There is a corner case in which `@JvmExposeBoxed` with a name is always needed: when the function has no argument which is a value class, but returns a value class.
 > In that case the compilation scheme performs no mangling. As a result, without the annotation the Java compiler would produce an ambiguity error while resolving the name.
-
-The `@JvmExposeBoxed` annotation may be applied to a declaration, or a declaration container (classes, files). In the latter case, it should be taken as applied to every single declaration within it, with the same value for `expose`. It is not allowed to give an explicit value to `jvmName` when using the annotation in a declaration container.
 
 The following is an example of the compilation of some operations over `PositiveInt`. The `box-impl` and `unbox-impl` refer to the operations defined in the [current compilation scheme](https://github.com/Kotlin/KEEP/blob/master/proposals/inline-classes.md#inline-classes-abi-jvm) for boxing and unboxing without checks.
 
@@ -259,17 +289,6 @@ class Person {
 In the case above, libraries may inadvertently break some of the requirements of `PositiveInt` if a `Person` instance is created using reflection.
 
 We are currently investigating the required additional support. Some Java serialization libraries, like [Jackson](https://github.com/FasterXML/jackson-module-kotlin/blob/master/docs/value-class-support.md) already include specialized support for value classes. At this point, collaboration with the maintainers of the main libraries in the Java ecosystem seems like the most productive route.
-
-## Explicit API mode
-
-Whether an operation is available or not in its boxed variant is very important for interoperability with other languages. For that reason, this KEEP mandates that whenever an operation mentions a value class, and [explicit API mode](https://github.com/Kotlin/KEEP/blob/master/proposals/explicit-api-mode.md) is enabled, the developer _must_ indicate whether the operation should or not be exposed. The latter is done using `@JvmExposeBoxed(expose = false)`.
-
-We expect in most cases for the annotation to be applied file-wise, `@file:JvmExposeBoxed`, since this uniformly enables or disables the feature.
-
-> [!NOTE]
-> If the developer wants to disable any usage of the value class from Java, the following two actions need to be performed:
-> 1. Mark the constructor as `private`, so that no new instances may be created from Java;
-> 2. Annotate every operation with `@JvmExposeBoxed(expose = false)`.
 
 ## Discarded potential features
 
