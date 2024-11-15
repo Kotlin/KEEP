@@ -47,6 +47,8 @@ fun problematic(x: String): Problem = when (x) {
     "database" -> Problem.DATABASE
     else -> Problem.UNKNOWN
 }
+
+val databaseProblemMessage: String = message(Problem.DATABASE)
 ```
 
 This KEEP addresses many of these problems by considering explicit expected types when doing name resolution. We try to propagate the information from argument and return types, declarations, and similar constructs. As a result, the following constructs are usually improved:
@@ -55,35 +57,51 @@ This KEEP addresses many of these problems by considering explicit expected type
 * type checks (`is`),
 * `return`, both implicit and explicit,
 * equality checks (`==`, `!=`),
-* assignments.
+* assignments and initializations,
+* function calls.
 
-### The issue with overloading
-
-We leave out of this KEEP any extension to the propagation of information from function calls to their argument. One particularly visible implication of this choice is that you still need to qualify enumeration entries that appear as arguments as currently done in Kotlin. Following the example above, you still need to qualify the argument to `message`.
-
-```kotlin
-val s = message(Problem.CONNECTION)
-```
-
-What sets function calls apart from the constructs mentioned before is overloading. In Kotlin, there's a certain sequence in which function calls are resolved and type checked, as spelled out in the [specification](https://kotlinlang.org/spec/overload-resolution.html#overload-resolution).
-
-1. Infer the types of non-lambda arguments.
-2. Choose an overload for the function based on the gathered type.
-3. Check the types of lambda arguments.
-
-Improving the resolution of arguments based on the function call would amount to reversing the order of (1) and (2), at least partially. There are potential techniques to solve this problem, but another KEEP seems more appropriate.
-
-As a consequence, operators in Kotlin that are desugared to function calls which in turn get resolved, like `in` or `thing[x]`, are also outside of the scope of this KEEP. Note that [value equalities](https://kotlinlang.org/spec/expressions.html#value-equality-expressions) (`==`, `!=`) are not part of that group, since they are always resolved to `kotlin.Any.equals`.
-
-Expected type information is propagate to _none_ of the arguments, and that includes trailing lambda arguments. For example, the following fails to compile:
+As a very short summary of this proposal, all usages of `Problem.` can be removed. Intuitively, the compiler uses the known or expected type to resolve the enumeration entries.
 
 ```kotlin
-fun problemByNumber(n: Int): Problem = n.let { UNKNOWN }
+fun message(problem: Problem): String = when (problem) {
+    CONNECTION -> "connection"
+    AUTHENTICATION -> "authentication"
+    // other cases
+}
+
+fun problematic(x: String): Problem = when (x) {
+    "connection" -> CONNECTION
+    // other cases
+}
+
+val databaseProblemMessage: String = message(DATABASE)
 ```
 
-### Importing the entire scopes
+### What is available in the contextual scope
 
-The current proposal imports the _entire_ static and companion object scopes, which include classes, properties, and functions. Whereas the first two are needed to cover common cases like enumeration entries, and comparison with objects, the usefulness of methods seems debatable. However, it allows some interesting constructions where we compare against a value coming from a factory:
+The core of this proposal is the addition of a scope, the **contextual scope**, whose available members are defined by type information known to the compiler at that point. In order to describe what this proposal allows as contextually-scoped identifiers, we need to separate the two positions in which such an identifier may occur:
+
+* _Type position_: as the right-hand side of `is`, both in standalone and branch conditions.
+* _Expression position_: in any place where an expression is expected.
+
+Note the restrictive nature of the type position. Improved resolution is not available anywhere else: not in type annotations for variables, not in the list of supertypes or generic constraints, and so on.
+
+In **type position** only classifiers which are both _nested_ and _sealed inheritors_ of the expected type are available.
+
+```kotlin
+sealed interface Either<out E, out A> {
+
+  data class  Left<out E>(val error: E): Either<E, Nothing>
+  data class Right<out A>(val value: A): Either<Nothing, A>
+}
+
+fun <E, A> Either<E, A>.getOrElse(default: A) = when (this) {
+  is Left  -> default
+  is Right -> value
+}
+```
+
+In **expression position** we extend the scope mention in the type position with _no-argument_ callables from the static and companion object scopes of the expected type. Although the technical description appears below, the intuition is those members which would be available using `ExpectedType.` and with no additional arguments in parentheses.
 
 ```kotlin
 class Color(...) {
@@ -94,90 +112,82 @@ class Color(...) {
   }
 }
 
-// now when we match on a color...
+val Color.Companion.BLUE: Color = ...
+
+// now when we match on a `color: Color`...
 when (color) {
-  WHITE -> ...
-  fromRGB(10, 10, 10) -> ...
+  WHITE -> ...                // OK
+  fromRGB(10, 10, 10) -> ...  // NO, fromRGB has arguments
+  BLUE -> ...                 // OK, extension function over companion object
 }
 ```
 
-In addition, note that the rules to filter out which functions should or shouldn't be available are far from clear; potential generic substitutions are one such complex example.
-
-Extension functions defined in the static and companion object scopes are also available.
+**Extension** callables defined in the static and companion object scopes are **not** available. In most cases those callables can be imported without requiring any additional qualification on the call site.
 
 ```kotlin
-class Duration {
+class Color(...) {
   companion object {
-    val Int.seconds: Duration get() = ...
+    val Int.grey get() = ...
   }
 }
 
-// we can use 'seconds' without additional imports
-val d: Duration = 1.seconds
+when (color) {
+  10.grey -> ... // this is not allowed
+}
 ```
 
-#### Scopes from supertypes
-
-When supertypes are involved, we may have more than one static and companion object scope to choose from.
+There is no additional filtering of properties or functions based on their result type. For example, the following code _resolves_ correctly to `Color.NUMBER_OF_COLORS`, but then raises a "type mismatch" error between `Color` and `Long`.
 
 ```kotlin
-interface A {
+class Color(...) {
   companion object {
-    val Foo: A = ...
+    val NUMBER_OF_COLORS: Long = 255 * 255 * 255
   }
 }
 
-class B: A { }
-
-// now when we match on a B...
-when (b) {
-  Foo -> ...  // is Foo in scope?
+when (color) {
+  NUMBER_OF_COLORS -> ...  // type mismatch
 }
 ```
 
-The current proposal answers "yes" to the question in the code above. We look at the static and companion object scopes of the type and every supertype. There are two reasons for this decision.
+We do **not** look in the static and companion object scopes of **supertypes** of the expected type. This is in accordance to the rules of [resolution with an explicit type receiver](https://kotlinlang.org/spec/overload-resolution.html#call-with-an-explicit-type-receiver). Technically, we perform some pre-processing of the expected type to simplify it, but the general rule is that only _one_ classifier is searched.
 
-The first one is that enables _safe refactoring_. Imagine that you have some code in which you know that a variable is of type 'A', so when you use `when` on it you can use `Foo` directly. However, because of changes on your code, now at the point in which `when` is performed, you know more about that variable: that the type is 'B'. However, if we don't look at the supertypes, the code you had written becomes incorrect, since 'Foo' would no longer be found. This breaks the basic expectation of subtyping in which you can always replace of value of a type with one of a subtype.
+### No-argument callables
 
-The second reason is that it allows us to give a clean behavior for [intersection type](https://kotlinlang.org/spec/type-system.html#intersection-types). Although these types are not denotable by the developer, the arise often in combination with smart casting. For example, in the following code, at the `d == 1.seconds` expression, the known type of `d` is `T & Any & Duration`. Looking at all supertypes means in particular looking at `Duration`, which allows us to resolve the call to `seconds`.
+The reason for restricting available members to no-argument ones is to avoid an _resolution explosion_ in the case of nested function calls. To understand the problem, we need to understand the sequence in which function calls are resolved and type checked, which is spelled out in the [specification](https://kotlinlang.org/spec/overload-resolution.html#overload-resolution).
 
-```kotlin
-fun <T> foo(d: T): Int = when {
-  d is Duration && d == 1.seconds -> 0
-  else -> 1
-}
-```
+1. Infer the types of non-lambda arguments.
+2. Choose an overload for the function based on the gathered types.
+3. Check the types of lambda arguments.
 
-One downside of this extended search is potential performance problems. Fortunately, most Kotlin code have a relatively shallow type hierarchy, so this should not be a problem. Our preliminary benchmarks against the Kotlin and IntelliJ codebases show no performance degradation.
+Let us forget for a moment about lambda arguments; in that case the procedure is completely bottom-up: we move from arguments to function calls, performing resolution at each stage of the process. However, to improve the resolution we sometimes need to perform the tree walk in the other direction: from resolving the function overload we know the expected type of the argument, which we can use to resolve that expression.
+
+The problem is that if we allow resolving to a function with some arguments, we could end up in a situation in which we do not resolve anything until we reach the top-level function call, which then gives us information to resolve the arguments. And if those arguments also had unresolved arguments themselves, this process could go arbitrarily deep. This is both costly for the compiler, and also quite brittle.
+
+The no-argument rule ensures that this undesired behavior may not arise, as resolution does not need to go deeper in that case. This seems like a good balance, since the most common use cases like dropping the name of the enumeration are still possible. In a previous iteration of this proposal we went even further, forbidding any improved resolution inside function calls.
 
 ## Technical details
 
-We introduce an additional scope, present both in type and candidate resolution, which always depends on a type `T` (we say we **propagate `T`**). This scope contains the static and companion object callables of the aforementioned type `T`and its supertypes, as defined by the [specification](https://kotlinlang.org/spec/overload-resolution.html#call-with-an-explicit-type-receiver). In platforms that allow defining static callables directly on types, like the JVM, those are included too.
+We start by defining how the expected type is actually propagated, and then describe changes to the resolution for the new contextually-scoped identifiers.
 
-This scope has the lowest priority (even lower than that of default and star imports) and _should keep_ that lowest priority even after further extensions to the language. The mental model is that the expected type is only use for resolution purposes after any other possibility has failed.
+### Expected type propagation
 
-This scope is **not** propagated to children of the node in question. For example, when resolving `val x: T = f(x, y)`, the additional scope is present when resolving `f`, but not when resolving `x` and `y`. After all, `x` and `y` no longer have an expected type `T`.
+In general, we say that the expected type of `e` must be `T` whenever the specification states _"the type of `e` must be a subtype of `T`"_. In this section we formally describe the propagation of the expected type, that is, how the expected type of an expression depends on the expected type of its parent.
 
-There is no relative precedence between the members coming from the type `T` and those coming from their supertypes. For example, if two of the involved types define a property with the same name in the companion object, none of them hides the other, which means it leads to an ambiguity error.
-
-### Additional candidate resolution scope
-
-We propagate `T` to an expression `e` whenever the specification states _"the type of `e` must be a subtype of `T`"_.
-
-For declarations, a type `T` is propagated to the body, which may be an expression or a block. Note that we only propagate types given _explicitly_ by the developer.
+For declarations, the expected type `T` is propagated to the body, which may be an expression or a block. Note that we only propagate types given _explicitly_ by the developer.
 
 * _Default parameters of functions_: `x: T = e`;
 * _Initializers of properties with explicit type_: `val x: T = e`;
 * _Explicit return types of functions_: `fun f(...): T = e` or `fun f(...): T { ... }`,
-  * This includes _accessors_ with explicit type: `val x get(): T = e`,
+  * This includes _accessors_ with explicit type: `val x get(): T = e`;
 * _Getters of properties with explicit type_: `val x: T get() = e` or `val x: T get() { ... }`.
 
-If a type `T` is propagated to a block, then the type is propagated to every return point of the block.
+If a type `T` is expected for a block, then the type is propagated to every return point of the block.
 
 * _Explicit `return`_: `return e`,
 * _Implicit `return`_: the last statement.
 
-If a functional type `(...) -> R` is propagated to a lambda, then the return type `R` is propagated to the body of the lambda (alongside the parameter types being propagated to the formal parameters, if available).
+If a functional type `(...) -> R` is expected for a lambda expression, then the return type `R` is propagated to the body of the lambda (alongside the parameter types being propagated to the formal parameters, if available).
 
 ```kotlin
 val unknown: () -> Problem = {
@@ -189,46 +199,94 @@ val unknown: () -> Problem = {
 
 For other statements and expressions, we have the following rules. Here "known type of `x`" includes any additional typing information derived from smart casting.
 
-* _Assignments_: in `x = e`, the known type of `x` is propagated to `e`,
-* _`when` expression with subject_: in `when (x) { t -> ... }`, then known type of `x` is propagated to `t`, when `t` is an expression (that is, not of the form `is S`, `in l`, or their negations),
-    * For [guards](https://github.com/Kotlin/KEEP/blob/guards/proposals/guards.md) `when (x) { t if c -> ... }`, the type is propagated to `t`, but not to the guard `c`,
-* _Branching_: if type `T` is propagated to an expression with several branches, the type `T` is propagated to each of them,
+* _Assignments_: in `x = e`, the expected type of `x` is propagated to `e`;
+* _Type check_: in `e is T`, `e !is T`, the known type of `e` is propagated to `T`;
+* _Branching_: if type `T` is expected for an with several branches, the type `T` is propagated to each of them,
     * _Conditionals_, either `if` or `when`,
-    * _`try` expressions_, where the type `T` is propagated to the `try` block and each of the `catch` handlers,
-* _Elvis operator_: if type `T` is propagated to `e1 ?: e2`, then we propagate `T?` to `e1` and `T` to `e2`.
-* _Not-null assertion_: if type `T` is propagated to `e!!`, then we propagate `T?` to `e`,
+    * _`try` expressions_, where the type `T` is propagated to the `try` block and each of the `catch` handlers;
+* _`when` expression with subject_: those cases should be handled as if the subject had been inlined on every condition, as described in the [specification](https://kotlinlang.org/spec/expressions.html#when-expressions);
+* _Elvis operator_: if type `T` is expected for `e1 ?: e2`, then we propagate `T?` to `e1` and `T` to `e2`;
+* _Not-null assertion_: if type `T` is expected for `e!!`, then we propagate `T?` to `e`;
 * _Equality_: in `a == b` and `a != b`, the known type of `a` is propagated to `b`.
-    * This helps in common cases like `p == Problem.CONNECTION`.
-    * Note that in this case the expected type should only be propagated for the purposes of name resolution. The [specification](https://kotlinlang.org/spec/expressions.html#value-equality-expressions) mandates `a == b` to be equivalent to `(A as? Any)?.equals(B as Any?) ?: (B === null)` in the general case, so from a typing perspective there should be no constraint on the type of `b`.
-  
-All other operators and compound assignments (such as `x += e`) do not propagate information. The reason is that those operators may be _overloaded_, so we cannot guarantee their type.
+    * This helps in common cases like `p == CONNECTION`.
+    * Note that in this case the expected type should only be propagated for the purposes of additional resolution. The [specification](https://kotlinlang.org/spec/expressions.html#value-equality-expressions) mandates `a == b` to be equivalent to `(A as? Any)?.equals(B as Any?) ?: (B === null)` in the general case, so from a typing perspective there should be no constraint on the type of `b`.
 
-### Additional type resolution scope
+> [!NOTE]
+> In the current K2 compiler, these rules amount to considering those places in which `WithExpectedType` is passed as the `ResolutionMode`, plus adding special rules for `is`, `==`, and updating overload resolution. Since `when` with subject is desugared as either `x == e` or `x is T`, we need no additional rules to cover them.
 
-We introduce the additional scope during type solution in the following cases:
+### Single definite expected type
 
-* _Type check_: in `e is T`, `e !is T`, the known type of `e` is propagated to `T`.
-* _`when` expression with subject_: in `when (x) { is T -> ... }`, then known type of `x` is propagated to `T`,
-      * For [guards](https://github.com/Kotlin/KEEP/blob/guards/proposals/guards.md) `when (x) { is T if c -> ... }`, the type is propagated to `T`, but not to the guard `c`.
+There are some scenarios in which the expected type propagation may lead to complex types, like intersections or bounded type parameters. In order to define exactly which scope we should look into, we introduce the notion of the **single definite expected type**, `sdet(T)`, which is defined recursively, starting with the expected type propagated by the rules above. It is possible for this type to be undefined.
+
+* Built-in and classifier types: `sdet(T) = T`.
+  * Note that type arguments do not influence the scope.
+* Type parameters:
+  * If there is a single supertype, `<T : A>`, `sdet(T) = sdet(A)`,
+  * Otherwise, `sdet(T)` is undefined.
+* Nullable types: `sdet(T?) = sdet(T)`.
+* Types with variance:
+  * Covariance, `stde(out T) = stde(T)`,
+  * For contravariant arguments, `stde(in T)` is undefined.
+* Captured types: `stde` is undefined.
+* Flexible types, `stde(A .. B)`
+  * Compute `stde(A)` and `stde(B)`, and take it if they coincide; otherwise undefined.
+  * This rule covers `A .. A?` as special case.
+* Intersection types, `stde(A & B)`,
+  * Definitely not-null, `stde(A & Any) = stde(A)`,
+  * "Fake" intersection types in which `B` is a subtype of `A`, `stde(A & B) = stde(B)`; and vice versa.
+
+### Additional contextual scope
+
+Whenever they is a single definite expected type for an expression, this is resolved with an additional **contextual** scope. This scope has the lowest priority (even lower than that of default and star imports) and _should keep_ that lowest priority even after further extensions to the language. The mental model is that the expected type is only use for resolution purposes after any other possibility has failed.
+
+The contextual scope for a single definite type `T` is made from three different sources:
+
+1. The static scope of the type `T`,
+2. The companion object scope of the type `T`,
+3. Imported extension functions over the companion object of `T`.
+
+Furthermore, only two kinds of members are available:
+
+1. Classifiers which are nested in and inherit from type `T`, if `T` is a `sealed` class.
+2. No-argument callables, which must satisfy:
+   - Having no value parameters, which includes both properties and enumeration entries,
+   - Having no extension receiver, except for imported extension functions defined over the companion object of `T`.
+
+### Changes to [overload resolution](https://kotlinlang.org/spec/overload-resolution.html#overload-resolution)
+
+In order to accomodate improved resolution for function arguments, the algorithm must be slightly modified. As a reminder, overload resolution for a function call `f(...)` takes the following steps:
+
+1. Resolve all non-lambda arguments,
+2. _Applicability_: gather all potential overloads of the function `f`, and for each of them generate a constraint system that specifies the requirements between argument and parameter types. Filter out those overloads for which the constraint system is unsatisfiable. If no applicable overloads remain after this step, an _unresolved error_ is issued.
+3. _Choice of most specific overload_: if more than one applicable overload remains after the previous step, try to decide which is the "most specific" by applying [some rules](https://kotlinlang.org/spec/overload-resolution.html#choosing-the-most-specific-candidate-from-the-overload-candidate-set). After this step, only one overload should remain, otherwise an _ambiguity error_ is issued.
+4. _Completion_: use the information from the chosen overload to resolve lambda arguments, callable references, and fix type variables.
+
+The first change relates to _no-argument expressions_, that is, those made only from a [`simpleIdentifier`](https://kotlinlang.org/spec/syntax-and-grammar.html#grammar-rule-simpleIdentifier).
+
+1. The expression has no argument, so step (1) does not apply.
+2. If during the _applicability_ phase no potential overloads are found, and the expression appears as argument to a function, then do not issue an error, but rather mark the expression as **delayed**.
+
+The second change relates to any function call, which now must handle delayed expressions as arguments.
+
+1. Resolve all non-lambda arguments, where some of those may become delayed.
+2. During the _applicability_ step, do not introduce information about delayed arguments inside each of the constraint systems.
+  - **Open question**: should we filter out those candidates for which the resolution of the delayed argument with the corresponding parameter type fails?
+3. The choice of the most specific overload remains the same.
+4. During _completion_, delayed arguments are resolved again using the expected type obtained from the overload chosen in step (3).
+  - If the answer to open question above is affirmative, such resolution would be done as part of the applicability step.
 
 ## Design decisions
 
 **Priority level**: the current proposal makes this new scope have the lowest priority. In practical terms, that means that even built-ins and automatically imported declarations have higher priority. In a previous iteration, we made it have the same level as `*`-imports; but added ambiguity where currently there is not.
 
 ```kotlin
-enum class Test: List<Int> {
-    FIRST;
-
-    companion object {
-        fun <T> emptyList(): Test {
-            return FIRST
-        }
-    }
+sealed interface Test {
+    object Any : Test { }
 }
 
 fun foo(x: Test){
     when(x) {
-        emptyList<Int>() -> 1
+        Any  -> 1  // should still resolve to kotlin.Any
         else -> 2
     }
 }
@@ -255,18 +313,23 @@ On the other hand, the proposed flow of information is consistent with the abili
 1. On a conceptual level, it is not immediately obvious what happens if `e as T` as a whole also has an expected type: should `T` be resolved using the known type of `e` or that expected type? It's possible to create an example where depending on the answer the resolution differs, and this could be quite surprising to users.
 2. On a technical level, the compiler _sometimes_ uses the type `T` to guide generic instantiation of `e`. This conflicts with the rule above.
 
-**Sealed subclasses**: the rules above handle enumeration, and it's also useful when defining a hierarchy of classes nested on the parent.
+**Interaction with smart casting**: the main place in which the notion of "single definite expected type" may bring some problems is smart castings, as they are the main source of intersection types.
+
+The following code does _not_ work under the current rules.
 
 ```kotlin
-sealed interface Either<out E, out A> {
-  data class Left<E>(error: E): Either<E, Nothing>
-  data class Right<A>(value: A): Either<Nothing, E>
+class Box<T>(val value: T)
+
+fun <T> Box<T>.foo() = when (value) {
+  is Problem if value == UNKNOWN -> ...
+  ...
 }
 ```
 
-One way in which we can improve resolution even more is by considering the subclasses of the known type of an expression. Making every potential subclass available would be quite surprising, but sealed hierarchies form an interesting subset (and the information is directly accessible to the compiler).
+The problem is that at the expression `value == UNKNOWN`, the known type of `value` is `T & Problem`, a case for which the single definite expected type is undefined. There are two reasons for this choice:
 
-At this point, we have decided against it for practical reasons. If the subclasses are defined inside the parent class (like in `Either` above), this proposal already helps because the subclasses are in the static scope of the parent. If they are defined outside of the parent, then we are not making the particular piece of code any smaller, only avoiding one import. Since imports are usually disregarded by the developers anyway, it seems that adding all sealed subclasses to the scope brings no additional benefit.
+- It is unclear in general how to treat intersection types, since other cases may not be as simple as dropping a type argument.
+- If in the future Kotlin gets a feature similar to GADTs, we may piggy back on the knowledge that `T` is equal to `Problem`, and face no problem in computing the single definite expected type.
 
 ### Risks
 
@@ -275,7 +338,3 @@ One potential risk of this proposal is the difficulty of understanding _when_ ex
 Another potential risk is that we add more coupling between type inference and candidate resolution. On the other hand, in Kotlin those two processes are inevitably linked together -- to resolve the candidates of a call you need the type of the receivers and arguments -- so the step taken by this proposal feels quite small in comparison.
 
 The third potential risk is whether this additional scope may lead to surprises. In particular, whether programs are accepted which are not expected by the developer, or the resolution points to a different declaration than expected. We think that the very low priority of the new scope is enough to mitigate those problems. In any case, IDE implementors should be aware of this new feature of the language, providing their usual support for code navigation.
-
-## Implementation note
-
-In the current K2 compiler, these rules amount to considering those places in which `WithExpectedType` is passed as the `ResolutionMode`, plus adding special rules for `is`, and `==`. Since `when` with subject is desugared as either `x == e` or `x is T`, we need no additional rules to cover them.
