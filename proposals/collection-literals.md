@@ -448,6 +448,11 @@ Conceptually, both `listOf` implementations are immutable and `List.of` implemen
 The big showstopper is that `List.of` doesn't accept `null` arguments.
 We leave the question of particular implementation to the developers of Kotlin stdlib.
 
+## Empty collection literal
+
+todo add to toc
+todo think about `List<Nothing>
+
 ## Future evolution
 
 In future, Kotlin may provide `@VarargOverloads` (similar to `@JvmOverloads`), or `inline vararg` to eliminate unnecessary array allocations even further.
