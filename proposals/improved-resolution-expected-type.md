@@ -102,7 +102,7 @@ fun <E, A> Either<E, A>.getOrElse(default: A) = when (this) {
 }
 ```
 
-In **expression position** we extend the scope mention in the type position with _no-argument_ callables from the static and companion object scopes of the expected type. Although the technical description appears below, the intuition is those members which would be available using `ExpectedType.` and with no additional arguments in parentheses.
+In **expression position** we extend the scope mention in the type position with _properties_ defined in or extending the static and companion object scoped of the expected type. For the purposes of this KEEP, _enumeration entries_ count as properties defined in the static scope of the enumeration class. We describe the reasons for this restricted scope in the [_no-argument callables_](#no-argument-callables) section below.
 
 ```kotlin
 class Color(...) {
@@ -110,6 +110,7 @@ class Color(...) {
     val WHITE: Color = ...
     val BLACK: Color = ...
     fun fromRGB(r: Int, g: Int, b: Int): Color = ...
+    fun background(): Color = ...
   }
 }
 
@@ -117,13 +118,14 @@ val Color.Companion.BLUE: Color = ...
 
 // now when we match on a `color: Color`...
 when (color) {
-  WHITE -> ...                // OK
-  fromRGB(10, 10, 10) -> ...  // NO, fromRGB has arguments
-  BLUE -> ...                 // OK, extension function over companion object
+  WHITE -> ...                // OK, member property of the companion object
+  fromRGB(10, 10, 10) -> ...  // NO, not a property
+  background() -> ...         // NO, not a property
+  BLUE -> ...                 // OK, extension property over companion object
 }
 ```
 
-**Extension** callables defined in the static and companion object scopes are **not** available. The receiver in that case acts as an additional parameter to resolve, putting us in the same situation as "regular" parameters.
+**Extension** properties defined in the static and companion object scopes are **not** available. The receiver in that case acts as an additional parameter to resolve, putting us in the same situation as "regular" parameters.
 
 ```kotlin
 class Color(...) {
@@ -161,7 +163,7 @@ We do **not** look in the static and companion object scopes of **supertypes** o
 
 ### No-argument callables
 
-The reason for restricting available members to no-argument ones is to avoid an _resolution explosion_ in the case of nested function calls. To understand the problem, we need to understand the sequence in which function calls are resolved and type checked, which is spelled out in the [specification](https://kotlinlang.org/spec/overload-resolution.html#overload-resolution).
+The reason for restricting available members is avoiding _resolution explosion_ in the case of nested function calls. To understand the problem, we need to understand the sequence in which function calls are resolved and type checked, which is spelled out in the [Kotlin specification](https://kotlinlang.org/spec/overload-resolution.html#overload-resolution).
 
 1. Infer the types of non-lambda arguments.
 2. Choose an overload for the function based on the gathered types.
@@ -169,7 +171,7 @@ The reason for restricting available members to no-argument ones is to avoid an 
 
 Let us forget for a moment about lambda arguments; in that case the procedure is completely bottom-up: we move from arguments to function calls, performing resolution at each stage of the process. However, to improve the resolution we sometimes need to perform the tree walk in the other direction: from resolving the function overload we know the expected type of the argument, which we can use to resolve that expression.
 
-The problem is that if we allow resolving to a function with some arguments, we could end up in a situation in which we do not resolve anything until we reach the top-level function call, which then gives us information to resolve the arguments. And if those arguments also had unresolved arguments themselves, this process could go arbitrarily deep. This is both costly for the compiler, and also quite brittle.
+The problem is that if we allowed resolving to a function with some arguments, we could end up in a situation in which we do not resolve anything until we reach the top-level function call, which then gives us information to resolve the arguments. And if those arguments also had unresolved arguments themselves, this process could go arbitrarily deep. This is both costly for the compiler, and also quite brittle.
 
 Take the following example, in which we extend the `Color` class and introduce a `Label` function (in the style of Jetpack Compose).
 
@@ -185,7 +187,9 @@ fun Label(text: String, color: Color) = ...
 val hello: Text = Label("hello", withAlpha(BLUE, 0.5))
 ```
 
-During the resolution of the body of `hello`, we proceed arguments-first. So we already fail resolution at `BLUE`, since we do not know the type of it (yet). Going upwards we fail again for `withAlpha`. It is only when we get to `Label` that we understand that the second argument refers to `Color.withAlpha`, perform potential overload resolution, and then push the expected type of `BLUE` to finally resolve it. This already duplicates the work.  
+During the resolution of the body of `hello`, we proceed arguments-first. So we already fail resolution at `BLUE`, since we do not know the type of it (yet). Going upwards we fail again for `withAlpha`. It is only when we get to `Label` that we understand that the second argument refers to `Color.withAlpha`, perform potential overload resolution, and then push the expected type of `BLUE` to finally resolve it. This already duplicates the work.
+
+Up to this point, nothing seems to be against allowing a function call without arguments, like `background()`. Alas, a function call without any explicit arguments may still have optional ones. Furthermore, forbiding _any_ function call leads to more uniformity.
 
 The no-argument rule ensures that this undesired behavior may not arise, as resolution does not need to go deeper in that case. This seems like a good balance, since the most common use cases like dropping the name of the enumeration are still possible. In a previous iteration of this proposal we went even further, forbidding any improved resolution inside function calls.
 
@@ -250,13 +254,14 @@ There are some scenarios in which the expected type propagation may lead to comp
 * Types with variance:
   * Covariance, `sdet(out T) = sdet(T)`,
   * For contravariant arguments, `sdet(in T)` is undefined.
-* Captured types: `sdet` is undefined.
+* Captured types: `sdet(T)` is undefined.
 * Flexible types, `sdet(A .. B)`
   * Compute `sdet(A)` and `sdet(B)`, and take it if they coincide; otherwise undefined.
   * This rule covers `A .. A?` as special case.
 * Intersection types, `sdet(A & B)`,
   * Definitely not-null, `sdet(A & Any) = sdet(A)`,
   * "Fake" intersection types in which `B` is a subtype of `A`, `sdet(A & B) = sdet(B)`; and vice versa.
+  * Otherwise, `sdet(T)` is undefined.
 
 ### Additional contextual scope
 
@@ -271,9 +276,9 @@ The contextual scope for a single definite type `T` is made from three different
 Furthermore, only two kinds of members are available:
 
 1. Classifiers which are nested in and inherit from type `T`, if `T` is a `sealed` class.
-2. No-argument callables, which must satisfy:
-   - Having no value parameters, which includes both properties and enumeration entries,
-   - Having no extension receiver, except for imported extension functions defined over the companion object of `T`.
+2. No-argument callables, which must:
+   - Be either properties or enumeration entries (including properties synthetized from interoperating with other languages, like Java),
+   - Have no extension receiver nor context parameters, except for imported extension functions defined over the companion object of `T`.
 
 ### Changes to [overload resolution](https://kotlinlang.org/spec/overload-resolution.html#overload-resolution)
 
