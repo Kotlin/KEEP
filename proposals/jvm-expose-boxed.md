@@ -27,6 +27,7 @@ We propose modifications to how value classes are exposed in JVM, with the goal 
   * [Other design choices](#other-design-choices)
 * [Expose operations and members](#expose-operations-and-members)
   * [`Result` is excluded](#result-is-excluded)
+  * [Annotations](#annotations)
   * [Other design choices](#other-design-choices-1)
   * [Further problems with reflection](#further-problems-with-reflection)
 * [Discarded potential features](#discarded-potential-features)
@@ -97,15 +98,19 @@ We propose introducing a new `@JvmExposeBoxed` annotation, defined as follows.
 
 ```kotlin
 @Target(
-  CONSTRUCTOR, PROPERTY, FUNCTION, // callables
-  CLASS, FILE,                     // containers
+  // function-like
+  FUNCTION, CONSTRUCTOR, PROPERTY_GETTER, PROPERTY_SETTER,
+  // properties
+  PROPERTY,
+  // containers
+  CLASS, FILE,
 )
 annotation class JvmExposedBoxed(val jvmName: String = "", val expose: Boolean = true)
 ```
 
-Whenever a _callable declaration_ (function, property, constructor) is annotated with `@JvmExposeBoxed` and `expose` is set to `true` (the default), a new _boxed_ variant of that declaration should be generated. How this is done differs between constructors and other operations, as discussed below.
+Whenever a _function-like declaration_ (function, constructor, property accessor) is annotated with `@JvmExposeBoxed` and `expose` is set to `true` (the default), a new _boxed_ variant of that declaration should be generated. How this is done differs between constructors and other operations, as discussed below.
 
-Since annotating every single callable declaration would be incredibly tiresome, the annotation may also be applied to declaration _containers_, such as classes and files. In that case, it should be taken as applied to every single declaration within it, with the same value for `expose`. It is not allowed to give an explicit value to `jvmName` when using the annotation in a declaration container.
+Since annotating every single declaration in a file or class would be incredibly tiresome, the annotation may also be applied to declaration _containers_, such as classes and files. In that case, it should be taken as applied to every single declaration within it, with the same value for `expose`. It is not allowed to give an explicit value to `jvmName` when using the annotation in a declaration container.
 
 The consequence of the rules above is that if we annotate a class,
 
@@ -115,7 +120,7 @@ The consequence of the rules above is that if we annotate a class,
 }
 ```
 
-this is equivalent to annotating the constructor and every callable member,
+this is equivalent to annotating the constructor and every member,
 
 ```kotlin
 @JvmInline value class PositiveInt @JvmExposeBoxed constructor (val number: Int) {
@@ -123,7 +128,27 @@ this is equivalent to annotating the constructor and every callable member,
 }
 ```
 
-We actually expect in most cases for the annotation to be applied class-wise or even file-wise, `@file:JvmExposeBoxed`, since this uniformly enables or disables the feature.
+For the purposes of this KEEP, a _property_ counts as a container for its getter and setter. As a result, if you want to give a name for the accessors, you need to apply the annotation separately to each accessor or use a explicit target.
+
+```kotlin
+@JvmInline value class PositiveInt constructor (val number: Int) {
+  @get:JvmExposeBoxed("negated")  // instead of 'getNegated'
+  val negated: NegativeInt = ...
+}
+```
+
+We actually expect in most cases for the annotation to be applied class-wise or even file-wise, `@file:JvmExposeBoxed`, since this uniformly enables or disables the feature. If several `@JvmExposeBoxed` annotations apply to a single declaration, the closest one (in the nesting sense of the term) takes precedence.
+
+```kotlin
+@file:JvmExposeBoxed
+
+@JvmExposeBoxed(expose = false) @JvmInline value class Foo(val foo: String) {
+  // constructor is not exposed (the closest `JvmExposeBoxed` is `false`)
+
+  // `zoom` is exposed (the closest `JvmExoseBoxed` is `true`)
+  @JvmExposeBoxed fun zoom(other: Foo) { }
+}
+```
 
 > [!IMPORTANT]
 > Whether you expose the (boxing) constructor of value class has no influence on whether you can expose boxed variants of operations over that same class. The compilation scheme never calls that constructor, moving between the boxed and unboxed worlds is done via `box-impl` and `unbox-impl`, as described below.
@@ -209,7 +234,7 @@ It is not a goal of this KEEP to decide what should happen with Kotlin value cla
 
 The current compilation scheme transforms every operation where a value class is involved into a static function that takes the unboxed variants, and whose name is mangled to prevent clashes. This means those operations are not available for Java consumers.
 
-In the new compilation scheme, if a boxed variant is requested, the compiler shall produce a callable taking and returning the boxed versions. If more than one argument or return type is a value class, the aforementioned variant uses the boxed versions for _all_ of them.
+In the new compilation scheme, if a boxed variant is requested, the compiler shall produce a function taking and returning the boxed versions. If more than one argument or return type is a value class, the aforementioned variant uses the boxed versions for _all_ of them.
 
 The name of the boxed variant coincides with the name given in the Kotlin code unless the `jvmName` argument of the annotation is present. In that case, the name defined in the annotation should be used. Note that `@JvmName` annotations apply to the unboxed variant.
 
@@ -261,7 +286,14 @@ fun weirdIncrement(x: Result<Int>): Result<Int> =
 fun weirdIncrement(x: java.lang.Object): java.lang.Object
 ```
 
-More concretely, if `@JvmExposeBoxed` is applied to a callable using `Result` either as parameter or return type, that position should be treated as a non-value class.
+More concretely, if `@JvmExposeBoxed` is applied to a function or accessor using `Result` either as parameter or return type, that position should be treated as a non-value class.
+
+### Annotations
+
+Annotations should be carried over to the boxed variant of a declaration, with the exception of `@JvmName` and `@JvmExposeBoxed`.
+
+- If a declaration has a `@JvmName` annotation, that should appear only in the _unboxed_ variant, which is the one whose name is affected.
+- If a declaration has a `@JvmExposeBoxed` annotation, that should appear only in the _boxed_ variant.
 
 ### Other design choices
 
