@@ -108,30 +108,34 @@ We propose introducing a new `@JvmExposeBoxed` annotation, defined as follows.
 annotation class JvmExposedBoxed(val jvmName: String = "", val expose: Boolean = true)
 ```
 
-Whenever a _function-like declaration_ (function, constructor, property accessor) is annotated with `@JvmExposeBoxed` and `expose` is set to `true` (the default), a new _boxed_ variant of that declaration should be generated. How this is done differs between constructors and other operations, as discussed below.
+Whenever a _function-like declaration_ (function, constructor, property accessor) is annotated with `@JvmExposeBoxed` and `expose` is set to `true` (the default), a new _boxed_ variant of that declaration should be generated. How this is done differs between constructors and other operations, as discussed below. The compiler should report a _warning_ if no boxed variant of the annotated declaration exists.
 
-Since annotating every single declaration in a file or class would be incredibly tiresome, the annotation may also be applied to declaration _containers_, such as classes and files. In that case, it should be taken as applied to every single declaration within it, with the same value for `expose`. It is not allowed to give an explicit value to `jvmName` when using the annotation in a declaration container.
+Since annotating every single declaration in a file or class would be incredibly tiresome, the annotation may also be applied to declaration _containers_, such as classes and files. In that case, it should be taken as applied to every single declaration within it _for which the boxed variant exists_, with the same value for `expose`. It is not allowed to give an explicit value to `jvmName` when using the annotation in a declaration container.
 
 The consequence of the rules above is that if we annotate a class,
 
 ```kotlin
 @JvmExposeBoxed @JvmInline value class PositiveInt(val number: Int) {
   fun add(other: PositiveInt): PositiveInt = ...
+
+  fun toInt(): Int = number
 }
 ```
 
-this is equivalent to annotating the constructor and every member,
+this is equivalent to annotating the constructor and the `add` member, leaving `toInt` without annotation as no boxed variant exists,
 
 ```kotlin
 @JvmInline value class PositiveInt @JvmExposeBoxed constructor (val number: Int) {
   @JvmExposeBoxed fun add(other: PositiveInt): PositiveInt = ...
+
+  fun toInt(): Int = number
 }
 ```
 
 For the purposes of this KEEP, a _property_ counts as a container for its getter and setter. As a result, if you want to give a name for the accessors, you need to apply the annotation separately to each accessor or use a explicit target.
 
 ```kotlin
-@JvmInline value class PositiveInt constructor (val number: Int) {
+@JvmExposeBoxed @JvmInline value class PositiveInt(val number: Int) {
   @get:JvmExposeBoxed("negated")  // instead of 'getNegated'
   val negated: NegativeInt = ...
 }
