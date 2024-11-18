@@ -9,7 +9,7 @@
 
 ## Abstract
 
-Several kinds of declarations in Kotlin define more than one use-site target for annotations. If an annotation is applied, one of those targets is chosen using the [defaulting rule](https://kotlinlang.org/docs/annotations.html#java-annotations). This KEEP proposes to change that behavior to choose several targets instead, and introduce a new `all` target to select all of them.
+Several kinds of declarations in Kotlin define more than one use-site target for annotations. If an annotation is applied, one of those targets is chosen using the [defaulting rule](https://kotlinlang.org/docs/annotations.html#java-annotations). This KEEP proposes to change that behavior to choose several targets instead, and introduce a new `all` meta-target for properties.
 
 ## Table of contents
 
@@ -84,13 +84,16 @@ However, they provide a way to create a version of an annotation with a specific
 >
 > It is an error if there are multiple targets and none of `param`, `property` and `field` is applicable.
 
-**New `all` annotation use-site target**: in addition to the existing use-site targets, we define a new meta-target.
+**New `all` annotation use-site target**: in addition to the existing use-site targets, we define a new meta-target for _properties_, defined both in and outside of the primary constructor. Such an annotation should be propagated, whenever applicable:
 
-- An annotation with the `all` use-site target should behave as applied to every applicable use-site target.
-- It is an error to use the `all` annotation target if there is no applicable target for the declaration.
-- It is an error to apply the same annotation with both the `all` and another annotation target.
+- To the parameter constructor (`param`), if the property is defined in the primary constructor,
+- To the property itself (`property`),
+- To the backing field (`field`), if the property has one,
+- To the getter (`get`),
+- To the setter parameter (`set_param`), if the property is defined as `var`.
+- If the class is annotated with `@JvmRecord`, to the Java-only target `RECORD_COMPONENT`.
 
-In addition, if a class is annotated with `@JvmRecord`, the Java-only target `RECORD_COMPONENT` is considered when selecting applicable targets. That way the behavior of a `@JvmRecord` with annotations using `all` as use-site target aligns perfectly with Java records.
+The last rule ensures that way the behavior of a `@JvmRecord` with annotations using `all` as use-site target aligns perfectly with Java records.
 
 ### Compiler flags
 
@@ -98,7 +101,6 @@ The Kotlin compiler shall provide a flag to change the defaulting behavior.
 
 - `-Xannotation-defaulting=first-only` corresponds to the defaulting rule in version 1.9 of the Kotlin specification.
 - `-Xannotation-defaulting=param-property` corresponds to the new proposed param-and-property defaulting rule.
-- `-Xannotation-defaulting=all` behaves as if the `all` target was applied to every annotation without an explicit one.
 
 #### Migration
 
@@ -108,7 +110,7 @@ The param-and-property defaulting rule should become the new defaulting rule in 
   - The annotation does _not_ have a explicit use-site target,
   - Both the `param` and one of `property` or `field` targets are allowed for the specific element.
 
-If the user wants to keep the `first-onlt` behavior but _not_ receive any warnings, the workaround is to explicitly write the use-site target. This is also a future-proof way to keep the current behavior.
+If the user wants to keep the `first-only` behavior but _not_ receive any warnings, the workaround is to explicitly write the use-site target. This is also a future-proof way to keep the current behavior.
 
 > [!TIP]
 > _Tooling support_: in response to this warning, editors supporting Kotlin are suggested to include actions to make them go away. That may include enabling the proposed flag project-wise, or making the use-site target for an annotation explicit.
