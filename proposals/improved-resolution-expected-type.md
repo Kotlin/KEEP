@@ -16,14 +16,15 @@ We propose an improvement of the name resolution rules of Kotlin based on the ex
 * [Abstract](#abstract)
 * [Table of contents](#table-of-contents)
 * [Motivating example](#motivating-example)
-  * [The issue with overloading](#the-issue-with-overloading)
-  * [Importing the entire scopes](#importing-the-entire-scopes)
+  * [What is available in the contextual scope](#what-is-available-in-the-contextual-scope)
+  * [No-argument callables](#no-argument-callables)
 * [Technical details](#technical-details)
-  * [Additional candidate resolution scope](#additional-candidate-resolution-scope)
-  * [Additional type resolution scope](#additional-type-resolution-scope)
+  * [Expected type propagation](#expected-type-propagation)
+  * [Single definite expected type](#single-definite-expected-type)
+  * [Additional contextual scope](#additional-contextual-scope)
+  * [Changes to overload resolution](#changes-to-overload-resolution)
 * [Design decisions](#design-decisions)
   * [Risks](#risks)
-* [Implementation note](#implementation-note)
 
 ## Motivating example
 
@@ -122,7 +123,7 @@ when (color) {
 }
 ```
 
-**Extension** callables defined in the static and companion object scopes are **not** available. In most cases those callables can be imported without requiring any additional qualification on the call site.
+**Extension** callables defined in the static and companion object scopes are **not** available. The receiver in that case acts as an additional parameter to resolve, putting us in the same situation as "regular" parameters.
 
 ```kotlin
 class Color(...) {
@@ -134,6 +135,12 @@ class Color(...) {
 when (color) {
   10.grey -> ... // this is not allowed
 }
+```
+
+As a workaround, in most cases those callables can be imported without requiring any additional qualification on the call site.
+
+```kotlin
+import Color.Companion.grey
 ```
 
 There is no additional filtering of properties or functions based on their result type. For example, the following code _resolves_ correctly to `Color.NUMBER_OF_COLORS`, but then raises a "type mismatch" error between `Color` and `Long`.
@@ -163,6 +170,22 @@ The reason for restricting available members to no-argument ones is to avoid an 
 Let us forget for a moment about lambda arguments; in that case the procedure is completely bottom-up: we move from arguments to function calls, performing resolution at each stage of the process. However, to improve the resolution we sometimes need to perform the tree walk in the other direction: from resolving the function overload we know the expected type of the argument, which we can use to resolve that expression.
 
 The problem is that if we allow resolving to a function with some arguments, we could end up in a situation in which we do not resolve anything until we reach the top-level function call, which then gives us information to resolve the arguments. And if those arguments also had unresolved arguments themselves, this process could go arbitrarily deep. This is both costly for the compiler, and also quite brittle.
+
+Take the following example, in which we extend the `Color` class and introduce a `Label` function (in the style of Jetpack Compose).
+
+```kotlin
+class Color(...) {
+  companion object {
+    fun withAlpha(color: Color, alpha: Double): Color = ...
+  }
+}
+
+fun Label(text: String, color: Color) = ...
+
+val hello: Text = Label("hello", withAlpha(BLUE, 0.5))
+```
+
+During the resolution of the body of `hello`, we proceed arguments-first. So we already fail resolution at `BLUE`, since we do not know the type of it (yet). Going upwards we fail again for `withAlpha`. It is only when we get to `Label` that we understand that the second argument refers to `Color.withAlpha`, perform potential overload resolution, and then push the expected type of `BLUE` to finally resolve it. This already duplicates the work.  
 
 The no-argument rule ensures that this undesired behavior may not arise, as resolution does not need to go deeper in that case. This seems like a good balance, since the most common use cases like dropping the name of the enumeration are still possible. In a previous iteration of this proposal we went even further, forbidding any improved resolution inside function calls.
 
@@ -225,15 +248,15 @@ There are some scenarios in which the expected type propagation may lead to comp
   * Otherwise, `sdet(T)` is undefined.
 * Nullable types: `sdet(T?) = sdet(T)`.
 * Types with variance:
-  * Covariance, `stde(out T) = stde(T)`,
-  * For contravariant arguments, `stde(in T)` is undefined.
-* Captured types: `stde` is undefined.
-* Flexible types, `stde(A .. B)`
-  * Compute `stde(A)` and `stde(B)`, and take it if they coincide; otherwise undefined.
+  * Covariance, `sdet(out T) = sdet(T)`,
+  * For contravariant arguments, `sdet(in T)` is undefined.
+* Captured types: `sdet` is undefined.
+* Flexible types, `sdet(A .. B)`
+  * Compute `sdet(A)` and `sdet(B)`, and take it if they coincide; otherwise undefined.
   * This rule covers `A .. A?` as special case.
-* Intersection types, `stde(A & B)`,
-  * Definitely not-null, `stde(A & Any) = stde(A)`,
-  * "Fake" intersection types in which `B` is a subtype of `A`, `stde(A & B) = stde(B)`; and vice versa.
+* Intersection types, `sdet(A & B)`,
+  * Definitely not-null, `sdet(A & Any) = sdet(A)`,
+  * "Fake" intersection types in which `B` is a subtype of `A`, `sdet(A & B) = sdet(B)`; and vice versa.
 
 ### Additional contextual scope
 
