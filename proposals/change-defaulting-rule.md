@@ -95,6 +95,13 @@ However, they provide a way to create a version of an annotation with a specific
 
 The last rule ensures that way the behavior of a `@JvmRecord` with annotations using `all` as use-site target aligns perfectly with Java records.
 
+The `all` target may **not** be used with [multiple annotations](https://kotlinlang.org/spec/syntax-and-grammar.html#grammar-rule-annotation). It is unclear what the behavior should be when the multiple annotations have different targets.
+
+```kotlin
+@all:[A B] // forbidden, use `@all:A @all:B`
+val x: Int = 5
+```
+
 ### Compiler flags
 
 The Kotlin compiler shall provide a flag to change the defaulting behavior.
@@ -187,3 +194,12 @@ The developer may select the three potential targets by using `@all:JSONName("ma
 To understand the impact of this change, we need to consider whether the annotation was defined in Java or in Kotlin. The reason is that annotations defined in Java may _not_ define `property` as one of their targets. As a consequence, the proposed defaulting rule effectively works as "apply to parameter and field". This is exactly the behavior we want, as described in the _Motivation_ section.
 
 To understand whether the choice between `property` and `field` is required in the rule above, we have consulted open source repositories (for example, [query in GitHub Search](https://github.com/search?q=%40Target%28AnnotationTarget.PROPERTY%2C+AnnotationTarget.FIELD%29+lang%3AKotlin&type=code)). The conclusion is there is an important amount of annotations with both potential targets in the wild, which makes is dangerous to scrape the defaulting between `property` and `field` altogether.
+
+## Other design choices
+
+**Make `all` the default for `@JvmRecord`**: we have considered the possibility of fully aligning Kotlin's behavior with Java's in that case. Although this might be interesting for JVM-only projects, it is very unclear what the behavior should be for Multiplatform projects. Both potential options have strong drawbacks:
+
+- If we make the behavior JVM-only, a different set of targets is chosen depending on the platform. This breaks some expectations around common code, and lacks uniformity.
+- If we make the behavior apply to all platforms, it seems quite un-intuitive that an annotation (`@JvmRecord`) affects how all other annotations are applied.
+
+Furthermore, it is still very early to know how popular frameworks will handle Java records. If at a future time Java interoperability begins to suffer, we shall revisit this choice.
