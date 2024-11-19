@@ -105,6 +105,7 @@ We propose introducing a new `@JvmExposeBoxed` annotation, defined as follows.
   // containers
   CLASS, FILE,
 )
+@Retention(RUNTIME)
 annotation class JvmExposedBoxed(val jvmName: String = "", val expose: Boolean = true)
 ```
 
@@ -298,6 +299,8 @@ Annotations should be carried over to the boxed variant of a declaration, with t
 
 - If a declaration has a `@JvmName` annotation, that should appear only in the _unboxed_ variant, which is the one whose name is affected.
 - If a declaration has a `@JvmExposeBoxed` annotation, that should appear only in the _boxed_ variant.
+
+Note that `@JvmExposeBoxed` annotations on containers "travel" to the boxed variant. As a result, both annotation processors and runtime reflection do not see `@JvmExposeBoxed` on the containers (file, class) but rather on each individual operation.
 
 ### Other design choices
 
