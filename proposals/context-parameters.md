@@ -544,7 +544,7 @@ These rules extend the usual behavior of `@DslMarker` to cover both receivers an
 }
 
 fun <A, T> withExampleReceiver(value: A, block: ExampleScope<A>.() -> T): T = ...
-fun <A, T> withExampleContext(value: A, block: context(example: ExampleScope<A>) () -> T): T =
+fun <A, T> withExampleContext(value: A, block: context(ExampleScope<A>) () -> T): T =
   withExampleReceiver(value) { block() }
 
 context(ExampleScope<A>) fun <A> similarExampleTo(other: A): A = ...
