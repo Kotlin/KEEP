@@ -134,7 +134,7 @@ Logger.(User) -> Int
 (Logger, User) -> Int
 ```
 
-As a result of these equivalences, one invoke a value with a function type with context parameters by giving them as regular value parameters.
+As a result of these equivalences, it is possible invoke a value with a function type with context parameters by giving them as regular value parameters.
 
 ```kotlin
 fun foo(x: context(String, Double) Int.(z: Long) -> Unit, y: Int) {
@@ -147,7 +147,7 @@ fun foo(x: context(String, Double) Int.(z: Long) -> Unit, y: Int) {
 }
 ```
 
-As with regular receivers, this is not allowed when the function is not a value or an argument.
+It is not allowed to pass context arguments explicitly inside a value argument list when callee is a regular function (not a value of a function type).
 
 ```kotlin
 context(_: String, _: Double) fun Int.x(z: Long): Unit { }
