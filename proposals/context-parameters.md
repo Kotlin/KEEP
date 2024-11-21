@@ -134,6 +134,34 @@ Logger.(User) -> Int
 (Logger, User) -> Int
 ```
 
+As a result of these equivalences, one invoke a value with a function type with context parameters by giving them as regular value parameters.
+
+```kotlin
+fun foo(x: context(String, Double) Int.(z: Long) -> Unit, y: Int) {
+    context("", 1.0) {
+        y.x(1L)       // OK, regular way to call it
+    }
+
+    y.x("", 1.0, 1L)  // NO
+    x("", 1.0, y, 1L) // OK, all parameters as values
+}
+```
+
+As with regular receivers, this is not allowed when the function is not a value or an argument.
+
+```kotlin
+context(_: String, _: Double) fun Int.x(z: Long): Unit { }
+
+fun foo(y: Int) {
+    context("", 1.0) {
+        y.x(1L)       // regular way to call it
+    }
+
+    y.x("", 1.0, 1L)  // NO
+    x("", 1.0, y, 1L) // NO
+}
+```
+
 **§1.8** *(lambdas)*: If a lambda is assigned a function type with context parameters, those behave as if declared with `_` as its name.
 
 * They participate in context resolution but are only accessible through the `implicit` function (defined below).
