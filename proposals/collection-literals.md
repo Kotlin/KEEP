@@ -20,8 +20,10 @@ In simpliest form, if users want to create a collection, instead of writing `val
   - [Theoretical possibility to support List vs Set overloads in the future](#theoretical-possibility-to-support-list-vs-set-overloads-in-the-future)
 - [What happens if user forgets operator keyword](#what-happens-if-user-forgets-operator-keyword)
 - [Similarities with @OverloadResolutionByLambdaReturnType](#similarities-with-overloadresolutionbylambdareturntype)
-- [Interop with Java ecosystem](#interop-with-Java-ecosystem)
 - [Similar features in other languages](#similar-features-in-other-languages)
+- [Interop with Java ecosystem](#interop-with-Java-ecosystem)
+- [Semantic differences in Kotlin and Java factory methods](#semantic-differences-in-kotlin-and-java-factory-methods)
+- [Performance](#performance)
 - [IDE support](#ide-support)
 - [listOf deprecation](#listof-deprecation)
 - [Change to stdlib](#change-to-stdlib)
@@ -329,9 +331,34 @@ But right now, we **don't plan** to do that, since both `List` and `Set` overloa
 
 todo
 
+## Similar features in other languages
+
+**Java.**
+Java explicitly voted against collection literals in favor of `of` factory methods.
+
+> However, as is often the case with language features, no feature is as simple or as clean as one might first imagine, and so collection literals will not be appearing in the next version of Java.
+
+[JEP 269: Convenience Factory Methods for Collections](https://openjdk.org/jeps/269).
+[JEP 186: Collection Literals](https://openjdk.org/jeps/186).
+
+**Swift.**
+
+todo
+
 ## Interop with Java ecosystem
 
-## Similar features in other languages
+## Semantic differences in Kotlin and Java factory methods
+
+In Java, `java.util.List.of(null)` throws NPE.
+In Kotlin, `listOf(null)` returns `List<Nothing?>`.
+Given that Kotlin has nullability built-in, it's proposed for `kotlin.collections.List.of(null)` to work similarly to `listOf(null)`.
+
+In Java, duplicated elements in `java.util.Set.of(1, 1)` cause `IllegalArgumentException`.
+In Kotlin, `setOf(1, 1)` returns a set that consists of a single element.
+Since it might be very unexpected for expression `Set.of(compute(), compute())` to throw an exception, it's proposed for `kotlin.collections.Set.of(1, 1)` to work similarly to `setOf(1, 1)`.
+
+## Performance
+
 
 ## IDE support
 
@@ -351,7 +378,8 @@ They are too much widespread, even some 3rd party Kotlin libraries follow `smthO
 Besides, this proposal doesn't allow to eliminate `smthOf` pattern completely.
 `listOfNotNull` isn't going anywhere.
 
-Unfortunatelly, introduction of `List.of` functions in stdlib makes the situation harder for newcomers.
+Unfortunatelly, introduction of `List.of` functions in stdlib makes the situation harder for newcomers,
+since they will have more ways to create collections `listOf`, `List.of`, and `[]`.
 
 For the reference, here is the full list of `smthOf` functions that we managed to find in stdlib:
 
