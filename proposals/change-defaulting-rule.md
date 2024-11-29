@@ -1,4 +1,4 @@
-# Change the defaulting rule for annotations
+# Improvements to annotation use-site targets on properties
 
 * **Type**: Design proposal
 * **Author**: Alejandro Serrano
@@ -9,7 +9,7 @@
 
 ## Abstract
 
-Several kinds of declarations in Kotlin define more than one use-site target for annotations. If an annotation is applied, one of those targets is chosen using the [defaulting rule](https://kotlinlang.org/docs/annotations.html#java-annotations). This KEEP proposes to change that behavior to choose several targets instead, and introduce a new `all` meta-target for properties.
+Several kinds of property declarations in Kotlin define more than one use-site target for annotations. If an annotation is applied, one of those targets is chosen using the [defaulting rule](https://kotlinlang.org/docs/annotations.html#java-annotations). This KEEP proposes to change that behavior to choose several targets instead, and introduce a new `all` meta-target.
 
 ## Table of contents
 
@@ -43,11 +43,11 @@ Declaring a use-site target is not mandatory, though. In case none is given, the
 
 > If you don't specify a use-site target, the target is chosen according to the `@Target` annotation of the annotation being used. If there are multiple applicable targets, the first applicable target from the following list is used: `param`, `property`, `field`.
 
-We shall argue below that the defaulting rule should be changed for the case of properties defined in primary constructors. Instead, the annotation should be applied to _both_ the constructor parameter and the property or field. Furthermore, sometimes it is also important to apply the same annotation to getters and setters, a scenario that currently requires duplication.
+We argue below that this defaulting rule should be changed. Instead of choosing a single target, the annotation should be applied to _both_ the constructor parameter and the property or field. Furthermore, sometimes it is also important to apply the same annotation to getters and setters, a scenario that currently requires duplication.
 
 ### Potential misunderstandings
 
-The main issue with the current defaulting rule is that developers are often surprised when an annotation is _not_ applied to the target they intended. Consider the following example, in which the properties are now mutable.
+The main issue with the current defaulting rule is that developers are often surprised when an annotation is _not_ applied to the target they intended. Consider the following example, a variation of the previous one in which the properties are mutable.
 
 ```kotlin
 class Person(@NotBlank var name: String, @PositiveOrZero var age: Int)
@@ -84,7 +84,7 @@ However, they provide a way to create a version of an annotation with a specific
 >
 > It is an error if there are multiple targets and none of `param`, `property` and `field` is applicable.
 
-**New `all` annotation use-site target**: in addition to the existing use-site targets, we define a new meta-target for _properties_, defined both in and outside of the primary constructor. Such an annotation should be propagated, whenever applicable:
+**New `all` annotation use-site target**: in addition to the existing use-site targets, we define a new meta-target for _properties_. Such an annotation should be propagated, whenever applicable:
 
 - To the parameter constructor (`param`), if the property is defined in the primary constructor,
 - To the property itself (`property`),
@@ -93,7 +93,9 @@ However, they provide a way to create a version of an annotation with a specific
 - To the setter parameter (`set_param`), if the property is defined as `var`.
 - If the class is annotated with `@JvmRecord`, to the Java-only target `RECORD_COMPONENT`.
 
-The last rule ensures that way the behavior of a `@JvmRecord` with annotations using `all` as use-site target aligns perfectly with Java records.
+The last rule ensures that way the behavior of a `@JvmRecord` with annotations using `all` as use-site target aligns with Java records.
+
+Note that the annotation is **not** propagated to types, and potential extension receivers or context receivers/parameters.
 
 The `all` target may **not** be used with [multiple annotations](https://kotlinlang.org/spec/syntax-and-grammar.html#grammar-rule-annotation). It is unclear what the behavior should be when the multiple annotations have different targets.
 
