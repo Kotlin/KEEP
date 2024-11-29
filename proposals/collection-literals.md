@@ -45,8 +45,7 @@ In simpliest form, if users want to create a collection, instead of writing `val
 3.  Easy migration from other languages.
     Collection literals is a widely understood concept with more or less the same syntax across different languages.
     And new users have the right to naively believe that Kotlin supports it.
-4.  Avoid unnecessary intermediate vararg array allocation in `listOf`.
-5.  Special syntax for collection literals helps to resolve the `emptyList`/`listOf` hussle.
+4.  Special syntax for collection literals helps to resolve the `emptyList`/`listOf` hussle.
     Whenever the argument list in `listOf` reduces down to zero, some might prefer to cleanup the code to change `listOf` to `emptyList`.
     And vice-versa, whenever the argument list in `emptyList` needs to grow above zero, the programmer needs to replace `emptyList` with `listOf`.
     It creates a small hussle of `listOf` to `emptyList` back and forth movement.
@@ -359,6 +358,7 @@ Since it might be very unexpected for expression `Set.of(compute(), compute())` 
 
 ## Performance
 
+todo
 
 ## IDE support
 
