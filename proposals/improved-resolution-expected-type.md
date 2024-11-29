@@ -279,7 +279,7 @@ Furthermore, only two kinds of members are available:
 2. No-argument callables, which must:
    - Be either properties or enumeration entries (including properties synthetized from interoperating with other languages, like Java),
    - Have no context receivers nor context parameters.
-   - Have no extension receiver, except for extension functions defined over the companion object of `T`.
+   - Have no extension receiver, except for extension properties defined over the companion object of `T`.
 
 ### Changes to [overload resolution](https://kotlinlang.org/spec/overload-resolution.html#overload-resolution)
 
