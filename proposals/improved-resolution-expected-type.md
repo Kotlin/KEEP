@@ -297,9 +297,11 @@ The second change relates to any function call, which now must handle delayed ex
 1. Resolve all non-lambda arguments, where some of those may become delayed.
 2. During the _applicability_ step, do not introduce information about delayed arguments inside each of the constraint systems.
   - **Open question**: should we filter out those candidates for which the resolution of the delayed argument with the corresponding parameter type fails?
+  - If the answer to the open question above is affirmative, resolution of the delayed arguments is effectively done in this stage.
 3. The choice of the most specific overload remains the same.
-4. During _completion_, delayed arguments are resolved again using the expected type obtained from the overload chosen in step (3).
-  - If the answer to open question above is affirmative, such resolution would be done as part of the applicability step.
+4. During _completion_ we store information about delayed arguments.
+  - If the answer to the open question above is negative, completion involves resolution using the expected type obtain from the chosen overload.
+  - If the answer to the open question above is affirmative, resolution of delayed arguments has already been performed.
 
 ## Design decisions
 
