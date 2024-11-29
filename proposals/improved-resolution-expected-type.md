@@ -278,7 +278,8 @@ Furthermore, only two kinds of members are available:
 1. Classifiers which are nested in and inherit from type `T`, if `T` is a `sealed` class.
 2. No-argument callables, which must:
    - Be either properties or enumeration entries (including properties synthetized from interoperating with other languages, like Java),
-   - Have no extension receiver nor context parameters, except for imported extension functions defined over the companion object of `T`.
+   - Have no context receivers nor context parameters.
+   - Have no extension receiver, except for extension functions defined over the companion object of `T`.
 
 ### Changes to [overload resolution](https://kotlinlang.org/spec/overload-resolution.html#overload-resolution)
 
@@ -289,12 +290,9 @@ In order to accomodate improved resolution for function arguments, the algorithm
 3. _Choice of most specific overload_: if more than one applicable overload remains after the previous step, try to decide which is the "most specific" by applying [some rules](https://kotlinlang.org/spec/overload-resolution.html#choosing-the-most-specific-candidate-from-the-overload-candidate-set). After this step, only one overload should remain, otherwise an _ambiguity error_ is issued.
 4. _Completion_: use the information from the chosen overload to resolve lambda arguments, callable references, and fix type variables.
 
-The first change relates to _no-argument expressions_, that is, those made only from a [`simpleIdentifier`](https://kotlinlang.org/spec/syntax-and-grammar.html#grammar-rule-simpleIdentifier).
+The first change relates to _no-argument expressions_, that is, those made only from a [`simpleIdentifier`](https://kotlinlang.org/spec/syntax-and-grammar.html#grammar-rule-simpleIdentifier). In that case only the _applicability_ step of the previous list apply. If during that phase no potential overloads are found, and the expression appears as argument to a function, then do not issue an error, but rather mark the expression as **delayed**.
 
-1. The expression has no argument, so step (1) does not apply.
-2. If during the _applicability_ phase no potential overloads are found, and the expression appears as argument to a function, then do not issue an error, but rather mark the expression as **delayed**.
-
-The second change relates to any function call, which now must handle delayed expressions as arguments.
+The second change relates to any function call, which now must handle delayed expressions as arguments. The resolution algorithm is modified as follows.
 
 1. Resolve all non-lambda arguments, where some of those may become delayed.
 2. During the _applicability_ step, do not introduce information about delayed arguments inside each of the constraint systems.
