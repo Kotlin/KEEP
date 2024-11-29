@@ -135,7 +135,7 @@ Consider [`Email` from Jakarta Bean Validation](https://jakarta.ee/specification
 public @interface Email { }
 ```
 
-Those Java targets are mapped to the [corresponding ones in Kotlin](https://kotlinlang.org/spec/annotations.html#annotation-targets). Note that `PROPERTY` is _not_ a target (in fact, annotations from Java can _never_ have them).
+Those Java targets are mapped to the [corresponding ones in Kotlin](https://kotlinlang.org/spec/annotations.html#annotation-targets). In particular, note that `PROPERTY` is _not_ a targe.
 
 Consider now the following code which uses the annotation in two different places.
 
