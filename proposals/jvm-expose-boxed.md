@@ -109,6 +109,8 @@ We propose introducing a new `@JvmExposeBoxed` annotation, defined as follows.
 annotation class JvmExposedBoxed(val jvmName: String = "", val expose: Boolean = true)
 ```
 
+It is not allowed to apply the annotation to members marked with the `suspend` modifier.
+
 Whenever a _function-like declaration_ (function, constructor, property accessor) is annotated with `@JvmExposeBoxed` and `expose` is set to `true` (the default), a new _boxed_ variant of that declaration should be generated. How this is done differs between constructors and other operations, as discussed below. The compiler should report a _warning_ if no boxed variant of the annotated declaration exists.
 
 Since annotating every single declaration in a file or class would be incredibly tiresome, the annotation may also be applied to declaration _containers_, such as classes and files. In that case, it should be taken as applied to every single declaration within it _for which the boxed variant exists_, with the same value for `expose`. It is not allowed to give an explicit value to `jvmName` when using the annotation in a declaration container.
