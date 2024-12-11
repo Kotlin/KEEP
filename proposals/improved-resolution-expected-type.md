@@ -296,12 +296,8 @@ The second change relates to any function call, which now must handle delayed ex
 
 1. Resolve all non-lambda arguments, where some of those may become delayed.
 2. During the _applicability_ step, do not introduce information about delayed arguments inside each of the constraint systems.
-  - **Open question**: should we filter out those candidates for which the resolution of the delayed argument with the corresponding parameter type fails?
-  - If the answer to the open question above is affirmative, resolution of the delayed arguments is effectively done in this stage.
 3. The choice of the most specific overload remains the same.
-4. During _completion_ we store information about delayed arguments.
-  - If the answer to the open question above is negative, completion involves resolution using the expected type obtain from the chosen overload.
-  - If the answer to the open question above is affirmative, resolution of delayed arguments has already been performed.
+4. During _completion_ we perform resolution of delayed arguments using the expected type obtain from the chosen overload; in addition to any other tasks in this phase.
 
 ## Design decisions
 
@@ -358,6 +354,8 @@ The problem is that at the expression `value == UNKNOWN`, the known type of `val
 
 - It is unclear in general how to treat intersection types, since other cases may not be as simple as dropping a type argument.
 - If in the future Kotlin gets a feature similar to GADTs, we may piggy back on the knowledge that `T` is equal to `Problem`, and face no problem in computing the single definite expected type.
+
+**Additional filtering of candidates**: should we filter out those candidates for which the resolution of the delayed argument with the corresponding parameter expected type fails? At this point we have decided to go with a "no". This answer has the benefit that if we ever move to "yes", the change is backward compatible, as opposed to the other direction.
 
 ### Risks
 
