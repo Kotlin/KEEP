@@ -83,7 +83,7 @@ After careful review, we decided that some declarations should not require expli
 
     Because explicit visibility also requires you to insert keyword `constructor`.
 
-2. Properties of data classes and annotations
+2. Properties of data/value classes and annotations
 
     Because such classes usually fit in one line of code and do not profit much from information hiding.
 
