@@ -177,7 +177,7 @@ class B {
 // Kotlin
 fun foo(atomicCounter: AtomicInteger) {...}
 
-foo(b.atomicCounter()) // Argument type mismatch: actual type is 'kotlin.concurrent.AtomicInt!', but 'java.util.concurrent.atomic.AtomicInteger' was expected.
+foo(b.atomicCounter()) // Argument type mismatch: actual type is 'kotlin.concurrent.atomics.AtomicInt!', but 'java.util.concurrent.atomic.AtomicInteger' was expected.
 ```
 
 And this is another breaking change ❌. Plus, this kind of API is widespread in Java.
@@ -727,7 +727,7 @@ We can use `kotlinx-atomicfu` library for this purpose. Currently, `kotlinx-atom
 and when the _atomicfu compiler plugin_ is applied, these `kotlinx.atomicfu` atomics are inlined.
 
 Our future goal is to eliminate the separate set of `kotlinx.atomicfu` atomics entirely.
-The _atomicfu compiler plugin_ would then directly inline `kotlin.concurrent` atomic types on demand,
+The _atomicfu compiler plugin_ would then directly inline `kotlin.concurrent.atomics` atomic types on demand,
 without requiring users to replace standard library atomics with those from the library.
 
 **Problem:** the _atomicfu compiler plugin_ imposes certain constraints on the usage of atomics.
@@ -760,7 +760,7 @@ actual class AtomicInt : java.util.concurrent.atomic.AtomicInteger() {
 }
 ```
 
-**Why not:** `kotlin.concurrent.AtomicInt` and `java.util.concurrent.atomic.AtomicInteger` are different types.
+**Why not:** `kotlin.concurrent.atomics.AtomicInt` and `java.util.concurrent.atomic.AtomicInteger` are different types.
 Java atomics and inheritors of Java atomics are not Kotlin atomics.
 
 Therefore, we need conversion functions for interop (`asJavaAtomic` / `asKotlinAtomic`).
@@ -812,6 +812,26 @@ The methods, which would differ from the decided common API will be deprecated a
 
 Implementation for these backends will be single threaded.
 
+## Placement
+
+Kotlin atomics will be placed in the new `kotlin.concurrent.atomics` package of the Kotlin Standard Library.
+There is a reason to introduce a new package instead of keeping atomics in the existing `kotlin.concurrent` package, where we have K/N atomics already.
+
+If there were introduced classes like `AtomicLong` or `AtomicBoolean` in the existing `kotlin.concurrent` package, 
+this might cause the resolution ambiguity between `kotlin.concurrent` and `java.util.concurrent.atomic` package, 
+since the Java package provides the classes with the equal names. 
+
+More specifically, if there are star explicit imports of both packages in the existing code, updating the version of `kotlin-stdlib` would cause a compilation error: 
+
+```kotlin
+import java.util.concurrent.atomic.*
+import kotlin.concurrent.*
+```
+
+Thus, to avoid these potential issues, it was decided to place atomics in the new `kotlin.concurrent.atomics` package.
+This means, that the exisiting K/N atomics from `kotlin.concurrent` package will be deprecated,
+and it will be possible to replace them with the new actual K/N atomics with the new API.
+
 ## Java 9
 
 There is some API that was introduced [since Java 9 or newer](https://docs.oracle.com/en%2Fjava%2Fjavase%2F22%2Fdocs%2Fapi%2F%2F/java.base/java/util/concurrent/atomic/AtomicReference.html).
@@ -830,7 +850,3 @@ delegate to Java implementation, when we support **multi-release jars**.
 
 * Underline usages of Java atomics in the new Kotlin code, like it's currently done for `java.lang.String`.
 * Automatic migrations from Java to Kotlin atomics (see the [API design](#api-design) section).
-
-## Placement
-
-* Standard Library `kotlin.concurrent` package
