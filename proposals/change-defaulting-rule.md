@@ -19,6 +19,7 @@ Several kinds of property declarations in Kotlin define more than one use-site t
 * [Technical details](#technical-details)
   * [Compiler flags](#compiler-flags)
     * [Migration](#migration)
+    * [Exceptions](#exceptions)
   * [Examples](#examples)
   * [Impact](#impact)
 
@@ -125,6 +126,13 @@ If the user wants to keep the `first-only` behavior but _not_ receive any warnin
 > _Tooling support_: in response to this warning, editors supporting Kotlin are suggested to include actions to make them go away. That may include enabling the proposed flag project-wise, or making the use-site target for an annotation explicit.
 
 In the next version of the Kotlin compiler after this KEEP is approved, the default value of the flag should be `first-only-warn`. After this transitional period, the default value should change to `param-property`.
+
+#### Exceptions
+
+There are two exceptions to the above rule for migration. In these two cases _no_ warning should be issued, even though the target may change between versions.
+
+- Deprecation and suppression annotations, including `@Deprecated` and `@Suppress`.
+- Annotations on properties of annotation classes; in this case instanced are created through special reflection support.
 
 ### Examples
 
