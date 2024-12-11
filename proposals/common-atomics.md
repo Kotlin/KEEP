@@ -232,15 +232,21 @@ Though this is not a breaking change (the old Kotlin code using Java atomics wil
 **How we can address this Kotlin-Java-Kotlin hierarchy problem:**
 
 - From the front-end point of view, there can be a subtyping relation between `AtomicInt` and `AtomicInteger`,
-then we can load java classes doing the full mapping like in the option 1, but mapping java `AtomicInteger` types to flexible types `AtomicInt`..`AtomicInteger`.
+then we can load java classes doing the full mapping like in the option 1, but mapping java `AtomicInteger` types to _flexible types_ `AtomicInt`..`AtomicInteger`.
 - Forbid to use Kotlin atomics in open functions (via `@OptIn` or a compiler flag).
 - We could introduce a compiler check: some Java function overrides a Kotlin function with Kotlin atomics in the signature.
 
-**Can we actualize an expect function with `kotlin.AtomicInt` with an actual function with `j.u.c.a.AtomicInteger`?**
+**Can we actualize an expect function with `k.c.a.AtomicInt` with an actual function with `j.u.c.a.AtomicInteger`?**
+
+With the implementation, when Kotlin and Java atomics are incompatible types until codegen, 
+one cannot actualize an expect function having a `k.c.a.AtomicInt` in its signature with the function using `j.u.c.a.AtomicInteger`.
+
 - When the actual function is written in Kotlin
-  - In this case the user should migrate to `kotlin.AtomicInt` in kotlin code first.
+  - the user should migrate to `k.c.a.AtomicInt` in kotlin code first.
 - When the actual function is written in Java 
-  - with the help of `@KotlinActual` annotation.
+  - Unfortunately, an expect Kotlin function using Kotlin atomics cannot be actualized with a Java implementation using Java atomics.
+  Though if this scenario appears to be popular, it may be supported in the compiler by introduction of _flexible type mapping_ at FIR, 
+  which was mentioned as one of the possible solutions to the Kotlin-Java-Kotlin hierarchy problem above.
 
 **Java Interop:**
 
