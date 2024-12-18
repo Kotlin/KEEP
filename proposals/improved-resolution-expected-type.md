@@ -18,11 +18,13 @@ We propose an improvement of the name resolution rules of Kotlin based on the ex
 * [Motivating example](#motivating-example)
   * [What is available in the contextual scope](#what-is-available-in-the-contextual-scope)
   * [No-argument callables](#no-argument-callables)
+  * [Chained inference](#chained-inference)
 * [Technical details](#technical-details)
   * [Expected type propagation](#expected-type-propagation)
   * [Single definite expected type](#single-definite-expected-type)
   * [Additional contextual scope](#additional-contextual-scope)
   * [Changes to overload resolution](#changes-to-overload-resolution)
+  * [Interaction with inference](#interaction-with-inference)
 * [Design decisions](#design-decisions)
   * [Risks](#risks)
 
@@ -191,7 +193,47 @@ During the resolution of the body of `hello`, we proceed arguments-first. So we 
 
 Up to this point, nothing seems to be against allowing a function call without arguments, like `background()`. Alas, a function call without any explicit arguments may still have optional ones. Furthermore, forbiding _any_ function call leads to more uniformity.
 
+We acknowledge, though, that this no-argument rule may lead to some surprising behavior. Consider the following sealed hierarchy:
+
+```kotlin
+sealed interface Tree {
+  data object Leaf: Tree
+  data class Node(val left: Tree, val value: Int, val right: Tree): Tree
+}
+```
+
+In this case resolution is improved for constructing `Leaf` but not for `Node`, since the latter requires arguments.
+
+```kotlin
+fun create(n: Int): Tree = when (n) {
+  0 -> Leaf
+  else -> Tree.Node(Leaf, n, Leaf)
+}
+```
+
 The no-argument rule ensures that this undesired behavior may not arise, as resolution does not need to go deeper in that case. This seems like a good balance, since the most common use cases like dropping the name of the enumeration are still possible. In a previous iteration of this proposal we went even further, forbidding any improved resolution inside function calls.
+
+### Chained inference
+
+Another limitation of this proposal is that some seemingly trivial refactorings require introducing qualification.
+
+```kotlin
+val WEIRD: Problem = UNKNOWN  // improved resolution kicks in
+// <T> T.also(block: (T) -> Unit): T
+val WEIRD: Problem = Problem.UNKNOWN.also { println("weird!") }
+```
+
+The problem arises because once we introduce `also`, the expected type from the function can no longer "flow" to the receiver position. If instead of `also` we were calling a function with type `User.(() -> Unit): Problem`, resolving `UNKNOWN` in the context of `Problem` would no longer be valid.
+
+_Chained inference_ is a [known problem](https://youtrack.jetbrains.com/issue/KT-17115) in Kotlin. Another place were it surfaces is requiring more type information for generic calls,
+
+```kotlin
+fun foo(): List<String> = listOf()
+// but if we call any function on it...
+fun foo(): List<String> = listOf<String>().reversed()
+```
+
+We acknowledge this limitation of the current proposal. In this case tooling can provide additional help by, for example, qualifying a name like `UNKNOWN` above when a call is auto-completed.
 
 ## Technical details
 
@@ -298,6 +340,20 @@ The second change relates to any function call, which now must handle delayed ex
 2. During the _applicability_ step, do not introduce information about delayed arguments inside each of the constraint systems.
 3. The choice of the most specific overload remains the same.
 4. During _completion_ we perform resolution of delayed arguments using the expected type obtain from the chosen overload; in addition to any other tasks in this phase.
+
+### Interaction with inference
+
+As described in the [specification](https://kotlinlang.org/spec/overload-resolution.html#type-inference-and-overload-resolution), type inference is performed after overload resolution. As a result, the expected type may not be known at the moment in which improved resolution may kick in.
+
+```kotlin
+val brightColor: Color = WHITE
+
+// <R> run(block: () -> R): R
+val darkColor: Color = run { Color.BLACK }  // requires qualification
+
+// runColor(block: () -> Color): Color
+val skyColor: Color = runColor { BLUE }
+```
 
 ## Design decisions
 
