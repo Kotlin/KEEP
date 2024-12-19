@@ -127,11 +127,13 @@ For a generic nested type alias declaration,
 
 ```kotlin
 class Outer<O1, ..., On> {
-  typealias Alias<T1, ... Tm> = Rhs
+    typealias Alias<T1, ... Tm> = Rhs
 }
 ```
 
 we first compute `capture(Rhs, { O1, .. On })`. The type alias is correct if the result of that computation is a subset of the set of type parameters of the type alias itself, `{ T1, ..., Tm }`.
+
+The following nested type aliases exemplify this calculation.
 
 ```kotlin
 class Example<T> {
@@ -163,6 +165,39 @@ class Example<T> {
 }
 ```
 
+**Rule 5 (type aliases to inner classes)**: whenever a type alias to an inner class, a "type alias constructor" with an extension receiver should be generated, according to the [corresponding specification](https://github.com/Kotlin/KEEP/blob/master/proposals/type-aliases.md#type-alias-constructors-for-inner-classes). This constructor should be generated in the **static** scope for nested type aliases.
+
+```kotlin
+// declaration.kt
+class A {
+    inner class B { }
+
+    typealias I = B
+    // generates the following "type alias constructor"
+    // here "static" is pseudo-syntax only
+    static fun A.I() = A.B()
+}
+
+class C {
+    typealias D = A.B
+    // generates the following "type alias constructor"
+    // here "static" is pseudo-syntax only
+    static fun A.D() = A.B()
+}
+
+// incorrectUsage.kt
+val i = A().I()    // ⚠️ `I` lives in the static scope of `A`
+val d = A().C.D()  // ⚠️ cannot use `C.D()` to refer to a function
+
+// correctUsage.kt
+import A.*  // imports `I`
+import C.*  // imports `D`
+
+val d = A().D()
+```
+
+The example above highlights the (maybe surprising) consequence that you cannot use `A().I()` without additional imports, even though those are not required for `A().B()`.
+
 ### Reflection
 
 The main reflection capabilities in [`kotlin.reflect`](https://kotlinlang.org/api/core/kotlin-stdlib/kotlin.reflect/) work with expanded types. As a result, this KEEP does not affect this part of the library.
@@ -178,29 +213,24 @@ For top-level declarations, it is forbidden to create a `expect typealias`, but 
 We propose to completely forbid nested type aliases to take part on the actualization process. That means that:
 
 - The prohibition about `expect typealias` also covers nested type aliases.
-- It is not possible to actualize an `expect` nested class with an `actual` nested type alias.
+- It is not possible to actualize a nested class with a nested type alias.
 
 Note that this restriction needs to be checked whenever a top-level `expect` class is actualized by a type alias.
 
 ```kotlin
 // expect.kt
 expect class E {
-  expect class I
+  class I
 }
 
-// actual1.kt
-actual class E {
-  actual typealias I = Int  // 'actual typealias' not allowed
-}
-
-// actual2.kt
+// actualIncorrect.kt
 class A {
   typealias I = Int
 }
 
 actual typealias E = A  // actualizing nested 'expect class' with typealias not allowed
 
-// actual3.kt
+// actualCorrect.kt
 class B {
   class I
 }
