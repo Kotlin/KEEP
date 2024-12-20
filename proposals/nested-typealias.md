@@ -3,8 +3,8 @@
 * **Type**: Design proposal
 * **Author**: Alejandro Serrano
 * **Contributors**: Ivan Kochurkin
-* **Discussion**: 
-* **Status**: 
+* **Discussion**: [KEEP-406](https://github.com/Kotlin/KEEP/issues/406)
+* **Status**: In discussion
 * **Related YouTrack issue**: [KT-45285](https://youtrack.jetbrains.com/issue/KT-45285/Support-nested-and-local-type-aliases)
 
 ## Abstract
