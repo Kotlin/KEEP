@@ -161,7 +161,7 @@ class Example<T> {
     // = capture(Inner<Int>, capture(Example<S>, { T }))
     // = capture(Inner<Int>, { S })
     // = capture(Int) + { S } = { S } ⊆ { S } => OK
-    typelias Boo<S> = Example<S>.Inner
+    typealias Boo<S> = Example<S>.Inner
 }
 ```
 
