@@ -153,8 +153,8 @@ class Example<T> {
     inner class Inner<A> { }
 
     // capture(Inner<Int>, { T })
-    // = capture(Int) + { T }
-    // = { T } ⊈ { T } => not allowed
+    // = capture(Int, { T }) + { T }
+    // = { T } ⊈ { } => not allowed
     typealias Moo = Inner<Int>
 
     // capture(Example<S>.Inner<Int>, { T })
