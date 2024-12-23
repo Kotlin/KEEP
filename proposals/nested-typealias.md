@@ -34,7 +34,7 @@ Currently, type aliases may only be declared at the top level. This hinders thei
 
 ```kotlin
 class Dijkstra {
-    typelias VisitedNodes = Set<Node>
+    typealias VisitedNodes = Set<Node>
 
     private fun step(visited: VisitedNodes, ...) = ...
 }
