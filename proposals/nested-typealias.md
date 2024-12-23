@@ -113,7 +113,7 @@ class Service {
 > [!TIP]
 > As a rule of thumb, a nested type alias is correct if it could be used as the supertype or a parameter type within a nested class living within the same classifier.
 
-We formally define the set of captured type parameters of a type `T` with enclosing parameters `P`, `captured(T, P)`, as follows.
+We formally define the set of captured type parameters of a type `T` with enclosing parameters `P`, `capture(T, P)`, as follows.
 
 - If `T` is a type parameter, `capture(T, P) = { T }`;
 - If `T` is a nested type access `A.B`, `capture(T, P) = capture(B, capture(A, P))`;
