@@ -116,7 +116,7 @@ class Service {
 We formally define the set of captured type parameters of a type `T` with enclosing parameters `P`, `capture(T, P)`, as follows.
 
 - If `T` is a type parameter, `capture(T, P) = { T }`;
-- If `T` is a nested type access `A.B`, `capture(T, P) = capture(B, capture(A, P))`;
+- If `T` is a nested type access `A.B`, `capture(T, P) = C + capture(B, C)` where `C = capture(A, P))`;
 - If `T` is an inner type `I<A, ..., Z>`, `capture(T, P) = capture(A, P) + ... + capture(Z, P) + P`;
 - If `T` is of the form `C<A, ..., Z>`, with `C` not inner, or `(A, ..., Y) -> Z`, `capture(T, P) = capture(A, P) + ... + capture(Z, P)`;
 - If `T` is a nullable type `R?`, `capture(T, P) = capture(R, P)`;
@@ -158,9 +158,9 @@ class Example<T> {
     typealias Moo = Inner<Int>
 
     // capture(Example<S>.Inner<Int>, { T })
-    // = capture(Inner<Int>, capture(Example<S>, { T }))
-    // = capture(Inner<Int>, { S })
-    // = capture(Int) + { S } = { S } ⊆ { S } => OK
+    // = capture(Example<S>, { T }) + capture(Inner<Int>, capture(Example<S>, { T }))
+    // = { S } + capture(Inner<Int>, { S })
+    // = { S } + capture(Int, { S }) + { S } = { S } ⊆ { S } => OK
     typealias Boo<S> = Example<S>.Inner
 }
 ```
@@ -193,6 +193,7 @@ val d = A().C.D()  // ⚠️ cannot use `C.D()` to refer to a function
 import A.*  // imports `I`
 import C.*  // imports `D`
 
+val i = A().I()
 val d = A().D()
 ```
 
