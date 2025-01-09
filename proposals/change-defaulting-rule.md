@@ -105,6 +105,8 @@ The `all` target may **not** be used with [multiple annotations](https://kotlinl
 val x: Int = 5
 ```
 
+The `all` target may **not** be used with [delegated properties](https://kotlinlang.org/spec/declarations.html#delegated-property-declaration). It is unclear whether the annotation should or should not be propagated to the underlying delegate; in other words, whether the `delegate` target should be part of the propagation.
+
 ### Compiler flags
 
 The Kotlin compiler shall provide a flag to change the defaulting behavior.
