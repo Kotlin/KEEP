@@ -113,14 +113,14 @@ class Service {
 > [!TIP]
 > As a rule of thumb, a nested type alias is correct if it could be used as the supertype or a parameter type within a nested class living within the same classifier.
 
-We formally define the set of captured type parameters of a type `T` with enclosing parameters `P`, `capture(T, P)`, as follows.
+We formally define the set of captured type parameters of a type `A` with enclosing parameters `P`, `capture(A, P)`, as follows.
 
-- If `T` is a type parameter, `capture(T, P) = { T }`;
-- If `T` is a nested type access `A.B`, `capture(T, P) = C + capture(B, C)` where `C = capture(A, P))`;
-- If `T` is an inner type `I<A, ..., Z>`, `capture(T, P) = capture(A, P) + ... + capture(Z, P) + P`;
-- If `T` is of the form `C<A, ..., Z>`, with `C` not inner, or `(A, ..., Y) -> Z`, `capture(T, P) = capture(A, P) + ... + capture(Z, P)`;
-- If `T` is a nullable type `R?`, `capture(T, P) = capture(R, P)`;
-- If `T` is `*`, then `capture(*, P) = { }`;
+- If `A` is a type parameter `T`, `capture(T, P) = { T }`;
+- If `A` is a nested type access `Outer.Inner`, `capture(Outer.Inner, P) = FromOuter + capture(Inner, FromOuter)` where `FromOuter = capture(Outer, P))`;
+- If `A` is an inner type with type arguments `Inner<B, ..., Z>`, `capture(Inner<B, ..., Z>, P) = capture(B, P) + ... + capture(Z, P) + P`;
+- If `A` is a non-inner type with type arguments `Class<B, ..., Z>` or a function type `(B, ..., Y) -> Z`, `capture(A, P) = capture(B, P) + ... + capture(Z, P)`;
+- If `A` is a nullable type `B?`, `capture(B?, P) = capture(B, P)`;
+- If `A` is `*`, then `capture(*, P) = { }`;
 - Any other [kinds of types](https://kotlinlang.org/spec/type-system.html#type-kinds) in the Kotlin type system are not denotable, as thus may not appear as the right hand side of a type alias.
 
 For a generic nested type alias declaration,
@@ -133,35 +133,46 @@ class Outer<O1, ..., On> {
 
 we first compute `capture(Rhs, { O1, .. On })`. The type alias is correct if the result of that computation is a subset of the set of type parameters of the type alias itself, `{ T1, ..., Tm }`.
 
-The following nested type aliases exemplify this calculation.
+The following nested type aliases exemplify this calculation, and describe the intuition behind those results.
 
 ```kotlin
 class Example<T> {
-    // capture(List<Int>, { T }) = { } ⊆ { } => OK
+    // should be allowed, no type is captured here
     typealias Foo = List<Int>
+    // capture(List<Int>, { T }) = { } ⊆ { } => OK
 
-    // capture(List<T>, { T }) = { T } ⊈ { } => not allowed
+    // should be rejected, since `T` (an argument to the outer `Example`)
+    // is explicitly mentioned
     typealias Bar = List<T>
+    // capture(List<T>, { T }) = { T } ⊈ { } => not allowed
 
-    // capture(List<A>, { T }) = { A } ⊆ { A } => OK
+    // should be allowed, since every type parameter (`A`)
+    // comes from the type alias itself
     typealias Baz<A> = List<A>
+    // capture(List<A>, { T }) = { A } ⊆ { A } => OK
 
-    // capture(Map<T, A>, { T }) = { T, A } ⊈ { A } => not allowed
+    // should be rejected, since `T` is explicitly mentioned
     typealias Qux<A> = Map<T, A>
+    // capture(Map<T, A>, { T }) = { T, A } ⊈ { A } => not allowed
 
 
     inner class Inner<A> { }
 
+    // should be rejected, since we mention `Inner`
+    // which has an outer `Example` with `T` as type parameter
+    typealias Moo = Inner<Int>
     // capture(Inner<Int>, { T })
     // = capture(Int, { T }) + { T }
     // = { T } ⊈ { } => not allowed
-    typealias Moo = Inner<Int>
 
+    // should be allowed, since we access `Inner` through
+    // an explicit `Example<S>` which does not capture `T`
+    typealias Boo<S> = Example<S>.Inner
     // capture(Example<S>.Inner<Int>, { T })
     // = capture(Example<S>, { T }) + capture(Inner<Int>, capture(Example<S>, { T }))
     // = { S } + capture(Inner<Int>, { S })
     // = { S } + capture(Int, { S }) + { S } = { S } ⊆ { S } => OK
-    typealias Boo<S> = Example<S>.Inner
+
 }
 ```
 
