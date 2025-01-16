@@ -19,7 +19,6 @@ We propose modifications to how value classes are exposed in JVM, with the goal 
 * [Motivation](#motivation)
   * [Design goals](#design-goals)
 * [The `JvmExposeBoxed` annotation](#the-jvmexposeboxed-annotation)
-  * [Explicit API mode](#explicit-api-mode)
 * [Expose boxed constructors](#expose-boxed-constructors)
   * [Serialization](#serialization)
   * [No argument constructors](#no-argument-constructors)
@@ -27,6 +26,8 @@ We propose modifications to how value classes are exposed in JVM, with the goal 
   * [Other design choices](#other-design-choices)
 * [Expose operations and members](#expose-operations-and-members)
   * [`Result` is excluded](#result-is-excluded)
+  * [Abstract members](#abstract-members)
+  * [When no exposure may happen](#when-no-exposure-may-happen)
   * [Annotations](#annotations)
   * [Other design choices](#other-design-choices-1)
   * [Further problems with reflection](#further-problems-with-reflection)
@@ -99,21 +100,20 @@ We propose introducing a new `@JvmExposeBoxed` annotation, defined as follows.
 ```kotlin
 @Target(
   // function-like
-  FUNCTION, CONSTRUCTOR, PROPERTY_GETTER, PROPERTY_SETTER,
-  // properties
-  PROPERTY,
-  // containers
-  CLASS, FILE,
+  FUNCTION, CONSTRUCTOR,
+  PROPERTY_GETTER, PROPERTY_SETTER,
+  // classifiers
+  CLASS,
 )
 @Retention(RUNTIME)
-annotation class JvmExposedBoxed(val jvmName: String = "", val expose: Boolean = true)
+annotation class JvmExposedBoxed(val jvmName: String = "")
 ```
 
 It is not allowed to apply the annotation to members marked with the `suspend` modifier.
 
-Whenever a _function-like declaration_ (function, constructor, property accessor) is annotated with `@JvmExposeBoxed` and `expose` is set to `true` (the default), a new _boxed_ variant of that declaration should be generated. How this is done differs between constructors and other operations, as discussed below. The compiler should report a _warning_ if no boxed variant of the annotated declaration exists.
+Whenever a _function-like declaration_ (function, constructor, property accessor) is annotated with `@JvmExposeBoxed`, a new _boxed_ variant of that declaration should be generated. How this is done differs between constructors and other operations, as discussed below. The compiler should report a _warning_ if no boxed variant of the annotated declaration exists.
 
-Since annotating every single declaration in a file or class would be incredibly tiresome, the annotation may also be applied to declaration _containers_, such as classes and files. In that case, it should be taken as applied to every single declaration within it _for which the boxed variant exists_, with the same value for `expose`. It is not allowed to give an explicit value to `jvmName` when using the annotation in a declaration container.
+Since annotating every single declaration in class would be incredibly tiresome, the annotation may also be applied to entire classes. In that case, it should be taken as applied to every single declaration within it _for which the boxed variant exists_. It is not allowed to give an explicit value to `jvmName` when using the annotation in a class.
 
 The consequence of the rules above is that if we annotate a class,
 
@@ -135,34 +135,11 @@ this is equivalent to annotating the constructor and the `add` member, leaving `
 }
 ```
 
-For the purposes of this KEEP, a _property_ counts as a container for its getter and setter. As a result, if you want to give a name for the accessors, you need to apply the annotation separately to each accessor or use a explicit target.
-
-```kotlin
-@JvmExposeBoxed @JvmInline value class PositiveInt(val number: Int) {
-  @get:JvmExposeBoxed("negated")  // instead of 'getNegated'
-  val negated: NegativeInt = ...
-}
-```
-
-We actually expect in most cases for the annotation to be applied class-wise or even file-wise, `@file:JvmExposeBoxed`, since this uniformly enables or disables the feature. If several `@JvmExposeBoxed` annotations apply to a single declaration, the closest one (in the nesting sense of the term) takes precedence.
-
-```kotlin
-@file:JvmExposeBoxed
-
-@JvmExposeBoxed(expose = false) @JvmInline value class Foo(val foo: String) {
-  // constructor is not exposed (the closest `JvmExposeBoxed` is `false`)
-
-  // `zoom` is exposed (the closest `JvmExoseBoxed` is `true`)
-  @JvmExposeBoxed fun zoom(other: Foo) { }
-}
-```
+One expected common use case, mainly for library authors, is to expose boxed variants of every function where this is possible.
+We expect compilers to provide a special _flag_, like `-Xjvm-expose-boxed`, that enables this feature uniformly.
 
 > [!IMPORTANT]
 > Whether you expose the (boxing) constructor of value class has no influence on whether you can expose boxed variants of operations over that same class. The compilation scheme never calls that constructor, moving between the boxed and unboxed worlds is done via `box-impl` and `unbox-impl`, as described below.
-
-### Explicit API mode
-
-Whether an operation is available or not in its boxed variant is very important for interoperability with other languages. For that reason, this KEEP mandates that whenever an operation mentions a value class, and [explicit API mode](https://github.com/Kotlin/KEEP/blob/master/proposals/explicit-api-mode.md) is enabled, the developer _must_ indicate whether the operation should or not be exposed. The latter is done using `@JvmExposeBoxed(expose = false)`.
 
 ## Expose boxed constructors
 
@@ -243,11 +220,13 @@ The current compilation scheme transforms every operation where a value class is
 
 In the new compilation scheme, if a boxed variant is requested, the compiler shall produce a function taking and returning the boxed versions. If more than one argument or return type is a value class, the aforementioned variant uses the boxed versions for _all_ of them.
 
-The name of the boxed variant coincides with the name given in the Kotlin code unless the `jvmName` argument of the annotation is present. In that case, the name defined in the annotation should be used. Note that `@JvmName` annotations apply to the unboxed variant.
+The name of the boxed variant coincides with the name given either in Kotlin code or in the `@JvmName` unless the `jvmName` argument of the annotation is present.
+To make it entirely clear, here are the four cases to be considered.
 
-> [!NOTE]
-> There is a corner case in which `@JvmExposeBoxed` with a name is always needed: when the function has no argument which is a value class, but returns a value class.
-> In that case the compilation scheme performs no mangling. As a result, without the annotation the Java compiler would produce an ambiguity error while resolving the name.
+| | No exposed name | Exposed name |
+|-|-----------------|--------------|
+| No `JvmName` | Unboxed: mangled <br /> Boxed: given name | Unboxed: mangled <br /> Boxed: given exposed name |
+| With `JvmName` | Unboxed **and** boxed: <br /> given `JvmName` | Unboxed: given `JvmName` <br /> Boxed: given exposed name |
 
 The following is an example of the compilation of some operations over `PositiveInt`. The `box-impl` and `unbox-impl` refer to the operations defined in the [current compilation scheme](https://github.com/Kotlin/KEEP/blob/master/proposals/inline-classes.md#inline-classes-abi-jvm) for boxing and unboxing without checks.
 
@@ -295,6 +274,38 @@ fun weirdIncrement(x: java.lang.Object): java.lang.Object
 
 More concretely, if `@JvmExposeBoxed` is applied to a function or accessor using `Result` either as parameter or return type, that position should be treated as a non-value class.
 
+### Abstract members
+
+When an abstract member (either in an interface or a class) is marked with `@JvmExposeBoxed`, a _concrete_ bridge function is generated which calls the abstract member.
+
+```kotlin
+interface Foo {
+  @JvmExposeBoxed fun duplicate(value: PositiveInt): PositiveInt
+}
+
+// compiles down to
+interface Foo {
+  abstract fun duplicate-26b4($this: Int): Int
+
+  fun duplicate(value: PositiveInt): PositiveInt =
+    box-impl(duplicate-26b4(unbox-impl(value)))
+}
+```
+
+### When no exposure may happen
+
+One fair question is what should happen if the user indicates that they want to expose on a function-like declaration in which no inline value class in involved (or only `Result` is). We consider two different cases:
+
+- If the declaration is explicitly marked, that is, if the `@JvmExposeBoxed` annotation appears on the declaration itself, an _error_ should be raised.
+- If exposure is implicitly declared, by either a `@JvmExposeBoxed` on a class level, or by a compiler flag, the declaration is simply ignored.
+
+There is a corner case which needs special treatment: namely a top-level function or property which has no argument which is a value class, but returns a value class.
+In that case the compilation scheme performs no mangling.
+As a result, if we exposed both variants under the same name, the Java compiler would not be able to resolve which one we refer to, undermining the whole purpose of exposing it.
+
+- If the declaration is explicitly marked, an _error_ should be raised, unless a `@JvmExposeBoxed` annotation with an explicit name appears.
+- If exposure is implicitly declared, the boxed variant should not be generated.
+
 ### Annotations
 
 Annotations should be carried over to the boxed variant of a declaration, with the exception of `@JvmName` and `@JvmExposeBoxed`.
@@ -302,16 +313,11 @@ Annotations should be carried over to the boxed variant of a declaration, with t
 - If a declaration has a `@JvmName` annotation, that should appear only in the _unboxed_ variant, which is the one whose name is affected.
 - If a declaration has a `@JvmExposeBoxed` annotation, that should appear only in the _boxed_ variant.
 
-Note that `@JvmExposeBoxed` annotations on containers "travel" to the boxed variant. As a result, both annotation processors and runtime reflection do not see `@JvmExposeBoxed` on the containers (file, class) but rather on each individual operation.
+Furthermore, `@JvmExposeBoxed` annotations on classes "travel" to the declarations within it. As a result, both annotation processors and runtime reflection see `@JvmExposeBoxed` both in the class and in each individual operation.
 
 ### Other design choices
 
-**Annotate the value class**: in a [previous proposal](https://github.com/Kotlin/KEEP/blob/commandertvis/jvmexpose/proposals/jvm-expose-boxed-annotation.md), the annotation was applied to the value class itself, not to the operations, and would force every user of that class to create the boxed and unboxed versions. We found this approach not flexible enough: it was completely in the hands of the developer controlling the value class to decide whether Java compatibility was important. This opinion may not coincide with that of another author, which may restrict or expand the boxed variants in their code. 
-
-**Use a compiler flag instead of an annotation**: we have also considered exposing this feature using a compiler flag, `-Xjvm-expose-boxed=C,D,E`, where `C`, `D`, and `E` are the names of the classes for which boxed variants of the operations should be generated. We found two drawbacks to this choice:
-
-- Users are not accustomed to tweaking compiler flags, which are often hidden in the build file; in contrast to annotations.
-- It does not give the flexibility of exposing only a subset of operations. The current proposal allows that scenario if you annotate each operation independently, but also allows `@file:JvmExposeBoxed` if you want a wider stroke.
+**"Contagious" value classes**: in a [previous proposal](https://github.com/Kotlin/KEEP/blob/commandertvis/jvmexpose/proposals/jvm-expose-boxed-annotation.md), the annotation was applied to the value class itself, not to the operations, and would force every user of that class to create the boxed and unboxed versions. We found this approach not flexible enough: it was completely in the hands of the developer controlling the value class to decide whether Java compatibility was important. This opinion may not coincide with that of another author, which may restrict or expand the boxed variants in their code. 
 
 ### Further problems with reflection
 
@@ -344,6 +350,8 @@ class Person {
 ```
 
 **Validation**: building on the previous idea, `@JvmBoxed` could be implemented as a [Bean validator](https://beanvalidation.org/), so frameworks like Hibernate would automatically execute the corresponding checks. Alas, the Bean Validation specification is a huge mess right now. By Java 7 it was part of the standard distribution in the `javax.validation` package, but now it's moved to `jakarta.validation` (this is in fact the [main change](https://beanvalidation.org/3.0/) between versions 2 and 3 of the specification). It is impossible to provide good compatibility with many Java versions on those grounds.
+
+**Annotating properties**: in a previous iteration it was allowed to annotate properties, which were seen as "containers" for their accessors. Ultimately we found that in most scenarios in which `@JvmExposeBoxed` was used in a property, a name for the getter was also required anyway, so we decided to make this case more explicit.
 
 ## Comparison with Scala
 
