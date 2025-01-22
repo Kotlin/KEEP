@@ -220,23 +220,47 @@ This transformation follows standard property access patterns and does not guara
 #### Name-Based Destructuring for Regular Classes
 Since name-based destructuring is purely syntactic sugar, there is no blocker preventing its use for all types of classes. We don’t have a strong motivation or existing problems that require name-based destructuring for regular classes. However, this feature could improve the user experience, especially considering that regular classes already support positional destructuring.
 
+It would be particularly useful because regular classes often include primitive components for exposing public APIs and providing shorthand access.
+
+```kotlin
+class Foo(val prop: String) {
+  operator fun componen1(): String = prop
+}
+```
+
+
 ***Note***. *There is a risk that name-based destructuring could lead to code clutter. To mitigate this risk, we can introduce a compiler flag that allows users to opt-in to name-based destructuring for regular classes.*
 
 #### Feature Scope
-Name-based destructuring works with ***any properties that can be accessed through simple accessors***. 
+Name-based destructuring works with ***any property that is available in the current scope*** via a simple accessor.
 
 *For example:*
 - *Member properties*
 - *Extension properties*
-*But:*
-- *Private properties cannot be accessed.*
+- *Private properties if they are available in the current scope*
 
 #### Relation to Pattern Matching
-Destructuring is widely associated with pattern matching, which is why it’s important to address this topic in the proposal.
+The proposed syntax could be a step toward supporting pattern matching in the future, which is why it’s important to mention it in the proposal.
 
-At the moment, we don’t have a fixed vision or any concrete plans to implement pattern matching. Kotlin's smart casting system covers most of the common use cases for pattern matching.
+Currently, we *don’t have a clear plan to implement pattern matching*, as Kotlin’s smart casting already handles many common cases.
 
-However, the new syntax is ***not a blocker** for introducing pattern matching in the future, as the syntax is quite close to the existing position syntax.
+However, the new syntax is **compatible** with potential pattern matching features. It works not only for primary constructors but for any accessible properties.
+
+Here’s an example of how pattern matching could look in the future:
+
+```kotlin
+when (something) {
+    // Name-based destructuring
+    is Cat(val name == "Jerry") -> println("It's Jerry the Cat!")
+    
+    // Positional destructuring
+    is Pair("first", "second") -> println("It's a matching Pair!")
+    
+    else -> println("No match found.")
+}
+```
+
+This example shows how both name-based and positional destructuring could fit naturally into pattern matching.
 
 #### Risks
 1. One of the risks of introducing name-based destructuring is scope pollution. Allowing an easy way to retrieve properties from a class in a single line could clutter the code and decrease readability. However, we cannot prohibit developers from using the language as they see fit.
