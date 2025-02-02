@@ -189,9 +189,7 @@ TODO
 
 ## Considered alternative designs
 
-### Specifying UUID version as a generation function argument
-
-### Naming UUID generation functions with descriptive names
+### Naming UUID generator providers with descriptive names
 
 [Some](https://github.com/cowtowncoder/java-uuid-generator) implementations made the design choice to name the generators with descriptive names,
 detailing its purpose and generation approach, instead of simply referencing a UUID version.
@@ -233,41 +231,3 @@ UUIDs are not needed. So and option to explicitly generate non-secure UUIDs may 
 ### UUID v8 support
 
 UUID v8 was also introduced in RFC 9562(https://www.rfc-editor.org/rfc/rfc9562.txt).
-
--------
-
-# Appendix: Questions to consider
-These questions are not a part of the proposal,
-but be prepared to provide the answers if they aren't trivial.
-
-## Naming
-
-* Is it clear from name what API is for?
-* Is it named consistently with other API with the similar purpose?
-* Consider explorability of API via completion.
-    Generally we discourage introducing extensions imported by default for unconstrained generic type or `Any` type, as it pollutes the completion.
-
-Inspiring article on naming: http://blog.stephenwolfram.com/2010/10/the-poetry-of-function-naming/
-
-## Contracts
-
-* What are the failure conditions and how are they handled?
-* Whether the contracts (preconditions, invariants, exception handling) are consistent and are what they may be expected from the similar features.
-
-## Compatibility impact
-
-* How the proposal affects:
-    - source compatibility,
-    - binary compatibility (JVM),
-    - serialization compatibility (JVM)?
-* Does it obsolete some other API? What deprecations and migrations are required?
-
-## Shape
-
-For new functions consider alternatives:
-
-* top-level or extension or member function
-* function or property
-
-
-
