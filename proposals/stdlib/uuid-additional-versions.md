@@ -12,6 +12,13 @@
 ## Summary
 
 Extend existing UUID APIs to support generation of UUIDs version 5 and 7, as defined in [RFC 9562](https://www.rfc-editor.org/rfc/rfc9562.txt).
+While the RFC uses the term "version", UUID version are more like types, where different versions serve different
+purposes and do not supersede  each other.
+
+UUID version 5 is used when it is needed to create UUIDs from input data (most often some kind of identifier) in a consistent way.
+
+UUID version 7 is used when it is needed to generate a time-ordered sequence of UUIDs, for example to use as identifiers 
+for database objects.
 
 ## Similar API review
 
@@ -27,7 +34,7 @@ Currently, the standard library [supports](https://kotlinlang.org/api/core/kotli
 * In Java UUID v7 (and other versions) is supported through some open source libraries:
   * https://github.com/cowtowncoder/java-uuid-generator
 
-Also, there exist libraries for both .NET and Java supporting ULIDs - another lexicographically sortable type of identifier, 
+Also, there exist libraries for both .NET and Java supporting [ULIDs](https://medium.com/@mesfandiari77/uuid-vs-guid-vs-ulid-in-java-a-comprehensive-guide-with-examples-9bddc668d96e) - another lexicographically sortable type of identifier, 
 serving mostly the same purpose as UUID v7
 
 ## Use cases
