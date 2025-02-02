@@ -96,7 +96,7 @@ an object represents the stateful nature of UUID generation better. It is also m
    }
 ```
 
-A separate interface is created for name-bases UUID generator, as they need to accept input to generate UUIDs.
+A separate interface is created for name-based UUID generators, as they need to accept input to generate UUIDs.
 
 ```kotlin
 
@@ -132,7 +132,8 @@ public interface NameBasedUuidGenerator {
 
 #### Companion object of class `Uuid` new methods
 
-New methods are added to the Companion object of class `Uuid`.
+New methods are added to the Companion object of class `Uuid`. These methods will provide the implementations
+of the new generators as well as an implementation for already supported UUID v4.
 
 ```kotlin
 
