@@ -41,8 +41,8 @@ serving mostly the same purpose as UUID v7
 
 ## UUIDv7 use-cases
 
-The distinct trait of UUIDv7 is the sequential order of generated UUIDS. That makes them especially useful as database
-primary keys, as entities generated at approximately the same time . This locality trait 
+The distinct trait of UUIDv7 is the sequential order of generated UUIDs. That makes them especially useful as database
+primary keys, as entities generated at approximately the same time will be stored close to each other. This locality trait 
 enhances performances, as fewer pages have to be read from disk when executing many types of queries. 
 
 UUID v4 generation, supported in the standard library, is based on purely random data. Thus, several v4 UUIDs generated in succession,
@@ -56,18 +56,19 @@ uniqueness. This type of UUID is handy when a mapping between two domains, one o
 and storing such a mapping is for some reason undesirable.
 
 Imagine a middleware that receives messages from multiple senders identified by their host names and forwards them to 
-another system that accepts messages tag by UUIDs. In this case the middleware may generate random UUID when it first 
+another system that accepts messages tagged by UUIDs. In this case the middleware may generate random UUID when it first 
 encounters a new host name and store the mapping into some persistent storage. But if the maximum number of hosts is known
 to be much smaller than the possible number of UUIDs v5, than storage and all connected overhead (which included performance, 
-backups, distributed database consistency and so on) can be avoided.
+backups, distributed database consistency and so on) can be avoided, as we may just rely on consistent mapping from host name
+to a UUID provided by UUID version 5.
 
 ## Alternatives
 
 Implementing compliant and performant UUID generation is not trivial, so most probably execution
-environment specific open-source will be used. 
+environment specific open-source implementation will be used. 
 
 Providing additional UUID versions in the Kotlin standard library avoids additional,
-execution environment specific, dependencies. Also it
+execution environment specific, dependencies. Also, it
 ensures the API is consistent with other Kotlin stdlib API, and ensures it has a good performance.
 
 ## Proposal
