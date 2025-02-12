@@ -89,9 +89,9 @@ an object represents the stateful nature of UUID generation better. It is also m
 * Provide a pooling implementation (see UUID pooling).
 
 ```kotlin
-    public interface UuidGenerator {
+    fun interface UuidGenerator {
     
-        public fun generate() : Uuid
+        fun generate() : Uuid
         
    }
 ```
@@ -205,6 +205,27 @@ assumptions:
 
 * Shorter names are easier to remember and use.
 * On the internet, the algorithm will probably be referred by its version number, so searching both on the internet and in the library documentation will ne simplified if the version is explicitly referenced.
+
+### Do not use explicit interface names, just use signatures
+
+Alternatively to the current proposal, we could do without introducing special interface names, but just use
+signatures like `() -> Uuid`
+
+The factory method for Uuid generators will look something like this:
+
+```kotlin
+
+  /**
+   *  Returns a UUIDv7 generator, that generates time-ordered UUIDs.
+   */
+   fun uuidV7Generator(): () -> Uuid
+```
+
+The current approach was selected mainly because of:
+
+* `UuidGenerator` interface is declared a functional interface, so consumers can also use `() -> Uuid` in their parameters
+* `NameBasedUuidGenerator` contains two functions, which, in my opinion should come together. But it can be further split into two functional interfaces. 
+* Personal preference
 
 ## Future advancements
 
