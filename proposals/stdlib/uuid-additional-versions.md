@@ -221,6 +221,15 @@ The factory method for Uuid generators will look something like this:
    fun uuidV7Generator(): () -> Uuid
 ```
 
+Example APIs using explicit names:
+* [Writer](https://github.com/JetBrains/amper/blob/fffc216664588c7a369064c157cbc33f68826ed9/sources/concurrency/src/org/jetbrains/amper/concurrency/fileUtils.kt#L23)
+* [Comparator ](https://github.com/JetBrains/kotlin/blob/f0bc24bcbb6d4c3dc4611547c93f48bbaca04094/libraries/stdlib/wasm/src/kotlin/Comparator.kt#L11)
+* [History Listener](https://github.com/JetBrains/EzArgs/blob/74b56a033141d2388ce86a72b56776d6fc8c6fd4/src/main/kotlin/com/jetbrains/rider/ezargs/services/EzArgsService.kt#L13)
+
+Example APIs not using explicit names:
+* generateSequence https://kotlinlang.org/api/core/kotlin-stdlib/kotlin.sequences/generate-sequence.html
+
+
 The current approach was selected mainly because of:
 
 * `UuidGenerator` interface is declared a functional interface, so consumers can also use `() -> Uuid` in their parameters
