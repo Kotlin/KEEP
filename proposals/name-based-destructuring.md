@@ -174,11 +174,11 @@ This syntax can also be used in ***lambda*** expressions and ***for-loops***:
 
 ```kotlin
 // positional destructuring
-catList.map {(name, color) -> ... }
+catList.map { (name, color) -> ... }
 for ((name, color) in catList) { ... }
 
 // name-based destructuring
-catList.map {(val name, val color) -> ... }
+catList.map { (val name, val color) -> ... }
 for ((val name, val color) in catList) { ... }
 ```
 
@@ -290,7 +290,7 @@ val color = local$cat.color
 val name = local$cat.name
 ```
 
-This transformation follows standard property access patterns and ***does not guarantee*** thread safety, leaving it to the developers to ensure proper synchronization when necessary. Access is made in the order of destructured variables.
+This transformation follows standard property access patterns and ***does not guarantee*** atomicity, leaving it to the developers to ensure proper synchronization when necessary. Access is made in the order of destructured variables.
 
 #### Feature Scope
 Name-based destructuring applies ***only*** to properties that are ***directly accessible*** on the right-hand side (RHS) of an assignment. It does not rely on `componentN` functions and works only with values that can be accessed ***without calling functions, using reflection, or navigating through nested properties***.
@@ -301,17 +301,17 @@ It supports:
 - *Private properties*. Only if they are accessible in the current scope (e.g., within the same class).
 
 #### Name-Based Destructuring for Regular Classes
-Since name-based destructuring is purely syntactic sugar, there is no blocker preventing its use for all types of classes. We don’t have a strong motivation or existing problems that require name-based destructuring for regular classes. However, this feature could improve the user experience, especially considering that regular classes already support positional destructuring.
+Since name-based destructuring is purely syntactic sugar, there is no blocker preventing its use for all types of classes. Name-based destructuring feature **will be supported** for regular classes. We don’t have a strong motivation or existing problems that require name-based destructuring for regular classes. However, this feature could improve the user experience, especially considering that regular classes already support positional destructuring.
 
 It would be particularly useful because regular classes often include primitive components for exposing public APIs and providing shorthand access.
 
 ```kotlin
 class Foo(val prop: String) {
-    operator fun componen1(): String = prop
+    operator fun component1(): String = prop
 }
 ```
 
-**Note**. *There is a risk that name-based destructuring could lead to code clutter. To mitigate this risk, we can introduce a compiler flag that allows users to opt-in to name-based destructuring for regular classes.*
+**Note**. *There is a risk that name-based destructuring could lead to code clutter.*
 
 
 #### Relation to Pattern Matching
@@ -340,21 +340,16 @@ when (something) {
 This example shows how both name-based and positional destructuring could fit naturally into pattern matching.
 
 #### Risks
-1. One of the risks of introducing name-based destructuring is scope pollution. Allowing an easy way to retrieve properties from a class in a single line could clutter the code and decrease readability. However, we cannot prohibit developers from using the language as they see fit.
-
-    We strongly recommend ***not destructuring more than three properties in one line and avoiding destructuring variables with long names***, preferring to use common property assignment instead.
-
-
-2. The chosen syntax does not allow the IDE to suggest property names in destructuring as it is writing from left to right. However, declaring the destructured property first and then the destructuring variable doesn't align with the way variables are typically written in Kotlin.
+1. The chosen syntax does not allow the IDE to suggest property names in destructuring as it is writing from left to right. However, declaring the destructured property first and then the destructuring variable doesn't align with the way variables are typically written in Kotlin.
 
     To mitigate this risk, IDE should offer autocompletion that builds a destructuring template, prompting users to write the destructured property first, followed by the destructuring variable names.
     ```kotlin
     (val <caret>) = cat // sample of IDE autocompletion suggestion
     ```
 
-3.  The syntax for single-property destructuring can be visually confusing:
+2. The syntax for single-property destructuring can be visually confusing:
     ```kotlin
-    val (name) = cat.name
+    val (name) = cat.name
     (val name) = cat
     ```
     Although these look similar, they work differently. This could cause misinterpretation, especially when reading code quickly.
