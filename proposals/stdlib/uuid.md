@@ -81,19 +81,22 @@ It's worth noting that `Uuid` is not the only Kotlin class implementing `Seriali
 
 ##### `Comparable` interface
 
-When it comes to implementing the `kotlin.Comparable` interface, a couple of factors convinced us to decide against it.
+When it comes to implementing the `kotlin.Comparable` interface,
+a couple of factors initially convinced us to decide against it.
 
 First, different UUID versions have different means of comparison. For example, time-based UUIDs are naturally ordered
 by their timestamps, while name-based UUIDs might be better ordered lexically.
 Second, `java.util.UUID` implements `Comparable` [incorrectly](https://bugs.openjdk.org/browse/JDK-7025832).
 Transitioning from `java.util.UUID` to `Uuid` in existing projects could lead to unexpected differences in ordering.
 
-However, we recognize the usefulness of being able to order UUIDs. Therefore, we have decided
-to take a different approach: providing comparator objects instead of implementing `Comparable`. 
-Initially, we have introduced the `Uuid.LEXICAL_ORDER` comparator, which compares two UUIDs bit by bit sequentially,
+However, we recognize the usefulness of being able to order UUIDs and after some considerations we decided to implement
+`Comparable` interface. While different UUID versions have different fields which might be taken into account when
+comparing UUIDs structurally, we generally treat UUIDs as opaque 128-bit wide bit strings, and a lexical ordering is 
+the natural ordering for such bit strings. Therefore, we have decided to implement `Comparable` interface
+in such a way that the `compare` function compares two UUIDs bit by bit sequentially, 
 starting from the most significant bit to the least significant. This method of comparison is equivalent to comparing
-UUID strings in a case-insensitive manner. In the future, we may introduce additional comparators to accommodate
-different use cases.
+UUID strings in a case-insensitive manner. As for taking UUID fields into account, in the future, 
+we may introduce dedicated comparators to accommodate such use cases.
 
 #### UUID versions the Kotlin Standard Library should generate
 
@@ -191,7 +194,7 @@ essential and most common use cases. In the future, the API could be expanded to
 /**
  * Represents a Universally Unique Identifier (UUID), also known as a Globally Unique Identifier (GUID).
  */
-public class Uuid : Serializable {
+public class Uuid : Comparable<Uuid>, Serializable {
 
     /**
      * Executes the specified block of code, providing access to the uuid's bits in the form of two [Long] values.
@@ -205,9 +208,16 @@ public class Uuid : Serializable {
 
     /**
      * Returns the standard string representation of this uuid.
+     * 
+     * This function returns the same value as [toHexDashString].
      */
     override fun toString(): String
-
+    
+    /**
+     * Returns the standard hex-and-dash string representation of this uuid.
+     */
+    public fun toHexDashString(): String
+  
     /**
      * Returns the hexadecimal string representation of this uuid without hyphens.
      */
@@ -260,9 +270,21 @@ public class Uuid : Serializable {
         public fun fromUByteArray(ubyteArray: UByteArray): Uuid
 
         /**
-         * Parses a uuid from the standard string representation as described in [Uuid.toString].
+         * Parses a uuid from one of the supported string representations.
+         *
+         * This function supports parsing the standard hex-and-dash and the hexadecimal string representations.
+         * 
+         * For details about the hex-and-dash format, refer to [toHexDashString].
+         * If parsing only the hex-and-dash format is desired, use [parseHexDash] instead.
+         * For details about the hexadecimal format, refer to [toHexString].
+         * If parsing only the hexadecimal format is desired, use [parseHex] instead.
          */
         public fun parse(uuidString: String): Uuid
+
+        /**
+         * Parses a uuid from the standard hex-and-dash string representation as described in [Uuid.toHexDashString]. 
+         */
+        public fun parseHexDash()
 
         /**
          * Parses a uuid from the hexadecimal string representation as described in [Uuid.toHexString].
@@ -273,11 +295,6 @@ public class Uuid : Serializable {
          * Generates a new random [Uuid] instance.
          */
         public fun random(): Uuid
-
-        /**
-         * A [Comparator] that lexically orders uuids.
-         */
-        public val LEXICAL_ORDER: Comparator<Uuid>
     }
 }
 ```
@@ -375,10 +392,9 @@ Such mapping would allow us to design a new API surface for the type, yet compil
 This approach would enable Kotlin UUID to seamlessly work with APIs that use Java UUID,
 keeping [platform types](https://kotlinlang.org/docs/java-interop.html#null-safety-and-platform-types) in mind.
 
-One downside of this approach is that we would not be able to implement the `Comparable` interface in the future,
-even if we find convincing arguments to do so. This limitation arises because Java `UUID.compareTo()`
+One downside of this approach is that we would not be able to implement the `Comparable` interface to compare UUIDs
+in a lexical order on every supported platform. This limitation arises because Java `UUID.compareTo()`
 [conducts signed `Long` comparisons](https://bugs.openjdk.org/browse/JDK-7025832), leading to non-lexical order.
-We would not be comfortable bringing this behavior to the Kotlin UUID implementation on other platforms.
 
 Additionally, it's worth mentioning that switching to the mapped type approach would change the `Serialization`
 implementation currently in place; specifically, the serial representation would become larger.
@@ -460,8 +476,10 @@ inline fun <T> toComponents(action: (seconds: Long, nanoseconds: Int) -> T): T
 ### Parsing and formatting to string
 
 The following function names were selected:
-* For parsing from the standard string representation: `parse()`
+* For parsing from supported string representations: `parse()`
 * For formatting to the standard string representation: `toString()`
+* For parsing from the hex-and-dash string representation: `parseHexDash()`
+* For formatting to the hex-and-dash string representation: `toHexDashString()`
 * For parsing from the hexadecimal string representation without dashes: `parseHex()`
 * For formatting to the hexadecimal string representation without dashes: `toHexString()`
 
@@ -482,11 +500,12 @@ Duration.toIsoString(): String
 ByteArray.toHexString(format: HexFormat = HexFormat.Default): String
 ```
 
-An alternative approach is to support several formats in `parse()` and introduce `parseHexDash()`
-and `toHexDashString()` functions for parsing from and formatting to the standard "hex-and-dash" representation.
-The concern with supporting multiple formats in `parse()` is that supporting an additional format in the future
-could be a breaking change. This situation occurs when code that relies on the rejection of formats not
-currently supported is linked with a newer version of the Standard Library that accepts other formats.
+It was discovered that some UUID use-cases may require accepting any of the supported string representations.
+The `parse` function is aimed to fulfill these scenarios,
+and it will throw `IllegalStateException` only if a supplied string's format could not be recognized.
+If any new formats are supported in the future, `parse` will start accepting them as well.
+For scenarios where UUID string representations in an exact format are expected, specialized functions, such as
+`parseHexDash` and `parseHex`, should be used instead.
 
 ## Dependencies
 
