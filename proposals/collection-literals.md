@@ -263,30 +263,34 @@ nor it is necessary for the user-defined type to declare mandatory generic type 
 The reasoning behind [the restrictions](#operator-function-of-restrictions) on `operator fun of` are closely related to overload resolution and type inference.
 Consider the following real-world example:
 ```kotlin
-@JvmName("sumDouble") fun sum(set: List<Double>): Double = TODO("not implemented") // (1)
-@JvmName("sumInt")    fun sum(set: List<Int>): Int = TODO("not implemented")       // (2)
+@JvmName("flushFilesString") fun flushFiles(set: List<String>): Unit = TODO("not implemented") // (1)
+@JvmName("flushFiles")       fun flushFiles(set: List<File>): Unit = TODO("not implemented")      // (2)
 
 fun main() {
-    sum([1, 2, 3]) // Should resolve to (2)
+    flushFiles(["foo.txt", "bar.txt"]) // Should resolve to (1)
 }
+
+// another example
+@JvmName("sumInt")    fun sum(set: List<Int>): Int = TODO("not implemented")
+@JvmName("sumDouble") fun sum(set: List<Double>): Double = TODO("not implemented")
 ```
 
 We want to make the overload resolution work for such examples.
 We have conducted an analysis to see what kinds of overloads are out there [KT-71574](https://youtrack.jetbrains.com/issue/KT-71574) (private link).
 In short, there are all kinds of overloads.
-The restrictions and the overload resolution algorithm suggested further will help us to make the resolution algorithm distinguish `List<Int>` vs `List<Double>` kinds of overloads.
+The restrictions and the overload resolution algorithm suggested further will help us to make the resolution algorithm distinguish `List<String>` vs `List<File>` kinds of overloads.
 
 > [!NOTE]
 > When we say `List` vs `Set` kinds of overloads, we mean all sorts of overloads where the "outer" type is different.
-> When we say `List<Int>` vs `List<Double>` kinds of overloads, we mean all sorts of overloads where the "inner" type is different.
+> When we say `List<String>` vs `List<File>` kinds of overloads, we mean all sorts of overloads where the "inner" type is different.
 
--   `List<Int>` vs `Set<Int>` typically emerges when one of the overloads is the "main" overload, and another one is just a convenience overload that delegates to the "main" overload.
+-   `List<String>` vs `Set<String>` typically emerges when one of the overloads is the "main" overload, and another one is just a convenience overload that delegates to the "main" overload.
     Such overloads won't be supported because it's generally not possible to know which of the overloads is the "main" overload,
     and because collection literal syntax doesn't make it possible to syntactically distinguish `List` vs `Set`.
     But if we ever change our mind, [it's possible to support `List` vs `Set` kind of overloads](#theoretical-possibility-to-support-List-vs-Set-overloads-in-the-future) in the language in backwards compatible way in the future.
--   `List<Int>` vs `List<Double>` is self-explanatory (for example, consider the `sum` example above).
+-   `List<String>` vs `List<File>` is self-explanatory (for example, consider the `flushFiles` example above).
     Such overloads should be and will be supported.
--   `List<Int>` vs `Set<Double>`. Both "inner" and "outer" types are different. 
+-   `List<String>` vs `Set<File>`. Both "inner" and "outer" types are different.
     This pattern is less clear and generally much rarer.
     The pattern may emerge accidentally when different overloads come from different packages.
     Or when users don't know about `@JvmName`, so they use different "outer" types to circumvent `CONFLICTING_JVM_DECLARATIONS`.
@@ -316,7 +320,7 @@ Conceptually, overload resolution algorithm consists of two stages:
 2.  Of the remaining candidates, we keep the most specific ones by comparing every two distinct overload candidates.
     https://kotlinlang.org/spec/overload-resolution.html#choosing-the-most-specific-candidate-from-the-overload-candidate-set
 
-For our case to distinguish `List<Int>` vs `List<Double>` kinds of overloads (see the [Overload resolution motivation](#overload-resolution-motivation) section), the first stage of overload resolution is the most appropriate one.
+For our case to distinguish `List<String>` vs `List<File>` kinds of overloads (see the [Overload resolution motivation](#overload-resolution-motivation) section), the first stage of overload resolution is the most appropriate one.
 That's exactly what we want to do - to filter out definitely inapplicable `outerCall` overloads.
 
 Given the following example: `outerCall([expr1, [expr2], expr3, { a: Int -> }, ::x], expr4, expr5)`,
@@ -387,11 +391,11 @@ Make it possible to extract type restrictions for the elements of the collection
 Given only the "outer" type `List<Int>`/`IntArray`/`Foo`, we should be able to infer collection literal element types.
 We need to know the types for the constraint system of the `outerCall` like in the following example:
 ```
-@JvmName("sumDouble") fun outerCall(set: List<Double>): Double = TODO("not implemented") // (1)
-@JvmName("sumInt")    fun outerCall(set: List<Int>): Int = TODO("not implemented")       // (2)
+@JvmName("outerCallFiles")   fun outerCall(set: List<File>): Unit = TODO("not implemented") // (1)
+@JvmName("outerCallStrings") fun outerCall(set: List<String>): Unit = TODO("not implemented")  // (2)
 
 fun main() {
-    outerCall([1, 2, 3]) // Should resolve to (2)
+    outerCall(["foo.txt", "bar.txt"]) // Should resolve to (2)
 }
 ```
 
