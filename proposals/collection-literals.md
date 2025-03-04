@@ -21,7 +21,7 @@ In the simplest form, if users want to create a collection, instead of writing `
   - [Operator function `of` allowances](#operator-function-of-allowances)
 - [Fallback rules. What if `Companion.of` doesn't exist](#fallback-rules-what-if-companionof-doesnt-exist)
   - [Nested collection literals](#nested-collection-literals)
-- ["Contains" use case](#contains-use-case)
+- ["Contains" optimization](#contains-optimization)
 - [Similarities with `@OverloadResolutionByLambdaReturnType`](#similarities-with-overloadresolutionbylambdareturntype)
 - [Feature interaction with `@OverloadResolutionByLambdaReturnType`](#feature-interaction-with-overloadresolutionbylambdareturntype)
 - [Similar features in other languages](#similar-features-in-other-languages)
@@ -215,6 +215,7 @@ Another KEEP proposal that heavily uses the notion of *expected type* is [Improv
 **Definition.**
 _`Type` static scope_ is the set that contains member callables (functions and properties) of `Type.Companion` type (`Type.Companion` is a companion object),
 or static members of the type if the type is declared in Java.
+(Extension on `Type.Companion` are excluded on purpose)
 
 Before the collection literal could be used at the use-site, an appropriate type needs to declare `operator fun of` function in its _static scope_.
 The `operator fun of` functions must adhere to [the restrictions](#operator-function-of-restrictions).
@@ -227,7 +228,7 @@ Once a proper `operator fun of` is declared, the collection literal can be used 
 
     The following positions are considered positions with the definite *expected type*:
     - Conditions of `when` expression with a subject
-    - `return`, both explicit and implicit
+    - Explicit `return`, single-expression functions, and last expression of lambdas
     - Equality checks (`==`, `!=`)
     - Assignments and initializations
 3.  In all other cases, it's proposed to desugar collection literal to `List.of(expr1, expr2, expr3)`.
@@ -582,14 +583,23 @@ fun main() {
 ```
 
 If during overload resolution, we didn't find `Type.Companion.of` function, but `ParameterType` is the supertype of `List<Nothing>`,
-we use `List.Companion.of` to extract *CLET* and *CLT* [for the means of overload resolution](#overload-resolution-and-type-inference).
+we use `List.Companion.of` to extract *CLET* and *CLT* for the means of [overload resolution](#overload-resolution-and-type-inference).
 
 In the above example, `ParameterType == Iterable<String>`.
 
 A considered alternative: Declare `Iterable.Companion.of`, `Collection.Companion.of` functions in stdlib.
 Downsides:
-**(1)** For every new future supertype of `List` we should also add `of` functions, which we may forget or it may not make sense.
+**(1)** For every new future supertype of `List` we should also add `of` functions, which we may forget, or it may not make sense.
 **(2)** `Any.Companion.of` doesn't make sense.
+
+To maintain consistency, the "supertype of `List<Nothing>`" rule should continue to apply for examples where definite *expected type* is known:
+
+```kotlin
+val list1: Any = [1, 2] // Green since Any is supertype of List<Noting>. The code is desugared to List.of(1, 2)
+val list2: Iterable<Any> = [1, 2] // Green
+val list3: Iterable<Int> = [1, 2] // Green
+val list4: Collection<Int> = [1, 2] // Green
+```
 
 **Case 3.**
 ```kotlin
@@ -654,18 +664,18 @@ fun main() {
 }
 ```
 
-## "Contains" use case
+## "Contains" optimization
 
-Collection literals bring one more good use case:
+Collection literals bring a good use case:
 ```kotlin
 if (readlnOrNull() in ["y", "Y", "yes", "Yes", null]) {
     // ...
 }
 ```
 
-Since it's quite a common use case, it'd be neat if the bytecode that Kotlin generates didn't contain unnecessary collection allocations.
+Since it's quite a common use case, it'd be neat if the compiled output (bytecode, native binary, JavaScript, etc.) didn't contain unnecessary collection allocations.
 
-The proposal is to generate bytecode which would be equivalent to:
+The proposal is to generate an output which would be equivalent to:
 ```kotlin
 val tmp = readlnOrNull()
 if (tmp == "y" || tmp == "Y" || tmp == "yes" || tmp == "Yes" || tmp == null) {
