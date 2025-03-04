@@ -19,6 +19,8 @@ In simpliest form, if users want to create a collection, instead of writing `val
   - [Overload resolution and type inference](#overload-resolution-and-type-inference)
   - [Operator function `of` restrictions](#operator-function-of-restrictions)
   - [Operator function `of` allowances](#operator-function-of-allowances)
+- [Fallback rules. What if `Companion.of` doesn't exist](#fallback-rules-what-if-companionof-doesnt-exist)
+  - [Nested collection literals](#nested-collection-literals)
 - ["Contains" use case](#contains-use-case)
 - [Similarities with `@OverloadResolutionByLambdaReturnType`](#similarities-with-overloadresolutionbylambdareturntype)
 - [Feature interaction with `@OverloadResolutionByLambdaReturnType`](#feature-interaction-with-overloadresolutionbylambdareturntype)
@@ -229,6 +231,7 @@ Once proper `operator fun of` is declared, the collection literal can be used at
     - Equality checks (`==`, `!=`)
     - Assignments and initializations
 3.  In all other cases, it's proposed to desugar collection literal to `List.of(expr1, expr2, expr3)`.
+    The precise fallback rules are described in a [separate section](#fallback-rules-what-if-companionof-doesnt-exist).
 
 Some examples:
 ```kotlin
@@ -313,10 +316,6 @@ On the top-level, overload resolution algorithm consists of two stages:
 For our case to distinguish `List<Int>` vs `List<Double>` kinds of overloads (see the [Overload resolution motivation](#overload-resolution-motivation) section), the first stage of overload resolution is the most appropriate one.
 That's exactly what we want to do - to filter out definitely inapplicable `outerCall` overloads.
 
-For simplicity, imagine that there is only a single `operator fun of` declaration inside `companion object` of our target class.
-And that single overload has single `vararg` parameter.
-In the next section, you will see that `operator fun of` restrictions are such that overload resolution algorithm is no different for our simplified case and for a more complicated case when some limited `of` overloads are permitted.
-
 Given the following example: `outerCall([expr1, [expr2], expr3, { a: Int -> }, ::x], expr4, expr5)`,
 similar to lambdas and callable references, collection literal expression type inference is postponed.
 Contrary, elements of the collection literal are analyzed in the way similar to how other arguments of `outerCall` are analyzed, which means:
@@ -327,8 +326,8 @@ Contrary, elements of the collection literal are analyzed in the way similar to 
 
 For every overload candidate, when a collection literal maps to its appropriate `ParameterType`:
 1.  We find `ParameterType.Companion.of(vararg)` function.
-    Remember that our simplified example is such that there is only one such function.
-    And actually, `operator fun of` function restrictions in the next section guarantee us that it's the only such function.
+    [operator fun of restrictions](#operator-function-of-restrictions) either guarantee us that the `of` function exists and unique,
+    or [fallback rules](#fallback-rules-what-if-companionof-doesnt-exist) kicks in.
 2.  We remember the parameter of the single `vararg` parameter.
     We will call it _CLET_ (collection literal element type).
     We also remember the return type of that `ParameterType.of(vararg)` function.
@@ -555,6 +554,95 @@ class List<T> {
 
 **Allowance 4.**
 Java static `of` members are perceived as `operator fun of` if they satisfy the above restrictions.
+
+## Fallback rules. What if `Companion.of` doesn't exist
+
+There are three cases.
+
+**Case 1.**
+```kotlin
+class Foo
+fun main() {
+    val foo: Foo = [1, 2]
+}
+```
+
+A definite *expected type* is known.
+It's a trivial case, it's just a matter of what diagnostic to report.
+
+**Case 2.**
+```kotlin
+fun outer(a: Iterable<String>) = Unit // (1)
+fun outer(a: Iterable<Int>) = Unit // (2)
+fun main() {
+    outer([1]) // resolves to (2)
+}
+```
+
+If during overload resolution, we didn't find `Type.Companion.of` function, but `ParameterType` is the supertype of `List<Nothing>`,
+we use `List.Companion.of` to extract *CLET* and *CLT* [for the means of overload resolution](#overload-resolution-and-type-inference).
+
+In the above example, `ParameterType == Iterable<String>`.
+
+A considered alternative: Declare `Iterable.Companion.of`, `Collection.Companion.of` functions in stdlib.
+Downsides:
+**(1)** For every new future supertype of `List` we should also add `of` functions, which we may forget or it may not make sense.
+**(2)** `Any.Companion.of` doesn't make sense.
+
+**Case 3.**
+```kotlin
+fun <T : List<String>> outer(a: T) = Unit
+fun <T : List<Int>> outer(a: T) = Unit
+fun main() {
+    outer([1]) // overload resolution ambiguity
+}
+```
+
+It's the worst case.
+Unfortunately, during overload resolution type variables are not yet fixated,
+which means that it's yet impossible to check whether `Type.Companion.of` exists or not.
+The suggested behavior is to just don't support them.
+Overload resolution won't work in such cases, unfortunately.
+
+But it's important to highlight that if the overload resolution successfully completes because there is only 1 applicable candidate,
+the type inference should infer types since it has all the necessary information. Examples:
+
+```kotlin
+fun <T : List<Int>> outer(a: T) = Unit
+
+fun <T : List<Int>> outer2(a: T) = Unit // (1)
+fun outer2(a: List<String>) = Unit // (2)
+
+fun <T : List<String>> outer3(a: T, b: String) = Unit // (3)
+fun <T : List<Int>> outer3(a: T, b: Int) = Unit // (4)
+
+fun main() {
+    outer([1]) // Only one candidate, green code
+    outer2([1]) // Candiate (2) is not applicable, resolve to candidate (1) => green code
+    outer3([1], 1) // Successfully resolves to (4) thanks to second parameter
+}
+```
+
+### Nested collection literals
+
+Given:
+1. Very often `operator fun of` will be declared using generic parameter: `operator fun <T> of(vararg t: T): ...`
+2. Overload resolution doesn't work when collection literal is substituted to generic parameters (see the previous section)
+
+Because of that it's important to acknowledge that [improved overload resolution](#overload-resolution-and-type-inference) won't work for nested collection literals if the outer type uses generic parameter in its `operator fun of` declaration.
+
+```kotlin
+fun outer(a: List<String>) = Unit // (1)
+fun outer(a: List<File>) = Unit // (2)
+
+fun outerNested(a: List<List<String>>) = Unit
+fun outerNested(a: List<List<File>>) = Unit
+
+fun main() {
+    outer([""]) // resolves to (1)
+    outerNested([[""]]) // overload resolution ambiguity
+}
+```
 
 ## "Contains" use case
 
