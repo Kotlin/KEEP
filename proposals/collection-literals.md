@@ -9,7 +9,7 @@
 
 Collection literal is a well-known feature among modern programming languages.
 It's a syntactic sugar built-in into the language that allows creating collection instances more concisely and effortlessly.
-In simpliest form, if users want to create a collection, instead of writing `val x = listOf(1, 2, 3)` they could write `val x = [1, 2, 3]`.
+In the simplest form, if users want to create a collection, instead of writing `val x = listOf(1, 2, 3)`, they could write `val x = [1, 2, 3]`.
 
 ## Table of contents
 
@@ -25,7 +25,7 @@ In simpliest form, if users want to create a collection, instead of writing `val
 - [Similarities with `@OverloadResolutionByLambdaReturnType`](#similarities-with-overloadresolutionbylambdareturntype)
 - [Feature interaction with `@OverloadResolutionByLambdaReturnType`](#feature-interaction-with-overloadresolutionbylambdareturntype)
 - [Similar features in other languages](#similar-features-in-other-languages)
-- [Interop with Java ecosystem](#interop-with-Java-ecosystem)
+- [Interop with Java ecosystem](#interop-with-the-Java-ecosystem)
 - [Tuples](#tuples)
 - [Performance](#performance)
 - [IDE support](#ide-support)
@@ -42,9 +42,9 @@ In simpliest form, if users want to create a collection, instead of writing `val
 
 ## Motivation
 
-1.  Collections (not literals) are very widely used in programs.
+1.  Collections (not literals) are very widely used in programming.
     They deserve a separate literal.
-    A special syntax for collection literal makes them instantly stand out from the rest of the program, making code easier to read.
+    A special syntax for collection literals makes them instantly stand out from the rest of the program, making code easier to read.
 2.  Simplify migration from other languages / Friendliness to newcomers.
     Collection literals is a widely understood concept with more or less the same syntax across different languages.
     And new users have the right to naively believe that Kotlin supports it.
@@ -59,9 +59,9 @@ In simpliest form, if users want to create a collection, instead of writing `val
     It creates a small hussle of `listOf` to `emptyList` back and forth replacement.
     It's by no means a big problem, but it is just a small annoyance, which is nice to see to be resolved by the introduction of collection literals.
 
-The feature brings more value to newcomers rather than to experienced Kotlin users, and should target the newcomers primarily.
+The feature brings more value to newcomers rather than to experienced Kotlin users and should target the newcomers primarily.
 
-Since the biggest feature value is "aesthetics", "egonomics" and "readability",
+Since the biggest feature value is "aesthetics", "ergonomics" and "readability",
 all of which are hard to measure and subjective, it makes sense to see "before/after" code examples to feel the feature better:
 ```kotlin
 // before 1
@@ -219,8 +219,8 @@ or static members of the type if the type is declared in Java.
 Before the collection literal could be used at the use-site, an appropriate type needs to declare `operator fun of` function in its _static scope_.
 The `operator fun of` functions must adhere to [the restrictions](#operator-function-of-restrictions).
 
-Once proper `operator fun of` is declared, the collection literal can be used at the use-site.
-1.  When the collection literal is used in the arguments position, similarly to lambdas and callable references, collection literal affects the overload resolution of the "outer call".
+Once a proper `operator fun of` is declared, the collection literal can be used at the use-site.
+1.  When the collection literal is used in the position of arguments, similarly to lambdas and callable references, collection literal affects the overload resolution of the "outer call".
     See the section dedicated to [overload resolution](#overload-resolution-motivation).
 2.  When the collection literal is used in the position with definite *expected type*, the collection literal is literally desugared to `Type.of(expr1, expr2, expr3)`,
     where `Type` is the definite *expected type*.
@@ -307,7 +307,7 @@ fun test() {
 }
 ```
 
-On the top-level, overload resolution algorithm consists of two stages:
+Conceptually, overload resolution algorithm consists of two stages:
 1.  Filter out all the overload candidates that certainly don't fit based on types of the arguments.
     Only types of non-lambda and non-callable-reference arguments are considered.
     (it's important to understand that we don't keep the candidates that fit, but we filter out those that don't)
@@ -324,7 +324,7 @@ Contrary, elements of the collection literal are analyzed in the way similar to 
 1.  If collection literal elements are lambdas, or callable references, their analysis is postponed.
     Only number of lambda parameters and lambda parameter types (if specified) are taken into account of overload resolution of `outerCall`.
 2.  If collection literal elements are collection literals themselves, then we descend into those literals and recursively apply the same rules.
-3.  All other collection literal elements are "plain arguments", and they are analyzed in [so-called "dependent" mode](https://github.com/JetBrains/kotlin/blob/master/docs/fir/inference.md).
+3.  All other collection literal elements are *plain arguments*, and they are analyzed in [so-called *dependent* mode](https://github.com/JetBrains/kotlin/blob/master/docs/fir/inference.md).
 
 For every overload candidate, when a collection literal maps to its appropriate `ParameterType`:
 1.  We find `ParameterType.Companion.of(vararg)` function.
@@ -334,11 +334,11 @@ For every overload candidate, when a collection literal maps to its appropriate 
     We will call it _CLET_ (collection literal element type).
     We also remember the return type of that `ParameterType.of(vararg)` function.
     We will call it _CLT_ (collection literal type).
-3.  In the first stage of overload resolution of `outerCall` (when we filter out inapplicable candidates), we add the following constraints to the constraint system of `outerCall` candidate:
+3.  At the first stage of overload resolution of `outerCall` (when we filter out inapplicable candidates), we add the following constraints to the constraint system of `outerCall` candidate:
     1. For each collection literal element `e`, we add `type(e) <: CLET` constraint.
     2. We also add the following constraint: `CLT <: ParameterType`.
 
-Once all "plain" arguments are analyzed (their types are infered in "dependent" mode), and all recursive "plain" elements of collection literals are analyzed,
+Once all *plain* arguments are analyzed (their types are inferred in *dependent* mode), and all recursive *plain* elements of collection literals are analyzed,
 we proceed to filtering overload candidates for `outerCall`.
 
 Please note that constraints described above are only added to the constraint system of the `outerCall` and not to constraint system of the `of` function themselves.
@@ -469,7 +469,7 @@ class BrokenNonEmptyList {
 All `of` overloads must have the return type equal by `ClassId` to the type in which _static scope_ the overload is declared in.
 
 The `ClassId` of a type is its typed fully qualified name.
-It's a list of typed tokens, where every token represents either a name of the package, or a name of the class.
+It's a list of typed tokens, where every token represents either a name of the package or a name of the class.
 "Typed" here means that package named "foo" doesn't equal to the class named "foo".
 
 The reasoning for that restriction is that we use the expected type for searching the `of` function,
@@ -512,14 +512,14 @@ fun main() {
 **Restriction 5.**
 The only difference that `of` overloads are allowed to have is "number" of parameters (`vararg` is considered an infinite number of params).
 
-> Technically, the restriction 5 is a superset of the restriction 4, but we still prefer to mention restriction 4 separately.
+> Technically, restriction 5 is a superset of restriction 4, but we still prefer to mention restriction 4 separately.
 
-Which means that types of the parameters must be the same, and all type parameters with their bounds must be the same.
+Which means that the types of the parameters must be the same, and all type parameters with their bounds must be the same.
 
 **Restriction 6.**
 All `of` overloads must have no extension/context parameters/receivers.
 
-We forbid them to keep mental model simpler and since we didn't find major use cases.
+We forbid them to keep the mental model simpler, and since we didn't find major use cases.
 Since all those "implicit receivers" affect availability of the `of` function, it'd complicate `outerCall` overload resolution, if we allowed "implicit receivers".
 
 ### Operator function `of` allowances
@@ -611,7 +611,7 @@ fun main() {
 It's the worst case.
 Unfortunately, during overload resolution type variables are not yet fixated,
 which means that it's yet impossible to check whether `Type.Companion.of` exists or not.
-The suggested behavior is to just don't support them.
+It's suggested to just not support such cases.
 Overload resolution won't work in such cases, unfortunately.
 
 But it's important to highlight that if the overload resolution successfully completes because there is only 1 applicable candidate,
@@ -663,7 +663,7 @@ if (readlnOrNull() in ["y", "Y", "yes", "Yes", null]) {
 }
 ```
 
-Since it's quite common use case, it'd be neat if the bytecode that Kotlin generates didn't contain unnecessary collection allocations.
+Since it's quite a common use case, it'd be neat if the bytecode that Kotlin generates didn't contain unnecessary collection allocations.
 
 The proposal is to generate bytecode which would be equivalent to:
 ```kotlin
@@ -761,7 +761,7 @@ Swift also allows
 
 todo
 
-## Interop with Java ecosystem
+## Interop with the Java ecosystem
 
 The name for the `operator fun of` is specifically chosen such to ensure smooth Java interop.
 Given that we don't support extension `operator fun of`, it becomes more important for Java developers to declare `of` members that satisfy the requirements.
@@ -783,7 +783,7 @@ So for now, we just want to make sure that we don't accidentally make it impossi
 ## Performance
 
 We did performance measurements to make sure that we don't miss any obvious problems in Kotlin's `listOf` implementation compared to `java.util.List.of`.
-And to compare performance of the proposal with [the alternative "granular operators" suggestion](#rejected-proposal-more-granular-operators), since the more granular operators proposal came as an idea to improve performance.
+And to compare the performance of the proposal with [the alternative "granular operators" suggestion](#rejected-proposal-more-granular-operators), since the more granular operators proposal came as an idea to improve performance.
 Unironically, a more straightforward "single operator of" proposal shows better performance than "granular operators proposal" in our benchmarks.
 
 For array-backed collections, the approach to prepoluate array and pass the reference to the array is more performant than consecutively calling `.add` for every element.
@@ -795,7 +795,7 @@ Taking into account that List is the most popular collection container, the choi
 
 It's worth mentioning that the design decision shouldn't be driven purely by performance.
 In our case, a more accurate design proposal just happens to be more performant than the suggested more granular alternative.
-It's a double win situation.
+It's a double-win situation.
 
 **"Unique vararg" statement.** Unlike in Java, in _pure_ Kotlin, we can practically assume that `vararg` parameter is a unique array reference.
 
@@ -1031,7 +1031,7 @@ There are several problems.
 
 > todo it's not yet completely rejected since the discussion around Map literals is still in progress
 
-The type of collection literals is infered from the *expected type*.
+The type of collection literals is inferred from the *expected type*.
 Unfortunately, that may lead to overload resolution ambiguity when collection literal is used in argument position.
 
 ```kotlin
