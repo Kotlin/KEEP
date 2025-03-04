@@ -65,7 +65,7 @@ Since the biggest feature value is "aesthetics", "egonomics" and "readability",
 all of which are hard to measure and subjective, it makes sense to see "before/after" code examples to feel the feature better:
 ```kotlin
 // before 1
-    if (readlnOrNull() in setOf("y", "Y", "yes", "Yes", null)) {
+    if (readlnOrNull() in listOf("y", "Y", "yes", "Yes", null)) {
         // ...
     }
 // after 1
@@ -247,6 +247,8 @@ fun main() {
         else -> println("false")
     }
     if (foo == [1, 2, 3]) println("true") // MyCustomList<Int>
+    var mutable: Set<Int> = [1, 2, 3] // Set<Int>
+    mutable = [4, 5] // Set<Int>
 }
 
 fun foo(): MyCustomList<Int> = [1, 2, 3]
@@ -529,9 +531,9 @@ It's allowed to have reified generics and mark the operator as `inline`.
 
 Use case:
 ```kotlin
-class IntArray {
+class Array<T> {
     companion object {
-        operator fun inline <reified T> of(vararg elements: T): IntArray /*the implementation is code generated*/
+        operator fun inline <reified T> of(vararg elements: T): Array<T> /*the implementation is generated*/
     }
 }
 ```
@@ -593,8 +595,16 @@ Downsides:
 ```kotlin
 fun <T : List<String>> outer(a: T) = Unit
 fun <T : List<Int>> outer(a: T) = Unit
+
+fun outer2(a: List<String>) = Unit // (1)
+fun outer2(a: List<Int>) = Unit // (2)
+
+fun <T> id(t: T): T = t
+
 fun main() {
     outer([1]) // overload resolution ambiguity
+    outer2([1, 2, 3]) // resolves to (2)
+    outer2(id([1, 2, 3])) // overload resolution ambiguity
 }
 ```
 
