@@ -317,7 +317,6 @@ fun test() {
 
 Conceptually, overload resolution algorithm consists of two stages:
 1.  Filter out all the overload candidates that certainly don't fit based on types of the arguments.
-    Only types of non-lambda and non-callable-reference arguments are considered.
     (it's important to understand that we don't keep the candidates that fit, but we filter out those that don't)
     https://kotlinlang.org/spec/overload-resolution.html#determining-function-applicability-for-a-specific-call
 2.  Of the remaining candidates, we keep the most specific ones by comparing every two distinct overload candidates.
