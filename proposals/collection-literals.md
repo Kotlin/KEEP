@@ -24,6 +24,9 @@ In the simplest form, if users want to create a collection, instead of writing `
 - ["Contains" optimization](#contains-optimization)
 - [Similarities with `@OverloadResolutionByLambdaReturnType`](#similarities-with-overloadresolutionbylambdareturntype)
 - [Feature interaction with `@OverloadResolutionByLambdaReturnType`](#feature-interaction-with-overloadresolutionbylambdareturntype)
+- [Feature interaction with flexible types](#feature-interaction-with-flexible-types)
+- [Feature interaction with intersection types](#feature-interaction-with-intersection-types)
+- [Feature interaction with PCLA](#feature-interaction-with-pcla)
 - [Similar features in other languages](#similar-features-in-other-languages)
 - [Interop with Java ecosystem](#interop-with-the-Java-ecosystem)
 - [Tuples](#tuples)
@@ -334,7 +337,7 @@ Contrary, elements of the collection literal are analyzed in the way similar to 
 For every overload candidate, when a collection literal maps to its appropriate `ParameterType`:
 1.  We find `ParameterType.Companion.of(vararg)` function.
     [operator fun of restrictions](#operator-function-of-restrictions) either guarantee us that the `of` function exists and unique,
-    or [fallback rules](#fallback-rules-what-if-companionof-doesnt-exist) kicks in.
+    or [fallback rules](#fallback-rules-what-if-companionof-doesnt-exist) kick in.
 2.  We remember the parameter of the single `vararg` parameter.
     We will call it _CLET_ (collection literal element type).
     We also remember the return type of that `ParameterType.of(vararg)` function.
@@ -574,7 +577,8 @@ fun main() {
 }
 ```
 
-A definite *expected type* is known.
+A definite *expected type* is known,
+but `.Companion.of` function is not declared.
 It's a trivial case, it's just a matter of what diagnostic to report.
 
 **Case 2.**
@@ -753,8 +757,51 @@ fun main() {
 Technically, since collection literal elements are analyzed "like regular arguments",
 `@OverloadResolutionByLambdaReturnType` in the above case could make the `mySumOf` to resolve to (2).
 
-We should make sure that the example above either results in `OVERLOAD_RESOLUTION_AMBIGUITY` or is prohibited in some way
-(though it's unclear how to prohibit it)
+`@OverloadResolutionByLambdaReturnType` is an experimental feature.
+To avoid potentail future stabilization complications,
+we should make sure that the example above either results in `OVERLOAD_RESOLUTION_AMBIGUITY` or is prohibited in some way
+(though it's unclear how to prohibit it).
+
+## Feature interaction with flexible types
+
+Kotlin uses a mechanism of [flexible types](https://kotlinlang.org/spec/type-system.html#flexible-types) to interop with other languages.
+
+In practice, there are only 3 possible cases of flexible types:
+- Nullability. `T..T?`
+- Mutability. `MutableList..List`
+- `dynamic` in Kotlin/JS. `Nothing..Any?`
+
+The question is what bound should we search `.Companion.of` function in?
+
+**For nullability**, it doesn't matter since `T` and `T?` both have the same static scope.
+
+**For mutability**, we think that it's better to choose an immutable type (upper bound).
+The arguments are:
+1. Kotlin favors immutability over mutability. If users want to pass a mutable list, they can pass it explicitly via `MutableList.of()`.
+2. Even if users were to write the code in modern Java, they would use `java.lang.List.of()`, which returns a read-only list.
+There is only a single counterargument: `MutableList` will definitely crash in lower number of cases at runtime.
+We think that it's fine to crash at runtime in such cases, it's better to be explicit about mutable lists in such cases.
+
+**For `dynamic`**, there are two options.
+Either fall back to `List` or resolve `.Companion.of` at runtime.
+We think that resolving `.Companion.of` is too implicit, and it might lead to accidental runtime failures because of that.
+In JavaScript, square brackets always return an `Array`.
+Following the principle of least astonishment, it's proposed to fall back to `List`.
+
+All these special cases can be generalized to the common rule for the flexible types to behave as if the upper bound was used instead.
+For `dynamic` it's a true statement because we fall back to `Any` and then [Any is supertype of `List<Nothing>` fallback kicks in](#fallback-rules-what-if-companionof-doesnt-exist).
+
+## Feature interaction with intersection types
+
+Given an intersection type `A & B`,
+let's consider a case where types `A` and `B` both declare a proper `operator fun of` in the respective `companion object` inside of them.
+It doesn't make sense to prefer either of the operators because neither of them returns the intersection type `A & B`.
+
+It's proposed to always report an error when the *expected type* of collection literal is an intersection type.
+
+## Feature interaction with PCLA
+
+todo
 
 ## Similar features in other languages
 
