@@ -15,6 +15,7 @@ In the simplest form, if users want to create a collection, instead of writing `
 
 - [Motivation](#motivation)
 - [Proposal](#proposal)
+  - [Map literals](#map-literals)
 - [Overload resolution motivation](#overload-resolution-motivation)
   - [Overload resolution and type inference](#overload-resolution-and-type-inference)
   - [Operator function `of` restrictions](#operator-function-of-restrictions)
@@ -259,6 +260,25 @@ fun foo(): MyCustomList<Int> = [1, 2, 3]
 
 Please note that it is not necessary for the type to extend any predifined type in the Kotlin stdlib (needed to support `kotlin.Array<T>` type),
 nor it is necessary for the user-defined type to declare mandatory generic type parameters (needed to support specialized arrays like `kotlin.IntArray`, `kotlin.LongArray`, etc.).
+
+### Map literals
+
+In addition to special syntax for collection literals, it'd be natural to add a special syntax for map literals.
+
+```kotlin
+val map = ["key": 1] // Map<String, Int>
+```
+
+It's always possible to add a special syntax for maps in future versions of Kotlin.
+To start with, we want to concentrate on collections.
+That's why we limit the proposal only for collections for now.
+
+We won't even add a `Map.Companion.of` in Kotlin stdlib.
+Such code won't work:
+
+```kotlin
+val map: Map<String, Int> = ["key" to 1] // type mismatch. List<Pair<String, Int>> is not subtype of Map<String, Int>
+```
 
 ## Overload resolution motivation
 
