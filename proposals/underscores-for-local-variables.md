@@ -2,7 +2,7 @@
 
 * **Type**: Design proposal
 * **Authors**: Leonid Startsev, Mikhail Zarechenskiy
-* **Contributors**: Alejandro Serrano Mena, Marat Akhin, Nikita Bobko, Pavel Kunyavskiy
+* **Contributors**: Alejandro Serrano Mena, Denis Zharkov, Marat Akhin, Nikita Bobko, Pavel Kunyavskiy, Vsevolod Tolstopyatov
 * **Status**: Experimental in Kotlin 2.2
 * **Discussion**: [KEEP-412](https://github.com/Kotlin/KEEP/issues/412)
 
