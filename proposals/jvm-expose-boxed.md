@@ -25,7 +25,6 @@ We propose modifications to how value classes are exposed in JVM, with the goal 
   * [JVM value classes](#jvm-value-classes)
   * [Other design choices](#other-design-choices)
 * [Expose operations and members](#expose-operations-and-members)
-  * [`Result` is excluded](#result-is-excluded)
   * [Abstract members](#abstract-members)
   * [When no exposure may happen](#when-no-exposure-may-happen)
   * [Annotations](#annotations)
@@ -111,9 +110,9 @@ annotation class JvmExposedBoxed(val jvmName: String = "")
 
 It is not allowed to apply the annotation to members marked with the `suspend` modifier.
 
-Whenever a _function-like declaration_ (function, constructor, property accessor) is annotated with `@JvmExposeBoxed`, a new _boxed_ variant of that declaration should be generated. How this is done differs between constructors and other operations, as discussed below. The compiler should report a _warning_ if no boxed variant of the annotated declaration exists.
+Whenever a _function-like declaration_ (function, constructor, property accessor) is annotated with `@JvmExposeBoxed`, a new _boxed_ variant of that declaration should be generated. How this is done differs between constructors and other operations, as discussed below. The compiler should report a _warning_ if no boxed variant of the annotated declaration exists, that is, when the annotation has no effect.
 
-Since annotating every single declaration in class would be incredibly tiresome, the annotation may also be applied to entire classes. In that case, it should be taken as applied to every single declaration within it _for which the boxed variant exists_. It is not allowed to give an explicit value to `jvmName` when using the annotation in a class.
+Since annotating every single declaration in class would be incredibly tiresome, the annotation may also be applied to entire classes. In that case, it should be taken as applied to every single declaration within it _which can be exposed_. It is not allowed to give an explicit value to `jvmName` when using the annotation in a class.
 
 The consequence of the rules above is that if we annotate a class,
 
@@ -259,21 +258,6 @@ public dupl($this: PositiveInt): PositiveInt =
 fun duplicate-26b4($this: Int): Int
 ```
 
-### `Result` is excluded
-
-Even though on paper the [`Result`](https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-result/) in the standard library should be covered by this KEEP, this is _not_ the case. The reason is that the compiler performs no mangling, and every `Result` value is treated as `java.lang.Object`.
-
-```kotlin
-fun weirdIncrement(x: Result<Int>): Result<Int> =
-    if (x.isSuccess) Result.success(x.getOrThrow() + 1)
-    else x
-
-// compiles down to
-fun weirdIncrement(x: java.lang.Object): java.lang.Object
-```
-
-More concretely, if `@JvmExposeBoxed` is applied to a function or accessor using `Result` either as parameter or return type, that position should be treated as a non-value class.
-
 ### Abstract members
 
 When an abstract member (either in an interface or a class) is marked with `@JvmExposeBoxed`, a _concrete_ bridge function is generated which calls the abstract member.
@@ -294,7 +278,7 @@ interface Foo {
 
 ### When no exposure may happen
 
-One fair question is what should happen if the user indicates that they want to expose on a function-like declaration in which no inline value class in involved (or only `Result` is). We consider two different cases:
+One fair question is what should happen if the user indicates that they want to expose on a function-like declaration in which no inline value class in involved. We consider two different cases:
 
 - If the declaration is explicitly marked, that is, if the `@JvmExposeBoxed` annotation appears on the declaration itself, an _error_ should be raised.
 - If exposure is implicitly declared, by either a `@JvmExposeBoxed` on a class level, or by a compiler flag, the declaration is simply ignored.
