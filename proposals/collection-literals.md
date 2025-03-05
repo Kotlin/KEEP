@@ -564,6 +564,41 @@ class List<T> {
 **Allowance 4.**
 Java static `of` members are perceived as `operator fun of` if they satisfy the above restrictions.
 
+Java static members are inherited only if they come from classes.
+Kotlin respects that and behaves in the same way as Java does:
+
+```java
+// IBase.java
+public class IBase { public static IBase of(int... x) { return null; } }
+// Base.java
+public class Base { public static Base of(int... x) { return null; } }
+// ImplementsInterface.java
+public class ImplementsInterface implements IBase {}
+// ExtendsClass.java
+public class ExtendsClass extends Base {}
+// Usage.java
+public class Usage {
+    public static void main(String[] args) {
+        ExtendsClass.of(); // green
+        ImplementsInterface.of(); // red
+    }
+}
+// usage.kt
+fun main() {
+    ExtendsClass.of() // green
+    ImplementsInterface.of() // red
+}
+```
+
+Rules for static members inheritance don't change in Java and Kotlin should keep respecting them for collection literals:
+
+```kotlin
+fun main() {
+    val a: ExtendsClass = [1, 2] // green
+    val a: ImplementsInterface = [1, 2] // red
+}
+```
+
 ## Fallback rules. What if `Companion.of` doesn't exist
 
 There are three cases.
