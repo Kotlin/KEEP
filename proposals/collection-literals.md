@@ -231,7 +231,7 @@ Once a proper `operator fun of` is declared, the collection literal can be used 
 
     The following positions are considered positions with the definite *expected type*:
     - Conditions of `when` expression with a subject
-    - Explicit `return`, single-expression functions, and last expression of lambdas
+    - Explicit `return`, single-expression functions (if type is specified), and last expression of lambdas
     - Equality checks (`==`, `!=`)
     - Assignments and initializations
 3.  In all other cases, it's proposed to desugar collection literal to `List.of(expr1, expr2, expr3)`.
