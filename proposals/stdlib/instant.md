@@ -6,6 +6,7 @@ Instant and Clock.
 * **Contributors**: Ilya Gorbunov, Roman Elizarov, Vsevolod Tolstopyatov
 * **Status**: pending
 * **Prototype**: available in `kotlinx-datetime`
+* **Discussion**: [KEEP-395](https://github.com/Kotlin/KEEP/issues/395)
 
 Summary
 -------
