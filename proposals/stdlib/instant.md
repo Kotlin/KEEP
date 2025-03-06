@@ -1311,6 +1311,27 @@ fail with a `ClassNotFoundException` until it is rewritten to use
 This renders most libraries relying on `kotlinx.datetime.Instant`
 (even internally) completely useless overnight.
 
+#### Process 0.8: break binary compatibility, preserve source compatibility
+
+* Standard Library publishes its own `kotlin.time.Instant` and `Clock`.
+* `kotlinx-datetime` removes the implementations of `kotlinx.datetime.Instant`
+  and `Clock` and depends on the new release of the Standard Library,
+  changing the API entries that used to work on `kotlinx.datetime.Instant`
+  to instead use `kotlin.time.Instant`.
+* `kotlinx-datetime` introduces the typealiases
+  `kotlinx.datetime.Instant = kotlinx.time.Instant` and
+  `kotlinx.datetime.Clock = kotlinx.time.Clock` and immediately deprecates them
+  with a warning.
+
+##### Analysis
+
+All code that used to use `kotlinx-datetime`'s `Clock` and `Instant` will
+compile.
+However, all third-party libraries using `kotlinx.datetime.Instant` (even
+internally, without exposing the class in the public API) will become
+unusable with the new release, because the class `kotlinx.datetime.Instant` will
+no longer actually exist.
+
 #### Process 1: pure library solutions against breakage
 
 * Standard Library publishes its own `kotlin.time.Instant` and `Clock`.
@@ -1326,8 +1347,7 @@ This renders most libraries relying on `kotlinx.datetime.Instant`
     instead. The proposed suggestions involve the new converters.
     Exception: `Clock.asTimeSource` does not get the new overload.
   - For every function that returns but doesn't accept an `Instant`,
-    hides it and adds a new function, one that returns `kotlin.time.Instant`,
-    but with different platform names.
+    hides it and adds a new function, one that returns `kotlin.time.Instant`.
   - Deprecates the `Instant` serializers with a warning.
   - A new version of `kotlinx-datetime` is published with this.
 * One major version of `kotlinx-datetime` later:
@@ -1364,8 +1384,11 @@ fun LocalDateTime.toInstant(): kotlinx.datetime.Instant
 
 fun kotlin.time.Instant.toLocalDateTime(): LocalDateTime
 
-@JsName("temporary_toInstant") // and other PlatformName annotations
-fun LocalDateTime.toInstant(): kotlin.time.Instant
+fun LocalDateTime.toInstant(
+    // a trick to avoid Kotlin's limitation on having two functions that are
+    // only different in their return types
+    overloadMarker: OverloadMarker = OverloadMarker.HIDDEN_INSTANCE
+): kotlin.time.Instant
 
 // 0.X+2.0
 @Deprecated(level = DeprecationLevel.ERROR)
@@ -1475,3 +1498,58 @@ All code that used to work will continue to:
 * All existing references to `kotlinx.datetime.Instant` will keep functioning,
   as there will be a class with all the same methods as the currently existing
   one.
+
+#### Process 1.8: publish process 1 and process 0.8 as separate artifacts.
+
+This is the process we reached as the compromise between the other options.
+
+* Standard Library publishes its own `kotlin.time.Instant` and `Clock`.
+* `kotlinx-datetime` publishes two separate releases:
+  - `0.7.0` follows process 0.8 almost fully.
+    In the optimistic scenarios where the user of
+    the `kotlinx-datetime` library doesn't depend on any third-party libraries
+    that also use `kotlinx-datetime`, everything keeps working.
+  - `0.7.0-0.6.x-compat` follows process 1.
+    If the user project depends on third-party libraries using `kotlinx-datetime`
+    `0.6.x`, which get broken by process 0.8, the user project can depend on
+    `0.7.0-0.6.x-compat` instead. Then, some code in the user project may have
+    to be changed, but this is less problematic than the third-party code over
+    which the user project has no control being broken.
+    `0.7.0-0.6.x-compat` is larger than `0.7.0` according to Gradle's algorithm
+    (<https://docs.gradle.org/current/userguide/dependency_versions.html#sec:version-ordering>),
+    and in Maven projects, one needs to specify the version in full anyway,
+    so having a dependency that itself transitively depends on `0.7.0` will not
+    prevent the compatibility artifact from being chosen.
+* For the next minor releases (and depending on the impact, maybe even some
+  major releases), in addition to `0.A.B`, `0.A.B-0.6.x-compat` will be
+  published with the same set of changes.
+
+This is the approach that we ended up with after considering
+the potential impact.
+
+`0.7.0` will not fully follow the 0.8 process, as we need it to be interoperable
+with `0.7.0-0.6.x-compat`: if one of a project's dependencies is compiled against
+`kotlinx-datetime` `0.7.0`, but the project itself needs to use
+`0.7.0-0.6.x-compat`, the library using `0.7.0` must work.
+This means that the set of APIs provided in `0.7.0-0.6.x-compat` must be strict
+superset of the ones provided in `0.7.0`.
+The problem arises when it comes to functions returning an `Instant`:
+
+```kotlin
+// necessary in 0.7.0-0.6.x-compat for binary compatibility
+@Deprecated(level = DeprecationLevel.HIDDEN)
+fun LocalDateTime.toInstant(): kotlinx.datetime.Instant
+
+fun LocalDateTime.toInstant(
+    // this parameter is necessary in 0.7.0-0.6.x-compat
+    overloadMarker: OverloadMarker = OverloadMarker.HIDDEN_INSTANCE
+): kotlin.time.Instant
+```
+
+`0.7.0` can not simply introduce
+`fun LocalDateTime.toInstant(): kotlin.time.Instant`, because
+`0.7.0-0.6.x-compat` has to be compatible with it and also can not contain this
+function due to Kotlin's limitations. Because of that, the `overloadMarker`
+workaround, even though it's completely unnecessary when transitioning from
+`0.6.x` to `0.7.0` in the optimistic scenario, also needs to be introduced in
+`0.7.0`.
