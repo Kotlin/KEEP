@@ -417,7 +417,10 @@ One could argue that it's already possible for all other `operator`s in Kotlin t
 and it feels limiting not being possible to do the same for `operator fun of`.
 Formally, `operator fun of` is different.
 All `operator`s in Kotlin operate on the existing expression of the target type, while `operator fun of` doesn't have access to the expression of its target type, `operator fun of` is the constructor of its target type.
-We could even replace `operator` keyword with another keyword to make it clearer that `operator fun of` is not a regular operator, but we don't see a lot of practical value in it.
+We could even replace `operator` keyword with another keyword to clarify that `operator fun of` is not a regular operator, but we don't see a lot of practical value in it.
+
+> Inability to declare an extension might feel limiting for interop with Java.
+> See [Interop with the Java ecosystem section](#interop-with-the-java-ecosystem).
 
 **Restriction 2.**
 One and only one overload must declare a `vararg` parameter.
