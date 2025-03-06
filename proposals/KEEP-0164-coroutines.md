@@ -1549,10 +1549,10 @@ It is very convenient to write cooperative single-threaded applications, because
 deal with concurrency and shared mutable state. JS, Python and many other languages do 
 not have threads, but have cooperative multitasking primitives.
 
-[Coroutine interceptor](#coroutine-interceptor) provides a straightforward tool to ensure that
+[Continuation interceptor](#continuation-interceptor) provides a straightforward tool to ensure that
 all coroutines are confined to a single thread. The example code
 [here](https://github.com/kotlin/kotlin-coroutines-examples/tree/master/examples/context/threadContext.kt) defines `newSingleThreadContext()` function that
-creates a single-threaded execution services and adapts it to the coroutine interceptor
+creates a single-threaded execution services and adapts it to the continuation interceptor
 requirements.
 
 We will use it with `future{}` coroutine builder that was defined in [building futures](#building-futures) section
