@@ -15,6 +15,7 @@ In the simplest form, if users want to create a collection, instead of writing `
 
 - [Motivation](#motivation)
 - [Proposal](#proposal)
+  - [Collection literals in annotations](#collection-literals-in-annotations)
   - [Map literals](#map-literals)
 - [Overload resolution motivation](#overload-resolution-motivation)
   - [Overload resolution and type inference](#overload-resolution-and-type-inference)
@@ -259,6 +260,17 @@ fun foo(): MyCustomList<Int> = [1, 2, 3]
 
 Please note that it is not necessary for the type to extend any predifined type in the Kotlin stdlib (needed to support `kotlin.Array<T>` type),
 nor it is necessary for the user-defined type to declare mandatory generic type parameters (needed to support specialized arrays like `kotlin.IntArray`, `kotlin.LongArray`, etc.).
+
+### Collection literals in annotations
+
+The proposal makes sure that all the existing code that already uses collection literals in annotations will remain green:
+
+```kotlin
+annotation class Ann(val array: IntArray)
+
+@Ann([1])
+fun main() {}
+```
 
 ### Map literals
 
