@@ -26,7 +26,6 @@ In the simplest form, if users want to create a collection, instead of writing `
 - [Feature interaction with `@OverloadResolutionByLambdaReturnType`](#feature-interaction-with-overloadresolutionbylambdareturntype)
 - [Feature interaction with flexible types](#feature-interaction-with-flexible-types)
 - [Feature interaction with intersection types](#feature-interaction-with-intersection-types)
-- [Feature interaction with PCLA](#feature-interaction-with-pcla)
 - [Similar features in other languages](#similar-features-in-other-languages)
 - [Interop with Java ecosystem](#interop-with-the-Java-ecosystem)
 - [Tuples](#tuples)
@@ -843,10 +842,6 @@ let's consider a case where types `A` and `B` both declare a proper `operator fu
 It doesn't make sense to prefer either of the operators because neither of them returns the intersection type `A & B`.
 
 It's proposed to always report an error when the *expected type* of collection literal is an intersection type.
-
-## Feature interaction with PCLA
-
-todo
 
 ## Similar features in other languages
 
