@@ -1153,8 +1153,6 @@ There are several problems.
 
 ### Rejected idea: self-sufficient collection literals with defined type
 
-> todo it's not yet completely rejected since the discussion around Map literals is still in progress
-
 The type of collection literals is inferred from the *expected type*.
 Unfortunately, that may lead to overload resolution ambiguity when collection literal is used in argument position.
 
@@ -1171,6 +1169,10 @@ fun test() {
 
 The rejected proposal was to allow writing `List [1, 2]`.
 The proposal was rejected because users can anyway desugar `[1, 2]` to `List.of(1, 2)` or `listOf(1, 2)`.
+
+Note that it's possible to abuse `operator fun get` (which could be an extension function) to achieve `List [1, 2]` syntax.
+We want to reserve that syntax, that's why it's proposed to forbid to simultaneously declare `operator fun get` and `operator fun of`.
+Since `operator fun of` can't be declared as an extension function, it's always possible to detect simultaneous declaration of the operators.
 
 ### Rejected proposal: use improved overload resolution algorithm only to refine non-empty overload candidates set on the fixated tower level
 
