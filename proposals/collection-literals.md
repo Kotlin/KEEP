@@ -506,7 +506,7 @@ class BrokenNonEmptyList {
 ```
 
 **Restriction 3.**
-All `of` overloads must have the return type equal by `ClassId` to the type in which _static scope_ the overload is declared in.
+All `of` overloads must have non-nullable return type equal by `ClassId` to the type in which _static scope_ the overload is declared in.
 
 The `ClassId` of a type is its typed fully qualified name.
 It's a list of typed tokens, where every token represents either a name of the package or a name of the class.
@@ -832,12 +832,13 @@ The question is what bound should we search `.Companion.of` function in?
 
 **For nullability**, it doesn't matter since `T` and `T?` both have the same static scope.
 
-**For variance**, as for nullability, it doesn't matter since `Array<T>` and `Array<out T>?` both have the same static scope.
+**For Array variance**, as for nullability, it doesn't matter since `Array<T>` and `Array<out T>?` both have the same static scope.
 
 **For mutability**, we think that it's better to choose an immutable type (upper bound).
 The arguments are:
 1. Kotlin favors immutability over mutability. If users want to pass a mutable list, they can pass it explicitly via `MutableList.of()`.
 2. Even if users were to write the code in modern Java, they would use `java.lang.List.of()`, which returns a read-only list.
+
 There is only a single counterargument: `MutableList` will definitely crash in lower number of cases at runtime.
 We think that it's fine to crash at runtime in such cases, it's better to be explicit about mutable lists in such cases.
 
@@ -854,9 +855,16 @@ For `dynamic`, it's a true statement because we fall back to `Any` and then [the
 
 Given an intersection type `A & B`,
 let's consider a case where types `A` and `B` both declare a proper `operator fun of` in the respective `companion object` inside of them.
-It doesn't make sense to prefer either of the operators because neither of them returns the intersection type `A & B`.
+It doesn't make sense to prefer either of the operators because *generally* neither of the operators returns the intersection type `A & B`.
 
-It's proposed to always report an error when the *expected type* of collection literal is an intersection type.
+It's proposed to report an error when the *expected type* of collection literal is an intersection type.
+
+**There is only one exception.**
+It's an intersection with `Any`.
+For example, [definitely non-nullable type](https://kotlinlang.org/docs/generics.html#definitely-non-nullable-types).
+Since `operator fun of` functions is not allowed to return nullable types (See [the restriction section](#operator-function-of-restrictions)),
+the return type of `operator fun of` is always a subtype of `T & Any` for any given `T`.
+In that case, it's proposed to resolve `T.Companion.of` since it's unambiguous.
 
 ## Similar features in other languages
 
