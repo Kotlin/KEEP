@@ -810,14 +810,17 @@ we should make sure that the example above either results in `OVERLOAD_RESOLUTIO
 
 Kotlin uses a mechanism of [flexible types](https://kotlinlang.org/spec/type-system.html#flexible-types) to interop with other languages.
 
-In practice, there are only 3 possible cases of flexible types:
+In practice, there are only 4 possible cases of flexible types:
 - Nullability. `T..T?`
+- Arrays variance from Java. `Array<T>..Array<out T>?`
 - Mutability. `MutableList..List`
 - `dynamic` in Kotlin/JS. `Nothing..Any?`
 
 The question is what bound should we search `.Companion.of` function in?
 
 **For nullability**, it doesn't matter since `T` and `T?` both have the same static scope.
+
+**For variance**, as for nullability, it doesn't matter since `Array<T>` and `Array<out T>?` both have the same static scope.
 
 **For mutability**, we think that it's better to choose an immutable type (upper bound).
 The arguments are:
