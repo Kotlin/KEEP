@@ -19,8 +19,7 @@ In the simplest form, if users want to create a collection, instead of writing `
   - [Overload resolution and type inference](#overload-resolution-and-type-inference)
   - [Operator function `of` restrictions](#operator-function-of-restrictions)
   - [Operator function `of` allowances](#operator-function-of-allowances)
-- [Fallback rules. What if `Companion.of` doesn't exist](#fallback-rules-what-if-companionof-doesnt-exist)
-  - [Nested collection literals](#nested-collection-literals)
+- [Fallback rule. What if `Companion.of` doesn't exist](#fallback-rule-what-if-companionof-doesnt-exist)
 - ["Contains" optimization](#contains-optimization)
 - [Similarities with `@OverloadResolutionByLambdaReturnType`](#similarities-with-overloadresolutionbylambdareturntype)
 - [Feature interaction with `@OverloadResolutionByLambdaReturnType`](#feature-interaction-with-overloadresolutionbylambdareturntype)
@@ -235,7 +234,7 @@ Once a proper `operator fun of` is declared, the collection literal can be used 
     - Equality checks (`==`, `!=`)
     - Assignments and initializations
 3.  In all other cases, it's proposed to desugar collection literal to `List.of(expr1, expr2, expr3)`.
-    The precise fallback rules are described in a [separate section](#fallback-rules-what-if-companionof-doesnt-exist).
+    The precise fallback rule is described in a [separate section](#fallback-rule-what-if-companionof-doesnt-exist).
 
 Some examples:
 ```kotlin
@@ -336,7 +335,7 @@ Contrary, elements of the collection literal are analyzed in the way similar to 
 For every overload candidate, when a collection literal maps to its appropriate `ParameterType`:
 1.  We find `ParameterType.Companion.of(vararg)` function.
     [operator fun of restrictions](#operator-function-of-restrictions) either guarantee us that the `of` function exists and unique,
-    or [fallback rules](#fallback-rules-what-if-companionof-doesnt-exist) kick in.
+    or [fallback rule](#fallback-rule-what-if-companionof-doesnt-exist) kicks in.
 2.  We remember the parameter of the single `vararg` parameter.
     We will call it _CLET_ (collection literal element type).
     We also remember the return type of that `ParameterType.of(vararg)` function.
@@ -602,110 +601,99 @@ fun main() {
 }
 ```
 
-## Fallback rules. What if `Companion.of` doesn't exist
+## Fallback rule. What if `Companion.of` doesn't exist
 
-There are three cases.
+When the compiler can't find `.Companion.of`, it always falls back to `List.Companion.of`.
+If later it turns out that `List` can't be subtype of the expected type, the compiler reports type mismatch as usual.
+The fallback rule also affects *CLET* and *CLT* during [overload resolution stage](#overload-resolution-and-type-inference).
 
-**Case 1.**
+Examples:
 ```kotlin
 class Foo
 fun main() {
-    val foo: Foo = [1, 2]
+    val foo: Foo = [1, 2] // type mismatch error
+    val list1: Any = [1, 2] // Green since Any is supertype of List<Noting>. The code is desugared to List.of(1, 2)
+    val list2: Iterable<Any> = [1, 2] // Green
+    val list3: Iterable<Int> = [1, 2] // Green
+    val list4: Collection<Int> = [1, 2] // Green
 }
 ```
 
-A definite *expected type* is known,
-but `.Companion.of` function is not declared.
-It's a trivial case, it's just a matter of what diagnostic to report.
-
-**Case 2.**
 ```kotlin
 fun outer(a: Iterable<String>) = Unit // (1)
 fun outer(a: Iterable<Int>) = Unit // (2)
 fun main() {
-    outer([1]) // resolves to (2)
+    outer([1]) // resolves to (2) thanks to fallback. Note that Iterable won't declare `Iterable.Companion.of`
 }
 ```
 
-If during overload resolution, we didn't find `Type.Companion.of` function, but `ParameterType` is the supertype of `List<Nothing>`,
-we use `List.Companion.of` to extract *CLET* and *CLT* for the means of [overload resolution](#overload-resolution-and-type-inference).
-
-In the above example, `ParameterType == Iterable<String>`.
-
-A considered alternative: Declare `Iterable.Companion.of`, `Collection.Companion.of` functions in stdlib.
-Downsides:
-**(1)** For every new future supertype of `List` we should also add `of` functions, which we may forget, or it may not make sense.
-**(2)** `Any.Companion.of` doesn't make sense.
-
-To maintain consistency, the "supertype of `List<Nothing>`" rule should continue to apply for examples where definite *expected type* is known:
-
 ```kotlin
-val list1: Any = [1, 2] // Green since Any is supertype of List<Noting>. The code is desugared to List.of(1, 2)
-val list2: Iterable<Any> = [1, 2] // Green
-val list3: Iterable<Int> = [1, 2] // Green
-val list4: Collection<Int> = [1, 2] // Green
+fun main() {
+    // println overloads:
+    // - println(Any?)
+    // - println(Int)
+    // - println(Short)
+    // - etc.
+    pritln([1, 2]) // green. Resolves to `println(Any?)`. List is subtype of Any? the fallback is successful
+}
 ```
 
-**Case 3.**
 ```kotlin
-fun <T : List<String>> outer(a: T) = Unit
-fun <T : List<Int>> outer(a: T) = Unit
+fun <T : List<String>> outer(a: T) = Unit // (1)
+fun <T : List<Int>> outer(a: T) = Unit // (2)
 
-fun outer2(a: List<String>) = Unit // (1)
-fun outer2(a: List<Int>) = Unit // (2)
+fun outer2(a: List<String>) = Unit // (3)
+fun outer2(a: List<Int>) = Unit // (4)
 
 fun <T> id(t: T): T = t
 
 fun main() {
-    outer([1]) // overload resolution ambiguity
-    outer2([1, 2, 3]) // resolves to (2)
+    outer([1]) // resolved to (2)
+    outer2([1, 2, 3]) // resolves to (4)
     outer2(id([1, 2, 3])) // overload resolution ambiguity
 }
 ```
 
-It's the worst case.
-Unfortunately, during overload resolution type variables are not yet fixated,
-which means that it's yet impossible to check whether `Type.Companion.of` exists or not.
-It's suggested to just not support such cases.
-Overload resolution won't work in such cases, unfortunately.
-
-But it's important to highlight that if the overload resolution successfully completes because there is only 1 applicable candidate,
-the type inference should infer types since it has all the necessary information. Examples:
+**Non-issue 1.**
+Note that type parameters are not yet fixated during applicability checking of overload candidates.
+It means that unconditional fallback to `List` may prospectively dissatisfy type parameter bounds, which sometimes could be puzzling:
 
 ```kotlin
-fun <T : List<Int>> outer(a: T) = Unit
+class MyList { companion object { operator fun <T> of(vararg elements: T): MyList = TODO() } }
 
-fun <T : List<Int>> outer2(a: T) = Unit // (1)
-fun outer2(a: List<String>) = Unit // (2)
+fun <T : MyList> outer1(a: T) = Unit // (1)
+fun <T : List<Int>> outer1(a: T) = Unit // (2)
 
-fun <T : List<String>> outer3(a: T, b: String) = Unit // (3)
-fun <T : List<Int>> outer3(a: T, b: Int) = Unit // (4)
+fun outer2(a: MyList) = Unit // (3)
+fun outer2(a: List<Int>) = Unit // (4)
+
+fun <T : MyList> outer3(a: T) = Unit
+fun outer4(a: MyList) = Unit
+
+fun <T> id(t: T): T = t
 
 fun main() {
-    outer([1]) // Only one candidate, green code
-    outer2([1]) // Candiate (2) is not applicable, resolve to candidate (1) => green code
-    outer3([1], 1) // Successfully resolves to (4) thanks to second parameter
+    outer1([1]) // resolves to (2)
+    outer2([1]) // overload resolution ambiguity
+
+    outer3([1]) // red. Type mismatch error
+    outer4([1]) // green
+    outer4(id([1])) // red. Type mismatch error
 }
 ```
 
-### Nested collection literals
+In the example, we manage to pick the overload in the `outer1` case but not in the `outer2` case.
+We think that such examples are synthetic, and it's more important to have the simple fallback rule.
 
-Given:
-1. Very often `operator fun of` will be declared using generic parameter: `operator fun <T> of(vararg t: T): ...`
-2. Overload resolution doesn't work when collection literal is substituted to generic parameters (see the previous section)
-
-Because of that it's important to acknowledge that [improved overload resolution](#overload-resolution-and-type-inference) won't work for nested collection literals if the outer type uses generic parameter in its `operator fun of` declaration.
+**Non-issue 2.**
+We don't plan to declare `.Companion.of` for `MutableCollection` and `MutableIterable`.
+The following example won't work, and we think that it's ok:
 
 ```kotlin
-fun outer(a: List<String>) = Unit // (1)
-fun outer(a: List<File>) = Unit // (2)
-
-fun outerNested(a: List<List<String>>) = Unit
-fun outerNested(a: List<List<File>>) = Unit
+fun outer(a: MutableCollection<String>) = Unit
 
 fun main() {
-    outer([""]) // resolves to (1)
-    outerNested([[""]]) // overload resolution ambiguity
+    val foo: MutableCollection<String> = [""] // error. Type mismatch List<String> is not subtype of MutableCollection<String>
 }
 ```
 
@@ -825,8 +813,8 @@ We think that resolving `.Companion.of` is too implicit, and it might lead to ac
 In JavaScript, square brackets always return an `Array`.
 Following the principle of least astonishment, it's proposed to fall back to `List`.
 
-All these special cases can be generalized to the common rule for the flexible types to behave as if the upper bound was used instead.
-For `dynamic` it's a true statement because we fall back to `Any` and then ["Any is supertype of `List<Nothing>`" fallback kicks in](#fallback-rules-what-if-companionof-doesnt-exist).
+All these special cases can be generalized to the common rule for the flexible types to behave as if the upper bound was used instead of the flexible type.
+For `dynamic`, it's a true statement because we fall back to `Any` and then [the fallback rule](#fallback-rule-what-if-companionof-doesnt-exist) kicks in.
 
 ## Feature interaction with intersection types
 
