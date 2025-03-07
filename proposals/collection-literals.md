@@ -593,7 +593,7 @@ fun main() {
 }
 ```
 
-Rules for static members inheritance don't change in Java and Kotlin should keep respecting them for collection literals:
+The rules for static members inheritance should stay the same for collection literals:
 
 ```kotlin
 fun main() {
@@ -826,7 +826,7 @@ In JavaScript, square brackets always return an `Array`.
 Following the principle of least astonishment, it's proposed to fall back to `List`.
 
 All these special cases can be generalized to the common rule for the flexible types to behave as if the upper bound was used instead.
-For `dynamic` it's a true statement because we fall back to `Any` and then [Any is supertype of `List<Nothing>` fallback kicks in](#fallback-rules-what-if-companionof-doesnt-exist).
+For `dynamic` it's a true statement because we fall back to `Any` and then ["Any is supertype of `List<Nothing>`" fallback kicks in](#fallback-rules-what-if-companionof-doesnt-exist).
 
 ## Feature interaction with intersection types
 
@@ -864,10 +864,10 @@ todo
 The name for the `operator fun of` is specifically chosen such to ensure smooth Java interop.
 Given that we don't support extension `operator fun of`, it becomes more important for Java developers to declare `of` members that satisfy the requirements.
 We hope that the JVM ecosystem will follow the "Convenience factory methods" pattern that Java started.
-For example, one can already find convenience factory "of" methods in popular Java libraries such as Guava.
+For example, one can already find convenience factory `of` methods in popular Java libraries such as Guava.
 
 We perceive Java static `of` function as an `operator fun of` function only if it follows the restrictions mentioned above.
-All the restrictions are reasonable, and we think that all "collection builder like" of functions will naturally follow those restrictions.
+All the restrictions are reasonable, and we think that all "collection builder like" `of` functions will naturally follow those restrictions.
 
 ## Tuples
 
