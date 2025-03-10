@@ -38,9 +38,9 @@ And, if you don't care use-cases, the data-uri is also an URI([RFC 2397]).
 ## Description
 
 ```kotlin
-fun main(){
+fun main() {
    val parsedURI = URI("https://example.org/kotlin/multiplatform")
-   val builtURI = buildURI{
+   val builtURI = buildURI {
       schema = "https"
       host = "example.org"
       path {
