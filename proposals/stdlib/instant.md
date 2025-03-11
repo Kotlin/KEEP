@@ -252,8 +252,11 @@ The specifics of what gets added is given below.
  *
  * On the JVM, there are `Instant.toJavaInstant()` and `java.time.Instant.toKotlinInstant()`
  * extension functions to convert between `kotlin.time` and `java.time` objects used for the same purpose.
- * Similarly, on the Darwin platforms, there are `Instant.toNSDate()` and `NSDate.toKotlinInstant()`
- * extension functions.
+ * Likewise, on JS, there are `Instant.toJSDate()` and `Date.toKotlinInstant()` extension functions.
+ *
+ * For technical reasons, converting [Instant] to and from Foundation's `NSDate` is provided in
+ * `kotlinx-datetime` via `Instant.toNSDate()` and `NSDate.toKotlinInstant()` extension functions.
+ * These functions might become available in `kotlin.time` in the future.
  *
  * ### Construction, serialization, and deserialization
  *
@@ -1135,6 +1138,13 @@ public fun Instant.toJSDate(): Date
 public fun Date.toKotlinInstant(): Instant
 ```
 
+Unfortunately, due to a limitation of the build configuration of the Kotlin
+standard library, it's currently impossible to only provide a function for some
+Native targets and not the other ones.
+This means that the following Darwin-only converters, as well as converters to
+and from other OS-specific entities (like `SYSTEMTIME` on Windows), if any do
+get added, will have to stay in `kotlinx-datetime` for now:
+
 ```kotlin
 // Darwin
 
@@ -1149,12 +1159,10 @@ public fun Instant.toNSDate(): NSDate
 /**
  * Converts the [NSDate] to the corresponding [Instant].
  *
- * Even though Darwin only uses millisecond precision,
- * it is possible that [date] uses larger resolution,
- * storing microseconds or even nanoseconds.
- * In this case, the sub-millisecond parts of [date]
- * are rounded to the nearest millisecond,
- * given that they are likely to be conversion artifacts.
+ * Note that the [NSDate] stores a [Double] value.
+ * This means that the results of this conversion may be imprecise.
+ * For example, if the [NSDate] only has millisecond or microsecond precision logically,
+ * due to conversion artifacts in [Double] values, the result may include non-zero nanoseconds.
  */
 public fun NSDate.toKotlinInstant(): Instant
 ```
