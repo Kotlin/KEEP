@@ -11,19 +11,38 @@
 [KT-66806](https://youtrack.jetbrains.com/issue/KT-66806),
 [KT-66808](https://youtrack.jetbrains.com/issue/KT-66808)
 
-## Abstract
+# Abstract
 
 The Power-Assert compiler-plugin allows transforming function calls to include detailed information about the call-site.
 Introduce data structures to represent call-site information, an annotation to trigger automatic transformation of
 function calls, and a way to access call-site information from an annotated function.
 
-## Table of contents
+# Table of contents
 
-[//]: # (TODO)
+* [Motivation](#motivation)
+  * [Background](#background)
+  * [Key Problems](#key-problems)
+* [Proposal](#proposal)
+  * [Annotations](#annotations)
+    * [`PowerAssert`](#powerassert)
+    * [`PowerAssert.Ignore`](#powerassertignore)
+  * [Classes](#classes)
+    * [`Explanation`](#explanation)
+    * [`CallExplanation`](#callexplanation)
+    * [`Expression`](#expression)
+    * [`EqualityExpression`](#equalityexpression)
+  * [Functions](#functions)
+  * [Transformation](#transformation)
+    * [Declaration](#declaration)
+    * [Calls](#calls)
+    * [Overload Calls](#overload-calls)
+* [Extension](#extension)
+  * [Expression Types](#expression-types)
+  * [Explanation Types](#explanation-types)
 
-## Motivation
+# Motivation
 
-### Background
+## Background
 
 Power-Assert transforms each function call that matches a set of fully-qualified function names. By default, it is
 applied to the `kotlin.assert` function, which will transform the following call.
@@ -61,7 +80,7 @@ Unfortunately, specifying these functions is required for every compilation. Thi
 configure these functions. And there is no way for an assertion library to specify which functions support Power-Assert
 transformation.
 
-### Key Problems
+## Key Problems
 
 From this overview, we can extract three key problems with Power-Assert:
 
@@ -71,20 +90,18 @@ From this overview, we can extract three key problems with Power-Assert:
 
 In this proposal, we will outline changes which attempt to tackle all of these problems.
 
-## Proposal
+# Proposal
 
 Introduce a set of data structures which can represent call-site information for function calls. Also introduce a new
 annotation to mark function declarations that support Power-Assert transformation.
 
-[//]: # (TODO)
+## Annotations
 
-### Annotations
+### `PowerAssert`
 
-#### `PowerAssert`
-
-A new annotation, `PowerAssert`, will be introduced to mark functions which support being transformed by Power-Assert.
-This annotation also provides access to a `CallExplanation` instance (detailed below) which can be used to access
-call-site information.
+A new annotation, `PowerAssert`, will be introduced to mark functions which support being
+[transformed by Power-Assert](#transformation). This annotation also provides access to a `CallExplanation` instance
+(detailed below) which can be used to access call-site information.
 
 ```kotlin
 annotation class PowerAssert {
@@ -100,7 +117,7 @@ compiler-plugin is applied. The compiler-plugin will also limit property access 
 without call-site information. This includes when the call-site was compiled without the compiler-plugin or when called
 from non-Kotlin code, for example, Java.
 
-#### `PowerAssert.Ignore`
+### `PowerAssert.Ignore`
 
 Another annotation will be introduced to mark parameters which should not be included in call-site information. This
 could be for any number of reasons, and it helps the compiler-plugin avoid doing work that is unnecessary.
@@ -118,7 +135,7 @@ For example,
 fun powerAssert(condition: Boolean, @PowerAssert.Ignore message: String? = null)
 ``` 
 
-### Classes
+## Classes
 
 The two base classes used to describe call-site information for `@PowerAssert` annotated functions are `Explanation`
 and `Expression`.
@@ -126,7 +143,7 @@ and `Expression`.
 It is important to note that neither of these base classes are `sealed` so that new subclasses may be added without
 breaking source compatibility. 
 
-#### `Explanation`
+### `Explanation`
 
 An `Explanation` provides information about the source code and expressions evaluated within that code.
 
@@ -138,7 +155,7 @@ abstract class Explanation {
 }
 ```
 
-#### `CallExplanation`
+### `CallExplanation`
 
 The `CallExplanation` class - as provided by `@PowerAssert` - describes each argument provided to a function call
 individually, while providing the source code information for the entire call.
@@ -174,7 +191,7 @@ class CallExplanation(
 }
 ```
 
-#### `Expression`
+### `Expression`
 
 An `Expression` represents a value calculated at runtime. This could be the result of a function call, variable access,
 language operator, or anything else that results in a value. 
@@ -188,7 +205,7 @@ abstract class Expression(
 )
 ```
 
-#### `EqualityExpression`
+### `EqualityExpression`
 
 For now, the only subclass provided to describe a specific kind of expression is `EqualityExpression`. This can be used
 to know if an expression like `1 == 2` was evaluated. The class not only provides the result of the evaluation, but also
@@ -209,32 +226,29 @@ class EqualityExpression(
 ) : Expression(startOffset, endOffset, displayOffset, value)
 ```
 
-### Functions
+## Functions
 
 A few top-level functions will be included as well, to provide Power-Assert style rendering of an `Explanation`. These
 functions will be used to replace the current compile-time generated String for overload style Power-Assert
-transformation.
-
-[//]: # (TODO finalize function signature)
+transformation. They can also be used by assertion libraries to generate a Power-Assert style message for exceptions or
+use as inspiration for their own custom diagram.
 
 ```kotlin
 fun Explanation.toDefaultMessage(
-    render: Expression.() -> String? = Expression::render,
+    render: (Expression) -> String? = Expression::render,
 ): String
 ```
-
-[//]: # (TODO finalize function signature)
 
 ```kotlin
 fun Expression.render(): String
 ```
 
-### Transformation
+## Transformation
 
 To support passing of a `CallExplanation` from the call-site to the function, both the function declaration and any
 calls to the function need to be transformed by the compiler-plugin.
 
-#### Declaration
+### Declaration
 
 When `PowerAssert` is added to a function, the compiler-plugin generates a synthetic copy of the function. This
 synthetic copy takes an additional parameter of type `() -> CallExplanation`. Both functions are then transformed to
@@ -253,7 +267,7 @@ fun powerAssert(condition: Boolean) {
 }
 ```
 
-Will result in the following two functions:
+Will result in the following two functions, the original modified and a synthetic duplicate generated:
 
 ```kotlin
 @PowerAssert
@@ -272,7 +286,7 @@ fun `powerAssert$explained`(condition: Boolean, `$explanation`: () -> CallExplan
 }
 ```
 
-#### Calls
+### Calls
 
 If a function is annotated with `@PowerAssert`, and has itself been transformed by the compiler-plugin, this will result
 in any call to said function being automatically transformed by the compiler-plugin to include a `CallExplanation`
@@ -293,15 +307,29 @@ val tmp3 = tmp2 == "Kodee"
 `powerAssert$explained`(tmp3, { CallExplanation(...) })
 ```
 
-## Extension
+### Overload Calls
 
-### Expression Types
+The combination of introduced classes and functions allows improving the behavior of the existing overload function
+style Power-Assert. Instead of generating the diagram at compile-time, a `CallExplanation` can be constructed and
+`toDefaultMessage()` used to generate the diagram at runtime. For example, the original example can be transformed into
+the following.
+
+```kotlin
+val tmp1 = mascot
+val tmp2 = tmp1.name
+val tmp3 = tmp2 == "Kodee"
+assert(tmp3, { CallExplanation(...).toDefaultMessage() })
+```
+
+# Extension
+
+## Expression Types
 
 In the future, more `Expression` subclasses may be added to cover more use cases. For example, a
 `StringTemplateExpression` could be introduced to help describe String concatenation and each of the arguments provided.
 As libraries start adopting this compiler-plugin, we hope use case ideas will be reported via YouTrack.
 
-### Explanation Types
+## Explanation Types
 
 We are exploring additional types of `Explanation`, including explanations of local variables. The initializer of a
 local variable can be explained just like function call arguments are explained. This would allow including the
