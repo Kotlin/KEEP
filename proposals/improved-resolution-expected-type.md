@@ -270,6 +270,7 @@ For other statements and expressions, we have the following rules. Here "known t
 
 * _Assignments_: in `x = e`, the expected type of `x` is propagated to `e`;
 * _Type check_: in `e is T`, `e !is T`, the known type of `e` is propagated to `T`;
+* _Type cast_: in `e as T`, `e as? T`, the known type of `e` is propagated to `T`;
 * _Branching_: if type `T` is expected for an with several branches, the type `T` is propagated to each of them,
     * _Conditionals_, either `if` or `when`,
     * _`try` expressions_, where the type `T` is propagated to the `try` block and each of the `catch` handlers;
@@ -387,11 +388,6 @@ One very important difference with Swift is that we take a restrictive route, in
 The current choice is obviously not symmetric: it might be surprising that `p == CONNECTION` is accepted, but `CONNECTION == p` is rejected. A preliminary assessment shows that the pattern `CONSTANT == variable` is not as prevalent in the Kotlin community as in other programming languages.
 
 On the other hand, the proposed flow of information is consistent with the ability to refactor `when (x) { A -> ...}` into `when { x == A -> ...}`, without any further qualification required. We think that this uniformity is important for developers.
-
-**On type cast**: a previous iteration included the additional rule "in `e as T` and `e as? T`, the known type of `e` is propagated to `T`", but this has been dropped. There are two reasons for this change:
-
-1. On a conceptual level, it is not immediately obvious what happens if `e as T` as a whole also has an expected type: should `T` be resolved using the known type of `e` or that expected type? It's possible to create an example where depending on the answer the resolution differs, and this could be quite surprising to users.
-2. On a technical level, the compiler _sometimes_ uses the type `T` to guide generic instantiation of `e`. This conflicts with the rule above.
 
 **Interaction with smart casting**: the main place in which the notion of "single definite expected type" may bring some problems is smart castings, as they are the main source of intersection types.
 
