@@ -112,7 +112,7 @@ It is not allowed to apply the annotation to members marked with the `suspend` m
 
 Whenever a _function-like declaration_ (function, constructor, property accessor) is annotated with `@JvmExposeBoxed`, a new _boxed_ variant of that declaration should be generated. How this is done differs between constructors and other operations, as discussed below. The compiler should report a _warning_ if no boxed variant of the annotated declaration exists, that is, when the annotation has no effect.
 
-Since annotating every single declaration in class would be incredibly tiresome, the annotation may also be applied to entire classes. In that case, it should be taken as applied to every single declaration within it _which can be exposed_. It is not allowed to give an explicit value to `jvmName` when using the annotation in a class.
+Since annotating every single declaration in class would be incredibly tiresome, the annotation may also be applied to entire classes. In that case, it should be taken as applied to every single function-like declaration within it _which can be exposed_. It is not allowed to give an explicit value to `jvmName` when using the annotation in a class. Note that the annotation is not propagated to nested classes nor companion objects.
 
 The consequence of the rules above is that if we annotate a class,
 
@@ -259,6 +259,9 @@ fun duplicate-26b4($this: Int): Int
 ```
 
 ### Abstract members
+
+> [!WARNING]
+> Exposing abstract members involves the [same problems as using `@JvmName` on those members](https://youtrack.jetbrains.com/issue/KT-31420/Support-JvmName-on-interface-or-provide-other-interface-evolution-mechanism). This proposal describes how exposing abstract members ought to work, once the other issues are resolved.
 
 When an abstract member (either in an interface or a class) is marked with `@JvmExposeBoxed`, a _concrete_ bridge function is generated which calls the abstract member.
 
