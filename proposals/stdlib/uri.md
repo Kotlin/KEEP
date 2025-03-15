@@ -57,7 +57,7 @@ fun main() {
         // but it's common to use this(in WHATWG URL)
         addQuery("foo", "bar")
         withFragment("fragment")
-    }.build()
+    }
     assert(builtURI == parsedURI)
     // We may provide normalization API, but before we really do the normalization, we compare it as is.
 }
