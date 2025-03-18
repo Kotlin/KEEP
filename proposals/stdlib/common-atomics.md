@@ -3,10 +3,9 @@
 * **Type**: Standard Library API proposal
 * **Author**: Maria Sokolova
 * **Contributors**: Filipp Zhinkin, Vsevolod Tolstopyatov, Ilya Gorbunov, Alexander Shabalin, Dmitry Khalanskiy
-* **Prototype**: The prototype will be available soon.
-* **Status**: JVM/JS/Wasm Atomics are not implemented yet, there are K/N Atomics in `kotlin.concurrent` package, but their API will be changed, according to the final common atomic API.
+* **Status**: Implemented in Kotlin `2.1.20-Beta2` and marked as `@ExperimentalAtomicApi`
 * **Target issue**: [KT-62423](https://youtrack.jetbrains.com/issue/KT-62423/Consider-providing-Common-atomic-types)
-* **Discussion and feedback**: [#398](https://github.com/Kotlin/KEEP/issues/398)
+* **Discussion and feedback**: [KEEP-398](https://github.com/Kotlin/KEEP/issues/398)
 
 ## Summary
 
