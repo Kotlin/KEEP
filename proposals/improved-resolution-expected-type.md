@@ -291,15 +291,15 @@ There are some scenarios in which the expected type propagation may lead to comp
 * Built-in and classifier types: `sdet(T) = T`.
   * Note that type arguments do not influence the scope.
 * Type parameters:
-  * If there is a single supertype, `<T : A>`, `sdet(T) = sdet(A)`,
+  * If there is a single supertype, `<T : A>`, (recursively) compute `sdet(T) = sdet(A)`,
   * Otherwise, `sdet(T)` is undefined.
-* Nullable types: `sdet(T?) = sdet(T)`.
+* Nullable types: (recursively) compute `sdet(T?) = sdet(T)`.
 * Types with variance:
   * Covariance, `sdet(out T) = sdet(T)`,
   * For contravariant arguments, `sdet(in T)` is undefined.
 * Captured types: `sdet(T)` is undefined.
 * Flexible types, `sdet(A .. B)`
-  * Compute `sdet(A)` and `sdet(B)`, and take it if they coincide; otherwise undefined.
+  * (Recursively) compute `sdet(A)` and `sdet(B)`, and take it if they coincide; otherwise undefined.
   * This rule covers `A .. A?` as special case.
 * Intersection types, `sdet(A & B)`,
   * Definitely not-null, `sdet(A & Any) = sdet(A)`,
