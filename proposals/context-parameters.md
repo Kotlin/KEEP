@@ -107,7 +107,7 @@ context(logger: Logger) fun User.doAction() {
 * The type and order of context parameters must coincide.
 * It is allowed (yet discouraged) to change the name of a context parameter.
 
-It is a conflict to declare overloads which only differ in the order of the context parameters.
+It is a conflict to declare overloads which only differ in the number of context parameters. It is allowed to declare one overload with _no_ context parameters and one with _some_ of them (this is aligned with §7.8).
 
 **§1.6** *(naming ambiguity)*: We use the term **context** with two meanings:
 
@@ -132,6 +132,34 @@ context(Logger) User.() -> Int
 context(Logger) (User) -> Int
 Logger.(User) -> Int
 (Logger, User) -> Int
+```
+
+As a result of these equivalences, it is possible invoke a value with a function type with context parameters by giving them as regular value parameters.
+
+```kotlin
+fun foo(x: context(String, Double) Int.(z: Long) -> Unit, y: Int) {
+    context("", 1.0) {
+        y.x(1L)       // OK, regular way to call it
+    }
+
+    y.x("", 1.0, 1L)  // NO
+    x("", 1.0, y, 1L) // OK, all parameters as values
+}
+```
+
+It is not allowed to pass context arguments explicitly inside a value argument list when callee is a regular function (not a value of a function type).
+
+```kotlin
+context(_: String, _: Double) fun Int.x(z: Long): Unit { }
+
+fun foo(y: Int) {
+    context("", 1.0) {
+        y.x(1L)       // regular way to call it
+    }
+
+    y.x("", 1.0, 1L)  // NO
+    x("", 1.0, y, 1L) // NO
+}
 ```
 
 **§1.8** *(lambdas)*: If a lambda is assigned a function type with context parameters, those behave as if declared with `_` as its name.
@@ -474,6 +502,12 @@ functionType: [ functionContext ] [ receiverType '.' ] ...
 functionContext: 'context' '(' receiverType { ',' receiverType } [ ',' ] ')'
 ```
 
+Context parameters may receive annotations as any other regular parameter.
+
+```kotlin
+context(@Annotated users: UserRepository) fun foo() = ...
+```
+
 **Recommended style:** annotations, context parameters, then other modifiers as per the [usual style guide](https://kotlinlang.org/docs/coding-conventions.html#modifiers-order).
 
 **§7.2** *(disambiguating `context`)*: We do not enforce `context` as a hard keyword, leading to potential ambiguities in the body of declarations. In particular, `context(` may be both the beginning of:
@@ -540,7 +574,7 @@ context(s: String) fun bar() { }
 
 **§7.7** *(applicability, `DslMarker`)*: During context resolution, if at a certain scope there is a potential contextual value in scope (either coming from a context parameter or from an implicit receiver) marked with an annotation `@X` which is itself annotated with [`@DslMarker`](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-dsl-marker/) then:
 
-- It is an _error_ for two such values to be available in the same scope.
+- It is an _error_ for two values whose type is marked with the same `@X` annotation to be available in the exact same scope.
 - If context resolution chooses a contextual value with the same annotation, but in an outer scope, it is a compilation _error_.
 - If a call binds to a receiver with the same annotation, it is a compilation _error_.
 
