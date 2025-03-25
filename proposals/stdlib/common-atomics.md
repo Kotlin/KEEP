@@ -58,7 +58,7 @@ There are some ideas on how this can be achieved using the existing tools of the
 
 ## Implementation options
 
-K/N provided the following atomic types in [kotlin.concurrent](https://kotlinlang.org/api/core/kotlin-stdlib/kotlin.concurrent/) package:
+K/N provides the following atomic types in [kotlin.concurrent](https://kotlinlang.org/api/core/kotlin-stdlib/kotlin.concurrent/) package:
 
 * `AtomicInt`
 * `AtomicLong`
