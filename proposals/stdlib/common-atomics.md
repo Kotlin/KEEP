@@ -58,7 +58,7 @@ There are some ideas on how this can be achieved using the existing tools of the
 
 ## Implementation options
 
-Currently, K/N provides the following atomic types in [kotlin.concurrent](https://kotlinlang.org/api/core/kotlin-stdlib/kotlin.concurrent/) package:
+K/N provided the following atomic types in [kotlin.concurrent](https://kotlinlang.org/api/core/kotlin-stdlib/kotlin.concurrent/) package:
 
 * `AtomicInt`
 * `AtomicLong`
@@ -74,27 +74,25 @@ For JS/Wasm trivial single-threaded implementation can be provided.
 
 >By default, Wasm has nothing to do with threads and atomics. However, for WASI, [there’s a proposal to introduce both](https://github.com/WebAssembly/threads/blob/main/proposals/threads/Overview.md#atomic-memory-accesses), and atomic operations are defined on memory.
 
-The API design involves two considerations: on the one hand, we would like to have common atomic types with our own API,
-on the other hand, JVM implementation of Kotlin atomics will rely on the implementation of Java atomics, thereby Java influences our API decisions.
-Here are the paths we've explored:
+The API design involved two considerations: on the one hand, we wanted to have common atomic types with our own API, 
+on the other hand, since JVM implementation of Kotlin atomics relied on the implementation of Java atomics, Java influenced our API decisions.
+We explored the following paths:
 
 ### Java atomic typealias
 
-Let's suppose that Java atomic API satisfies us, and we allow Java API to influence our common atomics API and directly delegate
-JVM implementation of our atomics to Java atomics via **typealias**.
+One considered approach was to use Java's atomic API directly by implementing Kotlin atomics as **typealiases** to their Java counterparts:
 
 ```kotlin
 public actual typealias AtomicInt = java.util.concurrent.atomic.AtomicInteger
 ```
 
-This is the most convenient and easiest option to implement. 
-Additionally, making Kotlin atomic types equivalent to Java atomic types offers several benefits:
+This approach would have been the most straightforward to implement and offered several benifits:
 
 * Smooth migration from Java to Kotlin atomics (simply change the import package name and atomic constructors).
 * Automatic atomic API evolution (new Java atomic methods could be used without additional effort).
 * JVM developers are familiar with this API.
 
-However, despite these advantages, this solution has some serious downsides:
+However, despite these advantages, this solution had some serious downsides:
 
 * Java atomics are _open_, therefore, Kotlin atomic types would be _open_ as well.
   While this could be managed with e.g. `@SubclassOptInRequired` annotation, this behavior does not align with Kotlin's design principles.
@@ -118,7 +116,7 @@ and we would prefer to avoid building our core API based on ad-hoc exclusion rul
 
 As an alternative option, we could implement atomics as [**built-in types**](https://kotlinlang.org/spec/type-system.html#built-in-types).
 
-Here are several builtin options, which we have considered:
+Here are several builtin options, which we considered:
 
 #### 1. Implement Atomics like `kotlin.String`
 
@@ -137,7 +135,7 @@ Here are several builtin options, which we have considered:
 
 1.1 Kotlin-Java-Kotlin hierarchy
 
-This solution is a breaking change for the following scenario of Kotlin-Java-Kotlin hierarchy (the existing inheritance will break) ❌.
+This solution would be a breaking change for the following scenario of Kotlin-Java-Kotlin hierarchy (the existing inheritance would break) ❌.
 
 ```kotlin
 // Kotlin
@@ -179,7 +177,7 @@ fun foo(atomicCounter: AtomicInteger) {...}
 foo(b.atomicCounter()) // Argument type mismatch: actual type is 'kotlin.concurrent.atomics.AtomicInt!', but 'java.util.concurrent.atomic.AtomicInteger' was expected.
 ```
 
-And this is another breaking change ❌. Plus, this kind of API is widespread in Java.
+And this would be another breaking change ❌. Plus, this kind of API is widespread in Java.
 
 > The same behavior is true for Kotlin Strings, but this was not an issue as there was no existing Kotlin code, which used Java Strings, when Kotlin Strings were introduced.
 
@@ -197,7 +195,7 @@ And this is another breaking change ❌. Plus, this kind of API is widespread in
 
 **Issues:**
 
-2.1 With this solution, the following Kotlin-Java-Kotlin hierarchy will result in an error.
+2.1 With this solution, the following Kotlin-Java-Kotlin hierarchy would result in an error.
 
 ```kotlin
 // Kotlin
@@ -224,7 +222,7 @@ The reason is that at FIR check Kotlin and Java atomic types are different,
 so there are two different declarations available in class `C`,
 but during Codegen Kotlin atomics are mapped to Java atomics, which causes the declaration clash.
 
-Though this is not a breaking change (the old Kotlin code using Java atomics will not be broken), this will be a problem only in the following cases:
+Though this would not be a breaking change (the old Kotlin code using Java atomics will not be broken), this would be a problem only in the following cases:
 - A user migrates from Java atomics to Kotlin atomics and gets the K-J-K hierarchy problem, like in the example above -> compilation fails
 - Or the new method `foo(x: AtomicInt)` is added to the Kotlin class and then overriden in Java
 
@@ -267,11 +265,11 @@ public fun AtomicIntegerArray.asKotlinAtomicArray(): AtomicIntArray = this as At
 
 ### Resolution
 
-We have agreed to implement the second implementation option: Kotlin atomics will be mapped to Java atomics only during code generation,
+The second implementation option was selected as the final approach: Kotlin atomics are mapped to Java atomics only during code generation,
 at FIR stage Kotlin and Java atomics are incompatible types for both Kotlin and Java code.
 
-For now, we do not address the issue with Kotlin-Java-Kotlin hierarchy and mark Atomics with `@ExperimentalAtomicApi` annotation.
-Then we process user’s feedback, and in case this appears to be an actual problem,
+For now, we did not address the issue with Kotlin-Java-Kotlin hierarchy and marked Atomics with `@ExperimentalAtomicApi` annotation.
+We will process user’s feedback, and in case this appears to be an actual problem,
 we can proceed with either introducing `@OptIn` annotation on open Kotlin functions with Kotlin atomics in the signature,
 or go for one of the possible solutions described above.
 
@@ -279,8 +277,8 @@ or go for one of the possible solutions described above.
 
 ## API design
 
-Built-in types just allow us the flexibility to introduce any API, provided we have corresponding Java counterparts to map this API to.
-The following API options are possible:
+Built-in types allowed us the flexibility to introduce any API, provided we have corresponding Java counterparts to map this API to.
+The following API options were considered:
 
 **1. Keep API identical to Java.**
 
@@ -565,7 +563,7 @@ This is just a task to implement, which is out of scope of this KEEP.
 
 ### Atomic Array types
 
-Here is the API proposed for atomic arrays in case we choose the last renaming option for Atomic types:
+Atomic Arrays API aligned with the last API option for Atomic types would be the following:
 
 ```kotlin
 public expect class AtomicIntArray public constructor(size: Int) {
