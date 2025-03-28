@@ -173,7 +173,7 @@ and because it honors mathematical notation for matrices.
 
 ```kotlin
 class MyCustomList<T> {
-    companion object { fun <T> of(vararg elements: T): MyCustomList<T> = TODO() }
+    companion object { operator fun <T> of(vararg elements: T): MyCustomList<T> = TODO() }
 }
 
 fun main() {
