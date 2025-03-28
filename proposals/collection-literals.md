@@ -2,7 +2,12 @@
 
 * **Type**: Design proposal
 * **Author**: Nikita Bobko
-* **Contributors**: Alejandro Serrano Mena, Denis Zharkov, Marat Akhin, Mikhail Zarechenskii
+* **Contributors**:
+  Alejandro Serrano Mena,
+  Denis Zharkov,
+  Ivan “CLOVIS” Canet,
+  Marat Akhin,
+  Mikhail Zarechenskii
 * **Issue:** [KT-43871](https://youtrack.jetbrains.com/issue/KT-43871)
 * **Prototype:** https://github.com/JetBrains/kotlin/tree/bobko/collection-literals
 * **Discussion**: [KEEP-416](https://github.com/Kotlin/KEEP/issues/416)
@@ -17,6 +22,7 @@ In the simplest form, if users want to create a collection, instead of writing `
 - [Proposal](#proposal)
   - [Collection literals in annotations](#collection-literals-in-annotations)
   - [Map literals](#map-literals)
+- [Concerns](#concerns)
 - [Overload resolution motivation](#overload-resolution-motivation)
   - [Overload resolution and type inference](#overload-resolution-and-type-inference)
   - [Operator function `of` restrictions](#operator-function-of-restrictions)
@@ -318,6 +324,21 @@ The fact that it's an interface, makes it unclear an instance of what type shoul
 ```kotlin
 val map: Map<Int, String> = [1: "value"] // is desugared to Map.of(/* How to create an instance? */)
 ```
+
+## Concerns
+
+The following concerns were raised during the KEEP review:
+
+**1. Ambiguity with Java's `new int[10]` syntax.**
+It's an unfortunate collision with Java's syntax.
+It becomes even "worse"
+if we later introduce [self-sufficient collection literals](#rejected-proposal-self-sufficient-collection-literals-with-defined-type) like `List [10]`,
+because Java developers might think that it's an array of Lists of length 10.
+
+The proposal doesn't address this collision in any way.
+We hope that it won't be a problem given that arrays are more rarely used than lists.
+After all, it's not the first place in Kotlin where we match Java's syntax,
+but the semantics is different – the syntax of Kotlin lambdas is a good example.
 
 ## Overload resolution motivation
 
