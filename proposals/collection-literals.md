@@ -1328,8 +1328,8 @@ fun test() {
 }
 ```
 
-The rejected proposal was to allow writing `List [1, 2]`.
-The proposal was rejected because users can anyway desugar `[1, 2]` to `List.of(1, 2)` or `listOf(1, 2)`.
+The proposal was to allow writing `List [1, 2]`.
+For now, the proposal was rejected because users can anyway desugar `[1, 2]` to `List.of(1, 2)` or `listOf(1, 2)`.
 
 Note that it's possible to abuse `operator fun get` (which could be an extension function) to achieve `List [1, 2]` syntax.
 We want to reserve that syntax, that's why it's proposed to forbid to simultaneously declare `operator fun get` and `operator fun of`.
