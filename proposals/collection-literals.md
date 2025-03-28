@@ -289,6 +289,36 @@ Such code won't work:
 val map: Map<String, Int> = ["key" to 1] // type mismatch. List<Pair<String, Int>> is not subtype of Map<String, Int>
 ```
 
+There are three primary reasons why map literals didn't make it into this proposal.
+
+**1. Problematic interop with Java.**
+[Java declares](https://docs.oracle.com/en/java/javase/23/docs/api/java.base/java/util/Map.html#of()) up to 11 `java.util.Map.of(K, V, K, V, ...)` overloads with even number of parameters and one more `ofEntries` overload with `vararg Map.Entry` parameter.
+It's hard to come up with reasonable operator convention for such a naming scheme.
+
+**2. Boxing performance problem.**
+The ideal solution from the design perspective would be:
+
+```kotlin
+class Map<K, V> {
+    companion object {
+        operator fun <K, V> of(): Map<K, V> = TODO("not implemented")
+        operator fun <K, V> of(element: Map.Entry<K, V>): Map<K, V> = TODO("not implemented") // Or `kotlin.Pair` instead of `Map.Entry`
+        operator fun <K, V> of(vararg elements: Map.Entry<K, V>): Map<K, V> = TODO("not implemented") // Or `kotlin.Pair` instead of `Map.Entry`
+    }
+}
+```
+
+Unfortunately,
+it suffers from unnecessary objects allocations
+that are observable in JMH benchmark both from the speed and garbage collection perspectives.
+
+**3. Map.Entry is an interface, not a class.**
+The fact that it's an interface, makes it unclear an instance of what type should be constructed on the call site.
+
+```kotlin
+val map: Map<Int, String> = [1: "value"] // is desugared to Map.of(/* How to create an instance? */)
+```
+
 ## Overload resolution motivation
 
 The reasoning behind [the restrictions](#operator-function-of-restrictions) on `operator fun of` are closely related to overload resolution and type inference.
