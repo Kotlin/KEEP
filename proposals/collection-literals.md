@@ -40,6 +40,7 @@ In the simplest form, if users want to create a collection, instead of writing `
 - [Future evolution](#future-evolution)
   - [Theoretical possibility to support List vs Set overloads in the future](#theoretical-possibility-to-support-list-vs-set-overloads-in-the-future)
 - [Rejected proposals](#rejected-proposals)
+  - [Rejected proposal: always infer collection literals to `List`](#rejected-proposal-always-infer-collection-literals-to-list)
   - [Rejected proposal: more granular operators](#rejected-proposal-more-granular-operators)
   - [Rejected proposal: more positions with the definite expected type](#rejected-proposal-more-positions-with-the-definite-expected-type)
   - [Rejected proposal: self-sufficient collection literals with defined type](#rejected-proposal-self-sufficient-collection-literals-with-defined-type)
@@ -265,7 +266,7 @@ The proposal makes sure that all the existing code that already uses collection 
 ```kotlin
 annotation class Ann(val array: IntArray)
 
-@Ann([1])
+@Ann([1]) // Collection literals are already possible in annotations in the existing versions of Kotlin
 fun main() {}
 ```
 
@@ -1185,6 +1186,28 @@ But right now, we **don't plan** to do that, since both `List` and `Set` overloa
 ## Rejected proposals
 
 This section lists some common proposals and ideas that were rejected
+
+### Rejected proposal: always infer collection literals to `List`
+
+To simplify the feature and reduce mental overhead imposed by contextual semantics,
+it was suggested to always infer collection literals syntax to `List`.
+
+The proposal was rejected because it's too inflexible.
+
+1.  We won't be able to reuse the syntax for `Set`, `Array`, `IntArray`, etc.
+    It's especially important to be able to reuse the syntax for arrays; otherwise, [it will be a breaking change](#collection-literals-in-annotations).
+2.  Authors of collection libraries (kotlinx.collections.immutable, Guava, etc.) won't be able to leverage the syntax.
+3.  In Kotlin, we keep language features open and composable.
+    Just as `suspend` only transforms functions while `async`/`await` is implemented in kotlinx.coroutines library; collection literals adds syntax, leaving implementation to libraries.
+
+Overall, we don't think that the contextual semantics brings serious mental overhead.
+Contextual semantics of collection literals has the same mental overhead as the following example:
+
+```kotlin
+someFunction(complicatedExpression()) // You don't know what is the return type of `complicatedExpression()`
+someFunction { println(it) }          // You don't know what is the type of lambda
+someFunction([1, 2])                  // You don't know what is the type of `[1, 2]`
+```
 
 ### Rejected proposal: more granular operators
 
