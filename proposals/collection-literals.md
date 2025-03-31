@@ -39,7 +39,7 @@ In the simplest form, if users want to create a collection, instead of writing `
 - [Tuples](#tuples)
 - [Performance](#performance)
 - [IDE support](#ide-support)
-- [listOf deprecation](#listof-deprecation)
+- [`listOf` deprecation](#listof-deprecation)
 - [Change to stdlib](#change-to-stdlib)
   - [Semantic differences between Kotlin and Java factory methods](#semantic-differences-between-kotlin-and-java-factory-methods)
 - [Empty collection literal](#empty-collection-literal)
@@ -1110,7 +1110,7 @@ Though there are some suggestions to improve the situation: [KTIJ-28500](https:/
 **4.** Developers who are not familiar with the type-guided semantics of the feature might write code like `val foo = [1, 2].toMutableList()`.
 The IDE should catch such cases and suggest to rewrite them to `val foo: MutableList<Int> = [1, 2]` or `val foo = MutableList.of(1, 2)`.
 
-## listOf deprecation
+## `listOf` deprecation
 
 We **don't** plan to deprecate any of the `smthOf` functions in Kotlin stdlib.
 They are too much widespread, even some third party Kotlin libraries follow `smthOf` pattern.
