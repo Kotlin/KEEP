@@ -65,7 +65,12 @@ In the simplest form, if users want to create a collection, instead of writing `
     A special syntax for collection literals makes it clear that a new instance consisting of the supplied elements is created.
     For example, `val x = listOf(10)` is potentially confusing, because some readers might think that a new collection with the capacity of 10 is created.
     Compare it to `val x = [10]`.
-4.  Special syntax for collection literals helps to resolve the `emptyList`/`listOf` hassle.
+4.  Close the design gap between annotations and regular expressions.
+    The existing Kotlin versions [already allow collection literals in annotation arguments](#collection-literals-in-annotations),
+    but the very same collection literals are not allowed in regular expressions.
+    This discrepancy exists due to the way annotation arguments are processed at compile time.
+    The proposal strives to close this gap.
+5.  Special syntax for collection literals helps to resolve the `emptyList`/`listOf` hassle.
     Whenever the argument list in `listOf` reduces down to zero, some might prefer to clean up the code to change `listOf` to `emptyList`.
     And vice versa, whenever the argument list in `emptyList` needs to grow above zero, the programmer needs to replace `emptyList` with `listOf`.
     It creates a small hassle of `listOf` to `emptyList` back and forth replacement.
