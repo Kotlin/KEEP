@@ -1090,14 +1090,19 @@ All the mentioned numbers can be seen in the raw benchmark data, that can be fou
 
 ## IDE support
 
-The IDEs should implement an inspection to replace `listOf`/`setOf`/etc. with collection literals where it doesn't lead to overload resolution ambiguity.
+**1.** The IDEs should implement an inspection to replace `listOf`/`setOf`/etc. with collection literals
+where it doesn't lead to overload resolution ambiguity.
 It's under the question if the inspection for `listOf`/`setOf` should be enabled by default. (most probably not)
 
-The IDEs should implement an inspection to replace explicit use of operator function `Type.of` with collection literals where it doesn't lead to overload resolution ambiguity.
+**2.** The IDEs should implement an inspection to replace explicit use of operator function `Type.of` with collection literals
+where it doesn't lead to overload resolution ambiguity.
 The inspection should be enabled by default.
 
-We should take into account that ctrl-click on a single character is tricky, especially via keyboard shortcuts.
+**3.** We should take into account that ctrl-click on a single character is tricky, especially via keyboard shortcuts.
 Though there are some suggestions to improve the situation: [KTIJ-28500](https://youtrack.jetbrains.com/issue/KTIJ-28500).
+
+**4.** Developers who are not familiar with the type-guided semantics of the feature might write code like `val foo = [1, 2].toMutableList()`.
+The IDE should catch such cases and suggest to rewrite them to `val foo: MutableList<Int> = [1, 2]` or `val foo = MutableList.of(1, 2)`.
 
 ## listOf deprecation
 
