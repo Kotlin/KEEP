@@ -936,6 +936,7 @@ In that case, it's proposed to resolve `T.Companion.of` since it's unambiguous.
 ## Similar features in other languages
 
 **Java.**
+While there is a limited support for array literals in Java: `String[] a = {"Hello", "World"};`,
 Java explicitly voted against collection literals in favor of `of` factory methods.
 
 > However, as is often the case with language features, no feature is as simple or as clean as one might first imagine, and so collection literals will not be appearing in the next version of Java.
