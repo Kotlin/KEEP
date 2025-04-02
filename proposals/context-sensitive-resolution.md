@@ -1,4 +1,4 @@
-# Improve resolution using expected type
+# Context-sensitive resolution
 
 * **Type**: Design proposal
 * **Author**: Alejandro Serrano Mena
@@ -9,7 +9,7 @@
 
 ## Abstract
 
-We propose an improvement of the name resolution rules of Kotlin based on the expected type of the expression. The goal is to decrease the amount of qualifications when the type of the expression is known.
+We propose an improvement of the name resolution rules of Kotlin based on the context surrounding them, including the expected type for expressions. The goal is to decrease the amount of qualifications when the type of the expression is known.
 
 ## Table of contents
 
@@ -20,8 +20,8 @@ We propose an improvement of the name resolution rules of Kotlin based on the ex
   * [No-argument callables](#no-argument-callables)
   * [Chained inference](#chained-inference)
 * [Technical details](#technical-details)
-  * [Expected type propagation](#expected-type-propagation)
-  * [Single definite expected type](#single-definite-expected-type)
+  * [Expected and contextual type propagation](#expected-and-contextual-type-propagation)
+  * [Single definite contextual type](#single-definite-contextual-type)
   * [Additional contextual scope](#additional-contextual-scope)
   * [Changes to overload resolution](#changes-to-overload-resolution)
   * [Interaction with inference](#interaction-with-inference)
@@ -30,7 +30,7 @@ We propose an improvement of the name resolution rules of Kotlin based on the ex
 
 ## Motivating example
 
-The current rules of the language sometimes require Kotliners to qualify some members, where it feels that such qualification could be inferred from the types already spelled out in the code. One [infamous example](https://youtrack.jetbrains.com/issue/KT-9493/Allow-short-enum-names-in-when-expressions) is enumeration entries, which always live inside their defining class. In the example below, we need to write `Problem.`, even though `Problem` is already explicit in the type of the `problem` argument or the return type of `problematic`.
+The current rules of the language sometimes require Kotliners to qualify some members, where it feels that such qualification could be deduced from the types already spelled out in the code. One [infamous example](https://youtrack.jetbrains.com/issue/KT-9493/Allow-short-enum-names-in-when-expressions) is enumeration entries, which always live inside their defining class. In the example below, we need to write `Problem.`, even though `Problem` is already explicit in the type of the `problem` argument or the return type of `problematic`.
 
 ```kotlin
 enum class Problem {
@@ -54,7 +54,7 @@ fun problematic(x: String): Problem = when (x) {
 val databaseProblemMessage: String = message(Problem.DATABASE)
 ```
 
-This KEEP addresses many of these problems by considering explicit expected types when doing name resolution. We try to propagate the information from argument and return types, declarations, and similar constructs. As a result, the following constructs are usually improved:
+This KEEP addresses many of these problems by considering the _type context_ in which a piece of code appears. For example, we consider explicit expected types when doing name resolution. Furthermore, we try to propagate this contextual information as much as possible: from argument and return types, declarations, and similar constructs. As a result, the following constructs are usually improved:
 
 * conditions on `when` expressions with subject,
 * type checks (`is`),
@@ -63,7 +63,7 @@ This KEEP addresses many of these problems by considering explicit expected type
 * assignments and initializations,
 * function calls.
 
-As a very short summary of this proposal, all usages of `Problem.` can be removed. Intuitively, the compiler uses the known or expected type to resolve the enumeration entries.
+As a very short summary of this proposal, all usages of `Problem.` can be removed. In this case, the compiler uses the known type of the `when` subject, the expected return type, and the expected argument type, respectively, to resolve the enumeration entries.
 
 ```kotlin
 fun message(problem: Problem): String = when (problem) {
@@ -87,9 +87,9 @@ The core of this proposal is the addition of a scope, the **contextual scope**, 
 * _Type position_: as the right-hand side of `is`, both in standalone and branch conditions.
 * _Expression position_: in any place where an expression is expected.
 
-Note the restrictive nature of the type position. Improved resolution is not available anywhere else: not in type annotations for variables, not in the list of supertypes or generic constraints, and so on.
+Note the restrictive nature of the type position. Context-sensitive resolution is not available anywhere else: not in type annotations for variables, not in the list of supertypes or generic constraints, and so on.
 
-In **type position** only classifiers which are both _nested_ and _sealed inheritors_ of the expected type are available.
+In **type position** only classifiers which are both _nested_ and _sealed inheritors_ of the contextually-defined type are available.
 
 ```kotlin
 sealed interface Either<out E, out A> {
@@ -104,7 +104,7 @@ fun <E, A> Either<E, A>.getOrElse(default: A) = when (this) {
 }
 ```
 
-In **expression position** we extend the scope mention in the type position with _properties_ defined in or extending the static and companion object scoped of the expected type. For the purposes of this KEEP, _enumeration entries_ count as properties defined in the static scope of the enumeration class. We describe the reasons for this restricted scope in the [_no-argument callables_](#no-argument-callables) section below.
+In **expression position** we include all the classifiers from the type position, and _properties_ defined in or extending the static and companion object scoped of the contextual type. For the purposes of this KEEP, _enumeration entries_ count as properties defined in the static scope of the enumeration class. We describe the reasons for this restricted scope in the [_no-argument callables_](#no-argument-callables) section below.
 
 ```kotlin
 class Color(...) {
@@ -161,7 +161,7 @@ when (color) {
 }
 ```
 
-We do **not** look in the static and companion object scopes of **supertypes** of the expected type. This is in accordance to the rules of [resolution with an explicit type receiver](https://kotlinlang.org/spec/overload-resolution.html#call-with-an-explicit-type-receiver). Technically, we perform some pre-processing of the expected type to simplify it, but the general rule is that only _one_ classifier is searched.
+We do **not** look in the static and companion object scopes of **supertypes** of the contextual type. This is in accordance to the rules of [resolution with an explicit type receiver](https://kotlinlang.org/spec/overload-resolution.html#call-with-an-explicit-type-receiver). Technically, we perform some pre-processing of the contextual type to simplify it, but the general rule is that only _one_ classifier is searched.
 
 ### No-argument callables
 
@@ -171,7 +171,7 @@ The reason for restricting available members is avoiding _resolution explosion_ 
 2. Choose an overload for the function based on the gathered types.
 3. Check the types of lambda arguments.
 
-Let us forget for a moment about lambda arguments; in that case the procedure is completely bottom-up: we move from arguments to function calls, performing resolution at each stage of the process. However, to improve the resolution we sometimes need to perform the tree walk in the other direction: from resolving the function overload we know the expected type of the argument, which we can use to resolve that expression.
+Let us forget for a moment about lambda arguments; in that case the procedure is completely bottom-up: we move from arguments to function calls, performing resolution at each stage of the process. However, to improve the resolution we sometimes need to perform the tree walk in the converse direction: from resolving the function overload we know the expected type of the argument, which we can use to resolve that expression.
 
 The problem is that if we allowed resolving to a function with some arguments, we could end up in a situation in which we do not resolve anything until we reach the top-level function call, which then gives us information to resolve the arguments. And if those arguments also had unresolved arguments themselves, this process could go arbitrarily deep. This is both costly for the compiler, and also quite brittle.
 
@@ -202,7 +202,7 @@ sealed interface Tree {
 }
 ```
 
-In this case resolution is improved for constructing `Leaf` but not for `Node`, since the latter requires arguments.
+In this case context-sensitive resolution is available for constructing `Leaf` but not for `Node`, since the latter requires arguments.
 
 ```kotlin
 fun create(n: Int): Tree = when (n) {
@@ -211,14 +211,16 @@ fun create(n: Int): Tree = when (n) {
 }
 ```
 
-The no-argument rule ensures that this undesired behavior may not arise, as resolution does not need to go deeper in that case. This seems like a good balance, since the most common use cases like dropping the name of the enumeration are still possible. In a previous iteration of this proposal we went even further, forbidding any improved resolution inside function calls.
+Note that this restriction only applies to _expression_ positions. You can use `Leaf` and `Node` unqualified in type checks (`is`) and casts (`as`) against a value of type `Tree`.
+
+The no-argument rule ensures that this undesired behavior may not arise, as resolution does not need to go deeper in that case. This seems like a good balance, since the most common use cases like dropping the name of the enumeration are still possible. In a previous iteration of this proposal we went even further, forbidding any context-sensitive resolution inside function calls.
 
 ### Chained inference
 
 Another limitation of this proposal is that some seemingly trivial refactorings require introducing qualification.
 
 ```kotlin
-val WEIRD: Problem = UNKNOWN  // improved resolution kicks in
+val WEIRD: Problem = UNKNOWN  // context-sensitive resolution kicks in
 // <T> T.also(block: (T) -> Unit): T
 val WEIRD: Problem = Problem.UNKNOWN.also { println("weird!") }
 ```
@@ -237,11 +239,11 @@ We acknowledge this limitation of the current proposal. In this case tooling can
 
 ## Technical details
 
-We start by defining how the expected type is actually propagated, and then describe changes to the resolution for the new contextually-scoped identifiers.
+We start by defining how the expected and contextual type is actually propagated, and then describe changes to the resolution for the new contextually-scoped identifiers.
 
-### Expected type propagation
+### Expected and contextual type propagation
 
-In general, we say that the expected type of `e` must be `T` whenever the specification states _"the type of `e` must be a subtype of `T`"_. In this section we formally describe the propagation of the expected type, that is, how the expected type of an expression depends on the expected type of its parent.
+In general, we say that the **expected type** of `e` must be `T` whenever the specification states _"the type of `e` must be a subtype of `T`"_. In this section we formally describe the propagation of the expected type, that is, how the expected type of an expression depends on the expected type of its parent.
 
 For declarations, the expected type `T` is propagated to the body, which may be an expression or a block. Note that we only propagate types given _explicitly_ by the developer.
 
@@ -269,52 +271,54 @@ val unknown: () -> Problem = {
 For other statements and expressions, we have the following rules. Here "known type of `x`" includes any additional typing information derived from smart casting.
 
 * _Assignments_: in `x = e`, the expected type of `x` is propagated to `e`;
-* _Type check_: in `e is T`, `e !is T`, the known type of `e` is propagated to `T`;
-* _Type cast_: in `e as T`, `e as? T`, the known type of `e` is propagated to `T`;
 * _Branching_: if type `T` is expected for an with several branches, the type `T` is propagated to each of them,
     * _Conditionals_, either `if` or `when`,
     * _`try` expressions_, where the type `T` is propagated to the `try` block and each of the `catch` handlers;
-* _`when` expression with subject_: those cases should be handled as if the subject had been inlined on every condition, as described in the [specification](https://kotlinlang.org/spec/expressions.html#when-expressions);
 * _Elvis operator_: if type `T` is expected for `e1 ?: e2`, then we propagate `T?` to `e1` and `T` to `e2`;
 * _Not-null assertion_: if type `T` is expected for `e!!`, then we propagate `T?` to `e`;
+* _`when` expression with subject_: those cases should be handled as if the subject had been inlined on every condition, as described in the [specification](https://kotlinlang.org/spec/expressions.html#when-expressions).
+
+The **contextual type** is defined as the expected type for expression positions, extended with the following rules.
+
+* _Type check_: in `e is T`, `e !is T`, the known type of `e` is propagated to `T`;
+* _Type cast_: in `e as T`, `e as? T`, the known type of `e` is propagated to `T`;
 * _Equality_: in `a == b` and `a != b`, the known type of `a` is propagated to `b`.
     * This helps in common cases like `p == CONNECTION`.
     * Note that in this case the expected type should only be propagated for the purposes of additional resolution. The [specification](https://kotlinlang.org/spec/expressions.html#value-equality-expressions) mandates `a == b` to be equivalent to `(A as? Any)?.equals(B as Any?) ?: (B === null)` in the general case, so from a typing perspective there should be no constraint on the type of `b`.
+* _`when` expression with subject_: those cases should be handled as if the subject had been inlined on every condition, as described in the [specification](https://kotlinlang.org/spec/expressions.html#when-expressions).
 
-> [!NOTE]
-> In the current K2 compiler, these rules amount to considering those places in which `WithExpectedType` is passed as the `ResolutionMode`, plus adding special rules for `is`, `==`, and updating overload resolution. Since `when` with subject is desugared as either `x == e` or `x is T`, we need no additional rules to cover them.
+### Single definite contextual type
 
-### Single definite expected type
+There are some scenarios in which the contextual type propagation described above may lead to complex types, like intersections or bounded type parameters. In order to define exactly which scope we should look into, we introduce the notion of the **single definite contextual type**, `sdct(T)`, which is defined recursively, starting from the contextual type propagated by the rules above. It is possible for this type to be undefined.
 
-There are some scenarios in which the expected type propagation may lead to complex types, like intersections or bounded type parameters. In order to define exactly which scope we should look into, we introduce the notion of the **single definite expected type**, `sdet(T)`, which is defined recursively, starting with the expected type propagated by the rules above. It is possible for this type to be undefined.
-
-* Built-in and classifier types: `sdet(T) = T`.
+* Built-in and classifier types: `sdct(T) = T`.
   * Note that type arguments do not influence the scope.
 * Type parameters:
-  * If there is a single supertype, `<T : A>`, (recursively) compute `sdet(T) = sdet(A)`,
-  * Otherwise, `sdet(T)` is undefined.
-* Nullable types: (recursively) compute `sdet(T?) = sdet(T)`.
+  * If there is a single supertype, `<T : A>`, (recursively) compute `sdct(T) = sdct(A)`,
+  * Otherwise, `sdct(T)` is undefined.
+* Nullable types: (recursively) compute `sdct(T?) = sdct(T)`.
 * Types with variance:
-  * Covariance, `sdet(out T) = sdet(T)`,
-  * For contravariant arguments, `sdet(in T)` is undefined.
-* Captured types: `sdet(T)` is undefined.
-* Flexible types, `sdet(A .. B)`
-  * (Recursively) compute `sdet(A)` and `sdet(B)`, and take it if they coincide; otherwise undefined.
+  * Covariance, `sdct(out T) = sdct(T)`,
+  * For contravariant arguments, `sdct(in T)` is undefined.
+* Captured types: `sdct(T)` is undefined.
+* Flexible types, `sdct(A .. B)`
+  * (Recursively) compute `sdct(A)` and `sdct(B)`, and take it if they coincide; otherwise undefined.
   * This rule covers `A .. A?` as special case.
-* Intersection types, `sdet(A & B)`,
-  * Definitely not-null, `sdet(A & Any) = sdet(A)`,
-  * "Fake" intersection types in which `B` is a subtype of `A`, `sdet(A & B) = sdet(B)`; and vice versa.
-  * Otherwise, `sdet(T)` is undefined.
+* Intersection types, `sdct(A & B)`,
+  * Definitely not-null, `sdct(A & Any) = sdct(A)`,
+  * "Fake" intersection types in which `B` is a subtype of `A`, `sdct(A & B) = sdct(B)`; and vice versa.
+  * Otherwise, `sdct(T)` is undefined.
 
 ### Additional contextual scope
 
-Whenever they is a single definite expected type for an expression, this is resolved with an additional **contextual** scope. This scope has the lowest priority (even lower than that of default and star imports) and _should keep_ that lowest priority even after further extensions to the language. The mental model is that the expected type is only use for resolution purposes after any other possibility has failed.
+Whenever they is a single definite contextual type for an expression, this is resolved with an additional **contextual** scope. This scope has the lowest priority (even lower than that of default and star imports) and _should keep_ that lowest priority even after further extensions to the language. The mental model is that the contextual type is only use for resolution purposes after any other possibility has failed.
 
-The contextual scope for a single definite type `T` is made from three different sources:
+The contextual scope for a single definite contextual type `T` is made from different sources:
 
 1. The static scope of the type `T`,
 2. The companion object scope of the type `T`,
-3. Imported extension functions over the companion object of `T`.
+3. Imported extension functions over the companion object of `T`,
+4. Imported static functions over `T`, if such a concept enters the language at some point.
 
 Furthermore, only two kinds of members are available:
 
@@ -326,7 +330,7 @@ Furthermore, only two kinds of members are available:
 
 ### Changes to [overload resolution](https://kotlinlang.org/spec/overload-resolution.html#overload-resolution)
 
-In order to accomodate improved resolution for function arguments, the algorithm must be slightly modified. As a reminder, overload resolution for a function call `f(...)` takes the following steps:
+In order to accomodate context-sensitive resolution for function arguments, the algorithm must be slightly modified. As a reminder, overload resolution for a function call `f(...)` takes the following steps:
 
 1. Resolve all non-lambda arguments,
 2. _Applicability_: gather all potential overloads of the function `f`, and for each of them generate a constraint system that specifies the requirements between argument and parameter types. Filter out those overloads for which the constraint system is unsatisfiable. If no applicable overloads remain after this step, an _unresolved error_ is issued.
@@ -344,7 +348,7 @@ The second change relates to any function call, which now must handle delayed ex
 
 ### Interaction with inference
 
-As described in the [specification](https://kotlinlang.org/spec/overload-resolution.html#type-inference-and-overload-resolution), type inference is performed after overload resolution. As a result, the expected type may not be known at the moment in which improved resolution may kick in.
+As described in the [specification](https://kotlinlang.org/spec/overload-resolution.html#type-inference-and-overload-resolution), type inference is performed after overload resolution. As a result, the contextual type may not be known at the moment in which context-sensitive resolution may kick in.
 
 ```kotlin
 val brightColor: Color = WHITE
@@ -373,7 +377,7 @@ fun foo(x: Test){
 }
 ```
 
-Note however that this KEEP not only states that the scope coming from the expected type has the lowest priority, but also that this should _keep being the case_ in the future. We foresee that further extensions to the language (like contexts) may add new scopes, but still the one from the type should be regarded as the "fallback mechanism".
+Note however that this KEEP not only states that the scope coming from the context has the lowest priority, but also that this should _keep being the case_ in the future. We foresee that further extensions to the language (like contexts) may add new scopes, but still the one from the type should be regarded as the "fallback mechanism".
 
 **No `.value` syntax**: Swift has a very similar feature to the one proposed in this KEEP, namely [implicit member expressions](https://docs.swift.org/swift-book/documentation/the-swift-programming-language/expressions#Implicit-Member-Expression). The main difference is that one has to prepend `.` to access this new type-resolution-guided scope.
 
@@ -389,7 +393,7 @@ The current choice is obviously not symmetric: it might be surprising that `p ==
 
 On the other hand, the proposed flow of information is consistent with the ability to refactor `when (x) { A -> ...}` into `when { x == A -> ...}`, without any further qualification required. We think that this uniformity is important for developers.
 
-**Interaction with smart casting**: the main place in which the notion of "single definite expected type" may bring some problems is smart castings, as they are the main source of intersection types.
+**Interaction with smart casting**: the main place in which the notion of "single definite contextual type" may bring some problems is smart castings, as they are the main source of intersection types.
 
 The following code does _not_ work under the current rules.
 
@@ -402,16 +406,16 @@ fun <T> Box<T>.foo() = when (value) {
 }
 ```
 
-The problem is that at the expression `value == UNKNOWN`, the known type of `value` is `T & Problem`, a case for which the single definite expected type is undefined. There are two reasons for this choice:
+The problem is that at the expression `value == UNKNOWN`, the known type of `value` is `T & Problem`, a case for which the single definite contextual type is undefined. There are two reasons for this choice:
 
 - It is unclear in general how to treat intersection types, since other cases may not be as simple as dropping a type argument.
-- If in the future Kotlin gets a feature similar to GADTs, we may piggy back on the knowledge that `T` is equal to `Problem`, and face no problem in computing the single definite expected type.
+- If in the future Kotlin gets a feature similar to GADTs (such as [subtyping reconstruction](https://github.com/Kotlin/KEEP/pull/410)), we may piggy back on the knowledge that `T` is equal to `Problem`, and face no problem in computing the single definite contextual type.
 
 **Additional filtering of candidates**: should we filter out those candidates for which the resolution of the delayed argument with the corresponding parameter expected type fails? At this point we have decided to go with a "no". This answer has the benefit that if we ever move to "yes", the change is backward compatible, as opposed to the other direction.
 
 ### Risks
 
-One potential risk of this proposal is the difficulty of understanding _when_ exactly it is OK to drop the qualifier, which essentially corresponds to understanding the propagation of the expected type through the compiler. On the other hand, maybe this complete understanding is not required, as developers will be able to count on the main scenarios: the conditions on a `when` with subject, the immediate expression after a `return`, or the initializer of a property, given that the return type is known.
+One potential risk of this proposal is the difficulty of understanding _when_ exactly it is OK to drop the qualifier, which essentially corresponds to understanding the propagation of the contextual type through the compiler. On the other hand, maybe this complete understanding is not required, as developers will be able to count on the main scenarios: the conditions on a `when` with subject, the immediate expression after a `return`, or the initializer of a property, given that the return type is known.
 
 Another potential risk is that we add more coupling between type inference and candidate resolution. On the other hand, in Kotlin those two processes are inevitably linked together -- to resolve the candidates of a call you need the type of the receivers and arguments -- so the step taken by this proposal feels quite small in comparison.
 
