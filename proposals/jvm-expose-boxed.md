@@ -4,7 +4,7 @@
 * **Author**: Alejandro Serrano
 * **Contributors**: Mikhail Zarechenskii, Ilmir Usmanov
 * **Discussion**: [#394](https://github.com/Kotlin/KEEP/issues/394)
-* **Status**: Under discussion
+* **Status**: Experimental in Kotlin 2.2
 * **Related YouTrack issue**: [KT-28135](https://youtrack.jetbrains.com/issue/KT-28135/Add-a-mechanism-to-expose-members-of-inline-classes-and-methods-that-use-them-for-Java)
 * **Previous proposal**: [by @commandertvis](https://github.com/Kotlin/KEEP/blob/commandertvis/jvmexpose/proposals/jvm-expose-boxed-annotation.md)
 
