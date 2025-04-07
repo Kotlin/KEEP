@@ -1099,7 +1099,7 @@ Instead, like it is done for other data structures in the standard library,
 `kotlin.time.Instant` out of the box,
 supported by `parse` and `toString`.
 
-`koltinx.serialization` includes additional serializers for standard library
+`kotlinx.serialization` includes additional serializers for standard library
 entities in the `kotlinx.serialization.builtins` package, like
 <https://kotlinlang.org/api/kotlinx.serialization/kotlinx-serialization-core/kotlinx.serialization.builtins/-long-as-string-serializer/>.
 `InstantComponentSerializer` can be added in a
