@@ -4,7 +4,7 @@
 * **Author**: Alejandro Serrano
 * **Contributors**: Alexander Udalov, Ilmir Usmanov, Mikhail Zarechenskii
 * **Discussion**: [KEEP-402](https://github.com/Kotlin/KEEP/issues/402)
-* **Status**: In discussion
+* **Status**: Experimental in Kotlin 2.2.0
 * **Related YouTrack issue**: [KT-19289](https://youtrack.jetbrains.com/issue/KT-19289/Hibernate-Validator-Annotations-Dropped), [KTIJ-31300](https://youtrack.jetbrains.com/issue/KTIJ-31300/Draft-Validation-Annotation-Email-Doesnt-Work-in-Kotlin-Constructor)
 
 ## Abstract
@@ -13,6 +13,8 @@ Several kinds of property declarations in Kotlin define more than one use-site t
 
 ## Table of contents
 
+* [Abstract](#abstract)
+* [Table of contents](#table-of-contents)
 * [Motivation](#motivation)
   * [Potential misunderstandings](#potential-misunderstandings)
   * [Alignment with Java](#alignment-with-java)
@@ -22,6 +24,7 @@ Several kinds of property declarations in Kotlin define more than one use-site t
     * [Exceptions](#exceptions)
   * [Examples](#examples)
   * [Impact](#impact)
+* [Other design choices](#other-design-choices)
 
 ## Motivation
 
