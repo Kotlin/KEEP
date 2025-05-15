@@ -13,7 +13,7 @@ This is an updated proposal for [KEEP-259](https://github.com/Kotlin/KEEP/issues
 
 1. Introduction of named context parameters,
 2. Context receivers are dropped,
-3. Removal of `this@Type` syntax, introduction of `implicit<A>()`,
+3. Removal of `this@Type` syntax, introduction of `contextOf<A>()`,
 4. Contexts are not allowed in constructors,
 5. Callable references resolve their context arguments eagerly,
 6. Context-in-classes are dropped.
@@ -107,7 +107,7 @@ context(logger: Logger) fun User.doAction() {
 * The type and order of context parameters must coincide.
 * It is allowed (yet discouraged) to change the name of a context parameter.
 
-It is a conflict to declare overloads which only differ in the order of the context parameters.
+It is a conflict to declare overloads which only differ in the number of context parameters. It is allowed to declare one overload with _no_ context parameters and one with _some_ of them (this is aligned with §7.8).
 
 **§1.6** *(naming ambiguity)*: We use the term **context** with two meanings:
 
@@ -132,6 +132,34 @@ context(Logger) User.() -> Int
 context(Logger) (User) -> Int
 Logger.(User) -> Int
 (Logger, User) -> Int
+```
+
+As a result of these equivalences, it is possible invoke a value with a function type with context parameters by giving them as regular value parameters.
+
+```kotlin
+fun foo(x: context(String, Double) Int.(z: Long) -> Unit, y: Int) {
+    context("", 1.0) {
+        y.x(1L)       // OK, regular way to call it
+    }
+
+    y.x("", 1.0, 1L)  // NO
+    x("", 1.0, y, 1L) // OK, all parameters as values
+}
+```
+
+It is not allowed to pass context arguments explicitly inside a value argument list when callee is a regular function (not a value of a function type).
+
+```kotlin
+context(_: String, _: Double) fun Int.x(z: Long): Unit { }
+
+fun foo(y: Int) {
+    context("", 1.0) {
+        y.x(1L)       // regular way to call it
+    }
+
+    y.x("", 1.0, 1L)  // NO
+    x("", 1.0, y, 1L) // NO
+}
 ```
 
 **§1.8** *(lambdas)*: If a lambda is assigned a function type with context parameters, those behave as if declared with `_` as its name.
@@ -162,13 +190,13 @@ fun <A, B, R> context(a: A, b: B, block: context(A, B) () -> R): R = block(a, b)
 fun <A, B, C, R> context(a: A, b: B, c: C, block: context(A, B, C) () -> R): R = block(a, b, c)
 ```
 
-**§2.2** *(`implicit` function)*: We also provide a generic way to obtain a value by type from the context. It allows access to context parameters even when declared using `_`, or within the body of a lambda.
+**§2.2** *(`contextOf` function)*: We also provide a generic way to obtain a value by type from the context. It allows access to context parameters even when declared using `_`, or within the body of a lambda.
 
 * Implementations are encouraged, but not required, to mark this function as `inline`.
 * If possible, type inference for type variable `A` should be restricted (for example, using `@NoInfer`). Developers are expected to use the function with explicit type arguments. 
 
 ```kotlin
-context(ctx: A) fun <A> implicit(): A = ctx
+context(ctx: A) fun <A> contextOf(): A = ctx
 ```
 
 _Note:_ This function replaces the uses of `this@Type` in the previous iteration of the design.
@@ -474,6 +502,12 @@ functionType: [ functionContext ] [ receiverType '.' ] ...
 functionContext: 'context' '(' receiverType { ',' receiverType } [ ',' ] ')'
 ```
 
+Context parameters may receive annotations as any other regular parameter.
+
+```kotlin
+context(@Annotated users: UserRepository) fun foo() = ...
+```
+
 **Recommended style:** annotations, context parameters, then other modifiers as per the [usual style guide](https://kotlinlang.org/docs/coding-conventions.html#modifiers-order).
 
 **§7.2** *(disambiguating `context`)*: We do not enforce `context` as a hard keyword, leading to potential ambiguities in the body of declarations. In particular, `context(` may be both the beginning of:
@@ -538,13 +572,13 @@ context(ctx: Any) fun foo() {
 context(s: String) fun bar() { }
 ```
 
-**§7.7** *(applicability, `DslMarker`)*: During context resolution, if at a certain scope there is a potential contextual value in scope (either coming from a context parameter or from an implicit receiver) marked with an annotation `@X` which is itself annotated with [`@DslMarker`](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-dsl-marker/) then:
+**§7.7** *(applicability, `DslMarker`)*: we say that a value is `X`-DSL-marked if the type of that value is annotated with `@X`, and `X` is itself annotated with [`@DslMarker`](https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-dsl-marker/).
 
-- It is an _error_ for two such values to be available in the same scope.
-- If context resolution chooses a contextual value with the same annotation, but in an outer scope, it is a compilation _error_.
-- If a call binds to a receiver with the same annotation, it is a compilation _error_.
+If at a certain scope there is a potential contextual `X`-DSL-marked value in scope (either coming from a context parameter or from an implicit receiver) and context resolution chooses a contextual `X`-DSL-marked value in an outer scope, it is a compilation _error_.
 
-These rules extend the usual behavior of `@DslMarker` to cover both receivers and context parameters uniformly.
+This is in addition to the _old rule_, stating: if at a certain scope there is an implicit `X`-DSL-marked receiver in scope and resolution chooses a `X`-DSL-marked implicit receiver in an outer scope, it is a compilation error. Note that context parameters do _not_ conflict with implicit receivers when the latter are used as receivers.
+
+These rules extend the [usual behavior of `@DslMarker`](https://kotlinlang.org/docs/type-safe-builders.html#scope-control-dslmarker) to cover both receivers and context parameters uniformly.
 
 ```kotlin
 @DslMarker annotation class ExampleMarker
@@ -575,8 +609,8 @@ fun dslMarkerExample() =
         // the ExampleScope introduced (3)
         // to resolve context parameters
 
-        this.exemplify()  // rejected: DSL scope violation
-                          // since it binds the receiver from (2)
+        this.exemplify()  // correct, uses (2)
+                          // (1) and (3) may not be receivers
         similarExampleTo("bye")  // rejected: DSL scope violation
       }
     }
