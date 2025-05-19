@@ -365,7 +365,11 @@ then we will need to define how multiple dimensions of "Kotlin Attributes" inter
 
 ## Addressing UX issues of new KMP resolution scheme
 
-In the current source set level KMP dependency model in Kotlin Gradle Plugin, explaining “where can’t I write code with this KMP dependency” is achieved through Gradle resolution errors. Explaining granular KMP resolution through Gradle resolution errors is not ideal, but provides some intuition about where the API from the consumed dependencies will (not) be available. For example:
+In the current source set level KMP dependency model in Kotlin Gradle Plugin, explaining “where can’t I write code 
+with this KMP dependency” is achieved through Gradle resolution errors. Explaining granular KMP resolution through 
+Gradle resolution errors is not ideal, but provides some intuition about where the API from the consumed dependencies 
+will (not) be available. 
+For example:
 ```kotlin
 // producer/build.gradle.kts
 kotlin {
@@ -399,5 +403,14 @@ kotlin {
 ```
 
 With the UKlib publication changes the Gradle resolution errors will be suppressed, and it might not be clear where (if at all) 
-the consumed dependency is accessible; however the UX issue of explaining which producer code is available in what consumer compilation is out of scope for this proposal and will be addressed separately.
+the consumed dependency is accessible. To mitigate this issue before releasing UKlibs, we will provide a diagnostic tool 
+to understand what API of a consumed library is available in the source sets of the consumer project.
 
+## Changes in current KMP Dependencies Model in Kotlin Gradle Plugin
+
+We plan to change the current KMP dependency model to be compatible with the UKlib dependency model to allow gradual migration.
+To allow consumption of partially compatible dependencies, we will infer the visible consumed API in the current KMP publication.
+The lenient resolution will be achieved by using `metadataApiElements` variant as a fallback when the platform variant is not available.
+
+We will also add the possibility to declare dependencies on Kotlin-extension level instead of the source set level in
+the KMP Kotlin Gradle Plugin.
