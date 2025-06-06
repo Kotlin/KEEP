@@ -114,8 +114,8 @@ data class Vector(val x: Double, val y: Double) {
   static val Zero: Vector = Vector(0.0, 0.0)
 }
 
-val Vector::type.UnitX: Vector = Vector(1.0, 0.0)
-val Vector::type.UnitY: Vector = Vector(0.0, 1.0)
+val Vector::type.UnitX: Vector get() = Vector(1.0, 0.0)
+val Vector::type.UnitY: Vector get() = Vector(0.0, 1.0)
 
 fun print(v: Vector): String = when (v) {
   Vector.Zero -> "zero vector"
@@ -178,11 +178,11 @@ data class Vector(val x: Double, val y: Double) {
 
   // static dispatch receiver scope
   // inner extension receiver scope
-  static val Int.asVector(): Vector = ...
+  static fun Int.asVector(): Vector = ...
 }
 
     // static extension receiver scope
-val Vector::type.UnitX: Vector = Vector(1.0, 0.0)
+val Vector::type.UnitX: Vector get() = Vector(1.0, 0.0)
 ```
 
 ### Ambiguity in naming
@@ -447,12 +447,17 @@ class Classroom {
 }
 ```
 
-**§1.4** _(type extensions)_:
+**§1.4** _(static initialization blocks)_:
+[initialization blocks](https://kotlinlang.org/spec/declarations.html#classifier-initialization)
+may be marked as `static`. In that case the block is executed during
+[static initialization](#initialization) instead of during instance creation.
+
+**§1.5** _(type extensions)_:
 we shall refer to declarations using `::type` in receiver
 position as **type extensions**. We refer to the receiver as either
 the **static scope receiver**.
 
-**§1.5** _(restrictions on type extensions)_:
+**§1.6** _(restrictions on type extensions)_:
 it is not possible to declare type extensions to `object`s.
 
 ```kotlin
@@ -473,7 +478,7 @@ fun List<Int>::type.UpTo(n: Int): List<Int> = ...  // error!
 fun List::type.UpTo(n: Int): List<Int> = ...       // ok
 ```
 
-**§1.6** _(constant static properties)_:
+**§1.7** _(constant static properties)_:
 the rules for
 [constant properties](https://kotlinlang.org/spec/declarations.html#constant-properties)
 are updated to include static (member) properties.
@@ -484,7 +489,7 @@ class Vector(...) {
 }
 ```
 
-**§1.7** _(no scopes for accessors)_:
+**§1.8** _(no scopes for accessors)_:
 property accessors always inherit the scope
 of the enclosing property. In particular, it is not possible to declare one
 accessor in a different scope than the other.
@@ -502,7 +507,7 @@ class CoolnessService {
 }
 ```
 
-**§1.8** _(static operators)_:
+**§1.9** _(static operators)_:
 if an
 [operator convention](https://kotlinlang.org/spec/operator-overloading.html#operator-overloading)
 requires a dispatch or extension receiver, this requirement may **not** be
@@ -527,11 +532,11 @@ class CoolnessService {
 This restriction does not close the door to new operators being defined in the
 static scope; it only limits those available at the moment of writing this KEEP.
 
-**§1.9** _(static members require a body)_:
+**§1.10** _(static members require a body)_:
 static members must always declare a body, unless they are marked as `expect`
 or `external`.
 
-**§1.10** _(no enclosing type parameters)_:
+**§1.11** _(no enclosing type parameters)_:
 static members may not reference type parameters from its enclosing type.
 In most cases, this restriction can be worked around by introducing a fresh
 type parameter in the member itself.
@@ -546,7 +551,7 @@ interface List<A> {
 }
 ```
 
-**§1.11** _(enumerations)_:
+**§1.12** _(enumerations)_:
 [enumeration entries and other "unofficially static" members in a `enum class`](https://kotlinlang.org/spec/declarations.html#enum-class-declaration)
 "officially" become static members of its enclosing class.
 
@@ -564,7 +569,7 @@ class Direction {
 }
 ```
 
-**§1.12** _(annotations)_:
+**§1.13** _(annotations)_:
 static scope receivers may not be annotated. In particular, that means
 that the `@receiver` use site target is not allowed, and that you cannot
 attach an annotation with a type target to `T::type`.
@@ -944,7 +949,7 @@ we remark that calling a type extension does _not_ imply the
 initialization of the classifier being extended, as per the rules above.
 
 ```kotlin
-val Vector::type.hasFiniteBasis: Boolean = true
+val Vector::type.hasFiniteBasis: Boolean get() = true
 
 fun findBasis(): List<Vector> {
   if (!Vector.hasFiniteBasis) return emptyList()
@@ -1042,7 +1047,7 @@ data class Vector(...) {
   static val Zero: Vector = Vector(0.0, 0.0)
 }
 
-val Vector::type.UnitX: Vector = Vector(1.0, 0.0)
+val Vector::type.UnitX: Vector get() = Vector(1.0, 0.0)
 ```
 
 would be compiled down in the JVM as follows:
@@ -1186,7 +1191,7 @@ In a previous iteration of the proposal we uniformly used `static` in all
 positions, and referred to type extensions as _static scope_ extensions.
 
 ```kotlin
-val Vector::static.UnitX: Vector = Vector(1.0, 0.0)
+val Vector::static.UnitX: Vector get() = Vector(1.0, 0.0)
 ```
 
 However, even in internal discussions it was clear that the difference between
