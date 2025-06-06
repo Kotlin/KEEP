@@ -5,7 +5,7 @@
 * **Contributors**: Marat Akhin, Nikita Bobko, Roman Efremov, Pavel Kunyavskiy,
 Faiz Ilham Muhammad, Dmitriy Novozhilov, Stanislav Ruban, Roman Venediktov, 
 Michail Zarečenskij, Denis Zharkov
-* **Discussion**: [KEEP-426](https://github.com/Kotlin/KEEP/pull/426)
+* **Discussion**: [KEEP-427](https://github.com/Kotlin/KEEP/discussions/427)
 * **Status**: In review
 * **Related YouTrack issues**:
   [KT-11968](https://youtrack.jetbrains.com/issue/KT-11968),
