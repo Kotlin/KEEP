@@ -564,11 +564,7 @@ class Direction {
 }
 ```
 
-**§1.12** _(entry point)_:
-the [entry point](https://kotlinlang.org/docs/basic-syntax.html#program-entry-point)
-of a Kotlin application may be marked `static`.
-
-**§1.13** _(annotations)_:
+**§1.12** _(annotations)_:
 static scope receivers may not be annotated. In particular, that means
 that the `@receiver` use site target is not allowed, and that you cannot
 attach an annotation with a type target to `T::type`.
