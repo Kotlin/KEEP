@@ -1050,7 +1050,7 @@ would be compiled down in the JVM as follows:
 ```java
 class Vector {
   private static Vector Zero = new Vector(0.0, 0.0); // backing field
-  public static Vector getZero() { return this.zero; }
+  public static Vector getZero() { return zero; }
 }
 
 class MyFileKt { // defined in myFile.kt
