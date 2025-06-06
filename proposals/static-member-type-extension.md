@@ -1049,7 +1049,8 @@ would be compiled down in the JVM as follows:
 
 ```java
 class Vector {
-  public static Vector getZero() { return new Vector(0.0, 0.0); }
+  private static Vector Zero = new Vector(0.0, 0.0); // backing field
+  public static Vector getZero() { return this.zero; }
 }
 
 class MyFileKt { // defined in myFile.kt
@@ -1097,12 +1098,12 @@ public class Vector {
   public static Companion Companion { }
 
   // constant
-  public static int Dimensions = 2;
+  public static final int Dimensions = 2;
 
   // backing field of companion object property
   private static MutableMap<Vector, String> Companion$SpecialVectors;
 
-  <static initializer> {
+  static {
     SpecialVectors = new LinkedHashMap();
     Companion = new Companion();
   }
