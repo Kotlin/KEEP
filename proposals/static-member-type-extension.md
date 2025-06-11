@@ -18,8 +18,8 @@ Michail Zarečenskij, Denis Zharkov
 
 ## Abstract
 
-We propose to bring the idea of _statics_ in Kotlin with _static members_ and
-_type extensions_. 
+We propose to bring the idea of _statics_ (as in _class members_)
+to Kotlin with _static members_ and _type extensions_. 
 The underlying idea is surfacing the notion of _static scope_ more clearly
 in the language.
 
@@ -60,6 +60,15 @@ different roles:
   The usual `StringUtils` in every Java/C# project is a witness for that.
 - By including static members, a class also works as a _namespace_. One nice
   example is `List.of` in Java, which fits the general pattern of factory.
+
+> [!IMPORTANT]
+> Throughout this document we use the term static to refer to 
+> [_class members_](https://en.wikipedia.org/wiki/Static_%28keyword%29#As_a_class_member_specifier),
+> in the similar vein to `static` found in
+> [Java](https://www.baeldung.com/java-static) and
+> [C#](https://learn.microsoft.com/en-us/dotnet/csharp/language-reference/keywords/static).
+> We are aware this is not the [only possible usage](https://en.wikipedia.org/wiki/Static_%28keyword%29)
+> of this term.
 
 Instead of providing static members, Kotlin supports those goals by using
 _objects_, and marking an object nested in a class as its _companion_ to make
@@ -1055,7 +1064,7 @@ would be compiled down in the JVM as follows:
 ```java
 class Vector {
   private static Vector Zero = new Vector(0.0, 0.0); // backing field
-  public static Vector getZero() { return zero; }
+  public static Vector getZero() { return Zero; }
 }
 
 class MyFileKt { // defined in myFile.kt
