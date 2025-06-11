@@ -26,7 +26,7 @@ and they don't have the downsides of the global variables.
 Turns out that Kotlin already has another existing feature that covers the same use case in a similar way – `suspend` functions.
 All `suspend` functions have an implicit `$completion: kotlin.coroutines.Continuation` parameter.
 And while the `$completion` parameter itself isn't equivalent to context parameters since the continuations are not just passed around and are rather wrapped on every suspending call,
-but the `kotlin.coroutines.Continuation`'s `context` property **is** equivalent to context parameters.
+but the `kotlin.coroutines.Continuation`'s `context` property of type `kotlin.coroutines.CoroutineContext` **is** equivalent to context parameters.
 
 Here is a side-by-side comparison:
 
@@ -219,7 +219,8 @@ suspend fun foo() {}
 actual typealias MyCoroutineContext = kotlin.coroutines.CoroutineContext
 ```
 
-It's no longer possible to say what is the binary signature of the function just by looking at its definition.
+It's no longer possible to say what is the function's binary signature shape just by looking at its definition in the common module.
+And even worse – the shape may differ from platform to platform.
 
 **The second way.** The explicit context parameter adds an explicit context parameter alongside the implicit parameter.
 
@@ -248,7 +249,7 @@ context(suspend _: CoroutineContext)
 suspend fun foo() {}
 ```
 
-For now (and probably never), we won't provide any syntax since the use case is already covered by `kotlin.coroutines.coroutineContext` and [`contextOf` function](./context-parameters.md#standard-library-support)
+For now, we won't provide any syntax since the use case is already covered by `kotlin.coroutines.coroutineContext` and [`contextOf` function](./context-parameters.md#standard-library-support)
 
 ### Feature interaction with callable references
 
@@ -457,7 +458,7 @@ From the overload resolution perspective,
 2. `suspend fun foo() {}` and `fun foo() {}` are equivalent
 3. **But!** `context(_: CoroutineContext) fun foo() {}` and `fun foo() {}` are not equivalent
 
-It's not the first time when equivalence is not transitive in Kotlin (remember, [flexible types](https://kotlinlang.org/spec/type-system.html#flexible-types)),
+It's not the first time when equivalence is not transitive in Kotlin (remember [flexible types](https://kotlinlang.org/spec/type-system.html#flexible-types)),
 and we didn't find practical examples where it would break anything, so the proposal is to just live with it.
 
 ## Dependencies
@@ -558,8 +559,9 @@ https://youtrack.jetbrains.com/issue/KT-77129 and https://youtrack.jetbrains.com
 ## IDE integration
 
 1. Add an intention that replaces `suspend` properties (they are illegal to declare) with properties that have the `CoroutineContext` context parameter.
-2. Similar to how all call-sites of `suspend` functions have a gutter icon in IDE,
-  we should a gutter icon for all call-sites of functions with context parameters [KTIJ-26653](https://youtrack.jetbrains.com/issue/KTIJ-26653).
+  The intention should increase the feature's [discoverability](#discoverability).
+2. Similar to how all call-sites of `suspend` functions have a [gutter icon](https://www.jetbrains.com/help/idea/settings-gutter-icons.html) in IDE,
+  we should add a gutter icon for all call-sites of functions with context parameters [KTIJ-26653](https://youtrack.jetbrains.com/issue/KTIJ-26653).
 
 ## Related features in other languages
 
