@@ -13,7 +13,7 @@
 [KEEP-367](./context-parameters.md) introduces a context parameters feature to Kotlin.
 
 There are multiple ways on how you can look at context parameters.
-One of them is that context parameters are a "better" way to declare global variables.
+One of them is that context parameters are a _better way_ to declare global variables.
 It's common knowledge that we should prefer function parameters over global variables –
 it makes our programs easier to test and parallelize.
 But still, programmers tend to use global variables because passing parameters manually might be too tedious
@@ -84,6 +84,7 @@ A lot of existing Kotlin code that relies on coroutines already uses `suspend` f
   - [Feature interaction with callable references](#feature-interaction-with-callable-references)
   - [Declaration-site `CONFLICTING_OVERLOADS`](#declaration-site-conflicting_overloads)
   - [Overload resolution](#overload-resolution)
+  - [`expect`/`actual` feature interaction](#expectactual-feature-interaction)
 - [Concerns](#concerns)
   - [Implicit context parameter binary signature inconsistency](#implicit-context-parameter-binary-signature-inconsistency)
   - [Discoverability](#discoverability)
@@ -114,7 +115,7 @@ context(_: CoroutineContext)
 fun foo() {}
 ```
 
-Unlike explicitly declared context parameters, `suspend` function implicit context parameter doesn't change function signature.
+Unlike explicitly declared context parameters, `suspend` function implicit context parameter doesn't change function binary signature.
 
 ### `coroutineContext` stdlib property
 
@@ -169,7 +170,7 @@ public inline val coroutineContext: CoroutineContext get() = context
 </tr>
 </table>
 
-Please note that the suggested change doesn't break binary compatibility.
+Please note that the suggested change doesn't break binary compatibility since the property is `InlineOnly`.
 
 We kill two birds with one stone:
 1. We can close [KT-15555](https://youtrack.jetbrains.com/issue/KT-15555),
@@ -400,6 +401,26 @@ fun main() {
 }
 ```
 
+### `expect`/`actual` feature interaction
+
+We would like to explicitly notice that the case mentioned above:
+
+```kotlin
+// MODULE: common
+expect class Foo {
+    suspend fun foo()
+}
+
+// MODULE: platform
+actual class Foo {
+    // Is it allowed?
+    actual context(_: CoroutineContext) fun foo() {}
+    // Related issue: https://youtrack.jetbrains.com/issue/KT-71223
+}
+```
+
+should be allowed only when `suspend fun foo` is **effectively `final`** in the `expect` class.
+
 ## Concerns
 
 ### Implicit context parameter binary signature inconsistency
@@ -443,7 +464,7 @@ and we didn't find practical examples where it would break anything, so the prop
 
 **(1)**. This proposal, in general, depends on [KEEP-367 Context parameters](./context-parameters.md).
 
-**(2)**. This proposal depends on the fact that contextual parameters "fill in" neither extension, nor dispatch holes:
+**(2)**. This proposal depends on the fact that contextual parameters _fill in_ neither extension, nor dispatch holes:
 
 ```kotlin
 context(str: String)
@@ -456,7 +477,7 @@ fun foo() {
 fun String.functionWithExtensionHole() {}
 ```
 
-If not the decision to not "fill in" the extension and dispatch hole, this proposal would be a breaking change:
+If not the decision to not fill in the extension and dispatch hole, this proposal would be a breaking change:
 
 ```kotlin
 suspend fun CoroutineContext.bar() {
