@@ -115,7 +115,7 @@ context(_: CoroutineContext)
 fun foo() {}
 ```
 
-Unlike explicitly declared context parameters, `suspend` function implicit context parameter doesn't change function binary signature.
+Unlike explicitly declared context parameters, `suspend` function implicit context parameter doesn't change function's binary signature.
 
 ### `coroutineContext` stdlib property
 
