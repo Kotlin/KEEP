@@ -197,10 +197,11 @@ suspend fun baz() {}
 
 There are two possible ways to reason about the code.
 
-**The first way.** The explicit context parameter materializes the implicit context parameter.
+**The first way.**
+The explicit context parameter _explicitializes_ (it's a made up word) the implicit context parameter.
 It's essentially a way to give a name to the implicit parameter.
 
-Such an approach raises a question whether the binary signature of the `suspend` function changes once its implicit `CoroutineContext` context parameter is explicitly materialized.
+Such an approach raises a question whether the binary signature of the `suspend` function changes once its implicit `CoroutineContext` context parameter is _explicitialized_.
 
 If yes, then the approach cannot be used to "just give a name to the implicit parameter".
 
@@ -223,7 +224,8 @@ actual typealias MyCoroutineContext = kotlin.coroutines.CoroutineContext
 It's no longer possible to say what is the function's binary signature shape just by looking at its definition in the common module.
 And even worse – the shape may differ from platform to platform.
 
-**The second way.** The explicit context parameter adds an explicit context parameter alongside the implicit parameter.
+**The second way.**
+The explicit context parameter adds an explicit context parameter alongside the already existing implicit parameter.
 
 It means that the example from the above results in a compilation error with `AMBIGUOUS_CONTEXT_ARGUMENT` message:
 
@@ -242,7 +244,7 @@ suspend fun baz() {}
 
 **The proposal** is to pick _the second way_ since it's less questionable.
 
-The reasonings above give us a hint that if we want to make it possible to materialize the implicit context parameter,
+The reasonings above give us a hint that if we want to make it possible to explicitialize the implicit context parameter,
 then it should be some special syntax:
 
 ```kotlin
@@ -254,7 +256,7 @@ For now, we won't provide any syntax since the use case is already covered by `k
 
 ### Feature interaction with callable references
 
-Similar to how [it's not possible](#suspend-function-with-explicit-coroutinecontext-context-parameter) to materialize _implicit_ context receiver in regular code for `suspend` functions,
+Similar to how [it's not possible](#suspend-function-with-explicit-coroutinecontext-context-parameter) to explicitialize implicit context receiver in regular code for `suspend` functions,
 it's still not possible to do that via callable references:
 
 ```kotlin
