@@ -3,6 +3,7 @@
 * **Type**: Design proposal
 * **Author**: Faiz Ilham
 * **Contributors**: Alejandro Serrano, Michail Zarečenskij, Marat Akhin, Nikita Bobko, Alexander Udalov
+* **Discussion**: [#431](https://github.com/Kotlin/KEEP/discussions/431)
 
 ## Abstract
 
