@@ -65,9 +65,9 @@ This is often done because JVM currently does not have support for optional argu
 Consequently, each time library maintainers introduced optional parameters to `Button` function, they need to maintain the older signature as a hidden deprecated function.
 Otherwise, any old binary compiled with the older version of the library will fail to run as JVM could not find the overload with the correct number of parameters.
 
-This means that the library source code is often polluted with the older function overloads that do not have meaningful differences with the current one.
-This kind of (anti) pattern appears frequently in the Android Jetpack Compose library.
-To fix this, we introduce a cleaner way to declare these version-based overloads.
+This means that the library source code is often polluted with older function overloads that do not have meaningful differences from the current one,
+making code maintenance painful in large libraries such as Android Jetpack Compose.
+To fix this, we introduce an easier way to declare these version-based overloads.
 Instead of manually declaring the hidden overloads, library maintainers may write the following:
 
 ```kotlin
