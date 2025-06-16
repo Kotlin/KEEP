@@ -683,13 +683,15 @@ https://youtrack.jetbrains.com/issue/KT-77129 and https://youtrack.jetbrains.com
 
 ## Related features in other languages
 
-todo
+**Swift.** [TaskLocal](https://developer.apple.com/documentation/swift/tasklocal)
 
-Swift. TaskLocal
+**Java.** ThreadLocal, [ScopedValues](https://openjdk.org/jeps/506)
 
-Java. ThreadLocal, ScopedValues (JEP 506)
-
-Kotlin. CoroutineContext, context parameters, CompositionLocal, @RestrictsSuspension
+**Kotlin.**
+CoroutineContext,
+context parameters,
+[CompositionLocal](#discarded-idea-interop-with-compose),
+[@RestrictsSuspension](https://kotlinlang.org/api/core/kotlin-stdlib/kotlin.coroutines/-restricts-suspension/)
 
 ## Alternatives
 
