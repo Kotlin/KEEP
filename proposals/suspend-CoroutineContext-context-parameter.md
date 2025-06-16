@@ -3,7 +3,11 @@
 * **Type**: Design proposal
 * **Author**: Nikita Bobko
 * **Contributors**:
-  Alejandro Serrano
+  Alejandro Serrano,
+  Marat Akhin,
+  Mikhail Zarechenskii,
+  Pavel Kunyavskiy,
+  Roman Venediktov
 * **Issue:**
   [KT-15555 Support suspend get/set properties](https://youtrack.jetbrains.com/issue/KT-15555)
 * **Discussion**: [todo](https://github.com/Kotlin/KEEP/discussions/todo)
