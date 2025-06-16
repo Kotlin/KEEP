@@ -88,7 +88,6 @@ A lot of existing Kotlin code that relies on coroutines already uses `suspend` f
   - [Declaration-site `CONFLICTING_OVERLOADS` and overridability](#declaration-site-conflicting_overloads-and-overridability)
   - [Overload resolution](#overload-resolution)
   - [Feature interaction with callable references](#feature-interaction-with-callable-references)
-  - [`expect`/`actual` feature interaction](#expectactual-feature-interaction)
 - [Concerns](#concerns)
   - [Discoverability](#discoverability)
   - [`CoroutineContext` becomes even more magical](#coroutinecontext-becomes-even-more-magical)
@@ -406,26 +405,6 @@ fun main() {
     val foo6: kotlin.reflect.KSuspendFunction0<Unit> = ::contextFun // Red code. INITIALIZER_TYPE_MISMATCH
 }
 ```
-
-### `expect`/`actual` feature interaction
-
-We would like to explicitly notice that the case mentioned above:
-
-```kotlin
-// MODULE: common
-expect class Foo {
-    suspend fun foo()
-}
-
-// MODULE: platform
-actual class Foo {
-    // Is it allowed?
-    actual context(_: CoroutineContext) fun foo() {}
-    // Related issue: https://youtrack.jetbrains.com/issue/KT-71223
-}
-```
-
-should be allowed only when `suspend fun foo` is **effectively `final`** in the `expect` class.
 
 ## Concerns
 
