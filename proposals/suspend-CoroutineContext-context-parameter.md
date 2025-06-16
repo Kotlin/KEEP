@@ -93,7 +93,6 @@ A lot of existing Kotlin code that relies on coroutines already uses `suspend` f
   - [Implicit context parameter binary signature inconsistency](#implicit-context-parameter-binary-signature-inconsistency)
   - [Discoverability](#discoverability)
   - [`CoroutineContext` becomes even more magical](#coroutinecontext-becomes-even-more-magical)
-  - [From the overload resolution perspective, `context fun` and `suspend fun` equivalence is not transitive](#from-the-overload-resolution-perspective-context-fun-and-suspend-fun-equivalence-is-not-transitive)
 - [Discarded idea. Interop with Compose](#discarded-idea-interop-with-compose)
 - [Dependencies](#dependencies)
 - [Mock example. `ScopedValues`-like API for `CoroutineContext`](#mock-example-scopedvalues-like-api-for-coroutinecontext)
@@ -455,18 +454,6 @@ And since `kotlin.coroutines.Continuation` refers to `kotlin.coroutines.Coroutin
 
 With this proposal, the special treatment for `CoroutineContext` from the compiler becomes even stronger, and it's not a good thing,
 because we typically prefer to keep the core of the language as much decoupled from the stdlib as possible.
-
-### From the overload resolution perspective, `context fun` and `suspend fun` equivalence is not transitive
-
-Pleas read [Overload resolution section](#overload-resolution) before reading this one.
-
-From the overload resolution perspective,
-1. `suspend fun foo() {}` and `context(_: CoroutineContext) fun foo() {}` are equivalent
-2. `suspend fun foo() {}` and `fun foo() {}` are equivalent
-3. **But!** `context(_: CoroutineContext) fun foo() {}` and `fun foo() {}` are not equivalent
-
-It's not the first time when equivalence is not transitive in Kotlin (remember [flexible types](https://kotlinlang.org/spec/type-system.html#flexible-types)),
-and we didn't find practical examples where it would break anything, so the proposal is to just live with it.
 
 ## Discarded idea. Interop with Compose
 
