@@ -85,9 +85,9 @@ A lot of existing Kotlin code that relies on coroutines already uses `suspend` f
 - [The proposal](#the-proposal)
   - [`coroutineContext` stdlib property](#coroutinecontext-stdlib-property)
   - [`suspend` function with explicit `CoroutineContext` context parameter](#suspend-function-with-explicit-coroutinecontext-context-parameter)
-  - [Feature interaction with callable references](#feature-interaction-with-callable-references)
   - [Declaration-site `CONFLICTING_OVERLOADS` and overridability](#declaration-site-conflicting_overloads-and-overridability)
   - [Overload resolution](#overload-resolution)
+  - [Feature interaction with callable references](#feature-interaction-with-callable-references)
   - [`expect`/`actual` feature interaction](#expectactual-feature-interaction)
 - [Concerns](#concerns)
   - [Implicit context parameter binary signature inconsistency](#implicit-context-parameter-binary-signature-inconsistency)
@@ -258,38 +258,6 @@ suspend fun foo() {}
 
 For now, we won't provide any syntax since the use case is already covered by `kotlin.coroutines.coroutineContext` and [`contextOf` function](./context-parameters.md#standard-library-support)
 
-### Feature interaction with callable references
-
-Similar to how [it's not possible](#suspend-function-with-explicit-coroutinecontext-context-parameter) to explicitialize implicit context receiver in regular code for `suspend` functions,
-it's still not possible to do that via callable references:
-
-```kotlin
-suspend fun foo() {}
-
-fun main() {
-    val bar: suspend context(_: CoroutineContext) () -> Unit = ::foo // Red code. [INITIALIZER_TYPE_MISMATCH]
-}
-```
-
-Similar to how this proposal allows calling functions with `CoroutineContext` context parameter from `suspend` functions,
-we should allow it via callable references:
-
-```kotlin
-suspend fun suspendFun() {}
-fun regularFun() {}
-context(_: kotlin.coroutines.CoroutineContext) fun contextFun() {}
-
-fun main() {
-    val foo1: suspend () -> Unit = ::suspendFun // Green code
-    val foo2: suspend () -> Unit = ::regularFun // Green code
-    val foo3: suspend () -> Unit = ::contextFun // Green code
-    // but!
-    val foo4: kotlin.reflect.KSuspendFunction0<Unit> = ::suspendFun // Green code
-    val foo5: kotlin.reflect.KSuspendFunction0<Unit> = ::regularFun // Red code. INITIALIZER_TYPE_MISMATCH
-    val foo6: kotlin.reflect.KSuspendFunction0<Unit> = ::contextFun // Red code. INITIALIZER_TYPE_MISMATCH
-}
-```
-
 ### Declaration-site `CONFLICTING_OVERLOADS` and overridability
 
 In the current Kotlin version, the following code produces `CONFLICTING_OVERLOADS` compilation error
@@ -406,6 +374,38 @@ fun main() {
         foo() // (4)
     }
     foo() // (3)
+}
+```
+
+### Feature interaction with callable references
+
+Similar to how [it's not possible](#suspend-function-with-explicit-coroutinecontext-context-parameter) to explicitialize implicit context receiver in regular code for `suspend` functions,
+it's still not possible to do that via callable references:
+
+```kotlin
+suspend fun foo() {}
+
+fun main() {
+    val bar: suspend context(_: CoroutineContext) () -> Unit = ::foo // Red code. [INITIALIZER_TYPE_MISMATCH]
+}
+```
+
+Similar to how this proposal allows calling functions with `CoroutineContext` context parameter from `suspend` functions,
+we should allow it via callable references:
+
+```kotlin
+suspend fun suspendFun() {}
+fun regularFun() {}
+context(_: kotlin.coroutines.CoroutineContext) fun contextFun() {}
+
+fun main() {
+    val foo1: suspend () -> Unit = ::suspendFun // Green code
+    val foo2: suspend () -> Unit = ::regularFun // Green code
+    val foo3: suspend () -> Unit = ::contextFun // Green code
+    // but!
+    val foo4: kotlin.reflect.KSuspendFunction0<Unit> = ::suspendFun // Green code
+    val foo5: kotlin.reflect.KSuspendFunction0<Unit> = ::regularFun // Red code. INITIALIZER_TYPE_MISMATCH
+    val foo6: kotlin.reflect.KSuspendFunction0<Unit> = ::contextFun // Red code. INITIALIZER_TYPE_MISMATCH
 }
 ```
 
