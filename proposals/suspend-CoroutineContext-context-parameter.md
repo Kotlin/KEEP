@@ -104,9 +104,9 @@ A lot of existing Kotlin code that relies on coroutines already uses `suspend` f
 ## The proposal
 
 Goals:
-1. Bridge `suspend` and context parameters features together
+1. Cover the use case of `suspend` properties without the downside of introducing `suspend` properties [KT-15555](https://youtrack.jetbrains.com/issue/KT-15555)
 2. Change the implementation of `kotlin.coroutines.coroutineContext` stdlib property from using an internal compiler intrinsic to using a regular language feature – context parameters
-3. Cover the use case of `suspend` properties without the downside of introducing `suspend` properties [KT-15555](https://youtrack.jetbrains.com/issue/KT-15555)
+3. Bridge `suspend` and context parameters features together, making the language to work as a whole
 
 The proposal is to treat all `suspend` functions as if all of them had an implicitly declared unnamed context parameter of type `CoroutineContext`:
 
