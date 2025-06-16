@@ -96,7 +96,10 @@ A lot of existing Kotlin code that relies on coroutines already uses `suspend` f
 - [Mock example. `ScopedValues`-like API for `CoroutineContext`](#mock-example-scopedvalues-like-api-for-coroutinecontext)
 - [IDE integration](#ide-integration)
 - [Related features in other languages](#related-features-in-other-languages)
-- [Discarded alternative. Treat all `suspend` functions as if they had an implicit `CoroutineContext` context parameter](#discarded-alternative-treat-all-suspend-functions-as-if-they-had-an-implicit-coroutinecontext-context-parameter)
+- [Alternatives](#alternatives)
+  - [Discarded alternative. Treat all `suspend` functions as if they had an implicit `CoroutineContext` context parameter](#discarded-alternative-treat-all-suspend-functions-as-if-they-had-an-implicit-coroutinecontext-context-parameter)
+  - [Discarded alternative. Instead of `CoroutineContext` expose `Continuation`](#discarded-alternative-instead-of-coroutinecontext-expose-continuation)
+  - [Alternative. Just allow `suspend` properties](#alternative-just-allow-suspend-properties)
 
 ## The proposal
 
@@ -610,7 +613,9 @@ context parameters,
 [CompositionLocal](#discarded-idea-interop-with-compose),
 [@RestrictsSuspension](https://kotlinlang.org/api/core/kotlin-stdlib/kotlin.coroutines/-restricts-suspension/)
 
-## Discarded alternative. Treat all `suspend` functions as if they had an implicit `CoroutineContext` context parameter
+## Alternatives
+
+### Discarded alternative. Treat all `suspend` functions as if they had an implicit `CoroutineContext` context parameter
 
 In the current proposal, `suspend fun foo() {}` is treated as if its body is enclosed within `context` function:
 
@@ -632,3 +637,34 @@ The alternative was discarded since it's generally more intrusive as it affects 
   the implicitly introduced context parameter wouldn't appear in the function binary signature,
   which would create an inconsistency.
 - Affecting function signatures carries the risk of unintentionally changing overload resolution
+
+### Discarded alternative. Instead of `CoroutineContext` expose `Continuation`
+
+Instead of exposing `CoroutineContext`, we could expose `kotlin.coroutines.Continuation`.
+The alternative is discarded because:
+
+- `Continuation` context parameter doesn't make as much sense as `CoroutineContext` context parameter
+- It'd keep [KT-15555 Support suspend get/set properties](https://youtrack.jetbrains.com/issue/KT-15555) issue unresolved
+- An unconstrained access to continuation is unsafe.
+  Raw continuations are part of the CPS-transformation.
+  If users want to access a continuation, they must use `suspendCoroutine` stdlib function,
+  which gives constrained access to `kotlin.coroutines.SafeContinuation`.
+
+### Alternative. Just allow `suspend` properties
+
+Since the main goal of this proposal is to address [KT-15555 Support suspend get/set properties](https://youtrack.jetbrains.com/issue/KT-15555),
+we could just allow suspend properties.
+
+As previously mentioned, we want to keep properties cheap to compute.
+`suspend` properties are generally not cheap.
+
+But we don't discard the idea of `suspend` properties completely.
+It's already totally possible to create non-cheap properties even without `suspend`,
+some may say that we have already lost this battle.
+
+We would like to notice that this proposal doesn't close the door for suspend properties in the future,
+shall we decide to allow them.
+
+Interestingly, this proposal has another advantage over suspend properties.
+If you use `suspend` only to access `CoroutineContext`,
+the context parameter version is more performant than `suspend` version since it doesn't require CPS-transformation on the call-site.
