@@ -1,4 +1,4 @@
-# Make all `suspend` functions implicitly expose `CoroutineContext` context parameter
+# Make all `suspend` functions implicitly inject `CoroutineContext` context parameter
 
 * **Type**: Design proposal
 * **Author**: Nikita Bobko
@@ -96,7 +96,7 @@ A lot of existing Kotlin code that relies on coroutines already uses `suspend` f
 - [Mock example. `ScopedValues`-like API for `CoroutineContext`](#mock-example-scopedvalues-like-api-for-coroutinecontext)
 - [IDE integration](#ide-integration)
 - [Related features in other languages](#related-features-in-other-languages)
-- [Alternatives](#alternatives)
+- [Discarded alternative. Treat all `suspend` functions as if they had an implicit `CoroutineContext` context parameter](#discarded-alternative-treat-all-suspend-functions-as-if-they-had-an-implicit-coroutinecontext-context-parameter)
 
 ## The proposal
 
@@ -105,19 +105,17 @@ Goals:
 2. Change the implementation of `kotlin.coroutines.coroutineContext` stdlib property from using an internal compiler intrinsic to using a regular language feature – context parameters
 3. Bridge `suspend` and context parameters features together, making the language to work as a whole
 
-The proposal is to treat all `suspend` functions as if all of them had an implicitly declared unnamed context parameter of type `CoroutineContext`:
+The proposal is to treat all `suspend` functions
+as if their bodies were implicitly enclosed within `context(getContinuation_compiler_intrinsic().context) { /* the rest of the body... */ }` stdlib function:
 
 ```kotlin
-// context(_: CoroutineContext) // An implicitly declared context parameter
-suspend fun computation() {
+suspend fun computation() = /* implicitly enclosed within */ context(getContinuation_compiler_intrinsic().context) {
     foo() // Green code
 }
 
 context(_: CoroutineContext)
 fun foo() {}
 ```
-
-Unlike explicitly declared context parameters, `suspend` function implicit context parameter doesn't change function's binary signature.
 
 ### `coroutineContext` stdlib property
 
@@ -184,10 +182,17 @@ We kill two birds with one stone:
 The following example requires an explicit notice:
 
 ```kotlin
-context(_: CoroutineContext)
+context(explicitContext: CoroutineContext)
 suspend fun foo() {
     bar()
     baz()
+    val implicitContext = coroutineContext
+    context(explicitContext) {
+        bar()
+        context(implicitContext) {
+            bar()
+        }
+    }
 }
 
 context(_: CoroutineContext)
@@ -196,45 +201,21 @@ fun bar() {}
 suspend fun baz() {}
 ```
 
-There are two possible ways to reason about the code.
-
-**The first way.**
-The explicit context parameter _explicitializes_ (it's a made up word) the implicit context parameter.
-It's essentially a way to give a name to the implicit parameter.
-
-Such an approach raises a question whether the binary signature of the `suspend` function changes once its implicit `CoroutineContext` context parameter is _explicitialized_.
-
-If yes, then the approach cannot be used to "just give a name to the implicit parameter".
-
-If no, then it's puzzling that the addition of context parameter specifically of type `CorouinteContext`, specifically to `suspend` functions doesn't change their signatures.
-Besides, what is the binary signature of the following function `context(_: CoroutineContext, _: Int, _: CoroutineContext) fun foo() {}`?
-
-And another question that the approach raises is interaction with `expect`/`actual`:
+If we just apply the mental model from [The proposal section](#the-proposal),
+we see that the implicitly injected context is located at a closer level.
 
 ```kotlin
-// MODULE: common
-expect class MyCoroutineContext
-
-context(_: MyCoroutineContext)
-suspend fun foo() {}
-
-// MODULE: platform
-actual typealias MyCoroutineContext = kotlin.coroutines.CoroutineContext
-```
-
-It's no longer possible to say what is the function's binary signature shape just by looking at its definition in the common module.
-And even worse – the shape may differ from platform to platform.
-
-**The second way.**
-The explicit context parameter adds an explicit context parameter alongside the already existing implicit parameter.
-
-It means that the example from the above results in a compilation error with `AMBIGUOUS_CONTEXT_ARGUMENT` message:
-
-```kotlin
-context(_: CoroutineContext)
-suspend fun foo() {
-    bar() // [AMBIGUOUS_CONTEXT_ARGUMENT] Multiple potential context arguments for 'CoroutineContext' in scope.
-    baz() // [AMBIGUOUS_CONTEXT_ARGUMENT] Multiple potential context arguments for 'CoroutineContext' in scope.
+context(explicitContext: CoroutineContext)
+suspend fun foo() = /* implicitly enclosed within */ context(getContinuation_compiler_intrinsic().context) {
+    bar() // Captures the implicit context
+    baz() // Green
+    val implicitContext = coroutineContext // Captures the implicit context
+    context(explicitContext) {
+        bar() // Captures the explicitContext
+        context(implicitContext) {
+            bar() // Captures the implicitContext
+        }
+    }
 }
 
 context(_: CoroutineContext)
@@ -242,18 +223,6 @@ fun bar() {}
 
 suspend fun baz() {}
 ```
-
-**The proposal** is to pick _the second way_ since it's less questionable.
-
-The reasonings above give us a hint that if we want to make it possible to explicitialize the implicit context parameter,
-then it should be some special syntax:
-
-```kotlin
-context(suspend _: CoroutineContext)
-suspend fun foo() {}
-```
-
-For now, we won't provide any syntax since the use case is already covered by `kotlin.coroutines.coroutineContext` and [`contextOf` function](./context-parameters.md#standard-library-support)
 
 ### Declaration-site `CONFLICTING_OVERLOADS` and overridability
 
@@ -311,81 +280,70 @@ actual class Foo {
 Basically, the question boils down to: from the overload resolution perspective,
 is `context(_: CoroutineContext) fun` equivalent to `suspend fun`?
 
-This proposal answers "yes" to all the questions above:
-1. Yes, `context(_: CoroutineContext) fun` and `suspend fun` produce `CONFLICTING_OVERLOADS` compilation error.
-2. Yes, `context(_: CoroutineContext) fun` can override `suspend fun`.
-3. Yes, `context(_: CoroutineContext) fun` can actualize `suspend fun`.
-4. Yes, `context(_: CoroutineContext) fun` is equivalent to `suspend fun` from the overload resolution perspective.
+This proposal answers "no" to all the questions above:
+1. No, `context(_: CoroutineContext) fun` and `suspend fun` don't produce `CONFLICTING_OVERLOADS` compilation error.
+2. No, `context(_: CoroutineContext) fun` can't override `suspend fun`.
+3. No, `context(_: CoroutineContext) fun` can't actualize `suspend fun`.
+4. No, `context(_: CoroutineContext) fun` isn't equivalent to `suspend fun` from the overload resolution perspective.
 
-But we would like to highlight that the following code stays green:
+We prefer to answer "no" because overridability is a very strong type of equivalence.
+The current Kotlin version doesn't allow to drop parameters when you override a function.
 
-```kotlin
-context(_: CoroutineContext) fun myFun() {}
-fun myFun() {}
-```
-
-which raises [the non-transitive equivalence concern](#from-the-overload-resolution-perspective-context-fun-and-suspend-fun-equivalence-is-not-transitive).
+And just to add a point, if we answered "yes", it'd introduce non-transitive equivalence into overload resolution.
+`suspend fun foo() {}` and `context(_: CoroutineContext) fun foo() {}` would be equivalent.
+`suspend fun foo() {}` and `fun foo() {}` would be equivalent.
+**But!** `context(_: CoroutineContext) fun foo() {}` and `fun foo() {}` would **not** be equivalent.
 
 ### Overload resolution
 
-The behavior defined in [the previous section](#declaration-site-conflicting_overloads-and-overridability) naturally extends and answers _the overload resolution question_:
+The behavior defined in [The proposal](#the-proposal) naturally answers _the overload resolution question_:
 
 ```kotlin
 // FILE: regularFun.kt
 package regularFun
 fun regularVsSuspend() = Unit
-fun regularVsContext() = Unit // (1)
+fun regularVsContext() = Unit // #1
 
 // FILE: suspendFun.kt
 package suspendFun
 suspend fun regularVsSuspend() = Unit
-suspend fun suspendVsContext() = Unit
+suspend fun suspendVsContext() = Unit // #2
 
 // FILE: contextFun.kt
 package contextFun
-context(_: CoroutineContext) fun suspendVsContext() = Unit
-context(_: CoroutineContext) fun regularVsContext() = Unit // (2)
+context(_: CoroutineContext) fun suspendVsContext() = Unit // #3
+context(_: CoroutineContext) fun regularVsContext() = Unit // #4
 
 // FILE: usage.kt
 package usage
-
 import regularFun.*
 import suspendFun.*
 import contextFun.*
 
 suspend fun main() {
-    regularVsSuspend() // Red code. OVERLOAD_RESOLUTION_AMBIGUITY (in existing Kotlin)
-    suspendVsContext() // Red code. OVERLOAD_RESOLUTION_AMBIGUITY
-    regularVsContext() // Green code. (2)
+    regularVsSuspend() // Red code. OVERLOAD_RESOLUTION_AMBIGUITY (Already works this way in the current Kotlin)
+    suspendVsContext() // Should resolve to #3 according to the current proposal
+    regularVsContext() // Should resolve to #4 according to the current proposal
 }
 ```
 
-The motivation for `regularVsContext` to resolve to `(2)` is the existing behavior:
+The motivation for `suspendVsContext` and `regularVsContext` to resolve to #3 and to #4 accordingly is the existing behavior:
 
 ```kotlin
-fun foo() = Unit // (3)
-context(_: Int) fun foo() = Unit // (4)
+fun foo() = Unit // #5
+context(_: Int) fun foo() = Unit // #6
 
 fun main() {
-    with(1) {
-        foo() // (4)
+    context(1) {
+        foo() // #6
     }
-    foo() // (3)
+    foo() // #5
 }
 ```
+
+Concern: is it really the way we want it to work? https://jetbrains.slack.com/archives/C01SSJUR4P9/p1750085555649539
 
 ### Feature interaction with callable references
-
-Similar to how [it's not possible](#suspend-function-with-explicit-coroutinecontext-context-parameter) to explicitialize implicit context receiver in regular code for `suspend` functions,
-it's still not possible to do that via callable references:
-
-```kotlin
-suspend fun foo() {}
-
-fun main() {
-    val bar: suspend context(_: CoroutineContext) () -> Unit = ::foo // Red code. [INITIALIZER_TYPE_MISMATCH]
-}
-```
 
 Similar to how this proposal allows calling functions with `CoroutineContext` context parameter from `suspend` functions,
 we should allow it via callable references:
@@ -396,15 +354,19 @@ fun regularFun() {}
 context(_: kotlin.coroutines.CoroutineContext) fun contextFun() {}
 
 fun main() {
-    val foo1: suspend () -> Unit = ::suspendFun // Green code
-    val foo2: suspend () -> Unit = ::regularFun // Green code
-    val foo3: suspend () -> Unit = ::contextFun // Green code
+    val foo1: suspend () -> Unit = ::suspendFun // #1 Green code (Already works this way in the current Kotlin)
+    val foo2: suspend () -> Unit = ::regularFun // #2 Green code (Already works this way in the current Kotlin)
+    val foo3: suspend () -> Unit = ::contextFun // #3 Should it be green or red?
     // but!
-    val foo4: kotlin.reflect.KSuspendFunction0<Unit> = ::suspendFun // Green code
-    val foo5: kotlin.reflect.KSuspendFunction0<Unit> = ::regularFun // Red code. INITIALIZER_TYPE_MISMATCH
-    val foo6: kotlin.reflect.KSuspendFunction0<Unit> = ::contextFun // Red code. INITIALIZER_TYPE_MISMATCH
+    val foo4: kotlin.reflect.KSuspendFunction0<Unit> = ::suspendFun // #4 Green code (Already works this way in the current Kotlin)
+    val foo5: kotlin.reflect.KSuspendFunction0<Unit> = ::regularFun // #5 Red code. INITIALIZER_TYPE_MISMATCH (Already works this way in the current Kotlin)
+    val foo6: kotlin.reflect.KSuspendFunction0<Unit> = ::contextFun // #6 Should it be green or red? It should be red code, no questions. INITIALIZER_TYPE_MISMATCH
 }
 ```
+
+- Given that #5 is red, #6 should be obviously red.
+- Since the context and `suspend` functions are different from the perspective of overload resolution ([see section](#declaration-site-conflicting_overloads-and-overridability)),
+  we propose to make #3 red – `INITIALIZER_TYPE_MISMATCH`.
 
 ## Concerns
 
@@ -550,14 +512,14 @@ fun foo() {
 fun String.functionWithExtensionHole() {}
 ```
 
-If not the decision to not fill in the extension and dispatch hole, this proposal would be a breaking change:
+If not the decision to not fill in the extension and dispatch hole, this proposal would be a change of behavior:
 
 ```kotlin
 suspend fun CoroutineContext.bar() {
-    baz() // [AMBIGUOUS_CONTEXT_ARGUMENT] Multiple potential context arguments for 'CoroutineContext' in scope.
+    baz()
 }
 
-suspend fun baz() {}
+fun CoroutineContext.baz() {}
 ```
 
 Thankfully, it's not the case.
@@ -648,8 +610,25 @@ context parameters,
 [CompositionLocal](#discarded-idea-interop-with-compose),
 [@RestrictsSuspension](https://kotlinlang.org/api/core/kotlin-stdlib/kotlin.coroutines/-restricts-suspension/)
 
-## Alternatives
+## Discarded alternative. Treat all `suspend` functions as if they had an implicit `CoroutineContext` context parameter
 
-No other alternatives to bridge the features crossed our minds.
+In the current proposal, `suspend fun foo() {}` is treated as if its body is enclosed within `context` function:
 
-There is an obvious alternative to not bridge the features and keep everything as it is.
+```kotlin
+suspend fun foo() = context(getContinuation().context /*intrinsic*/) {
+}
+```
+
+A considered alternative was to treat all `suspend` functions as if all of them had an _implicit `CoroutineContext` context parameter_:
+
+```kotlin
+context(_: CoroutineContext) // implicit context paramter
+suspend fun foo() {}
+```
+
+The alternative was discarded since it's generally more intrusive as it affects function signatures.
+
+- Unlike the explicitly defined context parameter,
+  the implicitly introduced context parameter wouldn't appear in the function binary signature,
+  which would create an inconsistency.
+- Affecting function signatures carries the risk of unintentionally changing overload resolution
