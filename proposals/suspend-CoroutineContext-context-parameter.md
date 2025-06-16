@@ -82,7 +82,7 @@ A lot of existing Kotlin code that relies on coroutines already uses `suspend` f
   - [`coroutineContext` stdlib property](#coroutinecontext-stdlib-property)
   - [`suspend` function with explicit `CoroutineContext` context parameter](#suspend-function-with-explicit-coroutinecontext-context-parameter)
   - [Feature interaction with callable references](#feature-interaction-with-callable-references)
-  - [Declaration-site `CONFLICTING_OVERLOADS`](#declaration-site-conflicting_overloads)
+  - [Declaration-site `CONFLICTING_OVERLOADS` and overridability](#declaration-site-conflicting_overloads-and-overridability)
   - [Overload resolution](#overload-resolution)
   - [`expect`/`actual` feature interaction](#expectactual-feature-interaction)
 - [Concerns](#concerns)
@@ -286,7 +286,7 @@ fun main() {
 }
 ```
 
-### Declaration-site `CONFLICTING_OVERLOADS`
+### Declaration-site `CONFLICTING_OVERLOADS` and overridability
 
 The following code produces `CONFLICTING_OVERLOADS` compilation error
 
@@ -359,7 +359,7 @@ which raises [the non-transitive equivalence concern](#from-the-overload-resolut
 
 ### Overload resolution
 
-The behavior defined in [the previous section](#declaration-site-conflicting_overloads) naturally extends and answers _the overload resolution question_:
+The behavior defined in [the previous section](#declaration-site-conflicting_overloads-and-overridability) naturally extends and answers _the overload resolution question_:
 
 ```kotlin
 // FILE: regularFun.kt
