@@ -292,7 +292,7 @@ fun main() {
 
 ### Declaration-site `CONFLICTING_OVERLOADS` and overridability
 
-The following code produces `CONFLICTING_OVERLOADS` compilation error
+In the current Kotlin version, the following code produces `CONFLICTING_OVERLOADS` compilation error
 
 ```kotlin
 suspend fun myFun() {} // Red code. CONFLICTING_OVERLOADS
@@ -649,7 +649,8 @@ The first thing that we don't like is `suspend fun get()`, we want to make it a 
 class LocalValue<T> : CoroutineContext.Key<LocalValue.MyElement<T>> {
     // ...
     context(context: CoroutineContext)
-    val value: T? get() = context[this]?.value
+    val value: T?
+        get() = context[this]?.value
 }
 ```
 
