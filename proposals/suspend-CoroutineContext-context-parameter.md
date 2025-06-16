@@ -90,7 +90,6 @@ A lot of existing Kotlin code that relies on coroutines already uses `suspend` f
   - [Feature interaction with callable references](#feature-interaction-with-callable-references)
   - [`expect`/`actual` feature interaction](#expectactual-feature-interaction)
 - [Concerns](#concerns)
-  - [Implicit context parameter binary signature inconsistency](#implicit-context-parameter-binary-signature-inconsistency)
   - [Discoverability](#discoverability)
   - [`CoroutineContext` becomes even more magical](#coroutinecontext-becomes-even-more-magical)
 - [Discarded idea. Interop with Compose](#discarded-idea-interop-with-compose)
@@ -429,16 +428,6 @@ actual class Foo {
 should be allowed only when `suspend fun foo` is **effectively `final`** in the `expect` class.
 
 ## Concerns
-
-### Implicit context parameter binary signature inconsistency
-
-Normally, the addition of a contextual parameter changes the function's binary signature.
-Unfortunately, it's not the case with the _implicit_ context parameter that the compiler adds for `suspend` functions according to this proposal.
-We are not going to change binary signature of existing `suspend` functions.
-
-This inconsistency creates an inconsistency between implicit and explicit context parameters.
-This inconsistency doesn't create any oddities or inconsistencies in the language itself, but only on the binary level.
-The proposal is to acknowledge this binary inconsistency and live with it.
 
 ### Discoverability
 
