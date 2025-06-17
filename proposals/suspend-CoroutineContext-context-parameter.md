@@ -235,7 +235,7 @@ suspend fun main() {
 ```
 
 As it can be seen, unless explicitly reintroduced via `context` stdlib function,
-the explicit context parameter `context(_: CoroutineContext)` is hidden.
+the explicit context parameter `context(explicitContext: CoroutineContext)` is hidden.
 That's why it's also proposed to yield a compiler warning that the explicit context parameter is shadowed by the `suspend`'s function own `CoroutineContext`.
 
 ### Declaration-site `CONFLICTING_OVERLOADS` and overridability
