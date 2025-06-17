@@ -108,6 +108,18 @@ val city: LiveData<String>
 The type of the field can also be specified explicitly by writing `field: Type`. 
 Otherwise, the compiler infers the type of explicit backing field.
 
+The initialization expression is optional. In case it's omitted, the field type must be specified:
+
+```kotlin
+class SomeViewModel : ViewModel() {
+    val city: LiveData<String> field: MutableLiveData<String>
+
+    init {
+        city = MutableLiveData()
+    }
+}
+```
+
 When a property with an EBF (explicit backing field) is compiled, the backing field gets a type of EBF.
 
 ### Call-site
@@ -164,13 +176,13 @@ But it's still possible to get a smart cast in the old way (e.g., by explicit `i
 
 ```kotlin
 class C {
-  val prop: List<Int> field = mutableListOf()
+  val prop: LiveData<Int> field = MutableLiveData(0)
 
   inline fun foo() {
-    prop.add(1) // ERROR
+    prop.value = 1 // ERROR
 
-    if (prop is MutableList) {
-        prop.add(2) // OK
+    if (prop is MutableLiveData) {
+        prop.value = 2 // OK
     }
   }
 }
@@ -195,7 +207,7 @@ propertyDeclaration ::=
     (multiVariableDeclaration | variableDeclaration)
     typeConstraints?
 -   (('=' expression) | propertyDelegate)? ';'?
-+   ((('field' (':' type)? )? '=' expression) | propertyDelegate)? ';'?
++   ((('field' (':' type)? )? ('=' expression)?) | propertyDelegate)? ';'?
     ((getter? (semi? setter)?) | (setter? (semi? getter)?))     
 ```
 
