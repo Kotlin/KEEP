@@ -172,21 +172,6 @@ Compiler enforces these rules for the properties with an explicit backing field 
 ### Call from inline functions
 
 Automatic smart cast on properties with EBF is disabled inside `public`, `internal` and `protected` inline functions.
-But it's still possible to get a smart cast in the old way (e.g., by explicit `is` check).
-
-```kotlin
-class C {
-  val prop: LiveData<Int> field = MutableLiveData(0)
-
-  inline fun foo() {
-    prop.value = 1 // ERROR
-
-    if (prop is MutableLiveData) {
-        prop.value = 2 // OK
-    }
-  }
-}
-```
 
 ### Other restrictions
 
