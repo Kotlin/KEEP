@@ -188,7 +188,6 @@ The following example requires an explicit notice:
 context(explicitContext: CoroutineContext)
 suspend fun foo() {
     bar()
-    baz()
     val implicitContext = coroutineContext
     context(explicitContext) {
         bar()
@@ -200,8 +199,6 @@ suspend fun foo() {
 
 context(_: CoroutineContext)
 fun bar() {}
-
-suspend fun baz() {}
 ```
 
 If we just apply the mental model from [The proposal section](#the-proposal),
@@ -211,22 +208,35 @@ which naturally gives us an answer on which `CoroutineContext` should be capture
 ```kotlin
 context(explicitContext: CoroutineContext)
 suspend fun foo() = /* implicitly enclosed within */ context(getContinuation_compiler_intrinsic().context) {
-    bar() // Captures the implicit context
-    baz() // Green
+    bar() // Prints "implicit context"
     val implicitContext = coroutineContext // Captures the implicit context
     context(explicitContext) {
-        bar() // Captures the explicitContext
+        bar() // Prints "explicit context"
         context(implicitContext) {
-            bar() // Captures the implicitContext
+            bar() // Prints "implicit context"
         }
     }
 }
 
-context(_: CoroutineContext)
-fun bar() {}
+context(context: CoroutineContext)
+fun bar(): Unit = println(context[ContextMarker]!!.marker)
 
-suspend fun baz() {}
+class ContextMarker(val marker: String) : AbstractCoroutineContextElement(Companion) {
+    companion object : CoroutineContext.Key<ContextMarker>
+}
+
+suspend fun main() {
+    withContext(ContextMarker("implicit context")) {
+        context(ContextMarker("explicit context")) {
+            foo()
+        }
+    }
+}
 ```
+
+As it can be seen, unless explicitly reintroduced via `context` stdlib function,
+the explicit context parameter `context(_: CoroutineContext)` is hidden.
+That's why it's also proposed to yield a compiler warning that the explicit context parameter is shadowed by the `suspend`'s function own `CoroutineContext`.
 
 ### Declaration-site `CONFLICTING_OVERLOADS` and overridability
 
