@@ -500,6 +500,41 @@ public expect class AtomicReference<T> {
 
 </details>
 
+More complex atomic transformations, like multiplying a value, or performing a bitwise operation on it,
+could be built using the provided core API.
+To avoid the necessity of writing boilerplate code required to implement such transformations,
+the library will provide a family of `update` functions:
+- `update`
+- `fetchAndUpdate`
+- `updateAndFetch`
+
+All these functions should accept a transformer function responsible for computing a new value.
+As names suggest, update functions will either return nothing, the old or the updated value.
+To perform an arbitrary transformation atomically, these functions will invoke a supplied
+transformation in a loop until a compare-and-set operation will succeed. That means
+the transformation will be invoked one or more times.
+
+The only atomic type that will not get its update functions is `AtomicBoolean`,
+as all transformations of its values are trivial and could be easily expressed using the core API.
+
+<details>
+<summary>Update-functions API</summary>
+
+```kotlin
+public expect inline fun AtomicInt.update(transform: (Int) -> Int): Unit
+public expect inline fun AtomicInt.fetchAndUpdate(transform: (Int) -> Int): Int
+public expect inline fun AtomicInt.updateAndFetch(transform: (Int) -> Int): Int
+
+public expect inline fun AtomicLong.update(transform: (Long) -> Long): Unit
+public expect inline fun AtomicLong.fetchAndUpdate(transform: (Long) -> Long): Long
+public expect inline fun AtomicLong.updateAndFetch(transform: (Long) -> Long): Long
+
+public expect inline fun <T> AtomicReference<T>.update(transform: (T) -> T): Unit
+public expect inline fun <T> AtomicReference<T>.fetchAndUpdate(transform: (T) -> T): T
+public expect inline fun <T> AtomicReference<T>.updateAndFetch(transform: (T) -> T): T
+```
+</details>
+
 **3.1 Why `load`/`store`?**
 
 * `a.value++` could be confused with atomic increment of the value, while the result of `a.load()` cannot be incremented like that.
@@ -657,6 +692,33 @@ public expect class AtomicArray<T> public constructor(size: Int) {
 public expect inline fun <reified T> AtomicArray(size: Int, init: (Int) -> T): AtomicArray<T>
 ```
 
+</details>
+
+Following scalar atomic API design, an update-functions API will be provided for atomic arrays too
+and it will include the following functions:
+- `updateAt`
+- `updateAndFetchAt`
+- `fetchAndUpdateAt`
+
+These functions will allow applying arbitrary transformations to a selected array element atomically.
+Please refer to the scalar atomics type section of this document for more details on similar operations.
+
+<details>
+<summary>Update-functions API</summary>
+
+```kotlin
+public expect inline fun AtomicIntArray.updateAt(index: Int, transform: (Int) -> Int): Unit
+public expect inline fun AtomicIntArray.updateAndFetchAt(index: Int, transform: (Int) -> Int): Int
+public expect inline fun AtomicIntArray.fetchAndUpdateAt(index: Int, transform: (Int) -> Int): Int
+
+public expect inline fun AtomicLongArray.updateAt(index: Int, transform: (Long) -> Long): Unit
+public expect inline fun AtomicLongArray.updateAndFetchAt(index: Int, transform: (Long) -> Long): Long
+public expect inline fun AtomicLongArray.fetchAndUpdateAt(index: Int, transform: (Long) -> Long): Long
+
+public expect inline fun <T> AtomicArray<T>.updateAt(index: Int, transform: (T) -> T): Unit
+public expect inline fun <T> AtomicArray<T>.updateAndFetchAt(index: Int, transform: (T) -> T): T
+public expect inline fun <T> AtomicArray<T>.fetchAndUpdateAt(index: Int, transform: (T) -> T): T
+```
 </details>
 
 **1. Atomic array size**
