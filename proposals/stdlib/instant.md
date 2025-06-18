@@ -4,8 +4,7 @@ Instant and Clock.
 * **Type**: Standard Library API proposal
 * **Author**: Dmitry Khalanskiy
 * **Contributors**: Ilya Gorbunov, Roman Elizarov, Vsevolod Tolstopyatov
-* **Status**: pending
-* **Prototype**: available in `kotlinx-datetime`
+* **Status**: implemented in Kotlin 2.1.20 and marked as `@ExperimentalTime`
 * **Discussion**: [KEEP-395](https://github.com/Kotlin/KEEP/issues/395)
 
 Summary
