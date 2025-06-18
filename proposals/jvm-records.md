@@ -2,7 +2,7 @@
 
 * **Type**: Design proposal
 * **Author**: Ilya Gorbunov
-* **Status**: Under consideration
+* **Status**: Stable in 1.5.0
 * **Discussion**: [KEEP-233](https://github.com/Kotlin/KEEP/issues/233)
 * **Related issues**: [KT-44121](https://youtrack.jetbrains.com/issue/KT-44121)
 
