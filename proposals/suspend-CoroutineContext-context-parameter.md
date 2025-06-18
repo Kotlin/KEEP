@@ -235,7 +235,7 @@ suspend fun main() {
 ```
 
 As it can be seen, unless explicitly reintroduced via `context` stdlib function,
-the explicit context parameter `context(explicitContext: CoroutineContext)` is hidden.
+the explicit context parameter `context(explicitContext: CoroutineContext)` is shadowed.
 That's why it's also proposed to yield a compiler warning that the explicit context parameter is shadowed by the `suspend`'s function own `CoroutineContext`.
 
 ### Declaration-site `CONFLICTING_OVERLOADS` and overridability
@@ -341,7 +341,7 @@ suspend fun main() {
 }
 ```
 
-The motivation for `suspendVsContext` and `regularVsContext` to resolve to #3 and to #4 accordingly is the existing behavior:
+The motivation for `suspendVsContext` and `regularVsContext` to resolve to \#3 and to \#4 accordingly is the existing behavior:
 
 ```kotlin
 fun foo() = Unit // #5
@@ -378,9 +378,9 @@ fun main() {
 }
 ```
 
-- Given that #5 is red, #6 should be obviously red.
+- Given that \#5 is red, \#6 should be obviously red.
 - Since the context and `suspend` functions are different from the perspective of overload resolution ([see section](#declaration-site-conflicting_overloads-and-overridability)),
-  we propose to make #3 red – `INITIALIZER_TYPE_MISMATCH`.
+  we propose to make \#3 red – `INITIALIZER_TYPE_MISMATCH`.
 
 ## Concerns
 
