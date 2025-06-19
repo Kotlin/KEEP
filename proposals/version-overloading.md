@@ -22,6 +22,7 @@ This is useful for maintaining binary compatibility of functions with optional p
   * [Generating the overloads](#generating-the-overloads)
   * [Validation](#validation)
   * [Relabeling and removing annotations](#relabeling-and-removing-annotations)
+  * [Interactions with JvmOverloads]()
 * [Alternative designs](#alternative-designs)
   * [Maven comparable version string](#maven-comparable-version-string)
   * [User-defined version class](#user-defined-version-class)
@@ -195,14 +196,14 @@ Therefore, it is advisable to avoid adding new optional parameters in the middle
 
 The compiler validates the following conditions for each instance of `@IntroducedAt`:
 1. Only optional parameter can be annotated with `@IntroducedAt`.
-2. The version string conforms to the [defined format](#version-string-format-and-semantics).
-3. Non-final functions and functions with `@JvmOverloads` annotation may not have version annotated parameter.
-4. A version annotated parameter's default value may not refer to an optional parameter annotated with a version later than itself.
-5. Version annotated optional parameter may not appear before non-optional parameters except for a trailing lambda parameter.
-6. Optional parameters, including the ones with empty version, appear in ascending order by the version numbers (warning only), 
+2. Non-final functions may not have version annotated parameter.
+3. A version annotated parameter's default value may not refer to an optional parameter annotated with a version later than itself.
+4. Functions with `@JvmOverloads` annotation may not have version annotated parameter (warning only, suppressible).
+5. Version annotated optional parameter may not appear before non-optional parameters except for a trailing lambda parameter (suppressible).
+6. Optional parameters, including the ones with empty version, appear in ascending order by the version numbers (warning only, suppressible), 
    or must be forced-named parameters (currently unchecked).
 
-
+The first three rules always produce non-suppressible errors if violated, while the other three can be suppressed.
 As we mentioned previously, there will be source incompatibility issue if new optional parameters are added in the middle of the old parameters.
 We currently warn users when this happened, and users may choose to suppress the warning if they want.
 A possible extension in the future is the [forced-named parameter requirement](https://youtrack.jetbrains.com/issue/KT-14934) for non-ordered versioned parameters.
@@ -265,6 +266,39 @@ fun xyz(
 ```
 
 We leave the decision whether to indefinitely keep or gradually remove the annotations up to the library authors.
+
+### Interactions with JvmOverloads
+
+A similar annotation to `IntroducedAt` is the [JvmOverloads](https://kotlinlang.org/api/core/kotlin-stdlib/kotlin.jvm/-jvm-overloads/) annotation.
+Since both annotations generate extra overloads, there may be conflicting overloads.
+This is especially the case when the version numbers are not in ascending order.
+We discourage this by giving a warning when this occurs, but users may choose to suppress the warning.
+If users suppress the warning, the generated overloads of `IntroducedAt` is prioritized over `JvmOverloads`:
+
+```kotlin
+@Suppress("CONFLICT_WITH_JVM_OVERLOADS_ANNOTATION", "NON_ASCENDING_VERSION_ANNOTATION")
+@JvmOverloads
+fun xyz(
+    a: Int = 1,
+    @IntroducedAt("3") a1: Int = 2,
+    @IntroducedAt("2") b : Int = 3,
+) { }
+
+/* 
+IntroducedAt overloads only:
+  1. @Deprecated fun xyz(a: Int = 1)
+  2. @Deprecated fun xyz(a: Int = 1, b: Int = 3)
+
+JvmOverloads overloads only: 
+  3. fun xyz()
+  4. fun xyz(a: Int)             // clash with (1), not generated
+  5. fun xyz(a: Int, a1: Int)    // clash with (2), not generated
+*/
+```
+
+The generated overloads are (1), (2) and (3).
+Overloads (4) and (5) are not generated since their signature clash with overloads (1) and (2).
+
 
 ## Alternative designs
 
