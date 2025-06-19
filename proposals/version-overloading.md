@@ -22,9 +22,9 @@ This is useful for maintaining binary compatibility of functions with optional p
   * [Generating the overloads](#generating-the-overloads)
   * [Validation](#validation)
   * [Relabeling and removing annotations](#relabeling-and-removing-annotations)
-  * [Interactions with JvmOverloads]()
+  * [Interactions with JvmOverloads](#interactions-with-jvmoverloads)
 * [Alternative designs](#alternative-designs)
-  * [Maven comparable version string](#maven-comparable-version-string)
+  * [Semver-like version number](#semver-like-version-number)
   * [User-defined version class](#user-defined-version-class)
 
 ## Motivating example
@@ -119,15 +119,14 @@ annotation class IntroducedAt(val version: String)
 
 ### Version string format and semantics
 
-The version string is a series of non-negative integers seperated by periods, corresponding to the regex pattern `\d+(\.\d+)*`.
-Version strings are numerically compared from the leftmost component to rightmost component, for example `0.1` < `1` < `1.1.0.1` < `1.1.1`.
-Simple non-negative integer strings, such as `1` or `2`, are allowed.
-Any leading zeroes within the integer parts are ignored, such that `1.02` == `1.2`.
-Version strings that do not match this format are reported as an error.
+Version strings are parsed using the [Apache Maven comparable version](https://maven.apache.org/ref/3.5.2/maven-artifact/apidocs/org/apache/maven/artifact/versioning/ComparableVersion.html),
+which is [already implemented in the Kotlin compiler](https://github.com/JetBrains/kotlin/blob/d2966040c414579bb393c3fbcd517eb27f040efb/compiler/util/src/org/jetbrains/kotlin/config/MavenComparableVersion.java).
+This format is very flexible and can handle version number ordering with common qualifiers, such that `1.9` < `1.10-beta2` < `1.10-rc1` < `1.10` < `1.90`. 
+If this is too powerful, users can also use simple integers like `1` and `2` to represent the versions.
 
 Any parameters lacking version annotations are considered to have the "empty" version, which is always the oldest version.
 For the overload generating purpose, a parameter's version string are only related to the other parameters' version strings in the same function.
-As such, one may use a version numbering scheme that is different to the library's version numbers, such as simple non-negative integer strings:
+As such, one may use a version numbering scheme that is different to the library's version numbers:
 
 ```kotlin
 // Equivalent to the previous example which uses "1.1" and "1.2"
@@ -309,13 +308,11 @@ This is because they are not as common as additions, there are no simple way to 
 The design alternatives are therefore similar to the main design in that they support only parameter additions.
 Otherwise, they vary in how to represent the version numbers.
 
-### Maven comparable version string
+### Semver-like version number
 
-One alternative is to use the [Apache Maven comparable version string](https://maven.apache.org/ref/3.5.2/maven-artifact/apidocs/org/apache/maven/artifact/versioning/ComparableVersion.html),
-which is [already implemented in the Kotlin compiler](https://github.com/JetBrains/kotlin/blob/d2966040c414579bb393c3fbcd517eb27f040efb/compiler/util/src/org/jetbrains/kotlin/config/MavenComparableVersion.java).
-We decided against using this format since it is too flexible (all strings are valid Maven version strings) and the ordering might be confusing if the string contains non-standard qualifiers.
-We also do not found a good case where library maintainers want to label an `IntroducedAt` annotation with a development version string, such as `1.0.3-beta`,
-instead of just using the release version string `1.0.3`.
+The initial design of this feature uses a semver-like version number format, corresponding to the regex pattern `\d+(\.\d+)*`.
+This can be useful to catch possible typographical errors, such as writing `1..1` instead of `1.1`.
+However, after discussions with the community, we decided to use the Maven comparable version since it is more powerful and already implemented in the compiler.
 
 ### User-defined version class
 Another alternative design is by using a meta annotation to allow user-defined version class instead of using version number string, as shown in the example below.
