@@ -120,7 +120,7 @@ annotation class IntroducedAt(val version: String)
 ### Version string format and semantics
 
 Version strings are parsed using the [Apache Maven comparable version](https://maven.apache.org/ref/3.5.2/maven-artifact/apidocs/org/apache/maven/artifact/versioning/ComparableVersion.html),
-which is [already implemented in the Kotlin compiler](https://github.com/JetBrains/kotlin/blob/d2966040c414579bb393c3fbcd517eb27f040efb/compiler/util/src/org/jetbrains/kotlin/config/MavenComparableVersion.java).
+which is [already used in the Kotlin compiler](https://github.com/JetBrains/kotlin/blob/d2966040c414579bb393c3fbcd517eb27f040efb/compiler/util/src/org/jetbrains/kotlin/config/MavenComparableVersion.java).
 This format is very flexible and can handle version number ordering with common qualifiers, such that `1.9` < `1.10-beta2` < `1.10-rc1` < `1.10` < `1.90`. 
 If this is too powerful, users can also use simple integers like `1` and `2` to represent the versions.
 
@@ -312,7 +312,7 @@ Otherwise, they vary in how to represent the version numbers.
 
 The initial design of this feature uses a semver-like version number format, corresponding to the regex pattern `\d+(\.\d+)*`.
 This can be useful to catch possible typographical errors, such as writing `1..1` instead of `1.1`.
-However, after discussions with the community, we decided to use the Maven comparable version since it is more powerful and already implemented in the compiler.
+However, after discussions with the community, we decided to use the Maven comparable version since it is more powerful, well-tested, and already included in the compiler.
 
 ### User-defined version class
 Another alternative design is by using a meta annotation to allow user-defined version class instead of using version number string, as shown in the example below.
