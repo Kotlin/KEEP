@@ -180,9 +180,11 @@ from existing syntax to avoid confusion.
 
 The proposed syntax makes it clear that we are defining new variables since
 it uses `val`, and reads quite naturally in the case of renaming. 
-There is indeed some repetition in `val`, but this also means that there is now
-a place for annotations or the possibility to use `var`, in case we find that
-necessary.
+There is indeed some repetition in `val`, but this opens the door to using 'var'.
+
+> [!IMPORTANT]
+> Because of technical issues it will not be possible to write annotations
+> before each of the elements. Details are explained below.
 
 **Renaming.** In this proposal we restrict what may appear after `=` in
 renaming to **simple identifiers**. In principle it is possible to allow
@@ -335,6 +337,12 @@ is updated as follows. In both `multiParenVariableDeclaration` and
 [`_` for unused variables](https://github.com/Kotlin/KEEP/blob/underscore-for-unused-local/proposals/underscores-for-local-variables.md)
 is forbidden, except when using renaming.
 
+> [!NOTE]
+> The use of `Paren` in the production rule means "between parentheses".
+> We refrain from using "name-based" here, because the same syntax is going
+> to be used for position- and name-based destructuring at different phases,
+> as described in the [migration plan](#migration-plan).
+
 _Allow new syntax in properties, loops, and lambdas_
 
 ```diff
@@ -401,14 +409,31 @@ _Introduce new full-syntax, both name- and position-based_
 +   {NL}
 +   ']'
 
++ fullVariableDeclaration:
++   'val'   # ('val' | 'var') if mutable variables are allowed
++   {NL} simpleIdentifier [{NL} ':' {NL} type]
+
 + fullVariableDeclarationWithRenaming:
 +   fullVariableDeclaration [{NL} ('=' {NL} simpleIdentifier)]
-
-+ fullVariableDeclaration:
-+   [modifiers]
-+   'val'   # ('val' | 'var') if mutable variables are allowed
-+   {NL} variableDeclaration 
 ```
+
+**Disambiguation**. One important restriction of this design is that no
+modifiers (including annotations) may appear before the `val` (or
+potentially, `var`) in the full-form. This is needed because the parser
+must be able to disambiguate those forms from other similar ones in the grammar:
+
+- the full-form of name-based destructuring starts in the same
+  way that a _parenthesized expression_, 
+- the full-form of the new position-based destructuring conflicts with 
+  _indexing expressions_.
+
+With the restriction, when the parser sees `(` or `[`, it only needs **one**
+token of lookahead to decide which parsing rule ought to be applied.
+
+It is possible to extend this rule to modifiers that may not appear in front
+of an expression (like `public`). This rejects annotations, since they may
+appear in front of an expression too. We would need unbounded lookahead to
+decide which rule to apply, which would heavily impact parsing performance.
 
 **Translation**. The compiler should treat name-based destructuring as a
 sequence of property accesses. In general, a name-based destructuring
