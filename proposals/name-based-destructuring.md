@@ -17,13 +17,13 @@ In addition, we propose new syntax for **position**-based destructuring.
 * [Abstract](#abstract)
 * [Table of contents](#table-of-contents)
 * [Motivation](#motivation)
-    * [General problems](#general-problems)
-    * [Problems with data classes](#problems-with-data-classes)
-    * [The role of position-based destructuring](#the-role-of-position-based-destructuring)
-    * [Out of scope](#out-of-scope)
+  * [General problems](#general-problems)
+  * [Problems with data classes](#problems-with-data-classes)
+  * [The role of position-based destructuring](#the-role-of-position-based-destructuring)
+  * [Out of scope](#out-of-scope)
 * [Proposed solution](#proposed-solution)
-    * [New position-based destructuring](#new-position-based-destructuring)
-    * [Migration plan](#migration-plan)
+  * [New position-based destructuring](#new-position-based-destructuring)
+  * [Migration plan](#migration-plan)
 * [Technical details](#technical-details)
 * [Potential extensions](#potential-extensions)
 
@@ -330,7 +330,10 @@ destructuring.
 ## Technical details
 
 **Grammar**. The [grammar](https://kotlinlang.org/spec/syntax-and-grammar.html#syntax-grammar)
-is updated as follows.
+is updated as follows. In both `multiParenVariableDeclaration` and
+`fullMultiParenVariableDeclaration` the use of the identifier 
+[`_` for unused variables](https://github.com/Kotlin/KEEP/blob/underscore-for-unused-local/proposals/underscores-for-local-variables.md)
+is forbidden, except when using renaming.
 
 _Allow new syntax in properties, loops, and lambdas_
 
@@ -383,8 +386,8 @@ _Introduce new full-syntax, both name- and position-based_
 + fullMultiParenVariableDeclaration:
 +   '('
 +   {NL}
-+   variableDeclarationWithRenaming
-+   {{NL} ',' {NL} variableDeclarationWithRenaming}
++   fullVariableDeclarationWithRenaming
++   {{NL} ',' {NL} fullVariableDeclarationWithRenaming}
 +   [{NL} ',']
 +   {NL}
 +   ')'
@@ -392,32 +395,43 @@ _Introduce new full-syntax, both name- and position-based_
 + fullMultiPositionalVariableDeclaration:
 +   '['
 +   {NL}
-+   variableDeclaration
-+   {{NL} ',' {NL} variableDeclaration}
++   fullVariableDeclaration
++   {{NL} ',' {NL} fullVariableDeclaration}
 +   [{NL} ',']
 +   {NL}
 +   ']'
 
-+ variableDeclarationWithRenaming:
-+   variableDeclaration [{NL} ('=' {NL} simpleIdentifier)]
++ fullVariableDeclarationWithRenaming:
++   fullVariableDeclaration [{NL} ('=' {NL} simpleIdentifier)]
+
++ fullVariableDeclaration:
++   [modifiers]
++   'val'   # ('val' | 'var') if mutable variables are allowed
++   {NL} variableDeclaration 
 ```
 
 **Translation**. The compiler should treat name-based destructuring as a
-sequence of property accesses.
+sequence of property accesses. In general, a name-based destructuring
+declaration has the following form, where declarations without renaming
+`val x` are previously turned into `val x = x`.
 
 ```kotlin
 (val x1 = p1, ... val xN = pN) = e
+````
 
-// is translated to
+This general form should be translated as follows.
+
+```kotlin
 val $tmp = e
 val x1 = $tmp.p1
 ...
 val xN = $tmp.pN
 ```
 
-This informs the expected behavior of the code. For example, if accessing
-`p1` stops computation, then all the rest of declarations would be marked
-as inaccessible code.
+This informs the expected behavior of the code, in particular with respect
+to the _order_ in which operations happen.
+For example, if accessing `p1` stops computation, then all the rest of
+declarations would be marked as inaccessible code.
 
 The translation of the new syntax for position-based destructuring follows
 the same rules of
