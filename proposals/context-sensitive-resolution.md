@@ -22,7 +22,7 @@ We propose an improvement of the name resolution rules of Kotlin based on the co
 * [Technical details](#technical-details)
   * [Expected and contextual type propagation](#expected-and-contextual-type-propagation)
   * [Single definite contextual type](#single-definite-contextual-type)
-  * [Additional contextual scope](#additional-contextual-scope)
+  * [Additional contextual scopes](#additional-contextual-scopes)
   * [Changes to overload resolution](#changes-to-overload-resolution)
   * [Interaction with inference](#interaction-with-inference)
 * [Design decisions](#design-decisions)
@@ -93,7 +93,6 @@ In **type position** only classifiers which are both _nested_ and _sealed inheri
 
 ```kotlin
 sealed interface Either<out E, out A> {
-
   data class  Left<out E>(val error: E): Either<E, Nothing>
   data class Right<out A>(val value: A): Either<Nothing, A>
 }
@@ -161,7 +160,7 @@ when (color) {
 }
 ```
 
-We do **not** look in the static and companion object scopes of **supertypes** of the contextual type. This is in accordance to the rules of [resolution with an explicit type receiver](https://kotlinlang.org/spec/overload-resolution.html#call-with-an-explicit-type-receiver). Technically, we perform some pre-processing of the contextual type to simplify it, but the general rule is that only _one_ classifier is searched.
+In general we do **not** look in the static and companion object scopes of **supertypes** of the contextual type, only _one_ classifier is searched. The only exception are supertypes that also **enclose** the type. This allows us to cater for the common pattern of sealed abstract classes or interfaces whose inheritors are defined inside of them, like `Either` above.
 
 ### No-argument callables
 
@@ -309,11 +308,24 @@ There are some scenarios in which the contextual type propagation described abov
   * "Fake" intersection types in which `B` is a subtype of `A`, `sdct(A & B) = sdct(B)`; and vice versa.
   * Otherwise, `sdct(T)` is undefined.
 
-### Additional contextual scope
+### Additional contextual scopes
 
-Whenever they is a single definite contextual type for an expression, this is resolved with an additional **contextual** scope. This scope has the lowest priority (even lower than that of default and star imports) and _should keep_ that lowest priority even after further extensions to the language. The mental model is that the contextual type is only use for resolution purposes after any other possibility has failed.
+Whenever they is a single definite contextual type for an expression, that expression is resolved with additional **contextual** scopes. These scopes have the lowest priority (even lower than that of default and star imports) and _should keep_ that lowest priority even after further extensions to the language. The mental model is that the contextual type is only use for resolution purposes after any other possibility has failed.
 
-The contextual scope for a single definite contextual type `T` is made from different sources:
+The contextual scopes are ordered by priority, starting with the single definite contextual type for an expression, and the moving to enclosing sealed parent types. For example, given the declaration:
+
+```kotlin
+sealed interface Example {
+  class Foo : Example { ... }
+  class Bar { ... }
+}
+
+class Quux : Example { ... }
+```
+
+When the single definite contextual type is `Example.Foo`, we search first the contextual scope of `Example.Foo` and then that of `Example`, since it's both enclosing and a parent. This does not happen for `Example.Bar`, since `Example` is not a supertype, nor for `Quux`, since `Example` is not enclosing.
+
+The contextual scope for a type `T` is made from different sources:
 
 1. The static scope of the type `T`,
 2. The companion object scope of the type `T`,
@@ -324,7 +336,7 @@ Furthermore, only two kinds of members are available:
 
 1. Classifiers which are nested in and inherit from type `T`, if `T` is a `sealed` class.
 2. No-argument callables, which must:
-   - Be either properties or enumeration entries (including properties synthetized from interoperating with other languages, like Java),
+   - Be either properties or enumeration entries (including properties synthesized from interoperating with other languages, like Java),
    - Have no context receivers nor context parameters.
    - Have no extension receiver, except for extension properties defined over the companion object of `T`.
 
