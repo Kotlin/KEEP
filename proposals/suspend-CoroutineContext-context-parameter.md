@@ -85,6 +85,7 @@ A lot of existing Kotlin code that relies on coroutines already uses `suspend` f
 - [The proposal](#the-proposal)
   - [`coroutineContext` stdlib property](#coroutinecontext-stdlib-property)
   - [`suspend` function with explicit `CoroutineContext` context parameter](#suspend-function-with-explicit-coroutinecontext-context-parameter)
+  - [Use case. CPU intensive cooperative cancellation](#use-case-cpu-intensive-cooperative-cancellation)
   - [Declaration-site `CONFLICTING_OVERLOADS` and overridability](#declaration-site-conflicting_overloads-and-overridability)
   - [Overload resolution](#overload-resolution)
   - [Feature interaction with callable references](#feature-interaction-with-callable-references)
@@ -179,6 +180,73 @@ We kill two birds with one stone:
 1. We can close [KT-15555](https://youtrack.jetbrains.com/issue/KT-15555),
   and ask users to prefer properties with context parameters if all they need is access to `CoroutineContext`.
 2. The magical `coroutineContext` compiler intrinsic becomes a proper language feature.
+
+### Use case. CPU intensive cooperative cancellation
+
+Another good fit for the language feature is cooperative cancellation in case of intensive CPU operations inside `suspend` functions.
+
+```kotlin
+suspend fun suspendComputation(number: Int) {
+    if (number.isPrime()) { // Intensive CPU computation
+        // ...
+    } else {
+        // ...
+    }
+}
+
+fun Int.isPrime(): Boolean {
+    if (this < 2) return false
+    for (cur in 2L..Long.MAX_VALUE) {
+        if (cur * cur > this) break
+        if (this % cur == 0L) return false
+    }
+    return true
+}
+```
+
+Non-zero number of users make a mistake by thinking
+that checking for cancellation is a `suspend` operation - `coroutineContext.ensureActive()`.
+In fact, only access to `coroutineContext` is a `suspend` operation here.
+`ensureActive` is a non-`suspend` function.
+Because of the confusion,
+users may decide to mark their non-`suspend` functions as `suspend` just to be able to access `coroutineContext`,
+which unnecessarily reduces their code performance characteristics.
+
+This proposal doesn't directly address the problem.
+If we wanted to do so,
+we would need to make it possible to access `coroutineContext` from non-`suspend`, non-context-parameter functions,
+which is a noticeably harder task.
+
+But this proposal makes progress in the direction.
+The example above can be trivially fixed by adding a context parameter,
+and calling `coroutineContext.ensureActive()` like so:
+
+```diff
+     }
+ }
+
++context(context: CoroutineContext)
+ fun Int.isPrime(): Boolean {
+     if (this < 2) return false
+     for (cur in 2L..Long.MAX_VALUE) {
++        context.ensureActive()
+         if (cur * cur > this) break
+         if (this % cur == 0L) return false
+     }
+```
+
+This proposal addresses the problem in two ways:
+1. Since `coroutineContext` won't longer have the "suspend" gutter icon,
+  users will be better aware that `ensureActive` is non-`suspend`.
+2. To prevent users from making their functions unnecessarily `suspend`,
+  [we propose adding an IDE inspection](#ide-integration).
+
+> [!NOTE]
+> We say "intensive CPU computation" instead of "blocking computation"
+> because "blocking computation" may be confused with IO blocking operation.
+>
+> Blocking IO operations have a different mechanism for cooperative cancellation when run from coroutines -
+> `kotlinx.coroutines.runInterruptible`
 
 ### `suspend` function with explicit `CoroutineContext` context parameter
 
@@ -611,6 +679,9 @@ https://youtrack.jetbrains.com/issue/KT-77129 and https://youtrack.jetbrains.com
   The intention should increase the feature's [discoverability](#discoverability).
 2. Similar to how all call-sites of `suspend` functions have a [gutter icon](https://www.jetbrains.com/help/idea/settings-gutter-icons.html) in IDE,
   we should add a gutter icon for all call-sites of functions with context parameters [KTIJ-26653](https://youtrack.jetbrains.com/issue/KTIJ-26653).
+3. Create an IDE inspection that checks that if `coroutineContext` is the only `suspend` operation in the `suspend` function,
+  then suggest to replace `suspend` with `context(context: CoroutineContext)`.
+  Use case: [CPU intensive operations in `suspend` functions](#use-case-cpu-intensive-cooperative-cancellation)
 
 ## Related features in other languages
 
