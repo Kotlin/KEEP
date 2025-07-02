@@ -3,7 +3,7 @@
 * **Type**: Design proposal
 * **Author**: Anastasiia Pikalova, Mikhail Zarechenskii, Alejandro Serrano
 * **Contributors**: Marat Akhin, Aleksandra Arsenteva, Nikita Bobko, Roman Efremov, Roman Venediktov
-* **Discussion**: 
+* **Discussion**: [KEEP-437](https://github.com/Kotlin/KEEP/discussions/437)
 * **Status**: Under discussion
 * **Related YouTrack issue**: [KT-19627](https://youtrack.jetbrains.com/issue/KT-19627/Object-name-based-destructuring)
 
