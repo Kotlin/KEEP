@@ -305,6 +305,7 @@ This realization is important in the migration plan.
 
 > [!IMPORTANT]
 > The phases below are not tied to a specific Kotlin version or timeline.
+> Compilers are expected to provide a flag for opting into the _Phase 3_ behavior.
 
 **Phase 1.** At this phase we want to raise _awareness_ of the new feature.
 
@@ -330,6 +331,9 @@ to move to the new syntax moves from tooling to the compiler itself, which
 
 **Phase 3.** At this phase `val (x, y) = e` becomes syntax for name-based
 destructuring.
+
+- As a result, lambdas and loops also use the short syntax, 
+  `{ (x, y) -> ...}`, for name-based destructuring.
 
 ## Technical details
 
