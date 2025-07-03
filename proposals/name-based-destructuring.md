@@ -77,10 +77,10 @@ in position-based destructuring, this opens the door to potential confusion.
 This is especially problematic when the types of several properties coincide.
 
 ```kotlin
-data class UserData(val name: String, val lastName: String) 
+data class Person(val name: String, val address: String) 
 
-// 'lastName' refers to 'name', 'name' refers to 'lastName'
-val (lastName, name) = UserData("name", "lastName")
+// 'city' refers to 'name', 'name' refers to 'address'
+val (city, name) = UserData("name", "Amsterdam")
 ```
 
 **Difficult extensibility.** It is inconvenient to provide additional members
@@ -98,14 +98,14 @@ binary-breaking if the order is not respected.
 
 ```kotlin
 // 'age' is added in the middle
-data class UserData(val name: String, val age: Int?, val lastName: String) {
+data class Person(val name: String, val age: Int?, val address: String) {
     // we have a secondary constructor
-    constructor(name: String, lastName: String) : this(name, null, lastName)
+    constructor(name: String, address: String) : this(name, null, address)
 
     // alas, 'component2' changes from 'String' to 'Int?'
     operator fun component1() = this.name
     operator fun component2() = this.age
-    operator fun component3() = this.lastName
+    operator fun component3() = this.address
 }
 ```
 
@@ -114,7 +114,7 @@ compatibility breaks, _source_ compatibility also. This is because in a
 destructuring declaration,
 
 ```kotlin
-val (name, lastName) = userData
+val (name, address) = person
 ```
 
 now the second position refers to `age`. Since this has a different type,
@@ -127,14 +127,16 @@ destructured. This is because position-based destructuring requires access to
 **all** `componentN` functions in order.
 
 ```kotlin
-data class Point(private val x: Int, val y: Int)
+data class Person(val name: String, private val age: Int?, val address: String) {
+    val underage: Boolean = age < 21
+}
 
-fun foo(p: Point) {
-    // destructure results in an error due to 'x' being private
-    val (x1, y1) = p // error: INVISIBLE_MEMBER
+fun foo(p: Person) {
+    // destructure results in an error due to 'age' being private
+    val (name1, age1, address1) = p // error: INVISIBLE_MEMBER
 
     // skipping the private property doesn't work either
-    val (_, y2) = p  // still error: INVISIBLE_MEMBER
+    val (name2, _, address2) = p  // still error: INVISIBLE_MEMBER
 }
 ```
 
@@ -470,7 +472,7 @@ extensions which are really borderline, and may be considered in the future.
 
 ```kotlin
 // nested access
-(val firstName = name.first, val lastName = name.last) = person
+(val city = address.city, val country = address.country) = person
 
 // Elvis operators
 (val age, val name = fullName ?: "unknown") = person
