@@ -18,6 +18,14 @@ So far Project Loom is about the following features:
 
 ## Table of contents
 
+- [JEP 444. Virtual Threads](#jep-444-virtual-threads)
+  - [Why suspension points matter](#why-suspension-points-matter)
+  - [Potential integration \#1. Let's run Coroutines on Virtual Threads](#potential-integration-1-lets-run-coroutines-on-virtual-threads)
+  - [Potential integration \#2. Let's create a dispatcher that spawns Virtual Threads](#potential-integration-2-lets-create-a-dispatcher-that-spawns-virtual-threads)
+  - [What if Java opens up more API?](#what-if-java-opens-up-more-api)
+- [JEP 505. Structured concurrency](#jep-505-structured-concurrency)
+- [JEP 506. Scoped Values](#jep-506-scoped-values)
+
 ## JEP 444. Virtual Threads
 
 **Glossary.** *carrier thread* is the thread that virtual threads are run on.
@@ -62,10 +70,11 @@ Unfortunately for Kotlin, `jdk.internal.vm.Continuation` API is not public.
 
 The current Virtual threads design idea is that they are drop-in replacement for traditional physical threads,
 because of that, currently, it's not possible to access the carrier thread,
-and it's not possible to choose which threads virtual threads are scheduled to run on.
+and it's not possible to choose which threads virtual threads are scheduled to run on
+(which means that you can't use Virtual Threads for asynchronous programming on UI main thread).
 
-So as we can see Virtual Threads are not yet as powerful as Coroutines are.
-Depending on your use case it can be either good or a bad thing.
+As we can see Virtual Threads are not yet as powerful as Coroutines are.
+Depending on your use case it can be either a good or a bad thing.
 
 The good thing about Virtual threads is that they are simplier to use.
 The good thing about Coroutines is that they give your more flexibility (and they are potentially safer, as we will see further)
@@ -90,7 +99,7 @@ which on itself doesn't have any semantical meaning, and merely is an act of ack
 [\[1\]](https://github.com/swiftlang/swift-evolution/blob/main/proposals/0296-async-await.md#await-expressions)
 [\[2\]](https://github.com/swiftlang/swift-evolution/blob/main/proposals/0296-async-await.md#suspension-points)
 [\[3\]](https://github.com/swiftlang/swift-evolution/blob/main/proposals/0306-actors.md#actor-reentrancy).
-In Swift, code coloring and suspension points are a core part of their data-race-free, deadlock-free design.
+In Swift, code coloring and suspension points are the core part of their data-race-free, deadlock-free design.
 
 Let us demonstrate how suspension points and code coloring can help you to prevent concurrency bugs in Kotlin.
 Imagine modeling banking and fund transfers between accounts.
@@ -150,7 +159,7 @@ In other words, thread confinement has the "problem" of _interleaving_.
 Interleaving means that the code is not atomic,
 it may be interrupted and the dispatcher returned by `limitedParallelism` function may start doing some other job if the current job suspends.
 To our advantage, the semantics of interleaving is very precise.
-The interleaving can happen only at locations known at compile time - suspension points.
+The interleaving can happen only at locations known at compile time - the suspension points.
 
 `to.changeBalanceBy(amount)` is our suspension point that splits up the precondition check and the change of the current balance.
 To fix the bug above we just need to swap the last two lines of the `transfer` function, like so:
@@ -166,7 +175,7 @@ To fix the bug above we just need to swap the last two lines of the `transfer` f
 
 And we can even improve it,
 to make sure that we won't reintroduce the concurrency bug in the future,
-we can declare the following helper function:
+let's declare the following helper function:
 
 ```kotlin
 // Related issue: https://youtrack.jetbrains.com/issue/KT-17260
@@ -178,7 +187,7 @@ So that the final version of `transfer` function is as follows:
 
 ```kotlin
     suspend fun transfer(to: BankAccount, amount: Int) = withContext(threadConfinement) {
-        noSuspend {
+        noSuspend { // Prevent double-spending bug
             if (amount > balance) error("Insufficient funds")
             // ↑ ↓ No suspension points should sneak between these two lines
             balance -= amount
@@ -191,7 +200,7 @@ Tada! You've got deadlock-free, data-race-free implementation of `BankAccount`,
 but you - the developer have to pay attention to suspension points.
 Luckily, you know them at compile time.
 
-### Potential integration 1. Let's run Coroutines on Virtual Threads
+### Potential integration \#1. Let's run Coroutines on Virtual Threads
 
 One of the suggested ideas was to run Coroutines on Virtual Threads.
 Since blocking/parking should be cheap on Virtual Threads, instead of suspending,
@@ -209,18 +218,29 @@ controlling your suspension points can give you a lot.
 The only reasonable scenario that we found for which you may want to block instead of suspending is to simplify debugging.
 By blocking, we establish 1-to-1 relation between Coroutines and Virtual Threads.
 That way, you won't loose your stacktraces, and a lot of JVM tooling is thread-aware which for sure helps for debugging.
-The problem here is that 
+The problem here is that it's not always possible to ignore the current `CoroutineDispatcher` and use 
 
 So instead of trying to make Coroutines _somehow_ work on Virtual Threads and combine uncombinable,
 we decide to acknowledge that there are things that Virtual Threads are simply better at,
 and there are things that Coroutines are simply better at.
-Use the one that fits your job.
+Those are different abstractions, use the one that fits your job.
 
-### Potential integration 2. Let's create a dispatcher that spawns Virtual Threads
+### Potential integration \#2. Let's create a dispatcher that spawns Virtual Threads
+
+The general advice is to never block your coroutines.
+You should prefer suspending over blocking.
+But in the cases when people do mistakes and block their coroutines, we could try to 
+But mistakes happen, 
+
+A different idea is to 
+
+In fact, users can already do that themselves
+`Executors.newVirtualThreadPerTaskExecutor().asCoroutineDispatcher()`.
+And some users already [do that](https://github.com/search?q=%22Executors.newVirtualThreadPerTaskExecutor%28%29.asCoroutineDispatcher%28%29%22+lang%3AKotlin&type=code).
 
 ### What if Java opens up more API?
 
-If Java opens up Continuation API, it's a totally different situation.
+If Java opens up `jdk.internal.vm.Continuation` API, it's a totally different situation.
 With native Continuations supported by JVM,
 Kotlin no longer needs to do any CPS-transformations itself.
 The whole `suspend` feature becomes expressible via Java Continuations.
@@ -228,11 +248,14 @@ The only problem is that since everyone can now "suspend",
 it is no longer possible to guarantee that all suspension points are known at compile time,
 which is again a [useful property](#why-suspension-points-matter).
 
-If Java opens up a possibility to choose which carrier threads virtual threads are scheduled to,
-
-
-It's a totally different situation if Java opens up Continuation API
+If Java opens up a possibility to choose which carrier threads virtual threads can run on,
+It's almost equivalent to opening up the Continuation API
+because `Continuation.yield` (suspending) is equivalent to `LockSupport.park`,
+`Continuation.run` (resuming) is equivalent to `LockSupport.unpark`.
+Except, depending on the details, we might need to create an additional coordinator thread that does parking and unparking.
 
 ## JEP 505. Structured concurrency
 
 Basically, the feature brings new `StructuredTaskScope` API.
+
+## JEP 506. Scoped Values
