@@ -119,18 +119,16 @@ The consequence of the rules above is that if we annotate a class,
 ```kotlin
 @JvmExposeBoxed @JvmInline value class PositiveInt(val number: Int) {
   fun add(other: PositiveInt): PositiveInt = ...
-
   fun toInt(): Int = number
 }
 ```
 
-this is equivalent to annotating the constructor and the `add` member, leaving `toInt` without annotation as no boxed variant exists,
+this is equivalent to annotating the constructor and both members,
 
 ```kotlin
 @JvmInline value class PositiveInt @JvmExposeBoxed constructor (val number: Int) {
   @JvmExposeBoxed fun add(other: PositiveInt): PositiveInt = ...
-
-  fun toInt(): Int = number
+  @JvmExposeBoxed fun toInt(): Int = number
 }
 ```
 
