@@ -77,9 +77,10 @@ As we can see Virtual Threads are not yet as powerful as Coroutines are.
 Depending on your use case it can be either a good or a bad thing.
 
 The good thing about Virtual threads is that they are simplier to use.
-The good thing about Coroutines is that they give your more flexibility (and they are potentially safer, as we will see further)
+The good thing about Coroutines is that they give your more flexibility (and they are potentially statically safer, as we will see it further)
 
-Before jumping to what. todo
+Before jumping to discussing how Virtual Threads and coroutines could be integrated together,
+it's worth to understand why suspension points matter.
 
 ### Why suspension points matter
 
@@ -200,6 +201,45 @@ Tada! You've got deadlock-free, data-race-free implementation of `BankAccount`,
 but you - the developer have to pay attention to suspension points.
 Luckily, you know them at compile time.
 
+### Potential integration \#1. Deprecate Kotlin CPS-transformation machinary, create Virtual Threads instead of Coroutines
+
+> _CPS-transformation_ stands for Continuation Passing Style transformation.
+
+Coroutines are sometimes advertised as lightweight threads.
+Virtual Threads are also advertised as lightweight threads.
+So the first naive and the most radical idea is to stop doing CPS-transformations in Kotlin, and always use Virtual Threads that Java provides.
+The complicated operation of suspending translates into a good old thread blockage.
+
+Unfortunately, Coroutines are not always translatable to Virtual Threads.
+Coroutines are more powerful than Virtual Threads.
+1. Coroutines allow you to choose which threads to schedule your asynchronous work on.
+  It's very important for programming UIs where you submit asynchronous work to the main thread.
+  Virtual Threads don't allow you to choose the carrier thread.
+2. Coroutines and `suspend` functions are generally not about concurrent computations.
+  Suspension doesn't necessarily mean that the computation should be paused.
+  There are quite a few features in Kotlin that are implemented using `suspend` functions.
+  In case of `kotlin.sequences.sequence`, suspension means that the next element of the Sequence is produced.
+  In case of `kotlin.DeepRecursiveFunction`, suspension means that the stack should be unwind and saved to the heap, but the computation should continue.
+
+
+
+
+
+
+
+Besides, it's important to understand that suspension is not about 
+
+
+### Potential integration \#2. Block instead of suspend
+
+As we saw we can't run coroutines unconditionally on Virtual Threads.
+But if the user run their coroutine on a Virtual Thread explicitly themselves, we could theoretically
+
+Ok, now when we saw that 
+
+
+
+
 ### Potential integration \#1. Let's run Coroutines on Virtual Threads
 
 One of the suggested ideas was to run Coroutines on Virtual Threads.
@@ -224,18 +264,88 @@ So instead of trying to make Coroutines _somehow_ work on Virtual Threads and co
 we decide to acknowledge that there are things that Virtual Threads are simply better at,
 and there are things that Coroutines are simply better at.
 Those are different abstractions, use the one that fits your job.
+It's perfectly fine to call Virtual Threads JDK API from Kotlin.
 
 ### Potential integration \#2. Let's create a dispatcher that spawns Virtual Threads
 
 The general advice is to never block your coroutines.
 You should prefer suspending over blocking.
-But in the cases when people do mistakes and block their coroutines, we could try to 
-But mistakes happen, 
+But in the cases when people do mistakes and block their coroutines by mistake or simply because there is no other API,
+we could try to take advantage of Loom.
 
-A different idea is to 
+The idea is to allow people to explicitly run their coroutines on Virtual Threads with some sort of API.
+We see 3 alternatives:
 
-In fact, users can already do that themselves
-`Executors.newVirtualThreadPerTaskExecutor().asCoroutineDispatcher()`.
+**Alternative 1.**
+Add `Dispatchers.JvmVirtualThreads` dispatcher.
+The implementation could be roufly `Executors.newVirtualThreadPerTaskExecutor().asCoroutineDispatcher()`.
+In fact, users can already do that themselves.
+And some users already [do that](https://github.com/search?q=%22Executors.newVirtualThreadPerTaskExecutor%28%29.asCoroutineDispatcher%28%29%22+lang%3AKotlin&type=code).
+
+**Alternative 2.**
+Change the existing `Dispatchers.IO` to use Virtual Threads by default.
+The consequences of slight behavior change are not entirely clear.
+For example, `Dispatchers.IO` has limited thread parallelism, while `Executors.newVirtualThreadPerTaskExecutor().asCoroutineDispatcher()` does not.
+
+**Alternative 3.**
+The dispatcher implementation should use `StructuredTaskScope`.
+Given that `StructuredTaskScope` API is structured (one cannot create daemon dispatcher),
+```
+class VirtualThreadsScopedDispatcher private constructor(private val scope: StructuredTaskScope<Void, Void>) :
+    CoroutineDispatcher() {
+
+    override fun dispatch(context: CoroutineContext, block: Runnable) {
+        scope.fork<Void>(block)
+    }
+
+    companion object {
+        fun <R> runBlocking(
+            context: CoroutineContext = EmptyCoroutineContext,
+            block: suspend CoroutineScope.() -> R
+        ): R = StructuredTaskScope.open<Void>().use { scope ->
+            try {
+                runBlocking(context + VirtualThreadsScopedDispatcher(scope), block)
+            } finally {
+                scope.join()
+            }
+        }
+    }
+}
+```
+The upside of this approach is that 
+
+Note: alternative 3 is not mutually exclusive with alternatives one and two, since  
+introduce one more dispatcher alongside the existing dispatchers:
+
+
+```diff
+ public actual object Dispatchers {
+     @JvmStatic
+     public actual val Default: CoroutineDispatcher = DefaultScheduler
+
+     @JvmStatic
+     public actual val Main: MainCoroutineDispatcher get() = MainDispatcherLoader.dispatcher
+
+     @JvmStatic
+     public actual val Unconfined: CoroutineDispatcher = kotlinx.coroutines.Unconfined
++
++    @JvmStatic
++    public val JvmVirtualThreads: CoroutineDispatcher = TODO()
+```
+
+
+
+The open question here is what form this dispatcher should take.
+Alternatives:
+
+1. Change the existing `Dispatchers.IO` to use Virtual Threads by default.
+
+2. Use `StructuredTaskScope` to implement `CoroutineDispatcher`.
+
+3. foo bar
+
+
+In fact, users can already do that themselves.
 And some users already [do that](https://github.com/search?q=%22Executors.newVirtualThreadPerTaskExecutor%28%29.asCoroutineDispatcher%28%29%22+lang%3AKotlin&type=code).
 
 ### What if Java opens up more API?
@@ -254,8 +364,16 @@ because `Continuation.yield` (suspending) is equivalent to `LockSupport.park`,
 `Continuation.run` (resuming) is equivalent to `LockSupport.unpark`.
 Except, depending on the details, we might need to create an additional coordinator thread that does parking and unparking.
 
-## JEP 505. Structured concurrency
+## JEP 505. Structured concurrency & JEP 506. Scoped Values
 
-Basically, the feature brings new `StructuredTaskScope` API.
+It's easier to discuss these two proposals as a one thing.
+Neither of the proposals touch the JVM, and they only change the stdlib.
 
-## JEP 506. Scoped Values
+JEP 505 is about adding a structured concurrency API.
+Similar, to what `launch` function from coroutines already does.
+
+JEP 506 is about adding "bounded ThreadLocal values".
+
+On their own, neither of these JEPs provide anything useful to Kotlin.
+
+It's an oversimplification, but JEP 505 is essentially about 
