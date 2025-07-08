@@ -1,1 +1,0 @@
-The proposal was renamed. See the actual version in [durations-and-time-measurement.md](durations-and-time-measurement.md).
