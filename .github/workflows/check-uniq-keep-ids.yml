@@ -1,0 +1,16 @@
+name: check-uniq-keep-ids
+
+on:
+  push:
+    branches:
+      - 'rr/**' # "rr" stands for "remote run"
+      - 'master'
+
+jobs:
+  build:
+    name: check-uniq-keep-ids
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - run: kotlin -version
+      - run: ./check-uniq-keep-ids.kts

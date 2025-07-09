@@ -1,4 +1,4 @@
-[![official JetBrains project](https://jb.gg/badges/official.svg)](https://confluence.jetbrains.com/display/ALL/JetBrains+on+GitHub)
+[![official JetBrains project](https://jb.gg/badges/official.svg)](https://confluence.jetbrains.com/display/ALL/JetBrains+on+GitHub) [![check-uniq-keep-ids](https://github.com/Kotlin/KEEP/actions/workflows/check-uniq-keep-ids.yml/badge.svg?branch=master)](https://github.com/Kotlin/KEEP/actions/workflows/check-uniq-keep-ids.yml)
 
 # KEEP - Kotlin Evolution and Enhancement Process
 
