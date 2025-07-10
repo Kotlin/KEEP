@@ -1,3 +1,5 @@
+**REDIRECT TO**: https://github.com/Kotlin/KEEP/blob/main/proposals/KEEP-0059-underscores-in-numeric-literals.md
+
 # Underscores in Numeric Literals
 
 * **Type**: Design proposal

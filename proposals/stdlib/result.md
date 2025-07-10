@@ -1,3 +1,5 @@
+**REDIRECT TO**: https://github.com/Kotlin/KEEP/blob/main/proposals/stdlib/KEEP-0127-result.md
+
 # Encapsulate successful or failed function execution 
 
 * **Type**: Standard Library API proposal

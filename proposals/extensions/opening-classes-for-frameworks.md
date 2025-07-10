@@ -1,3 +1,5 @@
+**REDIRECT TO**: https://github.com/Kotlin/KEEP/blob/main/proposals/KEEP-0040-opening-classes-for-frameworks.md
+
 # Opening classes for frameworks
 
 * **Type**: Design proposal

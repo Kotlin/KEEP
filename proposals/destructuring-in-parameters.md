@@ -1,3 +1,5 @@
+**REDIRECT TO**: https://github.com/Kotlin/KEEP/blob/main/proposals/KEEP-0032-destructuring-in-parameters.md
+
 # Destructuring in Lambda Parameters
 
 * **Type**: Design proposal

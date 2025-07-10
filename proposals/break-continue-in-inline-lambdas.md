@@ -1,3 +1,5 @@
+**REDIRECT TO**: https://github.com/Kotlin/KEEP/blob/main/proposals/KEEP-0326-break-continue-in-inline-lambdas.md
+
 # Non-local break and continue
 
 * **Type**: Design proposal

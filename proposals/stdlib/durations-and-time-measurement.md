@@ -1,3 +1,5 @@
+**REDIRECT TO**: https://github.com/Kotlin/KEEP/blob/main/proposals/stdlib/KEEP-0190-durations-and-time-measurement.md
+
 # Duration and time measurement API
 
 * **Type**: Standard Library API proposal

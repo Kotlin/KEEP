@@ -1,3 +1,5 @@
+**REDIRECT TO**: https://github.com/Kotlin/KEEP/blob/main/proposals/stdlib/KEEP-0019-string-to-number.md
+
 # Exceptionless string to number conversions
 
 * **Type**: Standard Library API proposal

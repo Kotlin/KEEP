@@ -1,3 +1,5 @@
+**REDIRECT TO**: https://github.com/Kotlin/KEEP/blob/main/proposals/KEEP-0394-jvm-expose-boxed.md
+
 # Expose boxed inline value classes in JVM
 
 * **Type**: Design proposal

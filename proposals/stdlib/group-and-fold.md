@@ -1,3 +1,5 @@
+**REDIRECT TO**: https://github.com/Kotlin/KEEP/blob/main/proposals/stdlib/KEEP-0023-group-and-fold.md
+
 # Group by key and fold each group simultaneously
 
 * **Type**: Standard Library API proposal

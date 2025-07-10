@@ -1,3 +1,5 @@
+**REDIRECT TO**: https://github.com/Kotlin/KEEP/blob/main/proposals/KEEP-0139-kotlin-contracts.md
+
 # Kotlin Contracts
 
 * Type: design proposal

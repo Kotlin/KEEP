@@ -1,1 +1,1 @@
-The proposal was renamed. See the actual version in [locale-agnostic-case-conversions.md](locale-agnostic-case-conversions.md).
+The proposal was renamed. See the actual version in [locale-agnostic-case-conversions.md](https://github.com/Kotlin/KEEP/blob/main/proposals/stdlib/KEEP-0223-locale-agnostic-case-conversions.md).

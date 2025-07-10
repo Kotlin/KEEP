@@ -1,3 +1,5 @@
+**REDIRECT TO**: https://github.com/Kotlin/KEEP/blob/main/proposals/KEEP-0029-sealed-class-inheritance.md
+
 # Sealed class inheritance
 
 * **Type**: Design proposal

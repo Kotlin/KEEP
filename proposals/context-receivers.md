@@ -1,3 +1,5 @@
+**REDIRECT TO**: https://github.com/Kotlin/KEEP/blob/main/proposals/KEEP-0259-context-receivers.md
+
 # Context receivers
 
 * **Type**: Design proposal

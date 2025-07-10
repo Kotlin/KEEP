@@ -1,3 +1,5 @@
+**REDIRECT TO**: https://github.com/Kotlin/KEEP/blob/main/proposals/KEEP-0158-enhancing-main-convention.md
+
 # Enhancing main entry point convention
 
 * **Type**: Design proposal

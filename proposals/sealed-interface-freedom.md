@@ -1,3 +1,5 @@
+**REDIRECT TO**: https://github.com/Kotlin/KEEP/blob/main/proposals/KEEP-0226-sealed-interface-freedom.md
+
 # Sealed interfaces and sealed classes freedom
 
 * **Type**: Design proposal

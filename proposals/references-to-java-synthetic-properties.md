@@ -1,3 +1,5 @@
+**REDIRECT TO**: https://github.com/Kotlin/KEEP/blob/main/proposals/KEEP-0328-references-to-java-synthetic-properties.md
+
 # Support references to synthetic Java properties
 
 * **Type**: Design proposal

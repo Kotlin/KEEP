@@ -1,3 +1,5 @@
+**REDIRECT TO**: https://github.com/Kotlin/KEEP/blob/main/proposals/stdlib/KEEP-0207-runningFold-and-runningReduce.md
+
 # Successive results of accumulating functions
 
 * **Type**: Standard Library API proposal

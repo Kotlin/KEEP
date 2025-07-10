@@ -1,3 +1,5 @@
+**REDIRECT TO**: https://github.com/Kotlin/KEEP/blob/main/proposals/stdlib/KEEP-0011-window-sliding.md
+
 # Sliding window extensions for collections
 
 * **Type**: Standard Library API proposal

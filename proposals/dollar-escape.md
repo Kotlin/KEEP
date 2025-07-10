@@ -1,3 +1,5 @@
+**REDIRECT TO**: https://github.com/Kotlin/KEEP/blob/main/proposals/KEEP-0375-dollar-escape.md
+
 # Multi-dollar interpolation
 
 * **Type**: Design proposal

@@ -1,3 +1,5 @@
+**REDIRECT TO**: https://github.com/Kotlin/KEEP/blob/main/proposals/KEEP-0104-inline-classes.md
+
 # Inline classes
 
 * **Type**: Design proposal

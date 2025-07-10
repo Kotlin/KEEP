@@ -1,3 +1,5 @@
+**REDIRECT TO**: https://github.com/Kotlin/KEEP/blob/main/proposals/stdlib/KEEP-0013-map-copying.md
+
 # Extensions to copy map contents
 
 * **Type**: Standard Library API proposal

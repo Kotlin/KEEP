@@ -1,3 +1,5 @@
+**REDIRECT TO**: https://github.com/Kotlin/KEEP/blob/main/proposals/KEEP-0034-inline-properties.md
+
 # Inline for property accessors
 
 * **Type**: Design proposal

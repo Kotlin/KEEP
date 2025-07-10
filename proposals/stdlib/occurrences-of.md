@@ -1,3 +1,5 @@
+**REDIRECT TO**: https://github.com/Kotlin/KEEP/blob/main/proposals/stdlib/KEEP-0020-occurrences-of.md
+
 # Extensions to find all occurrences of a pattern in a CharSequence
 
 * **Type**: Standard Library API proposal

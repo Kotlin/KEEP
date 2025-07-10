@@ -1,1 +1,1 @@
-The proposal was renamed. See the actual version in [runningFold-and-runningReduce.md](runningFold-and-runningReduce.md).
+The proposal was renamed. See the actual version in [runningFold-and-runningReduce.md](https://github.com/Kotlin/KEEP/blob/main/proposals/stdlib/KEEP-0207-runningFold-and-runningReduce.md).

@@ -1,3 +1,5 @@
+**REDIRECT TO**: https://github.com/Kotlin/KEEP/blob/main/proposals/KEEP-0233-jvm-records.md
+
 # JVM records support
 
 * **Type**: Design proposal

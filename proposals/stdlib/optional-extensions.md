@@ -1,3 +1,5 @@
+**REDIRECT TO**: https://github.com/Kotlin/KEEP/blob/main/proposals/stdlib/KEEP-0321-optional-extensions.md
+
 # `java.util.Optional` Extensions
 
 * **Type**: Standard Library API proposal

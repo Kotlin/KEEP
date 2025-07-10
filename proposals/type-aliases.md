@@ -1,3 +1,5 @@
+**REDIRECT TO**: https://github.com/Kotlin/KEEP/blob/main/proposals/KEEP-0004-type-aliases.md
+
 # Type aliases
 
 * **Type**: Design proposal

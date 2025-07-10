@@ -1,3 +1,5 @@
+**REDIRECT TO**: https://github.com/Kotlin/KEEP/blob/main/proposals/KEEP-0283-enum-entries.md
+
 # Decommission `Enum.values()` and replace it with `Enum.entries`
 
 * **Type**: Design proposal

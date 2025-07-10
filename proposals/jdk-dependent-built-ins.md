@@ -1,3 +1,5 @@
+**REDIRECT TO**: https://github.com/Kotlin/KEEP/blob/main/proposals/KEEP-0030-jdk-dependent-built-ins.md
+
 # JDK dependent built-in classes
 
 * **Type**: Design proposal

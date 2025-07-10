@@ -1,3 +1,5 @@
+**REDIRECT TO**: https://github.com/Kotlin/KEEP/blob/main/proposals/stdlib/KEEP-0053-abstract-collections.md
+
 # Read-only and mutable abstract collections
 
 * **Type**: Standard Library API proposal

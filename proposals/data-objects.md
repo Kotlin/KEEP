@@ -1,3 +1,5 @@
+**REDIRECT TO**: https://github.com/Kotlin/KEEP/blob/main/proposals/KEEP-0317-data-objects.md
+
 # Data objects
 
 * **Type**: Design proposal

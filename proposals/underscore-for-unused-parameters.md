@@ -1,3 +1,5 @@
+**REDIRECT TO**: https://github.com/Kotlin/KEEP/blob/main/proposals/KEEP-0055-underscore-for-unused-parameters.md
+
 # Underscore for unused parameters
 
 * **Type**: Design proposal
