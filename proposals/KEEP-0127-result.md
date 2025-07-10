@@ -319,7 +319,7 @@ naturally for the result type, comparing the corresponding values or exceptions.
 ## Dependencies
 
 This library depends on 
-[`@JvmInline value class`](https://github.com/kotlin/KEEP/blob/master/proposals/inline-classes.md) 
+[`@JvmInline value class`](./KEEP-0104-inline-classes.md) 
 language feature for its efficient implementation. 
 
 ## Limitations (legacy)

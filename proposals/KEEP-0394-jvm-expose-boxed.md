@@ -35,7 +35,7 @@ We propose modifications to how value classes are exposed in JVM, with the goal 
 
 ## Motivation
 
-[Value (or inline) classes](https://github.com/Kotlin/KEEP/blob/master/proposals/inline-classes.md) are an important tool to create a _lightweight wrapper_ over another class. One important example is given by classes that introduce additional invariants over another one, like an integer always greater than zero.
+[Value (or inline) classes](./KEEP-0104-inline-classes.md) are an important tool to create a _lightweight wrapper_ over another class. One important example is given by classes that introduce additional invariants over another one, like an integer always greater than zero.
 
 ```kotlin
 @JvmInline value class PositiveInt(val number: Int) {
@@ -43,7 +43,7 @@ We propose modifications to how value classes are exposed in JVM, with the goal 
 }
 ```
 
-In order to keep its lightweight nature, the Kotlin compiler tries to use the _unboxed_ variant — in the case above, an integer itself — instead of its _boxed_ variant — the `PositiveInt` class — whenever possible. To prevent clashes between different overloads, the names of some of those functions must be _mangled_, that is, transformed in a specific way. The mangled functions operate directly on the underlying unboxed representation, with additional checks coming from the `init` block. The [inline classes](https://github.com/Kotlin/KEEP/blob/master/proposals/inline-classes.md) KEEP defines the whole compilation scheme, for this example is enough to know that `constructor-impl` is where the `init` block ends up living.
+In order to keep its lightweight nature, the Kotlin compiler tries to use the _unboxed_ variant — in the case above, an integer itself — instead of its _boxed_ variant — the `PositiveInt` class — whenever possible. To prevent clashes between different overloads, the names of some of those functions must be _mangled_, that is, transformed in a specific way. The mangled functions operate directly on the underlying unboxed representation, with additional checks coming from the `init` block. The [inline classes](./KEEP-0104-inline-classes.md) KEEP defines the whole compilation scheme, for this example is enough to know that `constructor-impl` is where the `init` block ends up living.
 
 ```kotlin
 fun PositiveInt.add(other: PositiveInt): PositiveInt =
@@ -142,7 +142,7 @@ We expect compilers to provide a special _flag_, like `-Xjvm-expose-boxed`, that
 
 ## Expose boxed constructors
 
-The [current compilation scheme](https://github.com/Kotlin/KEEP/blob/master/proposals/inline-classes.md#inline-classes-abi-jvm) exposes the constructor of the boxed class as _synthetic_, which makes it unavailable from Java. This constructor does _not_ execute the `init` block, it just boxes the value.
+The [current compilation scheme](./KEEP-0104-inline-classes.md#inline-classes-abi-jvm) exposes the constructor of the boxed class as _synthetic_, which makes it unavailable from Java. This constructor does _not_ execute the `init` block, it just boxes the value.
 
 Note that when boxing needs to occur, the compilation scheme does not call this constructor directly. Rather, it uses the static `box-impl` method for that type.
 
@@ -227,7 +227,7 @@ To make it entirely clear, here are the four cases to be considered.
 | No `JvmName` | Unboxed: mangled <br /> Boxed: given name | Unboxed: mangled <br /> Boxed: given exposed name |
 | With `JvmName` | Unboxed **and** boxed: <br /> given `JvmName` | Unboxed: given `JvmName` <br /> Boxed: given exposed name |
 
-The following is an example of the compilation of some operations over `PositiveInt`. The `box-impl` and `unbox-impl` refer to the operations defined in the [current compilation scheme](https://github.com/Kotlin/KEEP/blob/master/proposals/inline-classes.md#inline-classes-abi-jvm) for boxing and unboxing without checks.
+The following is an example of the compilation of some operations over `PositiveInt`. The `box-impl` and `unbox-impl` refer to the operations defined in the [current compilation scheme](./KEEP-0104-inline-classes.md#inline-classes-abi-jvm) for boxing and unboxing without checks.
 
 ```kotlin
 @JvmInline @JvmExposeBoxed

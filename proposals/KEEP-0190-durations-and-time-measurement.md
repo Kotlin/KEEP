@@ -493,7 +493,7 @@ data class TimedValue<T>(val value: T, val duration: Duration)
 
 ## Dependencies
 
-- The class `Duration` heavily depends on [Inline classes](https://github.com/kotlin/KEEP/blob/master/proposals/inline-classes.md) 
+- The class `Duration` heavily depends on [Inline classes](./KEEP-0104-inline-classes.md)
 language feature for its efficient implementation.
 
 - To measure elapsed time it is crucial to have a time source in a target platform. Shall a platform have no

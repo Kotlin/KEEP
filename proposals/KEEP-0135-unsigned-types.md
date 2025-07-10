@@ -379,7 +379,7 @@ constant evaluator for basic operations on unsigned types in order to support `c
 ### Arrays and varargs
 
 Note that `vararg` parameters of inline class types are forbidden, because it's not clear how to associate the type from `vararg` parameter
-with the underlying array type, see [this section](https://github.com/zarechenskiy/KEEP/blob/master/proposals/inline-classes.md#arrays-of-inline-class-values) for the details.
+with the underlying array type, see [this section](./KEEP-0104-inline-classes.md#arrays-of-inline-class-values) for the details.
 
 However, since we provide a specialized array for each unsigned integer type, we can associate
 types from `vararg` with the corresponding array types:

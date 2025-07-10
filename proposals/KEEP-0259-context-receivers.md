@@ -111,7 +111,7 @@ extension function can be called a context-dependent function, and a dispatch re
 
 The context-oriented approach has many applications in the design of idiomatic Kotlin APIs (for example, see
 ["An introduction to context-oriented programming in Kotlin" by Alexander Nozik](https://proandroiddev.com/an-introduction-context-oriented-programming-in-kotlin-2e79d316b0a2))
-and is a building block of a more generic [code coloring concept](https://github.com/Kotlin/KEEP/blob/master/notes/code-coloring.md).
+and is a building block of a more generic [code coloring concept](../notes/0002-code-coloring.md).
 However, a member extension is now the only way to define a context-dependent declaration, and this form has
 multiple limitations that restrict its practical usefulness.
 

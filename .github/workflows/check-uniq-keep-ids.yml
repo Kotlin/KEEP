@@ -4,7 +4,7 @@ on:
   push:
     branches:
       - 'rr/**' # "rr" stands for "remote run"
-      - 'master'
+      - 'main'
 
 jobs:
   build:

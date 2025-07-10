@@ -22,7 +22,7 @@ Right now type aliases can only be used at the top level. The goal of this docum
 
 ## Motivation
 
-[Type aliases](https://github.com/Kotlin/KEEP/blob/master/proposals/type-aliases.md) can simplify understanding and maintaining code. For example, we can give a domain-related name to a more "standard" type,
+[Type aliases](./KEEP-0004-type-aliases.md) can simplify understanding and maintaining code. For example, we can give a domain-related name to a more "standard" type,
 
 ```kotlin
 typealias Context = Map<TypeVariable, Type>
@@ -75,7 +75,7 @@ interface IntArray: Collection {
 ```
 
 > [!NOTE]
-> This KEEP supersedes the original [type alias KEEP](https://github.com/Kotlin/KEEP/blob/master/proposals/type-aliases.md) on the matter of nested type aliases.
+> This KEEP supersedes the original [type alias KEEP](./KEEP-0004-type-aliases.md) on the matter of nested type aliases.
 
 ## Proposed solution
 
@@ -86,7 +86,7 @@ We need to care about two separate axes for nested type aliases.
 
 As a general _design principle_, nested type aliases should behave similarly to nested classes. This principle also allows freely exchanging classsifiers and type aliases in the source code, a helpful property for refactoring and library evolution.
 
-**Rule 1 (nested type aliases are type aliases)**: nested type aliased must conform to the same [rules of non-nested type aliases](https://github.com/Kotlin/KEEP/blob/master/proposals/type-aliases.md), including rules on well-formedness and recursion.
+**Rule 1 (nested type aliases are type aliases)**: nested type aliased must conform to the same [rules of non-nested type aliases](./KEEP-0004-type-aliases.md), including rules on well-formedness and recursion.
 
 **Rule 2 (scope)**: nested type aliases live in the same scope as nested classifiers.
 
@@ -176,7 +176,7 @@ class Example<T> {
 }
 ```
 
-**Rule 5 (type aliases to inner classes)**: whenever a type alias to an inner class, a "type alias constructor" with an extension receiver should be generated, according to the [corresponding specification](https://github.com/Kotlin/KEEP/blob/master/proposals/type-aliases.md#type-alias-constructors-for-inner-classes). This constructor should be generated in the **static** scope for nested type aliases.
+**Rule 5 (type aliases to inner classes)**: whenever a type alias to an inner class, a "type alias constructor" with an extension receiver should be generated, according to the [corresponding specification](./KEEP-0004-type-aliases.md#type-alias-constructors-for-inner-classes). This constructor should be generated in the **static** scope for nested type aliases.
 
 ```kotlin
 // declaration.kt
