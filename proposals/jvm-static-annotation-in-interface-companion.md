@@ -1,3 +1,5 @@
+**REDIRECT TO**: https://github.com/Kotlin/KEEP/blob/main/proposals/KEEP-0150-jvm-static-annotation-in-interface-companion.md
+
 # @JvmStatic for interface companion members
 
 * **Type**: Design proposal

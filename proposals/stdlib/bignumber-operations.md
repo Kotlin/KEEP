@@ -1,3 +1,5 @@
+**REDIRECT TO**: https://github.com/Kotlin/KEEP/blob/main/proposals/stdlib/KEEP-0049-bignumber-operations.md
+
 
 # Extending Kotlin API for BigInteger and BigDecimal
 

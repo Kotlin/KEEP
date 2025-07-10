@@ -1,3 +1,5 @@
+**REDIRECT TO**: https://github.com/Kotlin/KEEP/blob/main/proposals/KEEP-0267-annotation-instantiation.md
+
 # Instantiation of annotation classes
 
 * **Type**: Design proposal

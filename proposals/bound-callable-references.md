@@ -1,3 +1,5 @@
+**REDIRECT TO**: https://github.com/Kotlin/KEEP/blob/main/proposals/KEEP-0005-bound-callable-references.md
+
 # Bound Callable References
 
 * **Type**: Design proposal

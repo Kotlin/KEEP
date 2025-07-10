@@ -1,3 +1,5 @@
+**REDIRECT TO**: https://github.com/Kotlin/KEEP/blob/main/proposals/stdlib/KEEP-0131-random.md
+
 # Multiplatform random number generators
 
 * **Type**: Standard Library API proposal

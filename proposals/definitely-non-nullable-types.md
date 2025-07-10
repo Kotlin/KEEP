@@ -1,3 +1,5 @@
+**REDIRECT TO**: https://github.com/Kotlin/KEEP/blob/main/proposals/KEEP-0268-definitely-non-nullable-types.md
+
 # Definitely non-nullable types
 
 * **Type**: Design proposal

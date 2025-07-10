@@ -1,3 +1,5 @@
+**REDIRECT TO**: https://github.com/Kotlin/KEEP/blob/main/proposals/KEEP-0257-repeatable-annotations.md
+
 # Repeatable annotations
 
 * **Type**: Design proposal

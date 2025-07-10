@@ -1,3 +1,5 @@
+**REDIRECT TO**: https://github.com/Kotlin/KEEP/blob/main/proposals/KEEP-0014-JsName.md
+
 # Ability to customize generated name in Kotlin JS
 
 * **Type**: Kotlin JS design proposal

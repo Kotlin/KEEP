@@ -1,3 +1,5 @@
+**REDIRECT TO**: https://github.com/Kotlin/KEEP/blob/main/proposals/KEEP-0086-local-and-top-level-lateinit-vars.md
+
 # Local and top-level lateinit vars
 
 * **Type**: Design proposal

@@ -1,3 +1,5 @@
+**REDIRECT TO**: https://github.com/Kotlin/KEEP/blob/main/proposals/stdlib/KEEP-0373-base64.md
+
 # Base64
 
 * **Type**: Standard Library API proposal

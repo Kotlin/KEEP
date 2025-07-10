@@ -1,3 +1,5 @@
+**REDIRECT TO**: https://github.com/Kotlin/KEEP/blob/main/proposals/stdlib/TEMPLATE.md
+
 # Proposal template for new API in the Standard Library
 
 This document provides a template that can be used to compose a proposal about new API in the Standard Library.

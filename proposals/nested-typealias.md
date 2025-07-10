@@ -1,3 +1,5 @@
+**REDIRECT TO**: https://github.com/Kotlin/KEEP/blob/main/proposals/KEEP-0406-nested-typealias.md
+
 # Nested (non-capturing) type aliases
 
 * **Type**: Design proposal

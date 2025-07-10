@@ -1,3 +1,5 @@
+**REDIRECT TO**: https://github.com/Kotlin/KEEP/blob/main/proposals/KEEP-0033-android-extensions-entity-caching.md
+
 # View holder pattern support and caching options
 
 * Type: Android Extensions Proposal

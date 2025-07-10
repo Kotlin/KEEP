@@ -1,3 +1,5 @@
+**REDIRECT TO**: https://github.com/Kotlin/KEEP/blob/main/proposals/KEEP-0073-lateinit-property-isinitialized-intrinsic.md
+
 # Lateinit property isInitialized intrinsic
 
 Goal: provide a way to check whether a `lateinit` property was assigned.

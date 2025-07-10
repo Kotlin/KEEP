@@ -1,3 +1,5 @@
+**REDIRECT TO**: https://github.com/Kotlin/KEEP/blob/main/proposals/KEEP-0314-open-ended-ranges.md
+
 # Open-ended ranges and rangeUntil operator
 
 * **Type**: Design proposal / Standard Library API proposal

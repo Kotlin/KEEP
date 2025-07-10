@@ -1,3 +1,5 @@
+**REDIRECT TO**: https://github.com/Kotlin/KEEP/blob/main/proposals/KEEP-0071-android-parcelable.md
+
 # Compiler Extension to Support `android.os.Parcelable`
 
 * **Type**: Design proposal

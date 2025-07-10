@@ -1,3 +1,5 @@
+**REDIRECT TO**: https://github.com/Kotlin/KEEP/blob/main/proposals/stdlib/KEEP-0047-on-each.md
+
 # Add function for peeking into Sequences and Iterables
 
 * **Type**: Standard Library API proposal

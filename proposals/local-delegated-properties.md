@@ -1,3 +1,5 @@
+**REDIRECT TO**: https://github.com/Kotlin/KEEP/blob/main/proposals/KEEP-0025-local-delegated-properties.md
+
 # Local delegated properties
 
 * **Type**: Design proposal

@@ -1,3 +1,5 @@
+**REDIRECT TO**: https://github.com/Kotlin/KEEP/blob/main/proposals/KEEP-0061-generic-values-and-valueof-for-enums.md
+
 # Generic values() and valueOf() for enums
 
 * **Type**: Design proposal

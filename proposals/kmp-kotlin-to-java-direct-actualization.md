@@ -1,3 +1,5 @@
+**REDIRECT TO**: https://github.com/Kotlin/KEEP/blob/main/proposals/KEEP-0391-kmp-kotlin-to-java-direct-actualization.md
+
 # KMP Kotlin-to-Java direct actualization
 
 * **Type**: Design proposal

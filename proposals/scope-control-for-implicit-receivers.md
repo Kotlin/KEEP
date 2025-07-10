@@ -1,3 +1,5 @@
+**REDIRECT TO**: https://github.com/Kotlin/KEEP/blob/main/proposals/KEEP-0057-scope-control-for-implicit-receivers.md
+
 # Scope control for implicit receivers
 
 * **Type**: Design proposal

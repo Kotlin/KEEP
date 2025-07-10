@@ -1,3 +1,5 @@
+**REDIRECT TO**: https://github.com/Kotlin/KEEP/blob/main/proposals/KEEP-0045-explicit-api-mode.md
+
 # Explicit API mode
 
 * **Type**: Design proposal

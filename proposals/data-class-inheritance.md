@@ -1,3 +1,5 @@
+**REDIRECT TO**: https://github.com/Kotlin/KEEP/blob/main/proposals/KEEP-0031-data-class-inheritance.md
+
 # Data Class Inheritance
 
 * **Type**: Design proposal

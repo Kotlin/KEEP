@@ -1,1 +1,1 @@
-The proposal was renamed. See the actual version in [durations-and-time-measurement.md](durations-and-time-measurement.md).
+The proposal was renamed. See the actual version in [durations-and-time-measurement.md](https://github.com/Kotlin/KEEP/blob/main/proposals/stdlib/KEEP-0190-durations-and-time-measurement.md).

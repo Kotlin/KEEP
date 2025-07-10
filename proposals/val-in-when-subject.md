@@ -1,3 +1,5 @@
+**REDIRECT TO**: https://github.com/Kotlin/KEEP/blob/main/proposals/KEEP-0120-val-in-when-subject.md
+
 # Local variable declaration in 'when' subject
 
 * **Type**: Design proposal

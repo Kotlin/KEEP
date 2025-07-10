@@ -1,3 +1,5 @@
+**REDIRECT TO**: https://github.com/Kotlin/KEEP/blob/main/proposals/KEEP-0402-annotation-target-in-properties.md
+
 # Improvements to annotation use-site targets on properties
 
 * **Type**: Design proposal

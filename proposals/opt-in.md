@@ -1,3 +1,5 @@
+**REDIRECT TO**: https://github.com/Kotlin/KEEP/blob/main/proposals/KEEP-0095-opt-in.md
+
 # Opt-in requirements
 
 * **Type**: Design proposal

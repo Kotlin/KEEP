@@ -1,3 +1,5 @@
+**REDIRECT TO**: https://github.com/Kotlin/KEEP/blob/main/proposals/KEEP-0193-named-arguments-in-their-own-position.md
+
 # Named arguments in their own position
 
 * **Type**: Design proposal

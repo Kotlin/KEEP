@@ -1,3 +1,5 @@
+**REDIRECT TO**: https://github.com/Kotlin/KEEP/blob/main/proposals/KEEP-0107-functional-types-with-big-arity-on-jvm.md
+
 # Functional types with big arity on JVM
 
 Discussion of this proposal is held in [this issue](https://github.com/Kotlin/KEEP/issues/107).

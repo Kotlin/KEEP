@@ -1,3 +1,5 @@
+**REDIRECT TO**: https://github.com/Kotlin/KEEP/blob/main/proposals/KEEP-0079-jsr-305-custom-nullability-qualifiers.md
+
 # JSR-305 custom nullability qualifiers
 
 * **Type**: Design proposal

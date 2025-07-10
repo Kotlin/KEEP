@@ -1,3 +1,5 @@
+**REDIRECT TO**: https://github.com/Kotlin/KEEP/blob/main/proposals/KEEP-0430-explicit-backing-fields.md
+
 # Explicit Backing Fields
 
 - **Type**: Design Proposal

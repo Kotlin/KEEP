@@ -1,3 +1,5 @@
+**REDIRECT TO**: https://github.com/Kotlin/KEEP/blob/main/proposals/stdlib/KEEP-0382-uuid.md
+
 # Uuid
 
 * **Type**: Standard Library API proposal

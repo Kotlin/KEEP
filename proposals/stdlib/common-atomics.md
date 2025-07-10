@@ -1,3 +1,5 @@
+**REDIRECT TO**: https://github.com/Kotlin/KEEP/blob/main/proposals/stdlib/KEEP-0398-common-atomics.md
+
 # Common atomics
 
 * **Type**: Standard Library API proposal

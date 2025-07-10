@@ -1,3 +1,5 @@
+**REDIRECT TO**: https://github.com/Kotlin/KEEP/blob/main/proposals/KEEP-0320-subclass-opt-in-required.md
+
 # Opt-in into API implementation
 
 * **Type**: Design proposal

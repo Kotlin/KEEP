@@ -1,3 +1,5 @@
+**REDIRECT TO**: https://github.com/Kotlin/KEEP/blob/main/proposals/KEEP-0367-context-parameters.md
+
 # Context parameters
 
 * **Type**: Design proposal

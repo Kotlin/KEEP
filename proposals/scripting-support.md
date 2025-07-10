@@ -1,3 +1,5 @@
+**REDIRECT TO**: https://github.com/Kotlin/KEEP/blob/main/proposals/KEEP-0075-scripting-support.md
+
 
 # Kotlin Scripting support
 

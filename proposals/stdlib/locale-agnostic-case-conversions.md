@@ -1,3 +1,5 @@
+**REDIRECT TO**: https://github.com/Kotlin/KEEP/blob/main/proposals/stdlib/KEEP-0223-locale-agnostic-case-conversions.md
+
 # Locale-agnostic case conversions by default
 
 * **Type**: Standard Library API proposal

@@ -1,3 +1,5 @@
+**REDIRECT TO**: https://github.com/Kotlin/KEEP/blob/main/proposals/KEEP-0152-jvm-field-annotation-in-interface-companion.md
+
 # @JvmField for interface companion properties
 
 * **Type**: Design proposal

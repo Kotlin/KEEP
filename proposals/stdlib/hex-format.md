@@ -1,3 +1,5 @@
+**REDIRECT TO**: https://github.com/Kotlin/KEEP/blob/main/proposals/stdlib/KEEP-0362-hex-format.md
+
 # HexFormat
 
 * **Type**: Standard Library API proposal

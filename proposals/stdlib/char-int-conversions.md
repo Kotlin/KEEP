@@ -1,3 +1,5 @@
+**REDIRECT TO**: https://github.com/Kotlin/KEEP/blob/main/proposals/stdlib/KEEP-0227-char-int-conversions.md
+
 # Straighten Char-to-code and Char-to-digit conversions out
 
 * **Type**: Standard Library API proposal
