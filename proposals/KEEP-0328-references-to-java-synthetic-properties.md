@@ -2,7 +2,7 @@
 
 * **Type**: Design proposal
 * **Author**: Pavel Mikhailovskii
-* **Status**: Proposed
+* **Status**: [Declined](https://youtrack.jetbrains.com/issue/KT-8575#focus=Comments-27-11520756.0-0)
 * **Prototype**: Supported under a flag in 1.3.70 and enabled by default in .gradle.kts. Preview in 1.8.20 with `-language-version 1.9`. Planned to be enabled by default in 2.1.
 * **Related issues**: [KT-8575](https://youtrack.jetbrains.com/issue/KT-8575), [KT-35933](https://youtrack.jetbrains.com/issue/KT-35933), [KT-54525](https://youtrack.jetbrains.com/issue/KT-54525), [KT-54770](https://youtrack.jetbrains.com/issue/KT-54770)
 
