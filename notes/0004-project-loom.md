@@ -11,7 +11,7 @@ high-throughput lightweight concurrency and new programming models on the Java p
 >
 > Source: https://wiki.openjdk.org/display/loom/Main
 
-So far Project Loom is about the following features:
+So far, Project Loom is about the following features:
 1. [JEP 444](https://openjdk.org/jeps/444) Virtual Threads. VM feature. Delivered in Java 21
 2. [JEP 505](https://openjdk.org/jeps/505) Structured concurrency. Java Stdlib feature. Fifth Preview
 3. [JEP 506](https://openjdk.org/jeps/506) Scoped Values. Java Stdlib feature. Planned for Java 25
@@ -20,8 +20,6 @@ So far Project Loom is about the following features:
 
 - [JEP 444. Virtual Threads](#jep-444-virtual-threads)
   - [Why suspension points matter](#why-suspension-points-matter)
-  - [Potential integration \#1. Let's run Coroutines on Virtual Threads](#potential-integration-1-lets-run-coroutines-on-virtual-threads)
-  - [Potential integration \#2. Let's create a dispatcher that spawns Virtual Threads](#potential-integration-2-lets-create-a-dispatcher-that-spawns-virtual-threads)
   - [What if Java opens up more API?](#what-if-java-opens-up-more-api)
 - [JEP 505. Structured concurrency](#jep-505-structured-concurrency)
 - [JEP 506. Scoped Values](#jep-506-scoped-values)
@@ -201,7 +199,7 @@ Tada! You've got deadlock-free, data-race-free implementation of `BankAccount`,
 but you - the developer have to pay attention to suspension points.
 Luckily, you know them at compile time.
 
-### Potential integration \#1. Deprecate Kotlin CPS-transformation machinary, create Virtual Threads instead of Coroutines
+### Potential integration \#1. Deprecate Kotlin CPS-transformation machinary, create a Virtual Thread for every Coroutines
 
 > _CPS-transformation_ stands for Continuation Passing Style transformation.
 
@@ -209,6 +207,7 @@ Coroutines are sometimes advertised as lightweight threads.
 Virtual Threads are also advertised as lightweight threads.
 So the first naive and the most radical idea is to stop doing CPS-transformations in Kotlin, and always use Virtual Threads that Java provides.
 The complicated operation of suspending translates into a good old thread blockage.
+It's a language-level integration
 
 Unfortunately, Coroutines are not always translatable to Virtual Threads.
 Coroutines are more powerful than Virtual Threads.
@@ -221,16 +220,21 @@ Coroutines are more powerful than Virtual Threads.
   In case of `kotlin.sequences.sequence`, suspension means that the next element of the Sequence is produced.
   In case of `kotlin.DeepRecursiveFunction`, suspension means that the stack should be unwind and saved to the heap, but the computation should continue.
 
-
-
-
-
-
-
-Besides, it's important to understand that suspension is not about 
-
-
 ### Potential integration \#2. Block instead of suspend
+
+Since we rejected the previous language-level integration,
+let's explore kotlinx.coroutines library-level integration.
+
+In all "leaf-suspending" functions, kotlinx.coroutines can try to check if we run on a Virtual Thread and block instead of suspending:
+
+```kotlin
+public suspend fun delay(duration: Duration) {
+    if (Thread.currentThread().isVirtual) {
+    } else {
+    }
+}
+```
+
 
 As we saw we can't run coroutines unconditionally on Virtual Threads.
 But if the user run their coroutine on a Virtual Thread explicitly themselves, we could theoretically
