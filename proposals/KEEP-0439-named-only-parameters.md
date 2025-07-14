@@ -62,7 +62,7 @@ fun reformat(
 When it is called without argument names, for example `reformat(myStr, true, false, true, ' ')`, it's difficult to say for the reader what the meaning of its arguments is.
 
 That's why developers always try to remember to specify the argument names in such cases.
-[Kotlin coding conventions](https://kotlinlang.org/docs/coding-conventions.html#named-arguments) also recommend to use named arguments named argument syntax when a method takes multiple parameters of the same primitive type, or for parameters of `Boolean` type.
+[Kotlin coding conventions](https://kotlinlang.org/docs/coding-conventions.html#named-arguments) also recommend to use named arguments syntax when a method takes multiple parameters of the same primitive type, or for parameters of `Boolean` type.
 
 In Java, it's also a common practice to specify argument names in the comments, e.g. `reformat(myStr, /* normalizeCase = */ true)`.
 This is a clear sign that argument names can sometimes play a critical role in code readability.
