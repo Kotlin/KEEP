@@ -92,7 +92,7 @@ When the last function argument is of a functional type, it's also possible to u
 When a function is called with multiple lambda arguments, the correspondence of arguments to parameters can also be ambiguous.
 The most notable examples are:
 
-* `fun Result.process(onSuccess: () → Unit, onError: () → Unit)`
+* `fun Result.process(onSuccess: () -> Unit, onError: () -> Unit)`
 * `fun <T, K, V> Array<out T>.groupBy(keySelector: (T) -> K, valueTransform: (T) -> V)`
 * `fun <C> Either<C>.fold(ifLeft: (left: A) -> C, ifRight: (right: B) -> C): C`
 
