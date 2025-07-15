@@ -3,9 +3,8 @@
 * **Type**: Design proposal
 * **Author**: Denis Zharkov
 * **Contributors**: Mikhail Zarechenskiy
-* **Status**: Submitted
-* **Prototype**: Implemented in 1.3.60
-* **Discussion**: [KEEP-193](https://github.com/Kotlin/KEEP/issues/193)
+* **Status**: Stable in 1.4
+* **Discussion**: https://github.com/Kotlin/KEEP/issues/195
 * **Tracker**: [KT-7745](https://youtrack.jetbrains.com/issue/KT-7745)
 
 ## Summary

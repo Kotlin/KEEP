@@ -3,7 +3,7 @@
 * **Type**: Design proposal
 * **Author**: Denis Zharkov
 * **Contributors**: Andrey Breslav, Roman Elizarov, Stanislav Erokhin
-* **Status**: Implemented
+* **Status**: Stable in 1.1
 * **Discussion**: [KEEP-55](https://github.com/Kotlin/KEEP/issues/55)
 
 ## Goals

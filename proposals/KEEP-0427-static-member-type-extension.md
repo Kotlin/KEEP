@@ -6,7 +6,7 @@
 Faiz Ilham Muhammad, Dmitriy Novozhilov, Stanislav Ruban, Roman Venediktov, 
 Michail Zarečenskij, Denis Zharkov
 * **Discussion**: [KEEP-427](https://github.com/Kotlin/KEEP/discussions/427)
-* **Status**: In review
+* **Status**: In progress
 * **Related YouTrack issues**:
   [KT-11968](https://youtrack.jetbrains.com/issue/KT-11968),
   [KT-15595](https://youtrack.jetbrains.com/issue/KT-15595),

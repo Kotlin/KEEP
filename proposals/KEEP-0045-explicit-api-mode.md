@@ -3,7 +3,7 @@
 * **Type**: Design proposal
 * **Authors**: Ilya Gorbunov, Leonid Startsev
 * **Contributors**: Roman Elizarov, Vsevolod Tolstopyatov
-* **Status**: Implemented in 1.4
+* **Status**: Stable in 1.4
 * **Original proposal and discussion**: [KEEP-45](https://github.com/Kotlin/KEEP/issues/45)
 
 ## Synopsis

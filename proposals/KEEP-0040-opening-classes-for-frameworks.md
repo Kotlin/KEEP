@@ -3,13 +3,13 @@
 * **Type**: Design proposal
 * **Author**: Andrey Breslav
 * **Contributors**: Dmitry Jemerov, Sébastien Deleuze, Yan Zhulanow, Andy Wilkinson 
-* **Status**: Under consideration
+* **Status**: Unknown
 * **Prototype**: Not started
 * **Discussion**: [KEEP-40](https://github.com/Kotlin/KEEP/pull/40)
 
 ## Feedback
 
-Discussion of this proposal is held in [this issue](TODO).
+Discussion of this proposal is held in [this issue](https://github.com/Kotlin/KEEP/pull/40).
 
 ## Synopsis
 

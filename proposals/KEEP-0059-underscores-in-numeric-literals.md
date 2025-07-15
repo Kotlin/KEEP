@@ -2,7 +2,7 @@
 
 * **Type**: Design proposal
 * **Author**: Kirill Rakhman
-* **Status**: Implemented
+* **Status**: Stable in 1.1
 * **Discussion**: https://github.com/Kotlin/KEEP/issues/59
 
 ## Synopsis

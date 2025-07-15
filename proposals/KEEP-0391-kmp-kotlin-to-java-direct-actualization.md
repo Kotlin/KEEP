@@ -4,7 +4,7 @@
 * **Author**: Nikita Bobko
 * **Contributors**: Dmitriy Novozhilov, Kevin Bierhoff, Mikhail Zarechenskiy, Pavel Kunyavskiy
 * **Discussion**: [KEEP-391](https://github.com/Kotlin/KEEP/issues/391)
-* **Status**: Implemented as experimental feature in 2.1. Stabilization plans are unclear due to implementation challenges
+* **Status**: Experimental in 2.1. Stabilization plans are unclear due to [implementation challenges](https://youtrack.jetbrains.com/issue/KT-67202#focus=Comments-27-10634419.0-0)
 * **Related YouTrack issue**: [KT-67202](https://youtrack.jetbrains.com/issue/KT-67202)
 
 **Definition.** ClassId is a class identifier that consists of three independent components: the package where class is declared in, names of all outer classes (if presented), and the name of the class itself.

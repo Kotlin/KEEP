@@ -4,7 +4,7 @@
 * **Author**: Anastasiia Pikalova, Mikhail Zarechenskii, Alejandro Serrano
 * **Contributors**: Marat Akhin, Aleksandra Arsenteva, Nikita Bobko, Roman Efremov, Roman Venediktov
 * **Discussion**: [KEEP-438](https://github.com/Kotlin/KEEP/discussions/438)
-* **Status**: Under discussion
+* **Status**: Public discussion
 * **Related YouTrack issue**: [KT-19627](https://youtrack.jetbrains.com/issue/KT-19627/Object-name-based-destructuring)
 
 ## Abstract

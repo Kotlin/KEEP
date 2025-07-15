@@ -4,7 +4,7 @@
 * **Author**: Alejandro Serrano
 * **Contributors**: Mikhail Zarechenskii
 * **Discussion**: [KEEP-371](https://github.com/Kotlin/KEEP/issues/371)
-* **Status**: Experimental expected for 2.1
+* **Status**: Stable in 2.2
 * **Related YouTrack issue**: [KT-13626](https://youtrack.jetbrains.com/issue/KT-13626)
 
 ## Abstract

@@ -2,8 +2,7 @@
 
 * **Type**: Design proposal
 * **Author**: Alexander Udalov
-* **Status**: Accepted
-* **Prototype**: Implemented
+* **Status**: Stable in 1.6
 * **Discussion**: [KEEP-257](https://github.com/Kotlin/KEEP/issues/257)
 * **Related issues**: [KT-12794](https://youtrack.jetbrains.com/issue/KT-12794) [KT-47928](https://youtrack.jetbrains.com/issue/KT-47928) [KT-47971](https://youtrack.jetbrains.com/issue/KT-47971)
 

@@ -3,8 +3,7 @@
 * **Type**: Design proposal
 * **Authors**: Alejandro Serrano Mena
 * **Discussion**: [KEEP-375](https://github.com/Kotlin/KEEP/issues/375)
-* **Status**: Experimental expected for 2.1
-* **Prototype**: Implemented in [this branch](https://github.com/JetBrains/kotlin/compare/rr/serras/dollar-escape-3)
+* **Status**: Stable in 2.2
 * **Related YouTrack issue**: [KT-2425](https://youtrack.jetbrains.com/issue/KT-2425/Provide-a-way-for-escaping-the-dollar-sign-symbol-in-multiline-strings-and-string-templates)
 
 ## Abstract

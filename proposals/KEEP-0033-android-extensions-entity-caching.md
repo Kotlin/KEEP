@@ -1,8 +1,9 @@
 # View holder pattern support and caching options
 
-* Type: Android Extensions Proposal
-* Author: Yan Zhulanow
-* Discussion: [KEEP-33](https://github.com/Kotlin/KEEP/pull/33)
+* **Type**: Android Extensions Proposal
+* **Author**: Yan Zhulanow
+* **Discussion**: [KEEP-33](https://github.com/Kotlin/KEEP/pull/33)
+* **Status**: Unknown
 
 ## Summary
 

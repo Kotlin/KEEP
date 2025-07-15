@@ -3,7 +3,7 @@
 * **Type**: Design proposal
 * **Authors**: Roman Elizarov
 * **Contributors**: Mikhail Glukhikh, Dmitriy Novozhilov, Denis Zharkov, Simon Ogorodnik, Ilya Gorbunov, Zalim Bashorov, Svyatoslav Scherbina, Sergey Bogolepov
-* **Status**: Proposed
+* **Status**: Unknown
 * **Discussion**: [KEEP-302](https://github.com/Kotlin/KEEP/issues/302)
 
 **Table of contents**

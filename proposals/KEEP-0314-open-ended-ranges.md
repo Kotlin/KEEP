@@ -3,8 +3,7 @@
 * **Type**: Design proposal / Standard Library API proposal
 * **Author**: Ilya Gorbunov
 * **Contributors**: Roman Elizarov, Vsevolod Tolstopyatov, Abduqodiri Qurbonzoda, Leonid Startsev, Egor Tolstoy
-* **Status**: Implemented
-* **Prototype**: Implemented in 1.7.20-Beta
+* **Status**: Stable in 1.9.0
 * **Related issues**: [KT-15613](https://youtrack.jetbrains.com/issue/KT-15613)
 * **Discussion**: [KEEP-314](https://github.com/Kotlin/KEEP/issues/314)
 

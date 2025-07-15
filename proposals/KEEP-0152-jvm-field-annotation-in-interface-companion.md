@@ -2,7 +2,7 @@
 
 * **Type**: Design proposal
 * **Author**: Mike Bogdanov
-* **Status**: Implemented in Kotlin 1.3
+* **Status**: Stable in 1.3
 * **Discussion**: [KEEP-152](https://github.com/Kotlin/KEEP/issues/152)
 
 ## Summary

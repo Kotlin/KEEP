@@ -2,8 +2,7 @@
 
 * **Type**: Design proposal
 * **Author**: Denis Zharkov
-* **Status**: Accepted
-* **Prototype**: In progress
+* **Status**: Stable in 1.9.0
 * **Discussion**: [KEEP-268](https://github.com/Kotlin/KEEP/issues/268)
 * **Related issues**: [KT-26245](https://youtrack.jetbrains.com/issue/KT-26245)
 

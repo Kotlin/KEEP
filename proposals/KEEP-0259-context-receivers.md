@@ -4,9 +4,8 @@
 * **Authors**: Roman Elizarov, Anastasia Shadrina
 * **Contributors**: Denis Zharkov, Marat Akhin, Mikhail Belyaev, Ilya Gorbunov, Ilmir Usmanov, Simon Ogorodnik,
   Dmitriy Novozhilov, Mikhail Glukhikh
-* **Status**: Experimental in 1.6.20-M1
+* **Status**: Superseded by [KEEP-0367](./KEEP-0367-context-parameters.md)
 * **Discussion**: [KEEP-259](https://github.com/Kotlin/KEEP/issues/259)
-* **Prototype**: Implemented
 
 ## Abstract
 

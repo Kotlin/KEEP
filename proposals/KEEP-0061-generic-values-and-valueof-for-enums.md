@@ -3,7 +3,7 @@
 * **Type**: Design proposal
 * **Author**: Andrey Breslav
 * **Contributors**: Stanislav Erokhin, Alexander Udalov, Michael Bogdanov
-* **Status**: Implemented in 1.1-M03
+* **Status**: Stable in 1.1
 
 ## Feedback
 

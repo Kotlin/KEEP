@@ -3,7 +3,7 @@
 - **Type**: Design Proposal
 - **Author**: Roman Efremov
 - **Contributors**: Alejandro Serrano Mena, Anastasiia Pikalova, Denis Zharkov, Dmitriy Novozhilov, Marat Akhin, Mikhail Glukhikh, Mikhail Zarečenskij, Nikita Bobko, Nikolay Lunyak, Pavel Kunyavskiy, Roman Elizarov
-- **Status**: Design discussion
+- **Status**: Public discussion
 - **Discussion**: [#430](https://github.com/Kotlin/KEEP/discussions/430)
 - **YouTrack Issue**: [KT-14663](https://youtrack.jetbrains.com/issue/KT-14663)
 

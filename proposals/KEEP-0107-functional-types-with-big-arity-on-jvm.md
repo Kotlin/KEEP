@@ -1,6 +1,7 @@
 # Functional types with big arity on JVM
 
-Discussion of this proposal is held in [this issue](https://github.com/Kotlin/KEEP/issues/107).
+* **Status**: Stable in 1.3
+* **Discussion**: [KEEP-107](https://github.com/Kotlin/KEEP/issues/107).
 
 This proposal describes a way to support functional types and lambdas that take 23 or more parameters in Kotlin/JVM. It's largely based on a previous (outdated) document with description of a pre-1.0 reform of functional types: [spec-docs/function-types.md](https://github.com/JetBrains/kotlin/blob/1.2.40/spec-docs/function-types.md).
 

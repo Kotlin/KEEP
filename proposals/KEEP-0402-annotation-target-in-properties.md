@@ -4,7 +4,7 @@
 * **Author**: Alejandro Serrano
 * **Contributors**: Alexander Udalov, Ilmir Usmanov, Mikhail Zarechenskii
 * **Discussion**: [KEEP-402](https://github.com/Kotlin/KEEP/issues/402)
-* **Status**: Experimental in Kotlin 2.2.0
+* **Status**: Experimental in 2.2.0
 * **Related YouTrack issue**: [KT-19289](https://youtrack.jetbrains.com/issue/KT-19289/Hibernate-Validator-Annotations-Dropped), [KTIJ-31300](https://youtrack.jetbrains.com/issue/KTIJ-31300/Draft-Validation-Annotation-Email-Doesnt-Work-in-Kotlin-Constructor)
 
 ## Abstract

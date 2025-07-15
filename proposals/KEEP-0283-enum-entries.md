@@ -2,8 +2,7 @@
 
 * **Type**: Design proposal
 * **Author**: Vsevolod Tolstopytov
-* **Status**: Accepted
-* **Prototype**: Implemented
+* **Status**: Stable in 1.9.0
 * **Discussion**: [KEEP-283](https://github.com/Kotlin/KEEP/issues/283)
 * **Related issues**: [KT-48872](https://youtrack.jetbrains.com/issue/KT-48872)
 

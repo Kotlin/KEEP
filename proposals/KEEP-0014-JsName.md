@@ -3,9 +3,8 @@
 * **Type**: Kotlin JS design proposal
 * **Author**: Zalim Bashorov
 * **Contributors**: Andrey Breslav, Alexey Andreev
-* **Status**: Approved
+* **Status**: Stable
 * **Related issue**: [KT-2752](https://youtrack.jetbrains.com/issue/KT-2752)
-* **Prototype**: Implemented
 * **Discussion**: [KEEP-14](https://github.com/Kotlin/KEEP/pull/14)
 
 ## Common terms used in Kotlin JS

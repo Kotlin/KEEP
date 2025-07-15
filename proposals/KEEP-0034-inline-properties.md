@@ -2,8 +2,7 @@
 
 * **Type**: Design proposal
 * **Author**: Andrey Breslav
-* **Status**: Accepted
-* **Prototype**: Implemented
+* **Status**: Stable in Kotlin 1.1
 
 ## Feedback 
 

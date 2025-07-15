@@ -2,9 +2,9 @@
 
 * **Type**: Design proposal
 * **Author**: Evgeniy Zhelenskiy
+* **Status**: Unknown
 * **Prototype**: Experimental in Kotlin/JVM since 1.8.20
-
-Discussion of this proposal is held in [this issue](https://github.com/Kotlin/KEEP/issues/340).
+* **Discussion**: [KEEP-340](https://github.com/Kotlin/KEEP/issues/340)
 
 ## Description
 

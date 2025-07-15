@@ -2,8 +2,9 @@
 
 * **Type**: Design proposal
 * **Authors**: Alexander Udalov, Mikhail Glukhikh
+* **Status**: Stable in 1.2
 * **Previously known as**: Experimental API support
-* **Discussion and feedback**: [KEEP-95](https://github.com/Kotlin/KEEP/issues/95)
+* **Discussion**: [KEEP-95](https://github.com/Kotlin/KEEP/issues/95)
 
 This proposal describes a mechanism that will allow library authors to provide API that requires explicit opt-in from their clients. The proposed mechanism makes it possible to declare that the API requires opt-in, and to opt in to that API at the call site. Without such explicit consent from the user, a warning or an error is reported on usages.
 

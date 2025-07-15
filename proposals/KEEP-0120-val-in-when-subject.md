@@ -3,10 +3,8 @@
 * **Type**: Design proposal
 * **Author**: Dmitry Petrov
 * **Contributors**:
-* **Status**:
-* **Prototype**: In progress
-
-Discussion: https://github.com/Kotlin/KEEP/issues/120
+* **Status**: Stable in 1.3
+* **Discussion**: [KEEP-120](https://github.com/Kotlin/KEEP/issues/120)
 
 ## Problem description
 

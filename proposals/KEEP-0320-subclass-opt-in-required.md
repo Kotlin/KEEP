@@ -4,9 +4,9 @@
 * **Author**: Vsevolod Tolstopyatov
 * **Contributors**: Mikhail Glukhikh, Vsevolod Tolstopyatov, Roman Elizarov, Ilya Gorbunov, Anastasia Pikalova,
   Stanislav Ruban
-
-* **Status**: Implemented in Kotlin 1.8.0 as experimental
-* **Discussion**: [KEEP-320](https://github.com/Kotlin/KEEP/issues/320) 
+* **Status**: Stable in 2.1.0
+* **Discussion**: [KEEP-320](https://github.com/Kotlin/KEEP/issues/320)
+* **Issue**: [KT-54617](https://youtrack.jetbrains.com/issue/KT-54617)
 
 This proposal describes a mechanism that will allow Kotlin library authors to provide extensible API (interfaces, abstract classes) that is stable for use
 but requires an explicit opt-in for direct extension and implementation, clearly separating stability concerns.

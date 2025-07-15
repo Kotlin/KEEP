@@ -1,12 +1,10 @@
-
 # Kotlin Scripting support
+
+* **Status**: Unknown
+* **Discussion**: [KEEP-75](https://github.com/Kotlin/KEEP/issues/75)
 
 *Replaces [Script Definition Template](https://github.com/Kotlin/KEEP/blob/master/proposals/script-definition-template.md)
 proposal.*
-
-## Feedback
-
-Discussion of this proposal is held in [this issue](https://github.com/Kotlin/KEEP/issues/75)
 
 ## Motivation
 

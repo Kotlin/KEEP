@@ -3,7 +3,7 @@
 * **Type**: Design proposal
 * **Authors**: Nikita Bobko, Pavel Mikhailovskii
 * **Contributors**: Alexander Udalov, Roman Elizarov, Simon Ogorodnik
-* **Status**: Experimental since 1.8.20, Beta in 2.1
+* **Status**: Stable in 2.2
 * **Discussion and feedback**: [KEEP-326](https://github.com/Kotlin/KEEP/issues/326)
 * **YouTrack issues:** [KT-1436](https://youtrack.jetbrains.com/issue/KT-1436),
   [KT-19748](https://youtrack.jetbrains.com/issue/KT-19748), [KT-54906](https://youtrack.jetbrains.com/issue/KT-54906)

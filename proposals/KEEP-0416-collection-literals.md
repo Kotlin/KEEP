@@ -9,6 +9,7 @@
   Marat Akhin,
   Mikhail Zarechenskii
 * **Issue:** [KT-43871](https://youtrack.jetbrains.com/issue/KT-43871)
+* **Status:** In progress
 * **Prototype:** https://github.com/JetBrains/kotlin/tree/bobko/collection-literals
 * **Discussion**: [KEEP-416](https://github.com/Kotlin/KEEP/issues/416)
 

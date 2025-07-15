@@ -1,11 +1,10 @@
 # Kotlin Contracts
 
-* Type: design proposal
-* Author: Dmitry Savvinov
-* Contributors: Stanislav Erokhin, Andrey Breslav, Mikhail Glukhih, Roman Elizarov, Ilya Ryzhenkov, Alexander Udalov
-* Status: submitted
-* Prototype: implemented
-* Discussion: [KEEP-139](https://github.com/Kotlin/KEEP/issues/139)
+* **Type**: design proposal
+* **Author**: Dmitry Savvinov
+* **Contributors**: Stanislav Erokhin, Andrey Breslav, Mikhail Glukhih, Roman Elizarov, Ilya Ryzhenkov, Alexander Udalov
+* **Status**: Experimental in 1.3
+* **Discussion**: [KEEP-139](https://github.com/Kotlin/KEEP/issues/139)
 
 
 ## Summary

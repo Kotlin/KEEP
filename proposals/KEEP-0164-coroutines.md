@@ -3,7 +3,7 @@
 * **Type**: Design proposal
 * **Authors**: Andrey Breslav, Roman Elizarov
 * **Contributors**: Vladimir Reshetnikov, Stanislav Erokhin, Ilya Ryzhenkov, Denis Zharkov
-* **Status**: Stable since Kotlin 1.3 (Revision 3.3), experimental in Kotlin 1.1-1.2
+* **Status**: Stable in 1.3 (Revision 3.3), experimental in 1.1-1.2
 * **Discussion**: [KEEP-164](https://github.com/Kotlin/KEEP/pull/164)
 
 ## Abstract

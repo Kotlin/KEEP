@@ -3,8 +3,7 @@
 * **Type**: Design proposal
 * **Author**: Denis Zharkov
 * **Contributors**: Andrey Breslav, Ilya Gorbunov
-* **Status**: Accepted
-* **Prototype**: Implemented in Kotlin 1.1
+* **Status**: Stable in 1.1
 * **Discussion**: https://github.com/Kotlin/KEEP/issues/30
 
 ## Goals

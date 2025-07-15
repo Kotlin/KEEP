@@ -3,7 +3,7 @@
 * **Type**: Design proposal
 * **Author**: Andrey Breslav
 * **Contributors**: Ilya Ryzhenkov, Denis Zharkov
-* **Status**: Implemented in 1.1-M03
+* **Status**: Stable in 1.1
 * **Discussion**: [KEEP-57](https://github.com/Kotlin/KEEP/issues/57)
 
 ## Problem description

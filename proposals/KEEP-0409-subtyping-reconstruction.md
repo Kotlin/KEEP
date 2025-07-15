@@ -4,7 +4,7 @@
 * **Authors**: Roman Venediktov, Daniil Berezun
 * **Contributors**: Marat Akhin, Mikhail Zarechenskiy, Alejandro Serrano Mena
 * **Discussion:** [KEEP-409](https://github.com/Kotlin/KEEP/issues/409)
-* **Status**: In discussion
+* **Status**: In progress
 * **Related YouTrack issue**: [KT-18510](https://youtrack.jetbrains.com/issue/KT-18510/GADT-style-smart-casts)
 
 ## Table of Contents

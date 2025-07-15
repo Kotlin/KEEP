@@ -4,7 +4,7 @@
 * **Author**: Roman Efremov
 * **Contributors**: Alejandro Serrano Mena, Denis Zharkov, Dmitriy Novozhilov, Faiz Ilham Muhammad, Marat Akhin, Mikhail Zarečenskij, Nikita Bobko, Pavel Kunyavskiy, Roman Venediktov
 * **Discussion**: [#442](https://github.com/Kotlin/KEEP/discussions/442)
-* **Status**: KEEP discussion
+* **Status**: Public discussion
 * **Related YouTrack issue**: [KT-14934](https://youtrack.jetbrains.com/issue/KT-14934)
 
 ## Abstract

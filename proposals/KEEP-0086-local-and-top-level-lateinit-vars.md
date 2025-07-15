@@ -3,10 +3,8 @@
 * **Type**: Design proposal
 * **Author**: Dmitry Petrov
 * **Contributors**: Alexander Udalov
-* **Status**: Implemented in 1.2
-* **Prototype**: Implemented
-
-Discussion: https://github.com/Kotlin/KEEP/issues/86
+* **Status**: Stable in 1.2
+* **Discussion**: [KEEP-86](https://github.com/Kotlin/KEEP/issues/86)
 
 ## Problem description
 
