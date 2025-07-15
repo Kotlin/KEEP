@@ -224,20 +224,22 @@ Coroutines are more powerful than Virtual Threads.
 
 Since we rejected the previous language-level integration,
 let's explore kotlinx.coroutines library-level integration.
-
-In all "leaf-suspending" functions, kotlinx.coroutines can try to check if we run on a Virtual Thread and block instead of suspending:
+In all "leaf-suspending" functions,
+kotlinx.coroutines could try to check if we run on a Virtual Thread and block instead of suspending:
 
 ```kotlin
 public suspend fun delay(duration: Duration) {
     if (Thread.currentThread().isVirtual) {
+        Thread.sleep(duration.inWholeMilliseconds)
     } else {
+        // suspending delay logic
     }
 }
 ```
 
 
-As we saw we can't run coroutines unconditionally on Virtual Threads.
-But if the user run their coroutine on a Virtual Thread explicitly themselves, we could theoretically
+As we saw, we can't run coroutines unconditionally on Virtual Threads.
+But if the user runs their coroutine on a Virtual Thread explicitly themselves, we could theoretically
 
 Ok, now when we saw that 
 
