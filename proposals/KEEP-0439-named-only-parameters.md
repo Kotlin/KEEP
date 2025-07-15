@@ -96,8 +96,8 @@ The most notable examples are:
 * `fun <T, K, V> Array<out T>.groupBy(keySelector: (T) -> K, valueTransform: (T) -> V)`
 * `fun <C> Either<C>.fold(ifLeft: (left: A) -> C, ifRight: (right: B) -> C): C`
 
-For these functions, we'd like to restrict a positional form of arguments, e.g. `result.process({}, {})`.
-In addition to that, we'd like to restrict the last lambda argument to be passed in trailing form, e.g. `result.process(onSuccess = {}) { println("or error") }`.
+For these functions, we'd like to forbid a positional form of arguments, e.g. `result.process({}, {})`.
+In addition to that, we'd like to forbid the last lambda argument to be passed in trailing form, e.g. `result.process(onSuccess = {}) { println("or error") }`.
 
 ### Need in language-level support
 
@@ -281,7 +281,8 @@ However, as this is a breaking change, it's proposed to split the migration into
 
 * Don't soften errors caused by the missing name in `copy()` calls anymore (unless `@SoftNamedOnlyParameterCheck` annotation is applied to data class constructor)
 
-> [!NOTE] The phases are not tied to specific compiler versions or timeline.
+> [!NOTE]
+> The phases are not tied to specific compiler versions or timeline.
 
 ### Tooling support
 
