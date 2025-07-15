@@ -5,6 +5,8 @@ on:
     branches:
       - 'rr/**' # "rr" stands for "remote run"
       - 'main'
+  pull_request:
+    branches: [ "main" ]
 
 jobs:
   build:
