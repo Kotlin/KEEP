@@ -22,7 +22,6 @@ In the simplest form, if users want to create a collection, instead of writing `
 - [Motivation](#motivation)
 - [Proposal](#proposal)
   - [Collection literals in annotations](#collection-literals-in-annotations)
-  - [Map literals](#map-literals)
 - [Concerns](#concerns)
 - [Overload resolution motivation](#overload-resolution-motivation)
   - [Overload resolution and type inference](#overload-resolution-and-type-inference)
@@ -46,6 +45,7 @@ In the simplest form, if users want to create a collection, instead of writing `
 - [Empty collection literal](#empty-collection-literal)
 - [Future evolution](#future-evolution)
   - [Theoretical possibility to support List vs Set overloads in the future](#theoretical-possibility-to-support-list-vs-set-overloads-in-the-future)
+  - [Map literals](#map-literals)
 - [Rejected proposals](#rejected-proposals)
   - [Rejected proposal: always infer collection literals to `List`](#rejected-proposal-always-infer-collection-literals-to-list)
   - [Rejected proposal: more granular operators](#rejected-proposal-more-granular-operators)
@@ -280,55 +280,6 @@ annotation class Ann(val array: IntArray)
 
 @Ann([1]) // Collection literals are already possible in annotations in the existing versions of Kotlin
 fun main() {}
-```
-
-### Map literals
-
-In addition to special syntax for collection literals, it'd be natural to add a special syntax for map literals.
-
-```kotlin
-val map = ["key": 1] // Map<String, Int>
-```
-
-It's always possible to add a special syntax for maps in future versions of Kotlin.
-To start with, we want to concentrate on collections.
-That's why we limit the proposal only for collections for now.
-
-We won't even add a `Map.Companion.of` in Kotlin stdlib.
-Such code won't work:
-
-```kotlin
-val map: Map<String, Int> = ["key" to 1] // type mismatch. List<Pair<String, Int>> is not subtype of Map<String, Int>
-```
-
-There are three primary reasons why map literals didn't make it into this proposal.
-
-**1. Problematic interop with Java.**
-[Java declares](https://docs.oracle.com/en/java/javase/23/docs/api/java.base/java/util/Map.html#of()) up to 11 `java.util.Map.of(K, V, K, V, ...)` overloads with even number of parameters and one more `ofEntries` overload with `vararg Map.Entry` parameter.
-It's hard to come up with reasonable operator convention for such a naming scheme.
-
-**2. Boxing performance problem.**
-The ideal solution from the design perspective would be:
-
-```kotlin
-class Map<K, V> {
-    companion object {
-        operator fun <K, V> of(): Map<K, V> = TODO("not implemented")
-        operator fun <K, V> of(element: Map.Entry<K, V>): Map<K, V> = TODO("not implemented") // Or `kotlin.Pair` instead of `Map.Entry`
-        operator fun <K, V> of(vararg elements: Map.Entry<K, V>): Map<K, V> = TODO("not implemented") // Or `kotlin.Pair` instead of `Map.Entry`
-    }
-}
-```
-
-Unfortunately,
-it suffers from unnecessary objects allocations
-that are observable in JMH benchmark both from the speed and garbage collection perspectives.
-
-**3. Map.Entry is an interface, not a class.**
-The fact that it's an interface, makes it unclear an instance of what type should be constructed on the call site.
-
-```kotlin
-val map: Map<Int, String> = [1: "value"] // is desugared to Map.of(/* How to create an instance? */)
 ```
 
 ## Concerns
@@ -1245,6 +1196,55 @@ On the second stage of overload resolution, `Int` is considered more specific th
 In the similar way, `List` can be theoretically made more specific than any other type that can represent collection literals.
 
 But right now, we **don't plan** to do that, since both `List` and `Set` overloads can equally represent the main overload.
+
+### Map literals
+
+In addition to special syntax for collection literals, it'd be natural to add a special syntax for map literals.
+
+```kotlin
+val map = ["key": 1] // Map<String, Int>
+```
+
+It's always possible to add a special syntax for maps in future versions of Kotlin.
+To start with, we want to concentrate on collections.
+That's why we limit the proposal only for collections for now.
+
+We won't even add a `Map.Companion.of` in Kotlin stdlib.
+Such code won't work:
+
+```kotlin
+val map: Map<String, Int> = ["key" to 1] // type mismatch. List<Pair<String, Int>> is not subtype of Map<String, Int>
+```
+
+There are three primary reasons why map literals didn't make it into this proposal.
+
+**1. Problematic interop with Java.**
+[Java declares](https://docs.oracle.com/en/java/javase/23/docs/api/java.base/java/util/Map.html#of()) up to 11 `java.util.Map.of(K, V, K, V, ...)` overloads with even number of parameters and one more `ofEntries` overload with `vararg Map.Entry` parameter.
+It's hard to come up with reasonable operator convention for such a naming scheme.
+
+**2. Boxing performance problem.**
+The ideal solution from the design perspective would be:
+
+```kotlin
+class Map<K, V> {
+    companion object {
+        operator fun <K, V> of(): Map<K, V> = TODO("not implemented")
+        operator fun <K, V> of(element: Map.Entry<K, V>): Map<K, V> = TODO("not implemented") // Or `kotlin.Pair` instead of `Map.Entry`
+        operator fun <K, V> of(vararg elements: Map.Entry<K, V>): Map<K, V> = TODO("not implemented") // Or `kotlin.Pair` instead of `Map.Entry`
+    }
+}
+```
+
+Unfortunately,
+it suffers from unnecessary objects allocations
+that are observable in JMH benchmark both from the speed and garbage collection perspectives.
+
+**3. Map.Entry is an interface, not a class.**
+The fact that it's an interface, makes it unclear an instance of what type should be constructed on the call site.
+
+```kotlin
+val map: Map<Int, String> = [1: "value"] // is desugared to Map.of(/* How to create an instance? */)
+```
 
 ## Rejected proposals
 
