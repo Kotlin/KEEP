@@ -237,7 +237,6 @@ public suspend fun delay(duration: Duration) {
 }
 ```
 
-
 As we saw, we can't run coroutines unconditionally on Virtual Threads.
 But if the user runs their coroutine on a Virtual Thread explicitly themselves, we could theoretically
 
