@@ -34,7 +34,7 @@ in the language.
   * [Objects have no static scope](#objects-have-no-static-scope)
   * [From companion objects to statics](#from-companion-objects-to-statics)
   * [Fake constructors](#fake-constructors)
-  * [`T::type` is not a type nor a expression](#ttype-is-not-a-type-nor-a-expression)
+  * [`T::static` is not a type nor a expression](#tstatic-is-not-a-type-nor-a-expression)
   * [Coding conventions](#coding-conventions)
 * [Technical details](#technical-details)
   * [Declaration](#declaration)
@@ -110,8 +110,7 @@ of static scope already exists in the Kotlin specification, for example when
 are introduced; and is also part of the conceptual model in the K2 compiler.
 
 This notion of static scope surfaces in the language in two modifiers:
-`static` for members, and `::type` for extension declarations
-(we dive later into the reason for choosing two different words).
+`static` for members, and `::static` for extension declarations.
 As a sneak preview of the solution, this proposal makes the following code
 compile, with the intuitive behavior of `static` and type extensions.
 Note that at _usage_ site the calls look exactly as if the members were
@@ -123,8 +122,8 @@ data class Vector(val x: Double, val y: Double) {
   static val Zero: Vector = Vector(0.0, 0.0)
 }
 
-val Vector::type.UnitX: Vector get() = Vector(1.0, 0.0)
-val Vector::type.UnitY: Vector get() = Vector(0.0, 1.0)
+val Vector::static.UnitX: Vector get() = Vector(1.0, 0.0)
+val Vector::static.UnitY: Vector get() = Vector(0.0, 1.0)
 
 fun print(v: Vector): String = when (v) {
   Vector.Zero -> "zero vector"
@@ -191,7 +190,7 @@ data class Vector(val x: Double, val y: Double) {
 }
 
     // static extension receiver scope
-val Vector::type.UnitX: Vector get() = Vector(1.0, 0.0)
+val Vector::static.UnitX: Vector get() = Vector(1.0, 0.0)
 ```
 
 ### Ambiguity in naming
@@ -206,7 +205,7 @@ of view between:
 To solve this problem, we introduce two separate terms:
 
 - `static` is used when the _dispatch_ receiver is a static scope,
-- `::type` is used when the _extension_ receiver is a static scope.
+- `::static` is used when the _extension_ receiver is a static scope.
 
 In that way, case (1) is unambiguously referred to as a _static extension_,
 whereas case (2) is called a _type extension_.
@@ -221,11 +220,11 @@ class Example {
   static fun staticFunction() = ...
   static fun Foo.staticExtensionFunction() = ...
 
-  fun Foo::type.typeExtensionFunction() = ...
-  static fun Foo::type.staticTypeExtensionFunction() = ...
+  fun Foo::static.typeExtensionFunction() = ...
+  static fun Foo::static.staticTypeExtensionFunction() = ...
 }
 
-fun Example::type.typeExtensionFunction() = ...
+fun Example::static.typeExtensionFunction() = ...
 ```
 
 > [!IMPORTANT]
@@ -345,7 +344,7 @@ language, and they eventually need to call a "real" constructor. However, from
 the use-site perspective, they allow providing constructor-like syntax whenever
 suspension or context parameters are required.
 
-### `T::type` is not a type nor a expression
+### `T::static` is not a type nor a expression
 
 In this proposal static is a notion reserved for _scopes_, there is no _type_
 corresponding to that same notion. This has several ramifications in the design:
@@ -353,7 +352,7 @@ corresponding to that same notion. This has several ramifications in the design:
 - It is not possible to form a function type including static scope receivers.
 
     ```kotlin
-    fun foo(block: Int::type.() -> Unit) { }  // ill-formed type
+    fun foo(block: Int::static.() -> Unit) { }  // ill-formed type
     ```
 
 - The compilation scheme erases type receivers (at least in JVM).
@@ -361,7 +360,7 @@ corresponding to that same notion. This has several ramifications in the design:
   receivers are dropped.
 
     ```kotlin
-    fun Int::type.bar(): Int = 3
+    fun Int::static.bar(): Int = 3
 
     val f = ::bar  // has type '() -> Int'
     ```
@@ -369,7 +368,7 @@ corresponding to that same notion. This has several ramifications in the design:
 Similarly, there is no _value_ corresponding to the static scope of a class.
 
 ```kotlin
-val i = Int::type  // wrong
+val i = Int::static  // wrong
 ```
 
 The main consequence is that giving more priority to static members in a given
@@ -462,7 +461,7 @@ may be marked as `static`. In that case the block is executed during
 [static initialization](#initialization) instead of during instance creation.
 
 **§1.5** _(type extensions)_:
-we shall refer to declarations using `::type` in receiver
+we shall refer to declarations using `::static` in receiver
 position as **type extensions**. We refer to the receiver as either
 the **static scope receiver**.
 
@@ -471,20 +470,20 @@ it is not possible to declare type extensions to `object`s.
 
 ```kotlin
 // error, type extension to an object
-fun Greeter::type.helloEverybodyTwice() { ... }
+fun Greeter::static.helloEverybodyTwice() { ... }
 ```
 
-The type before `::type` must be just a class name, without any generic
+The type before `::static` must be just a class name, without any generic
 arguments; this restriction is similar to what it's allowed to write 
 in a [class literal](https://kotlinlang.org/spec/expressions.html#class-literals).
 It is allowed to use a type alias only when the expansion contains no type
 generic arguments. Furthermore, it's forbidden to use a _type parameter_.
 
 ```kotlin
-fun <A> A::type.Null(): A? = null  // error
+fun <A> A::static.Null(): A? = null  // error
 
-fun List<Int>::type.UpTo(n: Int): List<Int> = ...  // error!
-fun List::type.UpTo(n: Int): List<Int> = ...       // ok
+fun List<Int>::static.UpTo(n: Int): List<Int> = ...  // error!
+fun List::static.UpTo(n: Int): List<Int> = ...       // ok
 ```
 
 **§1.7** _(constant static properties)_:
@@ -525,7 +524,7 @@ fulfilled using the static scope receiver.
 For example, the following is an incorrect definition of a `plus` operator:
 
 ```kotlin
-operator fun Vector::type.plus(n: Int) = ...
+operator fun Vector::static.plus(n: Int) = ...
 ```
 
 The only exception is the
@@ -581,7 +580,7 @@ class Direction {
 **§1.13** _(annotations)_:
 static scope receivers may not be annotated. In particular, that means
 that the `@receiver` use site target is not allowed, and that you cannot
-attach an annotation with a type target to `T::type`.
+attach an annotation with a type target to `T::static`.
 
 ### (Lack of) inheritance
 
@@ -654,11 +653,11 @@ In this case the static scope receiver must _strictly coincide_.
 
 ```kotlin
 abstract class A {
-  abstract fun Example::type.example(): Int
+  abstract fun Example::static.example(): Int
 }
 
 abstract class B1: A() {
-  override fun Example::type.example(): Int = 3  // ok
+  override fun Example::static.example(): Int = 3  // ok
 }
 
 abstract class B2: A() {
@@ -707,7 +706,7 @@ available at different points.
 class Foo { companion object }
 
 class Bar {
-  fun Foo::type.bar1(f: Foo) {
+  fun Foo::static.bar1(f: Foo) {
     // available receivers and scopes (from highest to lowest priority)
     // - phantom static Foo
     // - Foo.Companion
@@ -778,7 +777,7 @@ phantom static implicit `this` is **not** available through explicit
 
 ```kotlin
 class Bar {
-  fun Foo::type.test(f: Foo) {
+  fun Foo::static.test(f: Foo) {
     val me = this  // 'this' has type 'Bar', not 'Foo'
     ...
   }
@@ -795,7 +794,7 @@ where the dispatch receiver is bound.
 ```kotlin
 // static val Zero = ... --> we drop the 'Vector' static scope
 val z = Vector::Zero  // KProperty0<Vector>
-// val Vector::type.UnitX = ... --> we drop the 'Vector' static scope
+// val Vector::static.UnitX = ... --> we drop the 'Vector' static scope
 val u = Vector::UnitX  // KProperty0<Vector>
 
 class Example {
@@ -809,7 +808,7 @@ class Example {
 }
 
 val r = Example::bar  // (Int) -> Vector
-val e = Example::baz  // error, 'Example::type' and 'Vector' are receivers
+val e = Example::baz  // error, 'Example::static' and 'Vector' are receivers
 ```
 
 **§3.6** _(instance always sees static)_:
@@ -884,7 +883,7 @@ class Example {
   }
 }
 
-fun Example::type.hi() = foo()         // resolves to the static 'foo'
+fun Example::static.hi() = foo()       // resolves to the static 'foo'
 fun Example.Companion.bye() = foo()    // resolves to 'foo' in the companion
 
 fun meet() = Example.foo()             // resolves to the static 'foo'
@@ -900,7 +899,7 @@ because the dispatch receiver scope `Companion` has higher priority than
 class Example { companion object }
 
 class TypeExtension {
-  fun Example::type.foo() { ... } // (s)
+  fun Example::static.foo() { ... } // (s)
 }
 
 class Companion {
@@ -958,7 +957,7 @@ we remark that calling a type extension does _not_ imply the
 initialization of the classifier being extended, as per the rules above.
 
 ```kotlin
-val Vector::type.hasFiniteBasis: Boolean get() = true
+val Vector::static.hasFiniteBasis: Boolean get() = true
 
 fun findBasis(): List<Vector> {
   if (!Vector.hasFiniteBasis) return emptyList()
@@ -1039,10 +1038,10 @@ For example, without the `@JvmName` annotation, both properties in the code
 below get the same signature, henceforth leading to a platform clash.
 
 ```kotlin
-val Int::type.zero = ...
+val Int::static.zero = ...
 
 @JvmName("zeroVector")
-val Vector::type.zero = ...
+val Vector::static.zero = ...
 ```
 
 > [!WARNING]
@@ -1056,7 +1055,7 @@ data class Vector(...) {
   static val Zero: Vector = Vector(0.0, 0.0)
 }
 
-val Vector::type.UnitX: Vector get() = Vector(1.0, 0.0)
+val Vector::static.UnitX: Vector get() = Vector(1.0, 0.0)
 ```
 
 would be compiled down in the JVM as follows:
@@ -1196,20 +1195,20 @@ As discussed above, static members and type extensions get different names
 even though they both refer to a similar underlying concept. This is done
 to prevent potential ambiguity.
 
-In a previous iteration of the proposal we uniformly used `static` in all
-positions, and referred to type extensions as _static scope_ extensions.
+In a previous iteration we used different syntax for static members
+(`static`) and type extensions (`::type`), 
+and referred to type extensions as _static scope_ extensions.
+Even in internal discussions
+it was clear that the difference between "static extension" and 
+"static scope extension" was too little and prone to problems.
 
-```kotlin
-val Vector::static.UnitX: Vector get() = Vector(1.0, 0.0)
-```
+However, having two different keywords in the code proved to be also quite
+confusing. As a result, we have decided to use different terms -- static members
+and type extensions -- but use the same `static` keyword for both.
 
-However, even in internal discussions it was clear that the difference between
-"static extension" and "static scope extension" was too little and prone to
-problems. As a result, we went with a larger difference.
-
-Apart from `::type`, the suffix `::class` was also considered. In fact, this
+Apart from `::static`, the suffix `::class` was also considered. In fact, this
 syntax is slightly better in that you are cannot use just any type when
-declaring a type extension (`List<Int>::type` is not allowed). However,
+declaring a type extension (`List<Int>::static` is not allowed). However,
 it would lead to a scenario in which `Int::class` have completely different
 meanings in a signature and in a body.
 
@@ -1228,12 +1227,12 @@ mixed inheritance and reflection.
 ```kotlin
 // A.kt
 open class A {
-  open fun Example::type.foo(): Int = ...
+  open fun Example::static.foo(): Int = ...
 }
 
 // B.java
 class B extend A {
-  // 'Example::type' is erased
+  // 'Example::static' is erased
   @Override int foo() { ... }
 }
 
@@ -1241,7 +1240,7 @@ class B extend A {
 class C : B() {
   // what is the correct option?
   override fun foo() = ...
-  override fun Example::type.foo() = ...
+  override fun Example::static.foo() = ...
 }
 ```
 
@@ -1265,7 +1264,7 @@ prepending the name of the class to the name of the function.
 
 ```kotlin
 open class A {
-  open fun Example::type.foo(): Int = ...
+  open fun Example::static.foo(): Int = ...
 }
 // becomes
 class A {
@@ -1336,10 +1335,10 @@ marked as inner or static). However:
   have a explicit scope or not. This affects in particular `explicitAPI` mode.
 
 **Static scope paths for disambiguation**:
-we considered allowing `Type::type` to also appear as a way to disambiguate
+we considered allowing `Type::static` to also appear as a way to disambiguate
 a callable. For example, if function `foo` was declared both in static scope and
 in the companion object, you could be very explicit by writing
-`Type::type.foo`.
+`Type::static.foo`.
 
 However, it seems that we would need this in very few occasions, since:
 - Static wins over companions, and you can already disambiguate to the latter
@@ -1347,5 +1346,5 @@ However, it seems that we would need this in very few occasions, since:
 - For callable references, specifying the type disambiguates in most cases.
 - You can import a static callable with renaming to avoid ambiguity.
 
-Furthermore, it would not be possible to write `val x = Type::type`, since
+Furthermore, it would not be possible to write `val x = Type::static`, since
 there is no type to assign to such an expression.
