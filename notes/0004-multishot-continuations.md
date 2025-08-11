@@ -3,8 +3,8 @@
 - **Type**: Design notes
 - **Author**: Nikita Bobko
 - **Related YouTrack issues**:
-  https://youtrack.jetbrains.com/issue/KT-79957,
-  https://youtrack.jetbrains.com/issue/KT-68932
+  [KT-79957](https://youtrack.jetbrains.com/issue/KT-79957),
+  [KT-79957](https://youtrack.jetbrains.com/issue/KT-68932)
 
 This is a small document that theoretizes on multishot continuations in Kotlin.
 
@@ -236,8 +236,8 @@ It abuses the fact that it can rerun continuations several times.
 Clicking the button will lead to rerunning the whole `Root` function:
 
 ```
---- recompose 1
---- recompose 2
+recompose 1
+recompose 2
 ```
 
 But if a user extracts it to a separate function:
