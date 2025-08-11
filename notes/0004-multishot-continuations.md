@@ -17,7 +17,7 @@ This is a small document that theoretizes on multishot continuations in Kotlin.
 - [Why Compose and Coroutines are not the same thing](#why-compose-and-coroutines-are-not-the-same-thing)
   - [Technical difference. Simpler suspension point implementation](#technical-difference-simpler-suspension-point-implementation)
   - [Technical difference. Memory management](#technical-difference-memory-management)
-  - [The user can't reify Compose continuations. Continuations are managed by the strict rules of the Compose framework](#the-user-cant-reify-compose-continuations-continuations-are-managed-by-the-strict-rules-of-the-compose-framework)
+  - [Users can't reify Compose continuations. Continuations are managed by the strict rules of the Compose framework](#users-cant-reify-compose-continuations-continuations-are-managed-by-the-strict-rules-of-the-compose-framework)
   - [The Compose framework is only concerned with the latest state](#the-compose-framework-is-only-concerned-with-the-latest-state)
 - [What if Kotlin had value types?](#what-if-kotlin-had-value-types)
 - [Final thoughts](#final-thoughts)
@@ -291,7 +291,7 @@ I consider the two-mentioned differences to be technical.
 Technically, they can be fixed to make Compose look more like real general-purpose continuations.
 The next difference is a more fundamental difference
 
-### The user can't reify Compose continuations. Continuations are managed by the strict rules of the Compose framework
+### Users can't reify Compose continuations. Continuations are managed by the strict rules of the Compose framework
 
 Compose doesn't offer `suspendCoroutine` primitive.
 That's why users can't suspend coroutine, save the continuation somewhere and call it later.
