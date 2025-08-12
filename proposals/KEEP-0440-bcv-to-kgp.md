@@ -4,7 +4,7 @@
 * **Author**: Sergei Shanshin
 * **Discussion**: [KEEP-445](https://github.com/Kotlin/KEEP/issues/445)
 * **Status**: Public discussion
-* **Related YouTrack issue**: [KT-71170](https://youtrack.jetbrains.com/issue/KT-71170)
+* **Related YouTrack issue**: [KT-71098](https://youtrack.jetbrains.com/issue/KT-71098)
 
 ## Abstract
 We propose using Binary Compatibility Validator out of the box in Kotlin Gradle Plugin and Kotlin Maven Plugin without using separate plugins.
