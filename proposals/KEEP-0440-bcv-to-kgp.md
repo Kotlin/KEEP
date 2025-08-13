@@ -2,7 +2,7 @@
 
 * **Type**: Design proposal
 * **Author**: Sergei Shanshin
-* **Discussion**: [#445](https://github.com/Kotlin/KEEP/issues/445)
+* **Discussion**: [#446](https://github.com/Kotlin/KEEP/discussions/446)
 * **Status**: Public discussion
 * **Related YouTrack issue**: [KT-71098](https://youtrack.jetbrains.com/issue/KT-71098)
 
