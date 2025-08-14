@@ -94,7 +94,7 @@ However, they provide a way to create a version of an annotation with a specific
 - To the property itself (`property`),
 - To the backing field (`field`), if the property has one,
 - To the getter (`get`),
-- To the setter parameter (`set_param`), if the property is defined as `var`.
+- To the setter parameter (`setparam`), if the property is defined as `var`.
 - If the class is annotated with `@JvmRecord`, to the Java-only target `RECORD_COMPONENT`.
 
 The last rule ensures that way the behavior of a `@JvmRecord` with annotations using `all` as use-site target aligns with Java records.
@@ -175,7 +175,7 @@ data class User(val username: String, /* 1️⃣ */ @all:Email val email: String
 }
 ```
 
-Then the annotation is additionally applied as `@get:Email` in the two marked positions. In this case the `get` target comes from "translating" Java's `METHOD` target. If the property was defined as `var`, the additional `set_param` target would also be selected.
+Then the annotation is additionally applied as `@get:Email` in the two marked positions. In this case the `get` target comes from "translating" Java's `METHOD` target. If the property was defined as `var`, the additional `setparam` target would also be selected.
 
 This behavior does not only apply to Java annotations. For example, [`IntRange` from `androidx.annotations`](https://developer.android.com/reference/androidx/annotation/IntRange) is defined ["natively" in Kotlin](https://cs.android.com/androidx/platform/frameworks/support/+/androidx-main:annotation/annotation/src/commonMain/kotlin/androidx/annotation/IntRange.kt?q=file:androidx%2Fannotation%2FIntRange.kt%20class:androidx.annotation.IntRange).
 
