@@ -38,6 +38,7 @@ In the simplest form, if users want to create a collection, instead of writing `
 - [Interop with Java ecosystem](#interop-with-the-Java-ecosystem)
 - [Tuples](#tuples)
 - [Performance](#performance)
+  - [Performance. Companion object allocation](#performance-companion-object-allocation)
 - [IDE support](#ide-support)
 - [`listOf` deprecation](#listof-deprecation)
 - [Change to stdlib](#change-to-stdlib)
@@ -1045,6 +1046,14 @@ The proposal is to proceed with just three overloads as we have them right now i
 We add overloads for one and zero elements because they return specialized lists.
 
 All the mentioned numbers can be seen in the raw benchmark data, that can be found in the [`resources/collection-literals-benchmark/`](../resources/collection-literals-benchmark) directory of the KEEP repo root.
+
+### Performance. Companion object allocation
+
+There is one more potential performance issue: `Companion` object allocation.
+We haven't taken measurements,
+but in practice, it may well be the case that we need to release [the statics proposal](./KEEP-0427-static-member-type-extension.md) before making collection literals stable.
+
+In that case, we could ask users to declare `operator fun of` as a static function instead of `companion object` function.
 
 ## IDE support
 
