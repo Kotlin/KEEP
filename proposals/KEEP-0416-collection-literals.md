@@ -874,10 +874,10 @@ For `dynamic`, it's a true statement because we fall back to `Any` and then [the
 ### Feature interaction with intersection types
 
 Given an intersection type `A & B`,
-let's consider a case where types `A` and `B` both declare a proper `operator fun of` in the respective `companion object` inside of them.
+let's consider a case where types `A` and `B` both declare a proper `operator fun of` in their respective `companion object`s.
 It doesn't make sense to prefer either of the operators because generally neither of the operators returns the intersection type `A & B`.
 
-It's proposed to report an error when the expected type of collection literal is an intersection type.
+It's proposed to report an error when the collection literal's expected type is an intersection type.
 
 **There is only one exception.**
 It's an intersection with `Any`.
