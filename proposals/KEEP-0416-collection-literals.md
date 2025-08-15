@@ -879,12 +879,13 @@ It doesn't make sense to prefer either of the operators because generally neithe
 
 It's proposed to report an error when the expected type of collection literal is an intersection type.
 
-**There is only one exception.**
-It's an intersection with `Any`.
-For example, [definitely non-nullable type](https://kotlinlang.org/docs/generics.html#definitely-non-nullable-types).
-Since `operator fun of` functions is not allowed to return nullable types (See [the restriction section](#operator-function-of-restrictions)),
-the return type of `operator fun of` is always a subtype of `T & Any` for any given `T`.
-In that case, it's proposed to resolve `T.Companion.of` since it's unambiguous.
+During the implementation and testing, we should pay attention to the following special cases:
+1. Intersection with `Any` and [definitely non-nullable type](https://kotlinlang.org/docs/generics.html#definitely-non-nullable-types).
+2. Intersections like `List<Int>? & List<Int>`, `MutableList<Int>? & List<Int>`, `MutableList<Int> & List<Int>?`
+
+Usually such intersections should automatically collapse to the appropriate types.
+Thus, they should work with collection literals out of the box.
+It's just that they require targeted testing.
 
 ## Similar features in other languages
 
