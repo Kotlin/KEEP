@@ -998,6 +998,21 @@ For example, one can already find convenience factory `of` methods in popular Ja
 We perceive Java static `of` function as an `operator fun of` function only if it follows the restrictions mentioned above.
 All the restrictions are reasonable, and we think that all collection-builder-like `of` functions will naturally follow those restrictions.
 
+## Interop with Swift
+
+Kotlin provides basic interop with Swift.
+Currently, Swift interop is yet in the early active development stage.
+At this stage, we are only concerned with exporting Kotlin declarations to make them callable from Swift.
+
+In Swift language, collection literals are expressed via [ExpressibleByArrayLiteral](https://developer.apple.com/documentation/swift/expressiblebyarrayliteral) and [ExpressibleByDictionaryLiteral](https://developer.apple.com/documentation/swift/expressiblebydictionaryliteral) protocols.
+The target type should conform to these protocols.
+The `operator fun of` function that we define in this KEEP is almost\* compatible with Swift's `ExpressibleByArrayLiteral` protocol.
+That's why we can expose the majority of `operator fun of` functions as `ExpressibleByArrayLiteral`.
+
+The only part which is incompatible is the possibility to express `NonEmptyList` via Kotlin's collection literals.
+Luckily, such declarations are easily detectable in Kotlin.
+When detected, we should restrain from exposing such types as `ExpressibleByArrayLiteral`.
+
 ## Tuples
 
 With the addition of collection literals, some users might want to use square brackets syntax to express tuples (well, Kotlin doesn't have tuples, but there are `kotlin.Pair` and `kotlin.Triple`).
