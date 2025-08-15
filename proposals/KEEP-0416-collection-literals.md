@@ -35,7 +35,7 @@ In the simplest form, if users want to create a collection, instead of writing `
   - [Feature interaction with flexible types](#feature-interaction-with-flexible-types)
   - [Feature interaction with intersection types](#feature-interaction-with-intersection-types)
 - [Similar features in other languages](#similar-features-in-other-languages)
-- [Interop with Java ecosystem](#interop-with-the-Java-ecosystem)
+- [Interop with the Java ecosystem](#interop-with-the-Java-ecosystem)
 - [Tuples](#tuples)
 - [Performance](#performance)
   - [Performance. Companion object allocation](#performance-companion-object-allocation)
@@ -45,7 +45,7 @@ In the simplest form, if users want to create a collection, instead of writing `
   - [Semantic differences between Kotlin and Java factory methods](#semantic-differences-between-kotlin-and-java-factory-methods)
 - [Empty collection literal](#empty-collection-literal)
 - [Future evolution](#future-evolution)
-  - [Theoretical possibility to support List vs Set overloads in the future](#theoretical-possibility-to-support-list-vs-set-overloads-in-the-future)
+  - [Theoretical possibility to support List vs. Set overloads in the future](#theoretical-possibility-to-support-list-vs-set-overloads-in-the-future)
   - [Map literals](#map-literals)
 - [Rejected proposals](#rejected-proposals)
   - [Rejected proposal: always infer collection literals to `List`](#rejected-proposal-always-infer-collection-literals-to-list)
@@ -60,7 +60,7 @@ In the simplest form, if users want to create a collection, instead of writing `
     They deserve a separate literal.
     A special syntax for collection literals makes them instantly stand out from the rest of the program, making code easier to read.
 2.  Simplify migration from other languages / Friendliness to newcomers.
-    Collection literals is a widely understood concept with more or less the same syntax across different languages.
+    Collection literals are a widely understood concept with more or less the same syntax across different languages.
     And new users have the right to naively believe that Kotlin supports it.
     The presence of this feature makes a good first impression on the language.
 3.  Clear intent.
@@ -655,7 +655,7 @@ fun main() {
 
 When the compiler can't find `.Companion.of`, it always falls back to `List.Companion.of`.
 If later it turns out that `List` can't be subtype of the expected type, the compiler reports type mismatch as usual.
-The fallback rule also affects CLET and CLT during [overload resolution stage](#overload-resolution-and-type-inference).
+The fallback rule also affects CLET and CLT during [the overload resolution stage](#overload-resolution-and-type-inference).
 
 Examples:
 ```kotlin
@@ -881,10 +881,10 @@ For `dynamic`, it's a true statement because we fall back to `Any` and then [the
 ### Feature interaction with intersection types
 
 Given an intersection type `A & B`,
-let's consider a case where types `A` and `B` both declare a proper `operator fun of` in the respective `companion object` inside of them.
+let's consider a case where types `A` and `B` both declare a proper `operator fun of` in their respective `companion object`s.
 It doesn't make sense to prefer either of the operators because generally neither of the operators returns the intersection type `A & B`.
 
-It's proposed to report an error when the expected type of collection literal is an intersection type.
+It's proposed to report an error when the collection literal's expected type is an intersection type.
 
 During the implementation and testing, we should pay attention to the following special cases:
 1. Intersection with `Any` and [definitely non-nullable type](https://kotlinlang.org/docs/generics.html#definitely-non-nullable-types).
@@ -1252,7 +1252,7 @@ There are three primary reasons why map literals didn't make it into this propos
 
 **1. Problematic interop with Java.**
 [Java declares](https://docs.oracle.com/en/java/javase/23/docs/api/java.base/java/util/Map.html#of()) up to 11 `java.util.Map.of(K, V, K, V, ...)` overloads with even number of parameters and one more `ofEntries` overload with `vararg Map.Entry` parameter.
-It's hard to come up with reasonable operator convention for such a naming scheme.
+It's hard to come up with a reasonable operator convention for such a naming scheme.
 
 **2. Boxing performance problem.**
 The ideal solution from the design perspective would be:
@@ -1293,7 +1293,7 @@ The proposal was rejected because it's too inflexible.
     It's especially important to be able to reuse the syntax for arrays; otherwise, [it will be a breaking change](#collection-literals-in-annotations).
 2.  Authors of collection libraries (kotlinx.collections.immutable, Guava, etc.) won't be able to leverage the syntax.
 3.  In Kotlin, we keep language features open and composable.
-    Just as `suspend` only transforms functions while `async`/`await` is implemented in kotlinx.coroutines library; collection literals adds syntax, leaving implementation to libraries.
+    Just as `suspend` only transforms functions while `async`/`await` is implemented in kotlinx.coroutines library; collection literals add syntax, leaving implementation to libraries.
 
 Overall, we don't think that the contextual semantics brings serious mental overhead.
 Contextual semantics of collection literals has the same mental overhead as the following example:
@@ -1307,7 +1307,7 @@ someFunction([1, 2])                  // You don't know what is the type of `[1,
 ### Rejected proposal: more granular operators
 
 In [the proposal](#proposal), we give users possibility to add overloads for the `vararg` operator.
-It's clear that we do so to avoid unnecessary array allocations at least for most popular cases when collection sizes are small.
+It's clear that we do so to avoid unnecessary array allocations, at least for most popular cases when collection sizes are small.
 What if instead of a single operator, collections had to declare three operators: `createCollectionBuilder`, `plusAssign`, `freeze` (we even already have the `plusAssign` operator!)?
 
 Please note that we need the third `freeze` operator to make it possible to create collection literals for immutable collections.
