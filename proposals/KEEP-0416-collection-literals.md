@@ -591,8 +591,11 @@ class Array<T> {
 ```
 
 **Allowance 2.**
-The operator is allowed to be `suspend`, or `tailrec`.
-Because all other operators are allowed being such as well, and we don't see reasons to restrict `operator fun of`.
+The operator is allowed to be `suspend` or `tailrec`.
+
+The only operators that are not allowed to be `suspend`, represent properties: `provideDelegate`, `getValue`, `setValue`,
+because properties are meant to be lightweight.
+Since `operator fun of`, doesn't represent properties, in this proposal, we allow it to be `suspend`.
 
 **Allowance 3.**
 It's allowed to have overloads that differ in number of arguments:
