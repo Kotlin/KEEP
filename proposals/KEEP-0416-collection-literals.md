@@ -574,6 +574,10 @@ Since all those implicit receivers affect availability of the `of` function, it'
 The supportive example is the same as in restriction 3.
 The nullability restriction is also important for [feature interaction with intersection types](#feature-interaction-with-intersection-types)
 
+**Restriction 9.**
+Forbid simultaneous `operator fun of` and `operator fun get`.
+See [the dedicated section for more details](#rejected-proposal-self-sufficient-collection-literals-with-defined-type).
+
 ### Operator function `of` allowances
 
 We would like to explicitly note the following allowances.
