@@ -252,6 +252,7 @@ Once a proper `operator fun of` is declared, the collection literal can be used 
     - Explicit `return`, single-expression functions (if type is specified), and last expression of lambdas
       (except for [@OverloadResolutionByLambdaReturnType cases](#feature-interaction-with-overloadresolutionbylambdareturntype-2))
     - Assignments and initializations
+    - Annotation entry constructor (e.g. `@Annot([1])`)
 3.  In all other cases, it's proposed to desugar collection literal to `List.of(expr1, expr2, expr3)`.
     The precise fallback rule is described in a [separate section](#fallback-rule-what-if-companionof-doesnt-exist).
 
