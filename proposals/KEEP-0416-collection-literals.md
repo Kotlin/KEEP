@@ -31,7 +31,8 @@ In the simplest form, if users want to create a collection, instead of writing `
 - ["Contains" optimization](#contains-optimization)
 - [Similarities with `@OverloadResolutionByLambdaReturnType`](#similarities-with-overloadresolutionbylambdareturntype)
 - [Feature interactions](#feature-interactions)
-  - [Feature interaction with `@OverloadResolutionByLambdaReturnType`](#feature-interaction-with-overloadresolutionbylambdareturntype)
+  - [Feature interaction with `@OverloadResolutionByLambdaReturnType` \#1](#feature-interaction-with-overloadresolutionbylambdareturntype-1)
+  - [Feature interaction with `@OverloadResolutionByLambdaReturnType` \#2](#feature-interaction-with-overloadresolutionbylambdareturntype-2)
   - [Feature interaction with flexible types](#feature-interaction-with-flexible-types)
   - [Feature interaction with intersection types](#feature-interaction-with-intersection-types)
 - [Similar features in other languages](#similar-features-in-other-languages)
@@ -249,6 +250,7 @@ Once a proper `operator fun of` is declared, the collection literal can be used 
 
     The following positions are considered positions with the definite expected type:
     - Explicit `return`, single-expression functions (if type is specified), and last expression of lambdas
+      (except for [@OverloadResolutionByLambdaReturnType cases](#feature-interaction-with-overloadresolutionbylambdareturntype-2))
     - Assignments and initializations
 3.  In all other cases, it's proposed to desugar collection literal to `List.of(expr1, expr2, expr3)`.
     The precise fallback rule is described in a [separate section](#fallback-rule-what-if-companionof-doesnt-exist).
@@ -822,7 +824,7 @@ Collection literals don't suffer from this problem.
 
 ## Feature interactions
 
-### Feature interaction with `@OverloadResolutionByLambdaReturnType`
+### Feature interaction with `@OverloadResolutionByLambdaReturnType` \#1
 
 ```kotlin
 @OptIn(kotlin.experimental.ExperimentalTypeInference::class)
@@ -846,7 +848,22 @@ Technically, since collection literal elements are analyzed almost like regular 
 `@OverloadResolutionByLambdaReturnType` is an experimental feature.
 To avoid potential future stabilization complications,
 we should make sure that the example above either results in `OVERLOAD_RESOLUTION_AMBIGUITY` or is prohibited in some way
-(though it's unclear how to prohibit it).
+(though it's yet unclear how to prohibit it).
+
+### Feature interaction with `@OverloadResolutionByLambdaReturnType` \#2
+
+We can combine collection literal and `@OverloadResolutionByLambdaReturnType` in reverse order.
+
+```kotlin
+@OverloadResolutionByLambdaReturnType fun foo(body: () -> List<Int>) = Unit
+@OverloadResolutionByLambdaReturnType fun foo(body: () -> Set<Int>) = Unit
+
+fun main() {
+    foo { [1, 2, 3] }
+}
+```
+
+The example is expected to fail to compile because when we analyze lambda's last expression, we don't know the lambda's return type.
 
 ### Feature interaction with flexible types
 
