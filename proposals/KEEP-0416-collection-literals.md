@@ -1024,7 +1024,8 @@ When detected, we should restrain from exposing such types as `ExpressibleByArra
 ## Tuples
 
 With the addition of collection literals, some users might want to use square brackets syntax to express tuples (well, Kotlin doesn't have tuples, but there are `kotlin.Pair` and `kotlin.Triple`).
-The restrictions that we put on the `operator fun of` function don't make it possible to express tuples in a type-safe manner (user has to declare an `of(vararg)` overload).
+Practically, the restrictions that we put on the `operator fun of` function don't make it possible to express tuples in a type-safe manner (a user has to declare an `of(vararg)` overload).
+(Technically, it's possible by using `@Deprecated` annotation, but we consider it a marginal case)
 
 We don't plan to support the tuples use-case in the first version of collection literals.
 But in the future, it's yet unclear if we want to make tuples expressible via square brackets or maybe some other syntax.
