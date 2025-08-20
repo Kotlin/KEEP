@@ -16,7 +16,7 @@
 
 [KEEP-367](./context-parameters.md) introduces a context parameters feature to Kotlin.
 
-There are multiple ways on how you can look at context parameters.
+There are multiple ways on how you can think of context parameters.
 One of them is that context parameters are a _better way_ to declare global variables.
 It's common knowledge that we should prefer function parameters over global variables –
 it makes our programs easier to test and parallelize.
