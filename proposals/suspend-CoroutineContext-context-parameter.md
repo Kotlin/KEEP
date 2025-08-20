@@ -419,7 +419,9 @@ fun main() {
 }
 ```
 
-Concern: is it really the way we want it to work? https://jetbrains.slack.com/archives/C01SSJUR4P9/p1750085555649539
+This place looks suspicious.
+The overload resolution ambiguity would be a more natural behavior.
+This is a potential subject to change in the context parameters proposal.
 
 ### Feature interaction with callable references
 
