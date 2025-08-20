@@ -148,6 +148,7 @@ package kotlin.coroutines
 @SinceKotlin("1.3")
 @Suppress("WRONG_MODIFIER_TARGET")
 @InlineOnly
+
 public suspend inline val coroutineContext: CoroutineContext
     get() {
         throw NotImplementedError("Implemented as intrinsic")
@@ -167,6 +168,7 @@ package kotlin.coroutines
 @InlineOnly
 context(context: CoroutineContext)
 public inline val coroutineContext: CoroutineContext get() = context
+
 
 
 ```
