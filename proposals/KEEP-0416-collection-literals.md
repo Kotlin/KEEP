@@ -582,7 +582,7 @@ Forbid simultaneous `operator fun of` and `operator fun get`.
 See [the dedicated section for more details](#rejected-proposal-self-sufficient-collection-literals-with-defined-type).
 
 **Restriction 10.**
-All `of` overloads are not allowed to use parameters with default values.
+`operator fun of` are not allowed to use parameters with default values.
 
 ### Operator function `of` allowances
 
