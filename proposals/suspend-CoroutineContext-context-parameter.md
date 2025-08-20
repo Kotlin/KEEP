@@ -17,19 +17,13 @@
 [KEEP-367](./context-parameters.md) introduces a context parameters feature to Kotlin.
 
 There are multiple ways on how you can think of context parameters.
-One of them is that context parameters are a _better way_ to declare global variables.
-It's common knowledge that we should prefer function parameters over global variables –
-it makes our programs easier to test and parallelize.
-But still, programmers tend to use global variables because passing parameters manually might be too tedious
-and might require too much ceremony in some cases.
+One of them is that it's possible to pass parameters by position,
+it's possible to pass parameters by name,
+and, with context parameters, it's possible to pass parameters by context.
 
-Context parameters partially cover this use case.
-They are not as tedious to pass around as regular parameters,
-and they don't have the downsides of the global variables.
-
-Turns out that Kotlin already has another existing feature that covers the same use case in a similar way – `suspend` functions.
+Turns out that Kotlin already has another existing feature that has the same property – `suspend` functions.
 All `suspend` functions have an implicit `$completion: kotlin.coroutines.Continuation` parameter.
-And while the `$completion` parameter itself isn't equivalent to context parameters since the continuations are not just passed around and are rather wrapped on every suspending call,
+And while the `$completion` parameter itself isn't equivalent to context parameters since the continuations are not just passed around and are rather wrapped and transformed on every suspending call,
 but the `kotlin.coroutines.Continuation`'s `context` property of type `kotlin.coroutines.CoroutineContext` **is** equivalent to context parameters.
 
 Here is a side-by-side comparison:
@@ -179,7 +173,7 @@ public inline val coroutineContext: CoroutineContext get() = context
 Please note that the suggested change doesn't break binary compatibility since the property is `InlineOnly`.
 
 We kill two birds with one stone:
-1. We can close [KT-15555](https://youtrack.jetbrains.com/issue/KT-15555),
+1. We can close [KT-15555](https://youtrack.jetbrains.com/issue/KT-15555)
   and ask users to prefer properties with context parameters if all they need is access to `CoroutineContext`.
 2. The magical `coroutineContext` compiler intrinsic becomes a proper language feature.
 
