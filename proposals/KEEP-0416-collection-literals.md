@@ -367,7 +367,8 @@ That's exactly what we want to do – to filter out definitely inapplicable `out
 
 Given the following example: `outerCall([expr1, [expr2], expr3, { a: Int -> }, ::x], expr4, expr5)`,
 similar to lambdas and callable references, collection literal expression type inference is postponed.
-Contrary, elements of the collection literal are analyzed in the way similar to how other arguments of `outerCall` are analyzed, which means:
+Contrary, elements of the collection literal are analyzed in the way similar to how other arguments of `outerCall` are analyzed
+(in [so-called *dependent mode*](https://github.com/JetBrains/kotlin/blob/master/docs/fir/inference.md)), which means:
 1.  If collection literal elements are lambdas, or callable references, their analysis is postponed.
     Only the number of lambda parameters and lambda parameter types (if specified) are considered for overload resolution of `outerCall`.
 2.  If collection literal elements are collection literals themselves, then we descend into those literals and recursively apply the same rules.
@@ -419,7 +420,7 @@ fun test() {
 }
 ```
 
-It's important to understand that until we pick the `outerCall` overload, we don't start the full-blown overload resolution process for nested `of` calls.
+It's important to understand that until we pick the `outerCall` overload, we don't start the full-blown overload resolution process for the nested `of` calls.
 If we did so, it'd lead to exponential complexity of `outerCall` overload resolution.
 Consider the `outerCall([[[1, 2, 3]]])` example.
 
@@ -896,8 +897,8 @@ We think that resolving `.Companion.of` is too implicit, and it might lead to ac
 In JavaScript, square brackets always return an `Array`.
 Following the principle of least astonishment, it's proposed to fall back to `List`.
 
-All those special cases can be generalized to the common rule for the flexible types to behave as if the upper bound was used instead of the flexible type.
-For `dynamic`, it's a true statement because we fall back to `Any` and then [the fallback rule](#fallback-rule-what-if-companionof-doesnt-exist) kicks in.
+All those special cases can be generalized to the common rule that flexible types are treated as if their upper bound was used instead of the flexible type.
+For the `dynamic` type, it's true, because we fall back to `Any`, and then we behave identical to `val foo: Any = [expr1, expr2]` example.
 
 ### Feature interaction with intersection types
 
