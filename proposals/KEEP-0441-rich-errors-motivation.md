@@ -693,12 +693,12 @@ fun foo(): String | Err1 | Err2
 
 fun f() { 
     val x = foo()
-    if (x == Err1) return
+    if (x is Err1) return
   
-    // no need for `is Err2` or an `else` branch here
+    // no need for `is Err1` or an `else` branch here
     when (x) {
         is String -> println("string")
-        is Err1 -> println("Err1")
+        is Err2 -> println("Err1")
     }
 }
 ```
