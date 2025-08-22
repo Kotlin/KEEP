@@ -795,9 +795,10 @@ This proposal unifies and generalizes Kotlin’s existing error-handling solutio
 * **Nullable types**:
   Functions that today return `T?` to signal recoverable failure can instead return `T | ErrorType`, making the failure
   reason explicit and type-safe.
-* **Result and Either**:
+* **kotlin.Result**:
   Result-like wrappers can be modeled as error unions. For example, `Result<T>` can be mapped to `T | ExceptionError`,
-  where `ExceptionError` wraps a `Throwable`.
+  where `ExceptionError` wraps a `Throwable`. However, note that Result-like wrappers (and `Either`) with two type parameters cannot be
+  represented with rich errors, as we don’t allow errors to have generics for now.
 * **Sealed hierarchies**:
   Common error types (e.g. `NotFound`, `InvalidInput`) can be declared once and reused across many APIs, eliminating the
   need for repetitive sealed hierarchies and increasing composability.
