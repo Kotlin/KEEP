@@ -3,6 +3,8 @@
 * **Type**: Design proposal
 * **Authors**: Michail Zarečenskij, Roman Venediktov
 * **Contributors**: Alejandro Serrano Mena, Marat Akhin, Ross Tate
+* **Discussion**: [#447](https://github.com/Kotlin/KEEP/discussions/447)
+* **Related YouTarck issue**: [KT-68296](https://youtrack.jetbrains.com/issue/KT-68296)
 * **Status**: Design review
 
 ## Abstract
