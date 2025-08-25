@@ -698,7 +698,7 @@ fun f() {
     // no need for `is Err1` or an `else` branch here
     when (x) {
         is String -> println("string")
-        is Err2 -> println("Err1")
+        is Err2 -> println("Err2")
     }
 }
 ```
