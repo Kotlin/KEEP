@@ -161,7 +161,7 @@ those declarations should be part of a separate KEEP document.
 We propose to introduce a new form of **name-based destructuring**, in which
 properties are matched by name. In case the name of the property to be accessed
 and the name of the newly-declared variable doesn't coincide, we provide
-**renaming** syntax. In fact, shorter syntax `val x` can be though of as 
+**renaming** syntax. In fact, shorter syntax `val x` can be thought of as a 
 shorthand for writing the extended `val x = x`.
 
 ```kotlin
@@ -239,7 +239,7 @@ for ((val age, val name = fullName) in people) { ... }
 
 As discussed above, position-based destructuring still has a role in Kotlin.
 We propose to introduce new syntax that complements the one for name-based,
-and at the same type more distinctively remembers of "position". 
+and at the same time more distinctively reminds of "position". 
 For the latter point, reflecting the syntax of
 [collection literals](https://github.com/Kotlin/KEEP/blob/bobko/collection-literals/proposals/collection-literals.md)
 seems the best option.
@@ -440,6 +440,8 @@ It is possible to extend this rule to modifiers that may not appear in front
 of an expression (like `public`). This rejects annotations, since they may
 appear in front of an expression too. We would need unbounded lookahead to
 decide which rule to apply, which would heavily impact parsing performance.
+The option of having a specific keyword to signal the type of destructuring
+was deemed too wordy for a feature that is so heavily used.
 
 **Translation**. The compiler should treat name-based destructuring as a
 sequence of property accesses. In general, a name-based destructuring
@@ -461,12 +463,50 @@ val xN = $tmp.pN
 
 This informs the expected behavior of the code, in particular with respect
 to the _order_ in which operations happen.
-For example, if accessing `p1` stops computation, then all the rest of
-declarations would be marked as inaccessible code.
+For example, if accessing `p1` throws an exception, then the rest of the
+property accessors are never called.
 
 The translation of the new syntax for position-based destructuring follows
 the same rules of
 [current syntax](https://kotlinlang.org/spec/operator-overloading.html#destructuring-declarations).
+
+**Smart casting**. The translation rules may have additional typing implications
+if contracts for properties are added to the language.
+
+```kotlin
+open class A {
+    val x: Int
+        get() {
+            contract { returns() implies (this@A is B) }
+        }
+}
+
+class B(val y: Int) : A()
+
+fun test(thing: A) {
+    val (x, y) = thing  // accepted
+    val (y, x) = thing  // rejected
+}
+```
+
+Note that this behavior is currently present for position-based destructuring.
+
+```kotlin
+open class A {
+    operator fun component1(): Int {
+        contract { returns() implies (this@A is B) }
+        return 1
+    }
+}
+
+class B : A() {
+    operator fun component2() = 2
+}
+
+fun test(thing: A) {
+    val (x, y) = thing  // works
+}
+```
 
 ## Potential extensions
 
