@@ -451,7 +451,7 @@ operator fun Foo.Companion.of(vararg x: Int) = Foo() // Forbidden
 ```
 
 It's a technical restriction driven by the fact that, in Kotlin, extensions can win over members if members are not applicable.
-The restriction avoids the need to consider imported `of`s and the need to check their restrictions.
+The restriction avoids the need to consider imported `of`s.
 The presence of the extensions makes it impossible to check all further restrictions on the `of` function declaration side.
 
 One could argue that it's already possible for all other `operator`s in Kotlin to be declared as extensions rather than members,
