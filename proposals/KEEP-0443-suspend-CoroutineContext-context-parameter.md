@@ -1,4 +1,4 @@
-# Make all `suspend` functions implicitly inject `CoroutineContext` context parameter
+# `CoroutineContext` context parameter in `suspend` functions
 
 * **Type**: Design proposal
 * **Author**: Nikita Bobko
@@ -10,11 +10,12 @@
   Roman Venediktov
 * **Issue:**
   [KT-15555 Support suspend get/set properties](https://youtrack.jetbrains.com/issue/KT-15555)
-* **Discussion**: [todo](https://github.com/Kotlin/KEEP/discussions/todo)
+* **Discussion**: [#452](https://github.com/Kotlin/KEEP/discussions/452)
+* **Status**: Public discussion
 
 ## Abstract
 
-[KEEP-367](./context-parameters.md) introduces a context parameters feature to Kotlin.
+[KEEP-367](./KEEP-0367-context-parameters.md) introduces context parameters feature to Kotlin.
 
 There are multiple ways on how you can think of context parameters.
 One of them is that it's possible to pass parameters by position,
@@ -90,7 +91,7 @@ A lot of existing Kotlin code that relies on coroutines already uses `suspend` f
   - [`CoroutineContext` becomes even more magical](#coroutinecontext-becomes-even-more-magical)
 - [Discarded idea. Interop with Compose](#discarded-idea-interop-with-compose)
 - [Dependencies](#dependencies)
-- [Mock example. `ScopedValues`-like API for `CoroutineContext`](#mock-example-scopedvalues-like-api-for-coroutinecontext)
+- [Illustrative example. `ScopedValues`-like API for `CoroutineContext`](#illustrative-example-scopedvalues-like-api-for-coroutinecontext)
 - [IDE integration](#ide-integration)
 - [Related features in other languages](#related-features-in-other-languages)
 - [Alternatives](#alternatives)
@@ -295,8 +296,8 @@ class ContextMarker(val marker: String) : AbstractCoroutineContextElement(Compan
 }
 
 suspend fun main() {
-    withContext(ContextMarker("implicit context")) {
-        context(ContextMarker("explicit context")) {
+    withContext(ContextMarker("implicit context")) { // coroutines:            kotlinx.coroutines.withContext
+        context(ContextMarker("explicit context")) { // stdlib (experimental): kotlin.context
             foo()
         }
     }
@@ -370,7 +371,7 @@ This proposal answers "no" to all the questions above:
 4. No, `context(_: CoroutineContext) fun` isn't equivalent to `suspend fun` from the overload resolution perspective.
 
 We prefer to answer "no" because overridability is a very strong type of equivalence.
-The current Kotlin version doesn't allow dropping parameters when you override a function.
+For example, the current Kotlin version doesn't allow dropping parameters when you override a function.
 
 And just to add a point, if we answered "yes", it'd introduce non-transitive equivalence into overload resolution.
 `suspend fun foo() {}` and `context(_: CoroutineContext) fun foo() {}` would be equivalent.
@@ -450,7 +451,7 @@ fun main() {
 ```
 
 - Given that \#5 is red, \#6 should be obviously red.
-- Since the context and `suspend` functions are different from the perspective of overload resolution ([see section](#declaration-site-conflicting_overloads-and-overridability)),
+- Since the context and `suspend` functions are different from the perspective of overload resolution ([see the section](#declaration-site-conflicting_overloads-and-overridability)),
   we propose to make \#3 red – `INITIALIZER_TYPE_MISMATCH`.
 
 ### `kotlin.synchronized` stdlib function
@@ -610,7 +611,7 @@ That's why the alternative design is not possible either.
 
 ## Dependencies
 
-**(1)** This proposal, in general, depends on [KEEP-367 Context parameters](./context-parameters.md).
+**(1)** This proposal, in general, depends on [KEEP-367 Context parameters](./KEEP-0367-context-parameters.md).
 
 **(2)** This proposal depends on the fact that contextual parameters _fill in_ neither extension, nor dispatch holes:
 
@@ -625,7 +626,7 @@ fun foo() {
 fun String.functionWithExtensionHole() {}
 ```
 
-If not the decision to not fill in the extension and dispatch hole, this proposal would be a change of behavior:
+If not the decision, this proposal would be a behavioral change:
 
 ```kotlin
 suspend fun CoroutineContext.bar() {
@@ -638,7 +639,7 @@ fun CoroutineContext.baz() {}
 Thankfully, it's not the case.
 These examples are indicators of context parameters' good design.
 
-## Mock example. `ScopedValues`-like API for `CoroutineContext`
+## Illustrative example. `ScopedValues`-like API for `CoroutineContext`
 
 Imagine we want to provide [`ScopedValues`-like API](https://openjdk.org/jeps/506) for `CoroutineContext` so that storing data in `CoroutineContext` is as easy as declaring global variables:
 
