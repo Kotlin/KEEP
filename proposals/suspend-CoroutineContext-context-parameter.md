@@ -78,8 +78,8 @@ A lot of existing Kotlin code that relies on coroutines already uses `suspend` f
 
 - [The proposal](#the-proposal)
   - [`coroutineContext` stdlib property](#coroutinecontext-stdlib-property)
-  - [`suspend` function with explicit `CoroutineContext` context parameter](#suspend-function-with-explicit-coroutinecontext-context-parameter)
   - [Use case. CPU intensive cooperative cancellation](#use-case-cpu-intensive-cooperative-cancellation)
+  - [`suspend` function with explicit `CoroutineContext` context parameter](#suspend-function-with-explicit-coroutinecontext-context-parameter)
   - [Declaration-site `CONFLICTING_OVERLOADS` and overridability](#declaration-site-conflicting_overloads-and-overridability)
   - [Overload resolution](#overload-resolution)
   - [Feature interaction with callable references](#feature-interaction-with-callable-references)
