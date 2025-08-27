@@ -173,8 +173,8 @@ public inline val coroutineContext: CoroutineContext get() = context
 Please note that the suggested change doesn't break binary compatibility since the property is `InlineOnly`.
 
 We kill two birds with one stone:
-1. We can close [KT-15555](https://youtrack.jetbrains.com/issue/KT-15555)
-  and ask users to prefer properties with context parameters if all they need is access to `CoroutineContext`.
+1. It’s now possible to use properties with context parameters to retrieve data from a coroutine context,
+  addressing one of the main cases of [KT-15555](https://youtrack.jetbrains.com/issue/KT-15555).
 2. The magical `coroutineContext` compiler intrinsic becomes a proper language feature.
 
 ### Use case. CPU intensive cooperative cancellation
