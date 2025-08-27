@@ -3,7 +3,7 @@
 * **Type**: Design proposal
 * **Author**: Alejandro Serrano
 * **Contributors**: Marat Akhin, Nikita Bobko, Nikolay Lunyak, Brian Norman, Roman Venediktov
-* **Discussion**:
+* **Discussion**: [#451](https://github.com/Kotlin/KEEP/discussions/451)
 * **Status**: Implemented in 2.2.20
 * **Related YouTrack issue**:
   [KT-8781](https://youtrack.jetbrains.com/issue/KT-8781/Consider-making-smart-casts-smart-enough-to-handle-exhaustive-value-sets),
