@@ -84,6 +84,7 @@ A lot of existing Kotlin code that relies on coroutines already uses `suspend` f
   - [Declaration-site `CONFLICTING_OVERLOADS` and overridability](#declaration-site-conflicting_overloads-and-overridability)
   - [Overload resolution](#overload-resolution)
   - [Feature interaction with callable references](#feature-interaction-with-callable-references)
+  - [`kotlin.synchronized` stdlib function](#kotlinsynchronized-stdlib-function)
 - [Concerns](#concerns)
   - [Discoverability](#discoverability)
   - [`CoroutineContext` becomes even more magical](#coroutinecontext-becomes-even-more-magical)
@@ -451,6 +452,34 @@ fun main() {
 - Given that \#5 is red, \#6 should be obviously red.
 - Since the context and `suspend` functions are different from the perspective of overload resolution ([see section](#declaration-site-conflicting_overloads-and-overridability)),
   we propose to make \#3 red – `INITIALIZER_TYPE_MISMATCH`.
+
+### `kotlin.synchronized` stdlib function
+
+Suspend calls are forbidden inside `kotlin.synchronized` block.
+There are good reasons to disallow this, suspending inside `synchronized` block is unsafe.
+
+But `coroutineContext` property never suspends the coroutine, so `coroutineContext` should be allowed inside the `synchronized` block.
+
+Interestingly, in the current compiler implementation, we forbid suspend functions inside the `synchronized` block,
+but we don't forbid suspend properties calls.
+It's unclear if it's a bug or an ad-hoc feature to support `coroutineContext` case.
+
+```kotlin
+import kotlin.coroutines.*
+
+@Suppress("WRONG_MODIFIER_TARGET") suspend val suspendProperty: Int get() = 42
+suspend fun suspendFunction() {}
+suspend fun main() {
+    synchronized(Any()) {
+        suspendFunction() // Error. [SUSPENSION_POINT_INSIDE_CRITICAL_SECTION] The 'foo' suspension point is inside a critical section.
+        coroutineContext[CoroutineName] // Green Code. Why?
+        suspendProperty // Green Code. Why?
+    }
+}
+```
+
+Anyway, it doesn't matter since the proposal fixes this technical debt,
+and when the proposal is implemented, we can reintroduce the compiler check for suspend properties.
 
 ## Concerns
 
