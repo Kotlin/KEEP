@@ -4,8 +4,8 @@
 * **Author**: Alejandro Serrano
 * **Contributors**: Marat Akhin, Nikita Bobko, Nikolay Lunyak, Brian Norman, Roman Venediktov
 * **Discussion**: [#451](https://github.com/Kotlin/KEEP/discussions/451)
-* **Status**: Implemented in 2.2.20
-* **Related YouTrack issue**:
+* **Status**: Available in 2.2.20 (under `-Xdata-flow-based-exhaustiveness` flag)
+* **Related YouTrack issues**:
   [KT-8781](https://youtrack.jetbrains.com/issue/KT-8781/Consider-making-smart-casts-smart-enough-to-handle-exhaustive-value-sets),
   [KTIJ-20749](https://youtrack.jetbrains.com/issue/KTIJ-20749/Exhaustive-when-check-does-not-take-into-account-the-values-excluded-by-previous-if-conditions)
   (among others)
