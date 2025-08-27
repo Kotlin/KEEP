@@ -79,6 +79,7 @@ A lot of existing Kotlin code that relies on coroutines already uses `suspend` f
 - [The proposal](#the-proposal)
   - [`coroutineContext` stdlib property](#coroutinecontext-stdlib-property)
   - [Use case. CPU intensive cooperative cancellation](#use-case-cpu-intensive-cooperative-cancellation)
+- [Technical details](#technical-details)
   - [`suspend` function with explicit `CoroutineContext` context parameter](#suspend-function-with-explicit-coroutinecontext-context-parameter)
   - [Declaration-site `CONFLICTING_OVERLOADS` and overridability](#declaration-site-conflicting_overloads-and-overridability)
   - [Overload resolution](#overload-resolution)
@@ -243,6 +244,8 @@ This proposal addresses the problem in two ways:
 >
 > Blocking IO operations have a different mechanism for cooperative cancellation when run from coroutines -
 > `kotlinx.coroutines.runInterruptible`
+
+## Technical details
 
 ### `suspend` function with explicit `CoroutineContext` context parameter
 
