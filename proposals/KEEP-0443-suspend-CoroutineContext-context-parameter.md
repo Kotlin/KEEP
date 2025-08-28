@@ -108,15 +108,23 @@ Goals:
 3. Bridge `suspend` and context parameters features together, making the language to work as a whole
 
 The proposal is to treat all `suspend` functions
-as if their bodies were implicitly enclosed within `context(getContinuation_compiler_intrinsic().context) { /* the rest of the body... */ }` stdlib function:
+as if their bodies were implicitly enclosed within `context(getContinuation_compiler_intrinsic().context) { /* the rest of the body... */ }` block:
 
 ```kotlin
-suspend fun computation() = /* implicitly enclosed within */ context(getContinuation_compiler_intrinsic().context) {
-    foo() // Green code
+suspend fun computation() {
+    foo() // The result of this proposal is that the code becomes green. In the current Kotlin, the code is red
 }
 
 context(_: CoroutineContext)
 fun foo() {}
+```
+
+The code above works because the compiler encloses the `suspend` function body within the `context` block:
+
+```kotlin
+suspend fun computation() = context(getContinuation_compiler_intrinsic().context) {
+    foo()
+}
 ```
 
 ### `coroutineContext` stdlib property
