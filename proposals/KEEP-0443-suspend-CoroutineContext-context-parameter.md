@@ -644,7 +644,15 @@ suspend fun CoroutineContext.bar() {
 fun CoroutineContext.baz() {}
 ```
 
-Thankfully, it's not the case.
+Even worse, `CoroutineContext` members would become implicitly available in `suspend` functions:
+
+```kotlin
+suspend fun foo() {
+    get(kotlinx.coroutines.CoroutineName) // It'd become green and resolve to CoroutineContext.get(...). That's really bad from the perspective of scope pollution
+}
+```
+
+Thankfully, none of this is the case.
 These examples are indicators of context parameters' good design.
 
 ## Illustrative example. `ScopedValues`-like API for `CoroutineContext`
