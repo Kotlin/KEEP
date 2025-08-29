@@ -3,7 +3,7 @@
 * **Type**: Standard Library API proposal
 * **Author**: Abduqodiri Qurbonzoda
 * **Contributors**: Ilya Gorbunov, Roman Elizarov, Vsevolod Tolstopyatov, Dmitry Khalanskiy
-* **Status**: Implemented in Kotlin 1.8.20
+* **Status**: Stable in 2.2.0
 * **Prototype**: Implemented
 * **Target issue**: [KT-57762](https://youtrack.jetbrains.com/issue/KT-55978/)
 * **Discussion**: [KEEP-373](https://github.com/Kotlin/KEEP/issues/373)
