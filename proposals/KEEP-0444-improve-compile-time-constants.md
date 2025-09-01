@@ -149,7 +149,7 @@ Similarly this KEEP doesn't propose any new language concepts, like constant fun
 
 ## Technical details
 
-Currently there are two interpreters that evaluate constants `FirExpressionEvaluator` in the frontend and `IrInterpreter` in the backend. While the former is quite limited, enforcing the constraints mentioned in [Motivation](#motivation), the later already can evaluate some functions and control flow constructs. Originally the design only planned for an interpreter in the backend where evaluation is easier to implement but even before `Ir` is generated the frontend compiler plugins run which expect all annotation arguments to be evaluated.
+Currently there are two interpreters that evaluate constants `FirExpressionEvaluator` in the frontend and `IrInterpreter` in the backend. While the former is quite limited, enforcing the constraints mentioned in [Motivation](#motivation), the later already can evaluate some functions and control flow constructs. Originally the design only planned for an interpreter in the backend where evaluation is easier to implement but even before `Ir` is generated we need to serialize annotations with arguments to metadata and provide evaluated arguments to the frontend compiler plugins.
 
 At the moment both interpreters have a different decision process to decide which functions can be evaluated, with the frontend looking up a set of hard-coded lists while the backend looks up if the function is annotated with `@kotlin.internal.IntrinsicConstEvaluation`.
 
