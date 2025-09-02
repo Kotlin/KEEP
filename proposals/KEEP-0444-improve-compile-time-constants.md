@@ -581,6 +581,7 @@ This also includes some extension functions for other Types:
 
 - fun dec(): Byte
 - fun inc(): Byte
+- fun Byte.xor(other: Byte): Byte
 - fun equals(other: Any?): Boolean
 
 **Int**
@@ -599,6 +600,7 @@ This also includes some extension functions for other Types:
 
 - fun dec(): Short
 - fun inc(): Short
+- fun Short.xor(other: Byte): Short
 - fun equals(other: Any?): Boolean
 
 **KCallable**
