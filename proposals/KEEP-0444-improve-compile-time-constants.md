@@ -92,7 +92,7 @@ In the standard library we already have all compiler evaluable functions marked 
 
 From now on all such marked functions will be allowed inside a constant context. This improves usability and documentation of Kotlin as users will only need to look up if a function is marked with the annotation and don't need to remember all the special cases.
 
-Additionally we will add special handling in Dokka to produce a note on those functions that they can be used inside a constant kontext.
+Dokka and IntelliJ will add special handling for functions with the annotation to show a note that these are evaluatable.
 
 ### Unsigned Integers
 
