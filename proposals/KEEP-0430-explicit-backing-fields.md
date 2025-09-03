@@ -45,11 +45,11 @@ class SomeViewModel : ViewModel() {
 * [Design](#design)
   * [Declaration-site](#declaration-site)
   * [Call-site](#call-site)
-  * [Smart cast applicability](#smart-cast-applicability)
-  * [Visibility](#visibility)
-  * [Expect-actual matching](#expect-actual-matching)
   * [Call from inline functions](#call-from-inline-functions)
-  * [Other restrictions](#other-restrictions)
+  * [Restrictions on a property with an explicit backing field](#restrictions-on-a-property-with-an-explicit-backing-field)
+    * [Design restrictions](#design-restrictions)
+    * [Expect-actual matching](#expect-actual-matching)
+    * [Other restrictions](#other-restrictions)
 * [Technical design](#technical-design)
   * [Syntax](#syntax)
 * [Unsupported use cases](#unsupported-use-cases)
@@ -147,37 +147,32 @@ The call happens through getter.
 In example above `city.value = newCity` would be translated to `(getCity() as MutableLiveData<String>).setValue(newCity)`.
 Implementation may optimize this call by using the backing field directly.
 
-### Smart cast applicability
+### Call from inline functions
 
-Currently, smart casts need to meet certain rules to be applied.
-Compiler enforces these rules for the properties with an explicit backing field (EBF):
+Automatic smart cast on properties with EBF is disabled inside `public`, `internal` and `protected` inline functions.
+
+### Restrictions on a property with an explicit backing field
+
+#### Design restrictions
 
 * Property with EBF must not have a custom getter. 
 * Property with EBF can't be `var`. 
 * Property with EBF must have `final` modality.
 * Delegated properties can't have EBF.
 * The type of the explicit backing field must be a subtype of the property's type.
-* ... and other restrictions to make sure smart cast is applicable.
+* `private` is the default and the only allowed visibility for explicit backing fields.
 
-### Visibility
-
-* `private` is the default and the only allowed visibility for explicit backing fields. 
-* Visibility of property must be more permissive than explicit backing field visibility.
-
-### Expect-actual matching
+#### Expect-actual matching
 
 * `expect` property can't have an explicit backing field (since it's an implementation detail).
 * During expect-actual matching, only property types are considered and explicit backing fields play no role.
 
-### Call from inline functions
-
-Automatic smart cast on properties with EBF is disabled inside `public`, `internal` and `protected` inline functions.
-
-### Other restrictions
+#### Other restrictions
 
 * It's prohibited to put `@JvmField` annotation on property with explicit backing field.
 * Local property can't have an explicit backing field.
-* It's a warning if a property type is equal to EBF type.
+* Visibility of property must be more permissive than explicit backing field visibility. (Anything other than `private`)
+* It's a warning if a property type is equal to the EBF type.
 
 ## Technical design
 
