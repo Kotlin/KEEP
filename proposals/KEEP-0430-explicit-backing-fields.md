@@ -59,7 +59,9 @@ class SomeViewModel : ViewModel() {
   * [Lateinit property with early destruction](#lateinit-property-with-early-destruction)
   * [Non-private visibility of property](#non-private-visibility-of-property)
   * [Why these cases aren't supported](#why-these-cases-arent-supported)
-* [Naming discussion](#naming-discussion)
+* [Open questions](#open-questions)
+  * [Naming discussion](#naming-discussion)
+  * [Annotation target](#annotation-target)
 
 <!--- END -->
 
@@ -278,7 +280,9 @@ you often end up with something too implicit and "magical."
 
 That's why among all the considered alternatives, the current design was chosen – this coverage / simplicity ratio seems to be the best.
 
-## Naming discussion
+## Open questions
+
+### Naming discussion
 
 During discussions, it was noted several times that current syntax and feature naming might not be the best ones.
 The feature is not really about making backing fields explicit,
@@ -287,3 +291,8 @@ At the same time, it's hard to compete with the fact that the concept of explici
 So for now, naming remains a subject of discussion.
 
 Feel free to share your ideas for declaration-site syntax and a name for the feature, along with the reasoning, in the comments!
+
+### Annotation target
+
+We have a target `field` for annotations on properties, and placing these annotations before the `field` keyword seems like a straightforward solution.
+For now, however, we would prefer to keep the question of this possibility open.
