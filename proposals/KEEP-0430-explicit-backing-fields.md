@@ -247,7 +247,7 @@ It also applies to other containers:
 
 Same as `lateinit` allows you to set a property later, it is sometimes necessary to release a reference to the created object earlier and prevent it from being used after property's lifecycle has ended.
 For example, [Fragment view bindings](https://developer.android.com/topic/libraries/view-binding#fragments) in Android must be initialized in `onCreate()` and reset back to `null` in `onDestroy()`.
-Currently, it is impossible to implement such a pattern with a single property without avoiding null checks.
+Currently, it is impossible to implement such a pattern with a single property without null checks.
 
 ```kotlin
 private var _binding: ResultProfileBinding? = null
