@@ -62,6 +62,8 @@ class SomeViewModel : ViewModel() {
 * [Open questions](#open-questions)
   * [Naming discussion](#naming-discussion)
   * [Annotation target](#annotation-target)
+* [Details](#details)
+  * [Kotlin reflection](#kotlin-reflection)
 
 <!--- END -->
 
@@ -296,3 +298,10 @@ Feel free to share your ideas for declaration-site syntax and a name for the fea
 
 We have a target `field` for annotations on properties, and placing these annotations before the `field` keyword seems like a straightforward solution.
 For now, however, we would prefer to keep the question of this possibility open.
+
+## Details
+
+### Kotlin reflection
+
+Existing Kotlin reflection functionality will behave in the way as if there were no explicit backing fields.
+However, additional functionality will be added to support explicit backing fields.
