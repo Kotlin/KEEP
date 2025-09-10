@@ -30,7 +30,7 @@ We propose using Binary Compatibility Validator out of the box in Kotlin Gradle 
   * [Missing features](#missing-features)
   * [Stabilization of ABI Tools API](#stabilization-of-abi-tools-api)
   * [Open questions](#open-questions)
-  * [Gradle DSL](#gradle-dsl)
+  * [Gradle](#gradle)
   * [Documentations](#documentations)
 * [Future development](#future-development)
   * [New format](#new-format)
@@ -154,27 +154,39 @@ By default, the reference dump files are located in the directory `api` in the c
 We will assume that the migrated part of the BCV is stable when all the tasks listed below are closed and no critical bugs are created by users for a long time.
 
 ### Missing features
-- add Gradle DSL to extract ABI from already compiled jars (perhaps, from Gradle artifacts)
+- add Gradle DSL to extract ABI from already compiled jars (perhaps, from Gradle artifacts) [KT-80314](https://youtrack.jetbrains.com/issue/KT-80314), [KT-80313](https://youtrack.jetbrains.com/issue/KT-80313)
+- add Gradle DSL to extract ABI from additional source sets [KT-80818](https://youtrack.jetbrains.com/issue/KT-80818)
 
 ### Stabilization of ABI Tools API
-- stabilize ABI Tools API for the existing dump format
+Refactor the API and introduce the new way for getting an instance of the ABI Tools [KT-80747](https://youtrack.jetbrains.com/issue/KT-80747).
+
+If the `abi-tools` artifact is in the current classpath:
+```kotlin
+val abiTools = org.jetbrains.kotlin.abi.tools.AbiTools.getInstance()
+```
+
+If the `abi-tools-api` is in the current classpath and implementation `abi-tools` in another classpath in some class loader:
+```kotlin
+val abiTools = org.jetbrains.kotlin.abi.tools.AbiTools.getInstance(classLoader)
+```
 
 ### Open questions
 - Decide if we should create tasks if ABI validation is disabled in the project [KT-77687](https://youtrack.jetbrains.com/issue/KT-77687)
-- Decide if `check` task should depend on `checkAbi` if ABI validation is enabled in the project [KT-78525](https://youtrack.jetbrains.com/issue/KT-78525)
 
-### Gradle DSL
-- stabilize filtering DSL (exclusions and inclusions)
-- rename `checkLegacyAbi` and `updateLegacyAbi` tasks to `checkAbi` and `updateAbi`
-- maybe we should rename `legacyDump` block to some other, to clearly indicate what exactly is being configured (old report format) 
-- find a group to place the tasks [KT-78717](https://youtrack.jetbrains.com/issue/KT-78717)
-- write descriptions for the tasks
-- make `abiValidation {}` block stable part of `kotlin { }` extension
+### Gradle
+- Stabilize filtering DSL (exclusions and inclusions) [KT-80823](https://youtrack.jetbrains.com/issue/KT-80823)
+- Rename `checkLegacyAbi` and `updateLegacyAbi` tasks to `checkKotlinAbi` and `updateKotlinAbi` [KT-80674](https://youtrack.jetbrains.com/issue/KT-80674)
+- We should rename `legacyDump` block to some other, to clearly indicate what exactly is being configured (old report format) [KT-80826](https://youtrack.jetbrains.com/issue/KT-80826) 
+- Refactor DSL for working with dump variants [KT-80827](https://youtrack.jetbrains.com/issue/KT-80827) 
+- Find a group to place the tasks [KT-80621](https://youtrack.jetbrains.com/issue/KT-80621)
+- Write descriptions for the tasks [KT-80687](https://youtrack.jetbrains.com/issue/KT-80687)
+- Make `abiValidation {}` block stable part of `kotlin { }` extension [KT-80685](https://youtrack.jetbrains.com/issue/KT-80685)
+- Add dependency on `checkKotlinAbi` from `check` task [KT-80614](https://youtrack.jetbrains.com/issue/KT-80614)
 
 
 ### Documentations
-- add ABI `abi-tools` and `abi-tools-api` on https://kotlinlang.org/api
-- write the migration guide (where? https://kotlinlang.org?)
+- add `abi-tools-api` on https://kotlinlang.org/api
+- write the migration guide
 - add the description of binary compatibility near to [Backward compatibility guidelines for library authors](https://kotlinlang.org/docs/api-guidelines-backward-compatibility.html).
 - add the link on the binary compatibility description to [Backward compatibility guidelines for library authors](https://kotlinlang.org/docs/api-guidelines-backward-compatibility.html)
 - add the page with a description of the direct use of `abi-tools`
