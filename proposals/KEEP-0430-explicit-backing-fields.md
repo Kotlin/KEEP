@@ -175,7 +175,7 @@ Automatic smart cast on properties with EBF is disabled inside `public`, `intern
 
 * It's prohibited to put `@JvmField` annotation on property with explicit backing field.
 * Local property can't have an explicit backing field.
-* Property with extension receiver or context parameters can't have an explicit backing field as it does not have a backing field.
+* All properties that have no backing field can't declare an explicit backing field (f.e. properties with extension receiver or context parameters, abstract properties, interface properties, etc.)
 * Visibility of property must be more permissive than explicit backing field visibility. (Anything other than `private`)
 * It's a warning if a property type is equal to the EBF type.
 
