@@ -19,7 +19,7 @@ We discuss two possible models of refinement types for Kotlin:
 
 As a result of discussions on the research presented in this document,
 it was decided to shelve the idea of refinement types for Kotlin.
-At the moment of writing, features described here are **not** expected to appear in Kotlin in any form
+At the moment of writing, features described here are **not** expected to appear in Kotlin
 due to low demand and limited usability.
 Refer to [Final Decision](#final-decision) for more details.
 
