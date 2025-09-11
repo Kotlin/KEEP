@@ -1454,15 +1454,15 @@ More than 75% of them contained less than five usages of refinement types.
 
 What types appear as an underlying type most often (`TV` stands for "Type Variable"):
 
-![Types Refined in Scala](../resources/refinement-types-notes-images/TypesRefinedScala.svg)
+<img src="../resources/refinement-types-notes-images/TypesRefinedScala.svg" alt="Types Refined in Scala" width="600"/>
 
 What predicates are used for `String` most often:
 
-![String Refinements in Scala](../resources/refinement-types-notes-images/StringRefinementsScala.svg)
+<img src="../resources/refinement-types-notes-images/StringRefinementsScala.svg" alt="String Refinements in Scala" width="600"/>
 
 What predicates are used for numbers most often:
 
-![Number Refinements in Scala](../resources/refinement-types-notes-images/NumberRefinementsScala.svg)
+<img src="../resources/refinement-types-notes-images/NumberRefinementsScala.svg" alt="Numeric Refinements in Scala" width="600"/>
 
 ### Liquid Haskell Usage
 
@@ -1471,16 +1471,16 @@ or provide proof of properties related to data structures and algorithms.
 
 What types appear as an underlying type most often:
 
-![Types Refined in Liquid Haskell](../resources/refinement-types-notes-images/TypesRefinedHaskell.svg)
+<img src="../resources/refinement-types-notes-images/TypesRefinedHaskell.svg" alt="Types Refined in Liquid Haskell" width="600"/>
 
 What predicates are used for numbers most often
 (note: "comparison" here encompasses complex logical expressions built from elementary comparisons of variables or constants):
 
-![Number Refinements in Liquid Haskell](../resources/refinement-types-notes-images/NumberRefinementsHaskell.svg)
+<img src="../resources/refinement-types-notes-images/NumberRefinementsHaskell.svg" alt="Number Refinements in Liquid Haskell" width="600"/>
 
 What predicates are used for lists and vectors most often (note: "length" here encompasses complex logical expressions built from elementary comparisons of collection length):
 
-![List and Vec Refinements in Liquid Haskell](../resources/refinement-types-notes-images/ListVecRefinementsHaskell.svg)
+<img src="../resources/refinement-types-notes-images/ListVecRefinementsHaskell.svg" alt="List and Vec Refinements in Liquid Haskell" width="600"/>
 
 ### Ada Usage
 
@@ -1488,11 +1488,11 @@ Most of the repositories using ada refinement features are related to system pro
 
 What types appear as an underlying type most often:
 
-![Types Refined in Ada](../resources/refinement-types-notes-images/TypesRefinedAda.svg)
+<img src="../resources/refinement-types-notes-images/TypesRefinedAda.svg" alt="Types Refined in Ada" width="600"/>
 
 What predicates are used for integers most often (note: "modulus" here stands for Ada feature which allows creating a custom integer ring modulo some constant):
 
-![Integer Refinements in Ada](../resources/refinement-types-notes-images/IntegerRefinementsAda.svg)
+<img src="../resources/refinement-types-notes-images/IntegerRefinementsAda.svg" alt="Integer Refinements in Ada" width="600"/>
 
 ### Conclusion
 
