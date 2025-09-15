@@ -3,6 +3,7 @@
 * **Type**: Design Notes
 * **Author**: Mikhail Vorobev
 * **Contributors**: Marat Akhin, Daniil Berezun
+* **Discussion**: [#455](https://github.com/Kotlin/KEEP/discussions/455)
 * **Issue**: [KT-51417](https://youtrack.jetbrains.com/issue/KT-51417/Restricted-types)
 * **Prototypes**: K2 Compiler Plugin for Refinement Classes, K2 Compiler Branch for Refinement Subtypes
 
