@@ -153,7 +153,7 @@ Implementation may optimize this call by using the backing field directly.
 
 ### Call from inline functions
 
-Automatic smart cast on properties with EBF is disabled inside `public`, `internal` and `protected` inline functions.
+Automatic smart cast on properties with EBF is disabled inside Public-API inline functions (with `public` and `protected` visibility).
 
 ### Restrictions on a property with an explicit backing field
 
