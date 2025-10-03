@@ -249,6 +249,10 @@ val pair = Pair(3, "hello")
 [val number, val string] = pair
 ```
 
+Note that the position-based syntax still uses `componentN` under the hood.
+That means that cases like extracting the second element of an empty list
+still fail at runtime, following the current behavior.
+
 **Short syntax.** We also provide a counterpart of the current destructuring
 syntax but using the square brackets. This allows developer to continue using
 position-based destructuring when needed, without incurring in longer code.
@@ -293,8 +297,9 @@ val [number, string] = pair              // position, short
 [val number, val string] = pair          // position, full
 ```
 
-Only the full syntax allows renaming and (potentially) declaration of `var`, 
-annotations, and any other modifiers.
+Both short and full syntax allow renaming and declaration as `var` or `val`;
+in the case of short syntax the choice of `val` or `var` is applied to
+every new variable.
 
 **The intersection**. Note that in the _end goal_ scenario, name-based
 short syntax and the current position-based syntax coincide when the
@@ -375,19 +380,40 @@ _Allow new syntax in properties, loops, and lambdas_
 +   | (fullMultiVariableDeclaration [{NL} ':' {NL} type])
 ```
 
+_Introduce variable declaration with renaming_
+
+```diff
++ variableDeclarationWithRenaming:
++    variableDeclaration [{NL} ('=' {NL} simpleIdentifier)]
+```
+
 _Introduce new position-based short syntax_
 
 ```diff
-+ multiVariableDeclaration
++ multiVariableDeclaration:
 +     multiParenVariableDeclaration
 +   | multiPositionalVariableDeclaration
 
 - multiVariableDeclaration:
 + multiParenVariableDeclaration:
-    # same as 'multiVariableDeclaration' before
+    # same as 'multiVariableDeclaration' before, but with potential renaming
++   '('
++   {NL}
++   variableDeclarationWithRenaming
++   {{NL} ',' {NL} variableDeclarationWithRenaming}
++   [{NL} ',']
++   {NL} 
++   ')'
 
 + multiPositionalVariableDeclaration:
-+   # same as 'multiParenVariableDeclaration' but using '[' and ']'
+    # same as 'multiVariableDeclaration' before, but using '[' and ']'
++   '['
++   {NL}
++   variableDeclaration
++   {{NL} ',' {NL} variableDeclaration}
++   [{NL} ',']
++   {NL} 
++   ']'
 ```
 
 _Introduce new full-syntax, both name- and position-based_
@@ -416,8 +442,7 @@ _Introduce new full-syntax, both name- and position-based_
 +   ']'
 
 + fullVariableDeclaration:
-+   'val'   # ('val' | 'var') if mutable variables are allowed
-+   {NL} simpleIdentifier [{NL} ':' {NL} type]
++   ('val' | 'var') {NL} simpleIdentifier [{NL} ':' {NL} type]
 
 + fullVariableDeclarationWithRenaming:
 +   fullVariableDeclaration [{NL} ('=' {NL} simpleIdentifier)]
