@@ -3,7 +3,7 @@
 * **Type**: Design proposal
 * **Authors**: Leonid Startsev, Mikhail Zarechenskiy
 * **Contributors**: Alejandro Serrano Mena, Denis Zharkov, Kurt Alfred Kluever, Marat Akhin, Nikita Bobko, Pavel Kunyavskiy, Vsevolod Tolstopyatov
-* **Status**: Experimental in 2.2
+* **Status**: Experimental in 2.3
 * **Discussion**: [KEEP-412](https://github.com/Kotlin/KEEP/issues/412)
 * **Tracker**: [KT-12719](https://youtrack.jetbrains.com/issue/KT-12719)
 
@@ -44,7 +44,7 @@ Our new diagnostic aims to report such cases, saving you time when analyzing exc
    - [Explicitly Ignoring Values](#explicitly-ignoring-values)
    - [Higher-Order Functions and Further Extensions](#higher-order-functions-and-further-extensions)
 - [Migration Plan](#migration-plan)
-   - [Marking Libraries with `@MustUseReturnValue`](#marking-libraries-with-mustusereturnvalue)
+   - [Marking Libraries with `@MustUseReturnValues`](#marking-libraries-with-mustusereturnvalues)
    - [Feature Modes](#feature-modes)
    - [Interop with Java and Existing Annotations](#interop-with-java-and-existing-annotations)
 
@@ -224,19 +224,19 @@ The author of the API is the one responsible for manually placing this annotatio
 
 > Note that it does not have CONSTRUCTOR and PROPERTY targets because we want to discourage writing constructors and properties with side effects.
 
-The second is `@MustUseReturnValue`:
+The second is `@MustUseReturnValues`:
 
 ```kotlin
 @Target(AnnotationTarget.FILE, AnnotationTarget.CLASS)
 @Retention(AnnotationRetention.BINARY)
-public annotation class MustUseReturnValue
+public annotation class MustUseReturnValues
 ```
 
 This annotation marks the *scope* (file or class) in which all the functions are non-ignorable.
-Ideally, we want to treat every non-unit declaration as non-ignorable. However, we cannot do it due to the [high migration costs](#migration-plan). Therefore, the checker would only report functions from the scope annotated as `@MustUseReturnValue` at this stage.
-This annotation is expected to be [automatically inserted by the compiler](#marking-libraries-with-mustusereturnvalue). However, it is also possible to place it manually in case you wish to mark only a part of your API.
+Ideally, we want to treat every non-unit declaration as non-ignorable. However, we cannot do it due to the [high migration costs](#migration-plan). Therefore, the checker would only report functions from the scope annotated as `@MustUseReturnValues` at this stage.
+This annotation is expected to be [automatically inserted by the compiler](#marking-libraries-with-mustusereturnvalues). However, it is also possible to place it manually in case you wish to mark only a part of your API.
 
-> @MustUseReturnValue intentionally does not have `AnnotationTarget.FUNCTION`. We want to encourage authors to think about and design non-ignorable APIs as a whole, not on a per-function basis.
+> @MustUseReturnValues intentionally has a plural name and does not have `AnnotationTarget.FUNCTION`. We want to encourage authors to think about and design non-ignorable APIs as a whole, not on a per-function basis.
 
 ### Explicitly ignoring values
 
@@ -285,7 +285,7 @@ Migration then can look like this:
 kotlin-stdlib and some kotlinx libraries will be RVC-approved from the start, allowing you to benefit from this checker immediately.
 We hope this feature will gain traction, and more library authors will follow, allowing the community to write much safer Kotlin code.
 
-### Marking libraries with `@MustUseReturnValue`
+### Marking libraries with `@MustUseReturnValues`
 
 To implement the plan above, we need a way to mark a library/API as RVC-approved.
 After considering various approaches, we concluded that the most reasonable way is to use
@@ -299,8 +299,8 @@ However, it is still possible to place it by hand in case you need it or simply 
 To sum up, we expect that the switch for this feature would have three states:
 
 1. Disabled.
-2. Checker only — report warnings for declarations from classes and files annotated with `@MustUseReturnValue`.
-3. Full mode — Classes compiled in this mode are automatically annotated with `@MustUseReturnValue`. Thus, warnings would be issued for the code from the libraries annotated with `@MustUseReturnValue` and for local code (because it also becomes annotated).
+2. Checker only — report warnings for declarations from classes and files annotated with `@MustUseReturnValues`.
+3. Full mode — Classes compiled in this mode are automatically annotated with `@MustUseReturnValues`. Thus, warnings would be issued for the code from the libraries annotated with `@MustUseReturnValues` and for local code (because it also becomes annotated).
 
 When this feature becomes stable, state 2 will be the default.
 Therefore, all Kotlin users would immediately benefit from every library that is correctly annotated without additional configuration.
@@ -309,10 +309,10 @@ Therefore, all Kotlin users would immediately benefit from every library that is
 
 There are well-known Java annotation libraries that serve similar purposes, one of the most popular being [ErrorProne](https://errorprone.info/api/latest/com/google/errorprone/annotations/CheckReturnValue.html) from Google.
 Some Java libraries, such as Guava, are already annotated with them.
-To be able to provide the same safety level when using these declarations from Kotlin, we plan to treat the selected number of annotations similarly to Kotlin's `MustUseReturnValue` and `IgnorableReturnValue`.
+To be able to provide the same safety level when using these declarations from Kotlin, we plan to treat the selected number of annotations similarly to Kotlin's `MustUseReturnValues` and `IgnorableReturnValue`.
 Namely:
 
-* `com.google.errorprone.annotations.CheckReturnValue` as `kotlin.MustUseReturnValue`
+* `com.google.errorprone.annotations.CheckReturnValue` as `kotlin.MustUseReturnValues`
 * `com.google.errorprone.annotations.CanIgnoreReturnValue` as `kotlin.IgnorableReturnValue`
 
 More annotations can be added to this list if necessary.
