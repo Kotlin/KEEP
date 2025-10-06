@@ -31,22 +31,24 @@ Our new diagnostic aims to report such cases, saving you time when analyzing exc
 
 ## Table of contents
 
-- [Synopsis and Motivation](#synopsis-and-motivation)
+- [Synopsis and motivation](#synopsis-and-motivation)
 - [Overview](#overview)
 - [Goals](#goals)
 - [Proposal](#proposal)
-   - [Expression Return Value Usage](#expression-return-value-usage)
-   - [Ignorable Expressions](#ignorable-expressions)
-   - [Propagating Expressions](#propagating-expressions)
-     - [Control Flow Expressions](#1-control-flow-expressions)
-     - [Type Operators](#2-type-operators)
-   - [Ignorability Annotations](#ignorability-annotations)
-   - [Explicitly Ignoring Values](#explicitly-ignoring-values)
-   - [Higher-Order Functions and Further Extensions](#higher-order-functions-and-further-extensions)
+  - [Expression return value usage](#expression-return-value-usage)
+  - [Ignorable expressions](#ignorable-expressions)
+  - [Propagating expressions](#propagating-expressions)
+  - [Ignorability annotations](#ignorability-annotations)
+  - [Explicitly ignoring values](#explicitly-ignoring-values)
+  - [Overriding and inheritance](#overriding-and-inheritance)
+  - [Expect/actual matching](#expectactual-matching)
+  - [Higher-order functions and further extensions](#higher-order-functions-and-further-extensions)
 - [Migration Plan](#migration-plan)
-   - [Marking Libraries with `@MustUseReturnValues`](#marking-libraries-with-mustusereturnvalues)
-   - [Feature Modes](#feature-modes)
-   - [Interop with Java and Existing Annotations](#interop-with-java-and-existing-annotations)
+  - [Opting-in your library](#opting-in-your-library)
+  - [Feature Modes](#feature-modes)
+  - [Metadata compatibility](#metadata-compatibility)
+  - [Interop with existing annotations](#interop-with-existing-annotations)
+- [Appendix: formal specification](#appendix-formal-specification)
 
 
 ## Overview
@@ -57,11 +59,11 @@ The one particular language we want to highlight here is Swift, whose [approach 
 It reports every unused non-void function, and the `@discardableResult` attribute is required to stop issuing the warning.
 
 
-Based on the experience of existing linters and languages, we see that if a user declares a non-Unit return type in the function, then in most cases, the return value is intended to be used later.
+Based on the experience of existing linters and languages, we see that if a user declares a non-Unit return type in the function, then, in most cases, the return value is intended to be used later.
 Conversely, cases where a function returns something but it's acceptable to omit this value are limited to well-known and narrow scenarios, accounting for only about 15% of all functions.
 Based on this observation, it is inconvenient to place some kind of `@CheckReturnValue` annotation per function, since the majority of non-unit-returning functions (even in the Kotlin standard library) will have to be annotated with it.
 For an ergonomic and clean developer experience, the default in Kotlin has to be reversed.
-All non-unit-returning functions must be treated as requiring to use their return value by default, with the exceptions marked with some kind of 'ignorable' annotation.
+All non-unit-returning functions must be treated as requiring the use of their return value by default, with the exceptions marked with some kind of 'ignorable' annotation.
 
 ## Goals
 
@@ -81,7 +83,7 @@ To implement an inspection that would check whether the non-ignorable value is u
 
 ### Expression return value usage
 
-The proposal suggests that the return value of expression `A` is used if this expression:
+The proposal suggests that the return value of the expression `A` is used if this expression:
 
 * Is a property, parameter, or local variable initializer (incl. delegates): `val a = A`, `public val x by A`
 * Is an argument to `return` or `throw` expressions: `return A`, `throw A`
@@ -90,15 +92,15 @@ The proposal suggests that the return value of expression `A` is used if this ex
 * Is a **condition** in control flow constructions, such as `if`, `while`, and `when`: `if (A) ...`, `when(A) ...`, `when(x) { A -> ...}`, `while(A) ...`
 * Is the last statement in lambda: `list.map { A }`
 
-If the expression's return value is not used according to the rules above, and the expression is not ignorable by itself (see next paragraph), then a warning about unused return value is reported.
+If the expression's return value is not used according to the rules above, and the expression is not ignorable by itself (see the following paragraphs), then a warning about unused return value is reported.
 
 ### Ignorable expressions
 
 Naturally, not every expression's return value is useful. Some of the expressions are ignorable on their own, namely:
 
-1. Expressions which return type is `Unit`, `Nothing`, or `Nothing?`.
+1. Expressions whose return type is `Unit`, `Nothing`, or `Nothing?`.
 
-As the `Nothing` type is uninhabited, and the `Unit` type is generally ignored by the compiler itself and doesn't convey any meaning, this rule doesn't require further explanations.
+As the `Nothing` type is uninhabited, and the `Unit` type is generally ignored by the compiler itself and doesn't convey any meaning, this rule doesn't require further explanation.
 For generic functions, we use a **substituted** return type here.
 This means that for functions like `fun <T> fetch(name: String): T`, their calls will be considered ignorable if
 `T` is inferred to be `Unit` or `Nothing?`, and non-ignorable otherwise.
@@ -107,18 +109,54 @@ Most such functions expect their result to be checked for nullability, even if t
 
 > For Java interop purposes, platform `Unit!`/`Nothing!` types and `java.lang.Void(!)` type, which can be encountered in generic overrides of Java functions, are also treated as ignorable.
 
-2. Calls to functions annotated with `@IgnorableReturnValue`.
-
-Our research shows that the overwhelming majority of functions that return a non-Unit value in Kotlin suppose that the result is somehow used.
-However, there are exceptions to this rule, such as `MutableCollection.add`, whose `Boolean` result is auxiliary and does not have to be used.
-For those rare exceptions, there is a way for the function's author to express the fact that the result can be ignored: `@IgnorableReturnValue` annotation ([see below](#ignorability-annotations)).
-
-3. Pre- and post-increment expressions
+2. Pre- and post-increment expressions
 
 In expressions like `++i`, the return value doesn't always have to be used because they have a side effect.
 This fact can not be expressed using the standard `@IgnorableReturnValue` annotation: the `i.inc()` function only increments the value but does not perform the assignment.
 `inc()` function shouldn't be ignorable on its own.
 Therefore, this particular operator call has its own place in exceptions.
+
+3. Boolean control flow shortcuts
+
+Results of the boolean operators `&&` and `||`, just like other operators in Kotlin, have to be used.
+They're also quite popular for performing early returns or throws, e.g., `someCondition() || return`.
+To avoid warnings in these cases, a special rule has been added: if the right-hand side of a boolean operator
+has `Nothing` type (which includes `return` and `throw`, among others), then the whole expression is ignorable.
+
+For example:
+
+```kotlin
+fun test(boolExpr: Boolean) {
+    foo() && boolExpr // warning: unused value
+
+    validateState() || return // OK, no warnings
+    validateExists() && throw ExistingResourceException() // OK, no warnings
+}
+```
+
+4. Calls to ignorable declarations
+
+While expressions discussed above are ignorable due to their shape or type, regular calls can be ignorable or non-ignorable depending on the status of the callable:
+
+#### Ignorable callables
+
+> 'Callables' in Kotlin denote functions, properties, and constructors.
+
+1. Defined as ignorable
+
+Some functions (like well-known `MutableList.add`) do not expect their return value to be always used.
+Authors of such functions can express this fact with the special [`@IgnorableReturnValue` annotation](#ignorability-annotations).
+We call these functions _explicitly ignorable_.
+
+2. Unspecified ignorability
+
+As it was said in the proposal overview, we strive to check every non-unit function.
+However, there will be significant [cooperation efforts](#migration-plan) from the community before we achieve that goal.
+For the sake of migration, only callables that are specially marked will be considered as non-ignorable.
+The rest of the callables will be considered _implicitly ignorable_, or _unspecified_.
+Notably, most JDK functions (but not their Kotlin counterparts) will be implicitly ignorable.
+
+> The difference between implicit and explicit ignorability is important for [overrides](#overriding-and-inheritance), but the checker treats them the same way.
 
 ### Propagating expressions
 
@@ -129,7 +167,7 @@ Currently, this category consists of **control flow expressions** and **type ope
 
 #### 1. Control flow expressions
 
-If the expression `A` as a last statement of an `if` or `when` **branch**, and the whole `if`/`when` expression is not used, then `A` is also considered not used.
+If the expression `A` is the last statement of an `if` or `when` **branch**, and the whole `if`/`when` expression is not used, then `A` is also considered not used.
 Examples:
 
 ```kotlin
@@ -142,7 +180,7 @@ fun ifExample(x: Int): Any {
 
 Elvis operator `A ?: B` is equivalent to `val tmp = A; if (tmp != null) tmp else B`.
 However, because no actual `val tmp` is introduced in the code, and one cannot access it later, we
-consider **both sides** of an elvis operator propagating as well:
+consider **both sides** of an Elvis operator propagating as well:
 
 ```kotlin
 fun elvisExample() {
@@ -207,10 +245,11 @@ There are currently three type operators in Kotlin:
 * `is`/`!is` instance checks
 * `!!` non-null assertion operator
 
+> There is a formal definition of control flow analysis for this checker and propagations [in the appendix](#appendix-formal-specification).
 
 ### Ignorability annotations
 
-In the scope of this proposal, two annotations will be added to a Kotlin standard library.
+In the scope of this proposal, two annotations will be added to the Kotlin standard library.
 The first of them is `@IgnorableReturnValue`:
 
 ```kotlin
@@ -219,8 +258,8 @@ The first of them is `@IgnorableReturnValue`:
 public annotation class IgnorableReturnValue
 ```
 
-This annotation is intended to express that calls of annotated function are ignorable.
-The author of the API is the one responsible for manually placing this annotation on appropriate functions.
+This annotation is intended to express that calls of the annotated function are ignorable.
+The API's author is responsible for manually placing this annotation on appropriate functions.
 
 > Note that it does not have CONSTRUCTOR and PROPERTY targets because we want to discourage writing constructors and properties with side effects.
 
@@ -232,23 +271,163 @@ The second is `@MustUseReturnValues`:
 public annotation class MustUseReturnValues
 ```
 
-This annotation marks the *scope* (file or class) in which all the functions are non-ignorable.
-Ideally, we want to treat every non-unit declaration as non-ignorable. However, we cannot do it due to the [high migration costs](#migration-plan). Therefore, the checker would only report functions from the scope annotated as `@MustUseReturnValues` at this stage.
-This annotation is expected to be [automatically inserted by the compiler](#marking-libraries-with-mustusereturnvalues). However, it is also possible to place it manually in case you wish to mark only a part of your API.
+This annotation marks the *scope* (file or class) in which all the callables are non-ignorable.
 
 > @MustUseReturnValues intentionally has a plural name and does not have `AnnotationTarget.FUNCTION`. We want to encourage authors to think about and design non-ignorable APIs as a whole, not on a per-function basis.
+
+`@MustUseReturnValues` serves two purposes:
+
+1. Specifying scope as non-ignorable in case you are overriding methods from an ignorable scope (see [Overrides](#overriding-and-inheritance)).
+2. Opting in for checks in a more granular way.
+
+Ideally, as an API author, you should globally mark your library as [ready to be consumed with checker](#opting-in-your-library) by enabling [corresponding feature mode](#feature-modes).
+In cases where the API surface is large and it is problematic to perform migration at once, it is possible to do this on a per-class or per-file basis using this annotation.
 
 ### Explicitly ignoring values
 
 In the ideal world, every function call is either explicitly ignorable and not used, or non-ignorable and correctly used by the caller.
 In the real world, sometimes we need to drop the value even if the API's author does not want us to.
-For those cases, to suppress the checker warning, one can use [underscore as a local variable name](underscores-for-local-variables.md):
+For those cases, to suppress the checker warning, one can use [underscore as a local variable name](KEEP-0412-underscores-for-local-variables.md):
 
 ```kotlin
 fun foo(x: Int) {
   val _ = nonIgnorableCall(x) // A warning is not reported.
 }
 ```
+
+### Overriding and inheritance
+
+When we talk about inheritance, we consider the base class as 'origin' of the API whose author put thought of whether certain methods in this class should be ignorable or not.
+The main goal of the feature design in this area is to prevent an accidental or incorrect change of ignorability on overrides.
+To achieve this goal, there are two rules in place:
+
+1. **Ignorability is copied from the base class/interface by default.**
+
+In particular, this means that if you implement any interface from the Kotlin standard library or other [opted-in](#opting-in-your-library) libraries,
+you will automatically have non-ignorable status on corresponding callables, giving you warnings in the [Checker](#feature-modes) mode.
+This is handy because functions like `Any.hashCode()` are considered to be declared in the Kotlin standard library,
+and therefore all their overrides will be checked automatically.
+
+2. **It is not allowed to override explicitly ignorable functions with non-ignorable functions.**
+
+If we allowed overriding ignorable functions with non-ignorable ones, we may report incorrect results.
+For example, if `Base` has an ignorable `foo` method, and it's overridden in `Derived` by a non-ignorable version, then we report a warning if we know that a value has type `Derived`, but this warning is "lost" if we only know it's a `Base`.
+This breaks the substitution principle.
+
+On the other hand, the reverse situation is fine in this regard.
+It is allowed to make a function ignorable on override, if you know this particular implementation should not be checked:
+
+```kotlin
+@MustUseReturnValues
+interface Foo {
+  fun getSmth(): String // non-ignorable due to annotation
+}
+
+class FooImpl: Foo {
+  // non-ignorable because base function is non-ignorable
+  override fun getSmth(): String = System.getProperty("something")!!
+}
+
+object EmptyFoo: Foo {
+  @IgnorableReturnValue
+  override fun getSmth() = ""
+}
+
+fun bar(f: Foo) {
+  f.getSmth() // unused return value warning
+  FooImpl().getSmth() // unused return value warning
+  EmptyFoo.getSmth()  // no warning
+}
+```
+
+It is also possible to make _unspecified_ functions non-ignorable on override:
+
+```java
+// Some Java interface that is not annotated and therefore has unspecified ignorability
+public interface JavaInterface {
+  String getFoo();
+  boolean doSmth();
+}
+```
+```kotlin
+@MustUseReturnValues
+interface MyKotlin: JavaInterface {
+  override fun getFoo(): String
+  @IgnorableReturnValue
+  override fun doSmth(): Boolean
+}
+
+fun check(i: JavaInterface, k: MyKotlin) {
+  i.getFoo() // no warning
+  k.getFoo() // unused return value warning
+  k.doSmth() // no warning
+}
+```
+
+Adding annotations this way allows you to 'enhance' methods with ignorability information if it wasn't there.
+Consider doing this if you want to re-expose your class in the API.
+
+We used `@MustUseReturnValues` to add ignorability information.
+This is possible because it has _priority_ over callables from the base class.
+In other words, to determine whether a callable is ignorable or not, these properties
+are checked in this exact order:
+
+1. Presence of `@IgnorableReturnValue` annotation or `@MustUseReturnValues` annotation on outer scopes.
+2. Immediate parent's callable status, if it exists.
+3. Selected [feature mode](#feature-modes).
+
+### Expect/actual matching
+
+While it may look similar to overriding, actualization of `expect` declarations is a different compiler mechanism.
+To achieve the same goal of consistency and preventing accidental ignorability change, we use a different rule here:
+**Ignorability should be the same for expect and actual callables.**
+This means that annotations on declarations and/or [feature mode](#feature-modes) in common and platform compilations should
+not contradict each other.
+Note: implicit and explicit ignorability are not considered contradictory, since the checker does not report a warning for both of them.
+For example:
+
+```kotlin
+expect class Foo {
+    fun x(): String
+    fun ign(): String
+}
+
+@MustUseReturnValues
+actual class Foo {
+    actual fun x(): String = "" // compilation warning, actualizing implicitly ignorable function with non-ignorable
+    @IgnorableReturnValue actual fun ign(): String = "" // no warning, actualizing implicitly ignorable with explicitly ignorable
+}
+```
+
+The only exception allowed here is actualization of a non-ignorable callable with unspecified callable (or vice versa) in case this callable is declared _outside the class_.
+This helps in cases when the actual callable is contributed to the scope by a supertype or via typealias, for example:
+
+```kotlin
+@file:MustUseReturnValues
+
+expect class Foo {
+    fun x(): String
+    @IgnorableReturnValue fun ign(): String
+}
+```
+```java
+// FILE: JavaFoo.java
+
+public class JavaFoo {
+    public String x() {
+        return "";
+    }
+    public String ign() {
+        return "";
+    }
+}
+```
+```kotlin
+actual class Foo: JavaFoo() // No warnings
+```
+
+In the case above, methods `x()` and `ign()` are contributed to the `Foo` scope by Java supertype and therefore have unspecified ignorability.
+The compiler would not report a warning here, but you may get different 'unused return value' warnings on common and platform sources, so try to avoid such situations.
 
 ### Higher-order functions and further extensions
 
@@ -260,62 +439,159 @@ Because we know that `MutableList.add` is an ignorable function, we do not want 
 However, for cases where the non-ignorable function is called inside, e.g., `packageName?.let { "kotlin." + it }`, we want to warn
 users if the whole expression is unused.
 This problem forced us to realize that many (but not all!) higher-order functions should behave as [propagating expressions](#propagating-expressions), just like control flow expressions.
-Unfortunately, there are no means to infer or detect this automatically, and no special syntax exists for it.
+Unfortunately, there are no means to infer or detect this automatically, and no special syntax exists.
 
 Therefore, we do not plan to address this problem in the current design stage.
 `let`, and some other functions will be marked as `@IgnorableReturnValue` to avoid a large number of false-positive errors.
 In the future, we plan to improve the situation by introducing a special *contract type* to express that a higher-order function call should be treated as a propagating expression.
-This plan heavily relies on the [contracts](kotlin-contracts.md) feature of Kotlin, which requires quite some time to finalize.
+This plan heavily relies on the [contracts](KEEP-0139-kotlin-contracts.md) feature of Kotlin, which requires quite some time to finalize.
 
 ## Migration plan
 
-As was mentioned in the [goals](#overview-and-goals) section, our ultimate goal is to check the usage of every non-ignorable function.
-However, we cannot do this right away because there are many libraries and code out there that are not annotated with `@IgnorableReturnValue` when appropriate — for example, `io.netty.buffer.ByteBuf.clear()` returns self and is definitely ignorable. Still, Netty is unlikely to be annotated with Kotlin's annotations.
+As was mentioned in the [overview](#overview) section, our ultimate goal is to check the usage of every non-ignorable function.
+However, we cannot do this right away because there are many libraries and code out there that are not annotated with `@IgnorableReturnValue` when appropriate — for example, `io.netty.buffer.ByteBuf.clear()` returns self and is definitely ignorable.
+Still, Netty is unlikely to be annotated with Kotlin's annotations.
 Even if the checker itself was enabled by an additional flag, it could not check the whole code in the world at once — the migration cost would be unreasonably high, and there would be too many false positives.
 
 To solve this problem, we somehow need to mark APIs verified by their authors to have `@IgnorableReturnValue` in all the right places. We can call such libraries/APIs *RVC-approved*.
 Migration then can look like this:
 
 1. A library author inspects their API and annotates it with `@IgnorableReturnValue` accordingly.
-2. A new library version is released, which is RVC-approved now.
-3. Library clients can safely enable the unused return value checker to get warnings about misusages of RVC-approved declarations from this library
+2. A new library version is released, which is now RVC-approved.
+3. Library clients can safely enable the unused return value checker to get warnings about misuses of RVC-approved declarations from this library.
 4. This, in turn, allows the clients to properly annotate their code as well and make a new, RVC-approved, version of their code.
 5. Go to step 1.
 
 kotlin-stdlib and some kotlinx libraries will be RVC-approved from the start, allowing you to benefit from this checker immediately.
 We hope this feature will gain traction, and more library authors will follow, allowing the community to write much safer Kotlin code.
 
-### Marking libraries with `@MustUseReturnValues`
+### Opting in your library
 
 To implement the plan above, we need a way to mark a library/API as RVC-approved.
-After considering various approaches, we concluded that the most reasonable way is to use
-an annotation.
-Note that we do not expect it to be placed manually; it should be automatically put on every class by the compiler when the author feels that their code is ready for that — i.e., `@IgnorableReturnValue` is placed everywhere it is supposed to be.
+The initial idea was to use annotations everywhere, but after assessing technical implications, we
+decided to go with the Kotlin-specific metadata information.
+The metadata flag will be automatically set on every callable by the compiler when the author feels that their code is ready for that — i.e., `@IgnorableReturnValue` is placed everywhere it is supposed to be.
 This will be controlled by a special feature switch (see [Feature modes](#feature-modes) below).
-However, it is still possible to place it by hand in case you need it or simply wish to migrate only part of your API.
+
+It is still possible to place the `@MustUseReturnValues` annotation in case you need it or simply wish to migrate only part of your API.
+In that case, select the 'Checker only' mode and the compiler will set the metadata flag only on annotated declarations.
+
+> This flag can be read with [kotlin-metadata-jvm](https://kotlinlang.org/docs/metadata-jvm.html) library if you wish to analyze compiled Kotlin code — for example, if you're writing your own static analyzer and you want to have 'unused return value' inspection in it.
 
 ### Feature modes
 
-To sum up, we expect that the switch for this feature would have three states:
+The switch for this feature has three states:
 
-1. Disabled.
-2. Checker only — report warnings for declarations from classes and files annotated with `@MustUseReturnValues`.
-3. Full mode — Classes compiled in this mode are automatically annotated with `@MustUseReturnValues`. Thus, warnings would be issued for the code from the libraries annotated with `@MustUseReturnValues` and for local code (because it also becomes annotated).
+1. Disabled
 
-When this feature becomes stable, state 2 will be the default.
-Therefore, all Kotlin users would immediately benefit from every library that is correctly annotated without additional configuration.
+This state is the default while the feature is experimental.
 
-### Interop with Java and existing annotations
+2. Checker only
+
+In this mode, the checker only reports warnings for callables compiled as non-ignorable.
+For example, code from libraries whose authors opted in for a full mode, or any code annotated with `@MustUseReturnValues`.
+
+When this feature becomes stable, this state will be the default.
+Therefore, all Kotlin users would immediately benefit from every library that is opted in without additional configuration.
+
+3. Full mode
+
+The compiler performs checks as stated above and sets the metadata flag for all declarations, so they become non-ignorable.
+Thus, warnings are issued for the code from the libraries and for all local code.
+Use this mode to mark your library as ready to be consumed with the checker, or to treat all your application code as non-ignorable.
+
+Corresponding CLI flag is `-Xreturn-value-checker=disable|check|full`. Stay tuned for Gradle DSL updates.
+
+### Metadata compatibility
+
+You can freely switch between compiler modes.
+Despite the feature being experimental, Kotlin metadata for it is compatible in both ways,
+and using Full mode does not force the compiler to emit pre-release binaries.
+Compiling your library in Full mode does not cause any problems for users with the feature disabled.
+
+Since [ignorability annotations](#ignorability-annotations) are considered an experimental API in kotlin-stdlib, they cannot be used in the Disabled state.
+This limitation will be lifted once the feature is stable.
+
+### Interop with existing annotations
 
 There are well-known Java annotation libraries that serve similar purposes, one of the most popular being [ErrorProne](https://errorprone.info/api/latest/com/google/errorprone/annotations/CheckReturnValue.html) from Google.
 Some Java libraries, such as Guava, are already annotated with them.
 To be able to provide the same safety level when using these declarations from Kotlin, we plan to treat the selected number of annotations similarly to Kotlin's `MustUseReturnValues` and `IgnorableReturnValue`.
-Namely:
 
-* `com.google.errorprone.annotations.CheckReturnValue` as `kotlin.MustUseReturnValues`
-* `com.google.errorprone.annotations.CanIgnoreReturnValue` as `kotlin.IgnorableReturnValue`
+To be treated as `kotlin.MustUseReturnValues`:
+* `com.google.errorprone.annotations.CheckReturnValue`
+* `edu.umd.cs.findbugs.annotations.CheckReturnValue`
+* `org.jetbrains.annotations.CheckReturnValue`
+* `org.springframework.lang.CheckReturnValue`
+* `org.jooq.CheckReturnValue`
 
-More annotations can be added to this list if necessary.
+To be treated as `kotlin.IgnorableReturnValue`:
+* `com.google.errorprone.annotations.CanIgnoreReturnValue`
+
+Despite a similar purpose, most libraries do not provide a separate 'explicitly ignorable' annotation, expecting users to place `@CheckReturnValue` on every callable instead of a scope.
+That is why we ask you to use Kotlin's annotations or Full mode, and this list is provided purely for Java interop reasons.
 
 There is also a [JSpecify proposal](https://github.com/jspecify/jspecify/issues/200) aimed at providing similar functionality to the Java ecosystem.
 If it is adopted and spread further, and existing Java linters would be able to recognize both JSpecify and Kotlin's annotations, then it would be possible to achieve complete safety in the mixed Java/Kotlin projects.
+
+## Appendix: formal specification
+
+This specification is phrased in terms of the [data flow analysis framework in the specification](https://kotlinlang.org/spec/control--and-data-flow-analysis.html#performing-analyses-on-the-control-flow-graph).
+
+**Lattice elements.** For every data flow variable, we keep a pair with:
+
+1. The “consumption”, which is a member of the partially ordered set:  
+   `not consumed` \< `type consumed` \< `value consumed`
+2. A boolean stating whether the consumption value should be ignored. The merge operation in this case should be a conjunction (and).
+
+It seems useful to define whether we have “fully” consumed a value (by passing it to another function, for example), or we have only used it to check its type (which also includes nullability in this case). 
+This allows us to model the behavior of some operations, like Elvis, much better.
+
+**Initial element.** Each data flow variable starts as (not consumed, ignored \= false), unless otherwise specified.
+
+**Calls.** For nodes of the form `$result = f($1, …, $N)`:
+
+* Mark each of the variables `$1`, …, `$N` as `value consumed`.
+* Initialized the `$result` as `not consumed`, with its `ignored` flag set to `true` if the f is an ignorable callable, or its type is ignorable.
+
+**Assignment.** Assignment to variables effectively marks the involved values as `value consumed`. 
+Note that we could have more precision here by introducing a more complex lattice (for example, keeping implications of the form “if this variable is consumed, then this value is consumed”),
+but our design strives for more simplicity.
+
+**Aliasing.** For nodes of the form `$result = $e` when `$result` is a fresh data flow variable (that is, not a variable introduced by the user),
+the lattice element for `$result` should be copied from that of `$e`.
+
+**Type operators.** For nodes of the form `$result = $0 is T`, `$result = $0 == null`, or their negations:
+
+* Mark the variable `$0` as type consumed.
+* Initialize `$result` as stated in *initial element*.
+
+**Conditionals.** Whenever we find an `assume $0` node, mark `$0` as `value consumed`.
+
+* This means that the conditional consumes the condition.
+
+**Merge nodes.** The behavior of merge nodes (describing the result of branching) follows from the definition of the lattice elements above.
+However, here is a description of their behavior on each data flow variable.
+
+* The consumption is set to the “maximum” of all branches. That means that if a variable is consumed in any of the branches, it counts as consumed.
+* The ignored flag is only set if this flag is set on every branch.
+
+**Behavior on Elvis.** The desired behavior on `e1 ?: e2` can be derived from its expansion as follows:
+
+```kotlin
+val $lhs = eval e1
+if ($lhs is Any) $result = $lhs
+else $result = eval e2
+```
+
+* The value resulting from `e1` is `type consumed`, but not `value consumed`, unless something else is done afterward to it.
+* The result of Elvis is only `ignored` whenever both branches are marked as such.
+
+**Check.** At the end of the analysis, we check whether any of the data flow variables is marked as `not consumed` and `ignored = false`.
+Additionally, we may want to report those which are only marked as `type consumed`.
+
+* To improve reporting, we can track every variable resulting from merging the original values that were joined and reporting those instead.
+
+**Implementation: approximation over expressions.**
+The unused return value checker is not defined over the control flow graph but directly on the [expression tree](#propagating-expressions).
+We can approximate the behavior of the former using the latter: the points at which we need to check for consumption are simply those at which an expression appears as a statement in the tree.
