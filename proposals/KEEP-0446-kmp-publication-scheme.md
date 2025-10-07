@@ -3,7 +3,7 @@
 * **Type**: Design proposal
 * **Authors**: Anton Lakotka, Timofey Solonin
 * **Contributors**: Andrei Tyrin
-* **Discussion**: ...
+* **Discussion**: [#461](https://github.com/Kotlin/KEEP/issues/461)
 * **Status**: Under consideration
 * **Prototype**: In progress [KT-74005](https://youtrack.jetbrains.com/issue/KT-74005)
 * **Related YouTrack issue**: [KT-68323](https://youtrack.jetbrains.com/issue/KT-68323)
