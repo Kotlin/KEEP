@@ -1,4 +1,4 @@
-# Nested (non-capturing) type aliases
+# Nested and local non-capturing type aliases
 
 * **Type**: Design proposal
 * **Author**: Alejandro Serrano
@@ -9,7 +9,7 @@
 
 ## Abstract
 
-Right now type aliases can only be used at the top level. The goal of this document is to propose a design to allow them within other classifiers, in case they do not capture any type parameters of the enclosing declaration.
+Right now type aliases can only be used at the top level. The goal of this document is to propose a design to allow them within classifiers (nested) and bodies (local), for the common case in which they do not capture any type parameters of the enclosing declaration.
 
 ## Table of contents
 
@@ -30,7 +30,7 @@ typealias Context = Map<TypeVariable, Type>
 
 As opposed to value classes, type aliases are "transparent" to the compiler, so any functionality available through `Map` is also available through `Context`.
 
-Currently, type aliases may only be declared at the top level. This hinders their potential, since type aliases may be very useful in a private part of the implementation; so forcing to introduce the type alias at the top level pollutes the corresponding package. This document aims to rectify this situation, by providing a set of rules for type aliasing within other declarations.
+Currently, type aliases may only be declared at the top level. This hinders their potential, since type aliases may be very useful in a private part of the implementation; so forcing to introduce the type alias at the top level pollutes the corresponding package. This document aims to rectify this situation, by providing a set of rules for type aliasing within other declarations (**nested** type aliases) and in to define them in bodies (**local** type aliases).
 
 ```kotlin
 class Dijkstra {
@@ -40,7 +40,7 @@ class Dijkstra {
 }
 ```
 
-One additional difficulty when type aliases are nested come from the potential **capture** of type parameters from the enclosing type. Consider the following example:
+One additional difficulty in these scenarios stems from the potential **capture** of type parameters from the enclosing declarations. Consider the following example:
 
 ```kotlin
 class Graph<Node> {
@@ -79,22 +79,22 @@ interface IntArray: Collection {
 
 ## Proposed solution
 
-We need to care about two separate axes for nested type aliases.
+We need to care about two separate axes for nested and local type aliases.
 
 - **Visibility**: we should guarantee that type aliases do not expose types to a broader scope than originally intended.
 - **Capturing**: we should guarantee that type parameters of the enclosing type never leak, even when they are implicitly referenced.
 
-As a general _design principle_, nested type aliases should behave similarly to nested classes. This principle also allows freely exchanging classsifiers and type aliases in the source code, a helpful property for refactoring and library evolution.
+As a general _design principle_, nested type aliases should behave similarly to nested classes, and local type aliases to local classes. This principle also allows freely exchanging classifiers and type aliases in the source code, a helpful property for refactoring and library evolution.
 
-**Rule 1 (nested type aliases are type aliases)**: nested type aliased must conform to the same [rules of non-nested type aliases](./KEEP-0004-type-aliases.md), including rules on well-formedness and recursion.
+**Rule 1 (nested and local type aliases are type aliases)**: nested and local type aliased must conform to the same [rules of non-nested type aliases](./KEEP-0004-type-aliases.md), including rules on well-formedness and recursion.
 
-**Rule 2 (scope)**: nested type aliases live in the same scope as nested classifiers.
+**Rule 2 (scope)**: **nested type aliases** live in the same scope as nested classifiers.
 
-- In particular, type aliases cannot be overriden in child classes. Creating a new type alias with the same name as in a parent class merely _hides_ that from the parent.
+- In particular, type aliases cannot be overridden in child classes. Creating a new type alias with the same name as in a parent class merely _hides_ that from the parent.
 
-It is **not** allowed to define local type aliases, that is, to define them in bodies (including functions, properties, initializers, `init` blocks).
+**Local** type aliases are those defined in bodies (including functions, properties, initializers, `init` blocks).
 
-**Rule 3 (visibility)**: the visibility of a type alias must be equal to or weaker than the visibility of every type present on its right-hand side. Type parameters mentioned in the right-hand side should not be accounted.
+**Rule 3 (visibility)**: the visibility of a nested type alias must be equal to or weaker than the visibility of every type present on its right-hand side. Type parameters mentioned in the right-hand side should not be accounted.
 
 ```kotlin
 class Service {
@@ -108,7 +108,9 @@ class Service {
 }
 ```
 
-**Rule 4 (non-capturing)**: nested type aliases may _not_ capture type parameters of the enclosing classifier.
+Local type aliases are never visible outside the scope of the body they are defined in.
+
+**Rule 4 (non-capturing)**: neither nested nor local type aliases may capture type parameters of the enclosing classifier.
 
 > [!TIP]
 > As a rule of thumb, a nested type alias is correct if it could be used as the supertype or a parameter type within a nested class living within the same classifier.
@@ -176,7 +178,7 @@ class Example<T> {
 }
 ```
 
-**Rule 5 (type aliases to inner classes)**: whenever a type alias to an inner class, a "type alias constructor" with an extension receiver should be generated, according to the [corresponding specification](./KEEP-0004-type-aliases.md#type-alias-constructors-for-inner-classes). This constructor should be generated in the **static** scope for nested type aliases.
+**Rule 5 (type aliases to inner classes)**: whenever a type alias to an inner class is defined, a "type alias constructor" with an extension receiver should be generated, according to the [corresponding specification](./KEEP-0004-type-aliases.md#type-alias-constructors-for-inner-classes). This constructor should be generated in the **static** scope for nested type aliases.
 
 ```kotlin
 // declaration.kt
