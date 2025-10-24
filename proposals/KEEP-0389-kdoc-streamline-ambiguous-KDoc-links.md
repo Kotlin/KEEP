@@ -1,4 +1,4 @@
-﻿# Streamline KDoc ambiguity links
+﻿# Streamline ambiguous KDoc links
 
 * **Type**: Proposal
 * **Authors**: Vadim Mishenev, Oleg Makeev
@@ -11,7 +11,40 @@
 
 This document introduces clarifications and improvements to the existing implementation of [KDoc](https://kotlinlang.org/docs/kotlin-doc.html) regarding resolving ambiguous KDoc links.
 It addresses the range of issues ([dokka/#3451](https://github.com/Kotlin/dokka/issues/3451), [dokka/#3179](https://github.com/Kotlin/dokka/issues/3179), [dokka/#3334](https://github.com/Kotlin/dokka/issues/3334)) that Dokka and the IntelliJ Plugin faced during the migration to the K2 resolver from **Kotlin Analysis API**.
- 
+
+# Table of contents
+* [Motivation](#motivation)
+  * [Introduction](#introduction)
+  * [How does the current K1 / K2 implementation prevent ambiguity?](#how-does-the-current-k1--k2-implementation-prevent-ambiguity)
+    * [Context declarations](#context-declarations)
+    * [Disambiguation by declaration kinds and by locality of scopes](#disambiguation-by-declaration-kinds-and-by-locality-of-scopes)
+      * [K1 implementation](#k1-implementation)
+      * [K2 implementation](#k2-implementation)
+    * [Disambiguation by overloads](#disambiguation-by-overloads)
+  * [Additional notes: K1 / K2 inconsistencies](#additional-notes-k1--k2-inconsistencies)
+  * [Issues with the existing K1 implementation](#issues-with-the-existing-k1-implementation)
+  * [Shared issues](#shared-issues)
+* [Proposal](#proposal)
+  * [Context of KDoc](#context-of-kdoc)
+  * [Resolution strategy](#resolution-strategy)
+  * [Resolution algorithm](#resolution-algorithm)
+    * [Step 1. Perform context declaration search](#step-1-perform-context-declaration-search)
+    * [Step 2. Perform scope traversal](#step-2-perform-scope-traversal)
+      * [Short names treatment](#short-names-treatment)
+      * [Multi-segment names treatment](#multi-segment-names-treatment)
+        * [Scope reduction algorithm](#scope-reduction-algorithm)
+        * [Relative name resolution](#relative-name-resolution)
+        * [Global name resolution](#global-name-resolution)
+    * [Step 3. Perform package search](#step-3-perform-package-search)
+    * [Result of the resolution](#result-of-the-resolution)
+  * [Resolution of tag sections subjects](#resolution-of-tag-sections-subjects)
+  * [Handling resolved declarations on the use-site](#handling-resolved-declarations-on-the-use-site)
+* [Appendix](#appendix)
+  * [Other considered approaches and ideas](#other-considered-approaches-and-ideas)
+    * [Special resolution context inside tag sections](#special-resolution-context-inside-tag-sections)
+    * [Restrictions of multi-segment name resolution](#restrictions-of-multi-segment-name-resolution)
+  * [Other languages](#other-languages)
+
 # Motivation
  
 ## Introduction
@@ -61,13 +94,13 @@ class classA {
  fun classA.extension(p: Int) = 0
 ```
 
-### Visibility 
+### Visibility
 KDoc ignores visibility, i.e., all declarations are treated as visible from the KDoc position.
 However, whether resolving KDoc links should take visibility into account is an open question,
 which is out of the scope of this proposal.
 
 On the opposite, Javadoc can take visibility into account for particular cases (not specified),
-but for most cases it works just like KDoc.
+but for most declarations it works just like KDoc.
 
 ```java
 /**  
@@ -137,17 +170,21 @@ To which declaration should the KDoc name `A` resolve to?
 That's why KDoc resolution requires a set of strict rules and priorities,
 which can help to create a consistent and disambiguating resolution strategy.
 
-## How does the current K1 / K2 implementation prevent ambiguity? 
+## How does the current K1 / K2 implementation prevent ambiguity?
 
 There can be various ambiguous cases,
-which both K1 and K2 handle using the same mechanisms and rules to deal with them.
+which both K1 and K2 handle using similar mechanisms and rules to deal with them.
 
-### Self-links
-A self-link is a link that resolves to the documented declaration or its component.
+### Context declarations
+
+A context declaration is the documented declaration itself or some component of its signature.
 Both Javadoc and KDoc give documented declarations the highest priority among all other declarations with the same name.
-If no suitable documented declaration with a matching name was found, the link is not considered a self one.
+If no suitable context declaration with a matching name was found, the search proceeds to other declarations.
 
-Such links are widely used in the various libraries (e.g. Kotlinx) because of their visual consistency and simplicity.
+This mechanism is widely used in the various libraries (e.g. Kotlinx) because of its visual consistency and simplicity.
+
+Note that the K1 implementation doesn't prioritize the documented declaration itself, but only its components.
+See [this section](#inconsistency-with-context-declarations) for more details on this issue.
 
 ```kotlin
 fun foo() {}
@@ -155,7 +192,7 @@ val x = 0
 class T
 
 /**
- * [foo], [x], [T] - self-links, point to declarations from the context declaration,
+ * [foo] (only in K2), [x], [T] - point to declarations from the context declaration,
  * i.e., `foo` function, `x` value parameter and `T` type parameter.
  * 
  * All the other declarations are ignored, as they have lower priority.
@@ -165,21 +202,7 @@ fun <T> foo(x: Int) {}
 
 Their principle is quite natural and convenient in use, as they cannot be broken by introducing some other declaration.
 
-For example,
-```kotlin
-/** [A] - to val A */
-val A = 0
-```
-After adding a function, the link is left the same.
-```kotlin
-/** [A] - to val A */
-val A = 0
-
-fun A() = 0
-```
-
-
-### Disambiguation by a kind of declaration and by order of scopes
+### Disambiguation by declaration kinds and by locality of scopes
 
 When reasoning about existing resolution strategies, it's important to note
 that the KDoc resolution was never a part of the Kotlin specification.
@@ -189,11 +212,11 @@ to be the default and "classic" one.
 This KEEP will mainly refer to the K1 implementation unless specified otherwise.
 
 Also, keep in mind that both of the implementations are ad hoc and the following
-descriptions will not cover all possible cases and just outline general approaches.
+descriptions will just outline general approaches without covering all possible cases.
 
 #### K1 implementation
 
-When there are no suitable self-links found,
+When there are no suitable [context declarations](#context-declarations) found,
 the current resolution strategy handles declaration priorities based on two properties:
 - Declaration kind
 - Scope of origin
@@ -241,28 +264,28 @@ object A {
      
     /** 
      * Here [Something] refers to the nested class, 
-     * as the nested class is from a local scope, which is seen from this position
+     * as the nested class comes from a more local scope.
      */
     fun usage() = 0
 }
 ```
 
 
-Please note again that this only applies to cases when no `self-links` (mentioned above) were found:
+Please note again that this only applies to cases when no [context declarations](#context-declarations) were found:
 
 ```kotlin
 class Something
 
 object A {
-    /** Here [Something] refers to the function, as it is our documented declaration.
-     * This link is considered to be a so-called self-link
+    /** 
+     * Here [Something] refers to the function, as it is a context declaration.
      */
     fun Something() {}
 }
 ```
 
 So the general priority order can be described as following:
-- Self-links (declarations from the documented declaration)
+- [Context declarations](#context-declarations)
 - Class (from local to global)
 - Packages (global search)
 - Functions (from local to global)
@@ -273,14 +296,15 @@ So the general priority order can be described as following:
 The K2 implementation mostly ignores declaration kinds and focuses on retrieving 
 declarations by scopes.
 
-Let's consider each scope:
+Let's consider each step:
 1. Firstly the resolver checks whether the link is `[this]` and retrieves the extension receiver
-from the documented extension callable.
+   from the documented extension callable.
 2. Then the resolver considers the [lexical scope](https://en.wikipedia.org/wiki/Scope_(computer_science)#Lexical_scope_vs._dynamic_scope_2)
-of the documented declaration, i.e., member scope of every outer declaration in the order of their
-locality. 
-These scopes also contain context/type/value parameters of these outer declarations.
-Then, in each scope, the resolver tries to acquire matching declarations contained in this member scope.
+   of the documented declaration, i.e., member scope of every outer declaration in the order of their
+   locality. 
+   These scopes also contain context/type/value parameters of these outer declarations.
+   Then, in each scope, the resolver tries to acquire matching declarations contained in this member scope.
+   That's also the point where [context declarations](#context-declarations) are handled.
 3. After the search through the lexical scope, the resolver moves on to other scopes: 
    * Explicit importing scope
    * Package scope
@@ -289,7 +313,7 @@ Then, in each scope, the resolver tries to acquire matching declarations contain
    * Default star importing scope
 4. After the local search, the algorithm retrieves global packages by the given name.
 5. If no symbols were found on the previous steps, the link is considered to be fully qualified.
-The last step for the resolver is to search for non-imported declarations from other packages.
+   The last step for the resolver is to search for non-imported declarations from other packages.
 
 After the search is done, the resolver sorts the list of all the collected declarations prioritizing classes,
 which is the only handling of declaration kinds.
@@ -319,21 +343,12 @@ fun usage() = 0
 
 The resolution behavior in the following cases is inconsistent between K1 and the current K2 implementations.
 
-### 1. Inconsistency with self-links
+### Inconsistency with context declarations
 
-```kotlin
- /**
- *  [A] In K1, it leads to the nested class A.A. In K2 - to the outer class A
- */
-class A {
-    class A
-}
-```
-The case (a nested class with the same name as the enclosing class) can be unpopular
-since it is banned in such languages as Java and C#.
+K1 and K2 differ in the way they prioritize context declarations.
 
-While preferring parameters / properties of the documented declaration over other symbols,
-the K1 implementation doesn't prioritize the documented declaration itself:
+While preferring signature components (parameters, properties, etc.) of the documented declaration 
+over other symbols, the K1 implementation doesn't prioritize the documented declaration itself:
 ```kotlin
 /** 
  * [A] - K1/K2: Leads to the class
@@ -365,6 +380,18 @@ class A    {
 }
 ```
 
+This can also be applied to nested classes with the same name as the enclosing class:
+```kotlin
+ /**
+ *  [A] In K1, it leads to the nested class A.A. In K2 - to the outer class A
+ */
+class A {
+    class A
+}
+```
+The case above can be unpopular
+since this construction is banned in such languages as Java and C#.
+
 ### Related problem: Availability/Visibility of nested classes from base classes
 At the moment, the resolution of links to "inherited" nested classes varies between the two implementations,
 as it's not supported by K1:
@@ -380,7 +407,7 @@ class MonthBased : DateBased()
 ```
 However, inherited members are still seen and resolved in K1.
 
-### 2. Ambiguity with links to constructor parameters
+### Ambiguity with links to constructor parameters
 
 When properties are declared in primary constructors, there are
 actually two declarations, even though they have the same code location.
@@ -427,12 +454,13 @@ With the current approach, global context can easily break the local resolution.
 
 Take a look at the following example:
 ```kotlin
-class bar
+class bar // Breaks the resolution
 
 fun foo() {
     fun bar() {}
     /**
-     * [bar] -- Points to the local function until some class import is introduced.
+     * [bar] -- Points to the local function until 
+     * some class visible from this position is introduced.
      * No way to refer to the function afterward
      */
 }
@@ -444,12 +472,12 @@ all local links with the same name point to it.
 And it's not always that easy to track it down. 
 Accidental introduction of an import with the same name also poses the same danger:
 ```kotlin
-import foo.bar
+import foo.bar // Breaks the resolution
 
 fun foo() {
     fun bar() {}
     /**
-     * [bar] -- Points to the local function until a global class is introduced.
+     * [bar] -- Points to the local function until some class import is introduced.
      * No way to refer to the function afterward
      */
 }
@@ -468,7 +496,7 @@ fun foo() {}
 ```
 
 The **kind-first** approach is inconsistent by itself, 
-as it initially assigns self-links (i.e., local resolution) with the highest priority 
+as it initially assigns context declarations (i.e., local resolution) with the highest priority 
 but then proceeds to prefer global declarations to local ones:
 ```kotlin 
 class foo
@@ -486,7 +514,40 @@ object Something {
 }
 ```
 
-## Issues with the existing K2 implementation
+### Inconsistent multi-segment name resolution
+
+Consider the following example:
+```kotlin
+class A {
+    class B
+}
+
+class Foo {
+    class A
+
+    /** 
+     * [A.B] - `A` is resolved to the nested class `Foo.A`, 
+     *          but `A.B` is resolved to the nested class
+     *          in the global class `A`
+     */
+    fun foo() {}
+}
+```
+
+Here we have a two segment name `A.B`.
+Each segment prefix of a multi-segment name can be viewed as a separate navigatable link.
+Here we actually have two links that need to be resolved: `A` and `A.B`.
+Ideally, the full name (`A.B` in this case) should be resolved first,
+so that all segment prefixes of this link (`A` in this case) reference the corresponding parent
+of the `A.B` declaration. So if `A.B` is resolved to some nested class `B`, then `A` should obviously
+reference its outer class.
+
+However, the current K1 implementation resolves the first segment of multi-segment names separately.
+It treats it as a short link and tries to find it in the local scope.
+That's why in the example above, the link `[A.B]` is correctly resolved to the nested class in the global `A`,
+while its prefix link `[A]` is resolved to the nested class in `Foo.A`.
+
+## Shared issues
 
 ### Misuses of tag sections
 [Tag sections](https://kotlinlang.org/docs/kotlin-doc.html#block-tags) (or block tags) allow breaking the
@@ -513,7 +574,8 @@ fun foo(x: Int) {}
 And while some of them are generic and can be used for all kinds of declarations, e.g., `@see`,
 most of them are clearly supposed to accept specific kinds of declarations.
 * `@param` should be used for function / constructor parameters.
-* `@property` should be used for links to properties of the primary constructor.
+* `@property` should be used for links to class properties: 
+both from the primary constructor and from the class body. .
 * `@exception` / `@throws` should be used for `Throwable`s.
 
 However, a lot of users are not familiar with block tags.
@@ -526,14 +588,64 @@ In fact, the K1 implementation already does this, however, just for the `@param`
 ```kotlin
 /**
  * K1:
- * @param x - unresolved
+ * @param x - unresolved, there are no parameters named `x`
  * K2:
  * @param x - resolved
  */
 fun x() {}
 ```
 
-## KDoc names pointing to a single declaration
+### Issues with local context resolution
+
+Both K1 and K2 fail to resolve links to local declarations inside function bodies and lambdas.
+
+```kotlin
+fun foo() {
+    val x = 0
+
+    /**
+     * [x] - unresolved in K1/K2
+     */
+    val usage = 0
+}
+```
+
+```kotlin
+class MyClass {
+    init {
+        fun x() {}
+
+        /**
+         * [x] - unresolved in K1/K2
+         */
+        val y = 0
+    }
+}
+```
+
+```kotlin
+fun foo() {
+    listOf(1, 2, 3).map {
+        /**
+         * [it] - unresolved in K1/K2
+         */
+    }
+}
+```
+
+However, if the lambda parameter is explicit, links to it are resolved:
+
+```kotlin
+fun foo() {
+    listOf(1, 2, 3).map { it -> // explicit lambda parameter
+        /**
+         * [it] -- resolved in K1/K2
+         */
+    }
+}
+```
+
+### KDoc names pointing to a single declaration
 Currently, KDoc links can only be resolved to a single symbol.
 Even though K1/K2 resolvers return multiple candidates for the same link,
 the IDE only shows the first one.
@@ -605,7 +717,7 @@ class A(param: Int) {
 ```
 
 We can see that the constructor parameter `param` is not accessible in this context.
-It's not called "unresolved" as this link is a self-link, so it's handled separately.
+It's not called "unresolved" as this link is a context declaration, so it's handled separately.
 
 Declarations don't have to be resolvable in the code as-is.
 It's contained in the KDoc context when there is a case this declaration is correctly referenced in the code.
@@ -642,7 +754,7 @@ fun foo() {
 Similarly, the KDoc context of functions/constructors corresponds to the beginning of their bodies, 
 the KDoc context of properties corresponds to the beginning of property initializers, etc.
 
-## Resolution Strategy
+## Resolution strategy
 
 We would like to make the resolution of KDoc names closer to what the compiler does when resolving references in code.
 This approach is more natural, clear, and convenient to users,
@@ -763,46 +875,47 @@ Let's systemize this information in the following chapters:
 
 All names should be treated according to the following three-step algorithm:
 
-1. [Perform self-link search](#step-1-perform-self-link-search)
+1. [Perform context declaration search](#step-1-perform-context-declaration-search)
 2. [Perform scope traversal](#step-2-perform-scope-traversal)
 3. [Perform package search](#step-3-perform-package-search)
 
-### Step 1. Perform self-link search
+### Step 1. Perform context declaration search
 
 When the given name is short (i.e., contains just one segment),
 the resolution should start by looking for declarations with the same name in the context declaration.
-This includes:
-* The documented declaration itself
-* Value parameters
-* Type parameters
-* Context parameters
-* Properties of the primary constructor
+The order of these context declarations is the following:
+
+When the context declaration is a class:
+1. The class itself
+2. Class type parameters
+3. Primary constructor
+4. Primary constructor properties
+5. Primary constructor value parameters
 
 Note that when the context declaration is a class,
 the KDoc documents both the class and its primary constructor (since they have the same location).
 So it's necessary to retrieve declarations from both of them.
 
+When the context declaration is a function, property, or secondary constructor:
+1. The declaration itself
+2. Value parameters
+3. Context parameters
+4. Type parameters
+
+Otherwise, when the context declaration is none of the above,
+only the context declaration itself should be considered.
+
 The resolver should also handle `[this]` receiver links in a proper way.
 If the documented declaration is an extension callable, then `[this]` should be resolved
 to the extension receiver of the current declaration.
-In Kotlin, `this` is a special keyword, no declarations are allowed to be named this way,
-so there won't be any ambiguity with such self-links.
-
-When the link is a subject of a tag section, the resolver 
-should only look for declarations relevant for the current tag section.
-
-- `@param x` must only be resolvable to value / type / context parameters of the documented declaration.
-    When the context declaration is a class, property parameters of its primary constructor are also considered
-    as parameters (`class Foo(val x: Int)`).
-- `@property x` must only be applicable to class documentation and must be resolvable to all properties
-    of the documented class (both properties of the primary constructor and body properties).
-- `@exception` / `@throws` must only be resolvable to `Throwable`s.
+In Kotlin, `this` is a special hard keyword, no declarations are allowed to be named this way,
+so there won't be any ambiguity and this step can be performed at any moment.
 
 ### Step 2. Perform scope traversal
 
 #### Short names treatment
 
-If the name is short, i.e., contains just one segment, and the self-link search did not find any suitable declarations,
+If the name is short, i.e., contains just one segment, and the context declarations search did not find any suitable declarations,
 the resolution should start by looking for declarations in all the scopes that are visible from the current position.
 
 Firstly, the resolver should retrieve a list of scopes for the current position.
@@ -847,7 +960,7 @@ and gather declarations with the given name, according to the following prioriti
 3. Property
 
 If there are any declarations of the same kind found in the current scope,
-these all of these declarations should be immediately returned.
+all these declarations should be immediately returned.
 
 #### Multi-segment names treatment
 
@@ -940,7 +1053,7 @@ and then process the same way as for short names.
 
 A multi-segment name can also be global, i.e., start with a package name.
 
-If the search for relative names fails to resolve the first segment of the link, the resolver
+If the search for relative names fails to resolve the link as a relative one, the resolver
 should fall back to the global search.
 
 If we have some name `A.B.C.D.foo`, then we have to find the longest existing package,
@@ -980,12 +1093,27 @@ that would allow explicitly specifying the kind or other details of the declarat
  * [Foo] - leads to the interface,
  * no way to point to the function.
  */
+class Usage
+
 interface Foo 
 
 fun Foo(): Foo = object : Foo {}
 ```
-Whether the resolver should return all declarations from some scope or just declarations of some kind from this scope
+Whether the resolver should return all declarations from some scope or just declarations of a single kind from this scope
 is still a question.
+
+## Resolution of tag sections subjects
+
+When the link is a subject of a tag section, the resolver
+should only look for declarations relevant for the current tag section.
+
+- `@param x` must only be resolvable to value / type / context parameters of the documented declaration.
+  When the context declaration is a class, property parameters of its primary constructor are also considered
+  as parameters (`class Foo(val x: Int)`). Additionally, it's important to prohibit referencing extension receivers
+  using `@param this`, as there is a dedicated `@receiver` tag for such cases.
+- `@property x` must only be applicable to class documentation and must be resolvable to all properties
+  of the documented class (both properties of the primary constructor and body properties).
+- `@exception` / `@throws` must only be resolvable to `Throwable`s.
 
 ## Handling resolved declarations on the use-site
 
@@ -1024,6 +1152,343 @@ It makes the result consistent and reliable.
 
 # Appendix
 
+## Other considered approaches and ideas
+
+Here are some other ideas that were considered during the development of this proposal
+but didn't work out as well as we expected.
+
+### Special resolution context inside tag sections
+
+The following KDoc tag sections should introduce their new scope in the documentation:
+`@constructor`, `@param`, `@property`. 
+Previously, these tag sections never affected the resolution of links placed inside them. 
+All other tag sections must not affect the resolution in any sense.
+
+#### @constructor section
+
+The tag `@constructor` can be applied to classes
+and has context where parameters of the primary constructor and the constructor itself are available and prioritized.
+These declarations should not be accessible in the regular documentation section.
+
+The motivation behind this is rather simple: the class documentation should
+describe the data the class represents and not how this class is constructed.
+
+```kotlin
+/**
+ * [p] ERROR: unresolved
+ * @constructor [p] is resolved
+ */
+class A(p: Int, val abc: String)
+```
+
+There is another example for `@constructor`:
+```kotlin
+/** 
+ * [A] - to the class, [abc] - to the property 
+ * @constructor [A] - to the constructor, [abc] - to the parameter 
+ */ 
+class A(var abc: String)
+```
+
+The constructor from the example above can be easily refactored to be a secondary constructor.
+Here we clearly see that the `abc` parameter only belongs to this constructor is not seen from the class
+(i.e., from the first line of a fake function).
+However, the property is fully accessible.
+
+```kotlin
+/**  
+ * [A] - to the class, [abc] - to the property 
+ */
+class A private constructor() {  
+    /**  
+    * [A] - to the constructor, [abc] - to the parameter 
+    */  
+    constructor (abc: String): this()  
+    lateinit var abc: String  
+}
+```
+
+Note that the constructor symbol is prioritized over parameter symbols:
+```kotlin
+/**
+ * [abc] - to the class
+ * @constructor [abc] - to the constructor
+ */ 
+class abc(var abc: String)
+```
+
+#### @param section
+
+`@param` section can be applied to classes and functions.
+When applied to classes, it also makes the constructor and its parameters available the same way `@constructor` does;
+however, parameters have higher priority.
+
+The motivation for this is the same as for the `@constructor` section:
+the class documentation should describe the data the class and not some construction details.
+
+```kotlin
+/**
+ * [A] - to the class, [abc] - to the property 
+ * @param [A] - to the constructor, [abc] - to the parameter 
+ */ 
+class A(var abc: String)
+```
+
+```kotlin
+/** 
+ * [abc] - to the class
+ * @param [abc] - to the parameter
+ */ 
+class abc(var abc: String)
+```
+
+In the case of functions, all the parameters are available from a regular KDoc.
+`@param` section can be used to refer to the parameter instead of the function in case of name clashes.
+```kotlin
+/** 
+ * [abc] - to the function
+ * @param [abc] - to the parameter
+ */ 
+fun abc(var abc: String) {}
+```
+
+#### @property section
+
+`@property` section can be applied to classes to prioritize properties from this class.
+Note that class properties are accessible from other tag sections as well.
+
+```kotlin
+/**
+ * [abc] - to the class
+ * @property [abc] - to the property
+ */ 
+class abc(var abc: String)
+```
+
+A small summary example:
+
+```kotlin
+/** 
+* [abc] - to the class
+*
+ * @constructor [abc] - to the constructor
+ * @param [abc] - to the parameter
+ * @property [abc] - to the property
+ */ 
+class abc(var abc: String)
+```
+
+#### Why this idea was rejected
+
+The main pain point of this approach was the inability to reference primary constructor parameters
+from the regular class documentation section.
+It's not that critical for primary constructors to be unavailable from the regular documentation section
+as the constructor and the class have the same PSI, so the navigation is not affected.
+However, unavailable primary constructor parameters
+introduce a number of problems for documentation writers:
+
+* A lot of people still prefer writing plain documentation instead of using structured tags.
+  This change would force developers to use tag sections even if it's unnecessary in some cases.
+* `@param` and `@property` sections require a subject, i.e., the first word after the tag section
+  is always considered to be a link (`@param x` is equivalent to `@param [x]`).
+  So if some parameter is not the declaration that is currently being documented
+  and just has to be placed in the middle of some other sentence, 
+  then it's impossible to reference it.
+    ```kotlin
+    /**
+     * Accepts [x] and processes it somehow.
+     * -- Unresolved, impossible to reference [x], needs `@param` section
+     * 
+     * @param x - represent some data
+     * -- Resolved, intended way to reference [x]
+     * 
+     * @throws MyException if [x] is negative 
+     * -- Unresolved, impossible to reference [x], needs `@param` section
+     */
+    class ClassAcceptingInt(x: Int)
+    ```
+    ```kotlin
+    /**
+     * [x] -- points to the property
+     * @param x -- points to the constructor parameter
+     */
+    class SomeClass(x: Int) {
+        private var x = doProcessAndCheck(x)
+    }
+    ```
+* It's unintuitive to users because classes are always merged with their primary constructors,
+  so the class documentation should be used to describe both the class and its primary constructor.
+  It would be seen as a bug if constructor parameters are not available 
+  from the regular documentation section.
+
+### Restrictions of multi-segment name resolution
+
+We would like our KDoc resolution to be as close as possible 
+to the way Kotlin resolves names in the code.
+So we should only resolve multi-segment names when the language does so.
+
+Imagine that we have some name `A.B.C` that we would like to point to.
+The location of this declaration relatively to the given position is not important.
+For the sake of simplicity, let's put `A.B.C` in some other package
+just that there are no conflicting overloads within the same package.
+Now take a look at the following examples:
+```kotlin
+// FILE: A.B/C.kt
+package A.B
+
+class C
+
+// FILE: Usage.kt
+package usage
+
+fun usage() {
+    A.B.C() // RESOLVED
+}
+```
+
+The reference is correctly resolved.
+But take a look at how it changes after introducing other declarations in the same package:
+```kotlin
+// FILE: Usage.kt
+
+fun A() = 5 // Function
+
+fun usage() {
+    A.B.C() // RESOLVED
+}
+```
+
+```kotlin
+// FILE: Usage.kt
+
+val A = 5 // Property
+
+fun usage() {
+    A.B.C() // UNRESOLVED
+}
+```
+
+```kotlin
+// FILE: Usage.kt
+
+class A // Class
+
+fun usage() {
+    A.B.C() // UNRESOLVED
+}
+```
+
+```kotlin
+// FILE: Usage.kt
+
+class Something
+
+fun Something.A() {} // Extension
+
+fun Something.usage() {
+    A.B.C() // RESOLVED
+}
+```
+
+```kotlin
+// FILE: Usage.kt
+
+class Something
+
+val Something.A: Int // Extension
+    get() = 5
+
+fun Something.usage() {
+    A.B.C() // UNRESOLVED
+}
+```
+
+As we can see, the compiler only resolves this name when there are
+no other non-function (class or property) more local declarations that are resolvable by some segment prefix of the given name.
+
+Otherwise, some segment prefix is resolved to this declaration and the rest of the chain is unresolved,
+as the resolved declaration doesn't have any suitable nested symbols.
+
+This should be also taken into account when resolving links in KDoc:
+Before performing a [scope reduction](#scope-reduction-algorithm) for relative names, the resolver has to make sure that there are no
+non-function declarations matching some segment prefix of the given name in a more local scope.
+If such a declaration is found in some scope, then there is no need to process all further scopes,
+as the compiler would resolve this segment prefix to the declaration in this scope.
+
+```kotlin
+interface A {
+    companion object {
+        val B: Int = 0
+    }
+}
+
+class Usage {
+    val A: Int = 0
+
+    /**
+     * [A.B] // Should be unresolved
+     */
+    fun usage() {
+        A.B // Unresolved, A is resolved to a more local property
+    }
+}
+```
+
+#### Why this idea was rejected
+
+The main problem is that KDoc resolution has a larger scope than the language does.
+That's because KDoc links ignore all visibility / accessibility modifiers during the search. 
+
+Take a look at the example below:
+```kotlin
+interface A {
+    companion object {
+        val B: Int = 1
+    }
+}
+
+class Usage1 {
+    val A: Int = 1
+    
+    class Nested { // Not inner
+        /**
+         * [A.B]
+         */
+        fun foo() {
+            A.B // Resolved, Usage1.A is not visible
+        }
+    }
+}
+
+
+class Usage2 {
+    val A: Int = 1
+
+    inner class Nested { // Inner
+        /**
+         * [A.B]
+         */
+        fun foo() {
+            A.B // Unresolved, Usage2.A is visible
+        }
+    }
+}
+```
+
+`Usage1` and `Usage2` both have the same property `A` and the same nested class `Nested`.
+However, `Usage2.Nested` is inner while `Usage1.Nested` is not.
+Since `Usage1.A` is not visible from `Usage1.Nested`, `A.B` in `Usage1.Nested` is resolved in the code.
+However, `Usage2.A` is accessible from `Usage2.Nested`, so `A.B` in `Usage2.Nested` is unresolved,
+as the first segment `A` is actually resolved to `Usage2.A` property.
+
+But KDoc links ignore declaration visibility, so this `A` property is visible from 
+both KDoc comments. If we stop the resolution pipeline after encountering `val A`, 
+the `A.B` link in `Usage1` will be unresolved, even though it's a valid link from
+the language perspective.
+
+Since we would like the KDoc resolution to be a superset of the language resolution and not a subset,
+we have to reject this idea.
+
 ## Other languages
 
 All considered languages can be divided into two groups by the way they deal with ambigous links:
@@ -1044,12 +1509,12 @@ In this case, an ambiguous reference will lead to:
 For example, 
 ```java
 /**  
- * {@link #f} references to f(int p)
+ * {@link #f} references f(int p)
  */
  public class JavaClassA {  
     public void f(int p) {}
     /**  
-    * {@link #f} references to f(int p)
+    * {@link #f} references f(int p)
     */ 
     public void f() {}  
 }
@@ -1057,7 +1522,7 @@ For example,
 Also, by the specification, `#` may be omitted for members:
 ```java
 /**  
- * {@link f} references to the field f
+ * {@link f} references the field f
  */
  public class JavaClassB {  
     public void f(int p) {}  
@@ -1083,7 +1548,7 @@ Also, Javadoc does not provide a way to reference function parameters.
 
 ### JavaScript (JSDoc)
 
-JSDoc does not have such problems with relative references
+JSDoc does not have such problems with relative links
 since it has a unique identifier like a fully qualified path in Kotlin.
 For `@link` tag (https://jsdoc.app/tags-inline-link) there is a namepath. 
 ```js  
@@ -1204,14 +1669,13 @@ class  FF {
 ### C#
 
 It has [XML documentation](https://learn.microsoft.com/en-us/dotnet/csharp/language-reference/language-specification/documentation-comments).
-A generated XML file then passes to a Documentation generator, e.g., Sandcastle.
+A generated XML file then passes to a documentation generator, e.g., Sandcastle.
 
 The `cref` attribute is used to provide a reference to a code element. 
-The C# documentation does not describe the cases of overloads and ambiguous references.
-The support of such references depends on a Documentation generator.
+The C# documentation does not describe the cases of overloads and ambiguous links.
+The support of such links depends on the chosen documentation generator.
 
 The documentation generator must respect namespace visibility according to using statements appearing within the source code.
-
 
 ```csharp
 ///  <seealso  cref="Foo(int)"/>
@@ -1227,7 +1691,7 @@ Similar to Java, C# does not allow having a nested class with the same name as e
 
 ### Rust
 
-In case of ambiguity, the rustdoc will warn about the ambiguity and suggest a disambiguator.
+In case of ambiguity, rustdoc will warn about the ambiguity and suggest a disambiguator.
 See [Disambiguators](https://doc.rust-lang.org/rustdoc/write-documentation/linking-to-items-by-name.html#namespaces-and-disambiguators)
 
 ```rust
@@ -1246,4 +1710,5 @@ There are no overloads in Rust.
 See [Go Doc Comments: Links](https://tip.golang.org/doc/comment#doclinks)
 > If different source files in a package import different packages using the same name, then the shorthand is ambiguous and cannot be used.
 
-However, the Godoc does not support links very well to check.
+Godoc generally prohibits any ambiguity in links.
+Unfortunately, there is no detailed documentation on how exactly it handles various cases.  
