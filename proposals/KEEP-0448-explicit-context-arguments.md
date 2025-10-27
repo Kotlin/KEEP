@@ -3,9 +3,8 @@
 * **Type**: Design proposal
 * **Author**: Alejandro Serrano
 * **Contributors**: Marat Akhin, Nikita Bobko, Kirill Rakhman
-* **Discussion**: 
-* **Status**: Experimental in 2.3.20
-* **Related YouTrack issue**: 
+* **Discussion**: [#465](https://github.com/Kotlin/KEEP/discussions/465)
+* **Status**: Experimental in 2.4
 
 ## Abstract
 
