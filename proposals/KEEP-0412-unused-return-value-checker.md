@@ -3,7 +3,7 @@
 * **Type**: Design proposal
 * **Authors**: Leonid Startsev, Mikhail Zarechenskiy
 * **Contributors**: Alejandro Serrano Mena, Denis Zharkov, Kurt Alfred Kluever, Marat Akhin, Nikita Bobko, Pavel Kunyavskiy, Vsevolod Tolstopyatov
-* **Status**: Experimental in 2.3
+* **Status**: Experimental in 2.3. How to enable: [link](https://kotlinlang.org/docs/whatsnew-eap.html#unused-return-value-checker)
 * **Discussion**: [KEEP-412](https://github.com/Kotlin/KEEP/issues/412)
 * **Tracker**: [KT-12719](https://youtrack.jetbrains.com/issue/KT-12719)
 
