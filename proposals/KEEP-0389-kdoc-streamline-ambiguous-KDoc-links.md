@@ -573,7 +573,7 @@ fun foo(x: Int) {}
 
 And while some of them are generic and can be used for all kinds of declarations, e.g., `@see`,
 most of them are clearly supposed to accept specific kinds of declarations.
-* `@param` should be used for function / constructor parameters.
+* `@param` should be used for function / constructor parameters / context parameters.
 * `@property` should be used for links to class properties: 
 both from the primary constructor and from the class body. .
 * `@exception` / `@throws` should be used for `Throwable`s.
@@ -1341,6 +1341,9 @@ class C
 // FILE: Usage.kt
 package usage
 
+/**
+ * [A.B.C] - should be resolved
+ */
 fun usage() {
     A.B.C() // RESOLVED
 }
@@ -1353,6 +1356,9 @@ But take a look at how it changes after introducing other declarations in the sa
 
 fun A() = 5 // Function
 
+/**
+ * [A.B.C] - should be resolved
+ */
 fun usage() {
     A.B.C() // RESOLVED
 }
@@ -1363,6 +1369,9 @@ fun usage() {
 
 val A = 5 // Property
 
+/**
+ * [A.B.C] - should be unresolved
+ */
 fun usage() {
     A.B.C() // UNRESOLVED
 }
@@ -1373,6 +1382,9 @@ fun usage() {
 
 class A // Class
 
+/**
+ * [A.B.C] - should be unresolved
+ */
 fun usage() {
     A.B.C() // UNRESOLVED
 }
@@ -1385,6 +1397,9 @@ class Something
 
 fun Something.A() {} // Extension
 
+/**
+ * [A.B.C] - should be resolved
+ */
 fun Something.usage() {
     A.B.C() // RESOLVED
 }
@@ -1398,6 +1413,9 @@ class Something
 val Something.A: Int // Extension
     get() = 5
 
+/**
+ * [A.B.C] - should be unresolved
+ */
 fun Something.usage() {
     A.B.C() // UNRESOLVED
 }
@@ -1485,6 +1503,26 @@ But KDoc links ignore declaration visibility, so this `A` property is visible fr
 both KDoc comments. If we stop the resolution pipeline after encountering `val A`, 
 the `A.B` link in `Usage1` will be unresolved, even though it's a valid link from
 the language perspective.
+
+Additionaly, the language resolution doesn't always apply these restrictions when resolving multi-segment names.
+Take a look at the following example:
+```kotlin
+class A {
+    class B
+}
+
+class Usage {
+    class A
+    
+    fun foo() {
+        val x: A.B = A.B()
+    }
+}
+```
+Here the type specification `x: A.B` is resolved, however, the actual constructor call `A.B()` is not.
+That's because the language only applies these restrictions to multi-segment calls resolution.
+However, when resolving types from type specifications, the compiler goes through all the scopes until it finds
+a successful chain.
 
 Since we would like the KDoc resolution to be a superset of the language resolution and not a subset,
 we have to reject this idea.
