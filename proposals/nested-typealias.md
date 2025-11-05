@@ -4,7 +4,7 @@
 * **Author**: Alejandro Serrano
 * **Contributors**: Ivan Kochurkin
 * **Discussion**: [KEEP-406](https://github.com/Kotlin/KEEP/issues/406)
-* **Status**: Experimental in Kotlin 2.2
+* **Status**: Stable in 2.3.0. In 2.2.0 availabled under `-Xnested-type-aliases` flag
 * **Related YouTrack issue**: [KT-45285](https://youtrack.jetbrains.com/issue/KT-45285/Support-nested-and-local-type-aliases)
 
 ## Abstract
