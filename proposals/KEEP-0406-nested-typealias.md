@@ -4,7 +4,7 @@
 * **Author**: Alejandro Serrano
 * **Contributors**: Ivan Kochurkin
 * **Discussion**: [KEEP-406](https://github.com/Kotlin/KEEP/issues/406)
-* **Status**: Experimental in 2.2
+* **Status**: Nested type aliases are **stable in 2.3.0**, experimental in 2.2 under `-Xnested-type-alises` flag. Local type aliases are **experimental** under `-Xlocal-type-aliases` flag.
 * **Related YouTrack issue**: [KT-45285](https://youtrack.jetbrains.com/issue/KT-45285/Support-nested-and-local-type-aliases)
 
 ## Abstract
