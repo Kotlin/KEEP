@@ -305,3 +305,43 @@ For now, however, we would prefer to keep the question of this possibility open.
 
 Existing Kotlin reflection functionality will behave in the way as if there were no explicit backing fields.
 However, additional functionality will be added to support explicit backing fields.
+
+## Related proposals
+
+Another feature similar to this one, which might be introduced in the future, is **typed delegate access**.
+The idea is to provide access to the instance of a property delegate within the private scope of the property itself.
+This could be achieved by introducing a typed subclass of `KPropertyN`, namely `KDelegatedPropertyN`, which specializes the type of the property’s delegate.
+
+For example, for `KDelegatedProperty0`, it might look as follows:
+
+```kotlin
+interface KDelegatedProperty0<out D, out V> : KProperty0<V> { 
+    override fun getDelegate(): D // covariant override, intrinsic
+}
+```
+
+Using the terminology of this KEEP,
+we can say that a reference to a delegated property acts as an explicit backing field of type `KDelegatedProperty0` within the private scope,
+and as a regular `KProperty0` when accessed from outside:
+
+```kotlin
+class FooBar {
+    val prop by lazy { "string lazy" }
+
+    fun f() {
+        ::prop // KDelegatedProperty0<Lazy<String>, String>
+        ::prop.getDelegate() // Lazy<String>, typed and without reflection ceremony
+        if (::prop.getDelegate().isInitialized()) {
+            // ...
+        }
+    }
+}
+
+fun external() {
+    FooBar()::prop // KProperty0<String> 
+}
+```
+
+Although this feature is conceptually similar to the current one, a property reference is not a property itself,
+and therefore this idea cannot be implemented as part of the current KEEP.
+A separate KEEP will be provided for this feature, with more details.
