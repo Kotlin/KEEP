@@ -2,7 +2,7 @@
 
 * **Type**: Design proposal
 * **Author**: Alejandro Serrano
-* **Contributors**: Marat Akhin, Nikita Bobko, Ilya Gorbunov, Mikhail Zarechenskii, Denis Zharkov
+* **Contributors**: Marat Akhin, Nikita Bobko, Ilya Gorbunov, Kirill Rakhman, Mikhail Zarechenskii, Denis Zharkov
 * **Status**: In progress
 * **Discussion**: [KEEP-367](https://github.com/Kotlin/KEEP/issues/367)
 
@@ -34,12 +34,14 @@ This is an updated proposal for [KEEP-259](https://github.com/Kotlin/KEEP/issues
   * [For extending DSLs](#for-extending-dsls)
   * [Context-oriented dispatch / externally-implemented interface / type classes](#context-oriented-dispatch--externally-implemented-interface--type-classes)
   * [Dependency injection](#dependency-injection)
+* [Explicit context arguments](#explicit-context-arguments)
 * [Callable references](#callable-references)
 * [Context and classes](#context-and-classes)
 * [Technical design](#technical-design)
   * [Syntax](#syntax)
   * [Extended resolution algorithm](#extended-resolution-algorithm)
   * [Extended type inference algorithm](#extended-type-inference-algorithm)
+  * [Extended scoping rules](#extended-scoping-rules)
   * [ABI compatibility](#abi-compatibility)
 * [Q\&A about design decisions](#qa-about-design-decisions)
 * [Acknowledgments](#acknowledgments)
@@ -108,7 +110,21 @@ context(logger: Logger) fun User.doAction() {
 * The type and order of context parameters must coincide.
 * It is allowed (yet discouraged) to change the name of a context parameter.
 
-It is a conflict to declare overloads which only differ in the number of context parameters. It is allowed to declare one overload with _no_ context parameters and one with _some_ of them (this is aligned with §7.8).
+If is a conflict to declare overloads with the exact same set of context parameters.
+
+It is allowed to declare multiple overloads if they differ in their set of context parameters. However, a warning should be reported if all of the set of context parameters of one overload are supertypes of those of another overload, since by §7.8 only the latter would be callable in a scope in which the more specific context is available.
+
+```kotlin
+open class Parent
+class Child : Parent()
+
+fun foo() { ... }                    // warning
+context(x: Child) fun foo() { ... }  // warning
+context(x: Child, a: A) fun foo() { ... }
+
+context(x: Parent) fun bar() { ... }  // warning
+context(x: Child)  fun bar() { ... }
+```
 
 **§1.6** *(naming ambiguity)*: We use the term **context** with two meanings:
 
@@ -165,7 +181,7 @@ fun foo(y: Int) {
 
 **§1.8** *(lambdas)*: If a lambda is assigned a function type with context parameters, those behave as if declared with `_` as its name.
 
-* They participate in context resolution but are only accessible through the `implicit` function (defined below).
+* They participate in context resolution but are only accessible through the `contextOf` function (defined below).
 
 ```kotlin
 fun <A> withConsoleLogger(block: context(Logger) () -> A) = ...
@@ -173,8 +189,8 @@ fun <A> withConsoleLogger(block: context(Logger) () -> A) = ...
 withConsoleLogger {
   // you can call functions with Logger as context parameter
   logWithTime("doing something")
-  // you can use 'implicit' to access the context parameter
-  implicit<Logger>().log("hello")
+  // you can use 'contextOf' to access the context parameter
+  contextOf<Logger>().log("hello")
 }
 ```
 
@@ -414,6 +430,10 @@ context(logger, userService) {
 }
 ```
 
+## Explicit context arguments
+
+[KEEP-448](./KEEP-0448-explicit-context-arguments.md) should be taken as an integral part of this design.
+
 ## Callable references
 
 **§5.1** *(callable references, eager resolution)*: References to callables declared with context parameters are resolved **eagerly**:
@@ -592,7 +612,7 @@ fun <A, T> withExampleReceiver(value: A, block: ExampleScope<A>.() -> T): T = ..
 fun <A, T> withExampleContext(value: A, block: context(example: ExampleScope<A>) () -> T): T =
   withExampleReceiver(value) { block() }
 
-context(ExampleScope<A>) fun <A> similarExampleTo(other: A): A = ...
+context(example: ExampleScope<A>) fun <A> similarExampleTo(other: A): A = ...
 
 fun dslMarkerExample() =
   withExampleContext(3) { // (1)
@@ -618,23 +638,27 @@ fun dslMarkerExample() =
   }
 ```
 
-**§7.8** *(most specific candidate)*: When choosing the **most specific candidate** we follow the [Kotlin specification](https://kotlinlang.org/spec/overload-resolution.html#choosing-the-most-specific-candidate-from-the-overload-candidate-set), with one addition:
-
-* Candidates with context parameters are considered more specific than those without them.
-* But there is no other prioritization coming from the length of the context parameter list or their types.
+**§7.8** *(most specific candidate)*: When choosing the **most specific candidate** we follow the [Kotlin specification](https://kotlinlang.org/spec/overload-resolution.html#choosing-the-most-specific-candidate-from-the-overload-candidate-set). Context parameters play **no role** in this choice, unless they are explicitly given (see [KEEP-448](./KEEP-0448-explicit-context-arguments.md) for details).
 
 For example, the following call to `foo` is declared ambiguous, since `"hello"` may work both as `String` or `Any` context parameter.
 
 ```kotlin
-context(Any) fun foo() {}
-context(String) fun foo() {}
+context(value: Any) fun foo() {}
+context(string: String) fun foo() {}
 
-fun test() = with("hello") {
+fun test() = context("hello") {
     foo()
 }
 ```
 
 The reasoning for this particular rule is that, since contexts are implicit, there is no way for the user to resolve to the other function if required. This implicitness also means that it's harder to figure out which overload is called from the program code -- once again, there's no value you can easily point to. In contrast, in the case of an explicit parameter, you can always use `f("hello" as Any)` to force using `(Any) -> R` over `(String) -> R`.
+
+> [!NOTE]
+> [Explicit context arguments](./KEEP-0448-explicit-context-arguments.md) provide a way to disambiguate between overloads if the name of the context parameter is different.
+>
+> ```kotlin
+> fun test() = foo(value = "hello")  // calls the 'Any' overload
+> ```
 
 ### Extended type inference algorithm
 
@@ -642,18 +666,42 @@ The reasoning for this particular rule is that, since contexts are implicit, the
 
 Context parameters take part in [builder-style type inference](https://kotlinlang.org/spec/type-inference.html#builder-style-type-inference), or any similar process defined by the implementation and whose goal is to infer better types for receivers.
 
+### Extended scoping rules
+
+**§7.10** *(receiver shadowed by context)*: it is an error to call a function that binds to an implicit _receiver_ in the context, whenever an implicit _context value_ of the same type is available in a more nested scope. The reasoning behind this error is that in many cases a function defined over the implicit receiver (either as member or as extension function) is chosen instead of a similar function using a context parameter; even if the context value is in a (lexically) nested scope. This leads to surprising behavior.
+
+Note that this error should be reported even if there's no function defined with context parameters of that type in scope. For example, in the code below both calls to `moo` are marked as errors.
+
+```kotlin
+class Cow {
+  fun moo() { }
+
+  fun test1() = context(Cow()) {
+    moo()  // error: receiver shadowed by context
+  }
+}
+
+fun test2() {
+  with(Cow()) {
+    context(Cow()) {
+      moo()  // error: receiver shadowed by context
+    }
+  }
+}
+```
+
 ### ABI compatibility
 
-**§7.10** *(JVM and Java compatibility, functions)*: In the JVM a function with context parameters is represented as a function with additional parameters. In particular, the order is:
+**§7.11** *(JVM and Java compatibility, functions)*: In the JVM a function with context parameters is represented as a function with additional parameters. In particular, the order is:
 1. Context parameters, if present;
 2. Extension receiver, if present;
 3. Regular value parameters.
 
 Note that parameter names do not impact JVM ABI compatibility, but we use the names given in parameter declarations as far as possible.
 
-**§7.11** *(JVM and Java compatibility, properties)*: In the JVM a property with context parameters is represented by its corresponding getter and/or setter. This representation follows the same argument order described in §7.10.
+**§7.12** *(JVM and Java compatibility, properties)*: In the JVM a property with context parameters is represented by its corresponding getter and/or setter. This representation follows the same argument order described in §7.10.
 
-**§7.12** *(other targets)*: Targets may not follow the same ABI compatibility guarantees as those described for the JVM.
+**§7.13** *(other targets)*: Targets may not follow the same ABI compatibility guarantees as those described for the JVM.
 
 ## Q&A about design decisions
 

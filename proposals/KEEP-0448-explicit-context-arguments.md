@@ -89,32 +89,66 @@ time as other named arguments to the function, _not_ during the context
 resolution phase. This choice has consequences for type inference and overload
 resolution, that may now use additional information from those arguments.
 
-**More specific candidate.** There are no changes to the
-[most specific candidate rule](./KEEP-0367-context-parameters.md#extended-resolution-algorithm)
-with respect to context arguments. In particular, a function with context
-parameters (even if all of them are explicitly given) is considered more
-specific than one without.
-
-For example, in the following example,
-
-```kotlin
-context(a: A) fun foo() { ... }  // (1)
-fun foo(a: A) { ... }            // (2)
-
-fun test() {
-    foo(a = A)  // resolves to (1)
-}
-```
-
-Note that you can still disambiguate between each of them: you can use
-`context` to be explicit about (1), or you can give the arguments positionally
-to choose (2).
-
 **Context parameters naming.** 
 Context parameters whose name is declared as `_` may not be given as explicit
 context argument. We strongly recommend to give names to context parameters,
 and make them _unique_ among similar overloads, so the name can be used for
 disambiguation purposes.
+
+**More specific candidate.** The 
+[most specific candidate rule](./KEEP-0367-context-parameters.md#extended-resolution-algorithm)
+is updated. In contrast to implicitly-resolved context arguments,
+explicit context arguments **do** participate in the selection of the most
+specific candidate. This aligns with how the
+[algorithm](https://kotlinlang.org/spec/overload-resolution.html#algorithm-of-msc-selection)
+treats optional parameters, that is, they are only accounted for when
+explicitly given.
+
+Specifically, when we do step 1 of the
+[most specific candidate selection algorithm](https://kotlinlang.org/spec/overload-resolution.html#algorithm-of-msc-selection), 
+
+> For every non-default argument of the call and their corresponding
+> declaration-site parameter types...
+
+now handles not only regular value parameters, but also context parameters and
+their declaration-site types whenever they are passed explicitly.
+
+For example,
+
+```kotlin
+open class Parent
+class Child : Parent()
+
+context(x: Parent) fun foo() { ... }  // (1)
+context(x: Child)  fun foo() { ... }  // (2)
+
+fun test() {
+    context(Child()) { 
+        foo()  // ambiguity between (1) and (2)
+    }
+
+    foo(x = Child())  // resolves to (2)
+}
+```
+
+Note that explicit context arguments may "compete" with regular value
+arguments during most specific candidate selection.
+
+```kotlin
+open class Parent
+class Child : Parent()
+
+fun foo(x: Parent) { ... }  // (1)
+context(x: Child) fun foo() { ... }  // (2)
+
+fun test() {
+    context(Child()) { 
+        foo()  // resolves to (2) -- we miss arguments for (1)
+    }
+
+    foo(x = Child())  // resolves to (2) -- 'Child' is more specific than 'Parent'
+}
+```
 
 **Contextual properties.** This proposal does not introduce syntax for
 explicitly providing context arguments to contextual properties.
@@ -183,19 +217,3 @@ Finally, we think that a call in which only some context arguments are given
 explicitly is not more difficult to understand than one in which all of them
 are explicitly given. The intuitive model (those not explicitly given are
 implicitly resolved) is still simple to understand.
-
-**More specific candidate.** We have considered a variation of the rules
-for _more specific candidate_ in which a function call in which all context
-arguments are explicitly given would count as having no contexts.
-
-```kotlin
-context(a: A) fun foo() { ... }  // (1)
-fun foo(a: A) { ... }            // (2)
-
-fun test() {
-    foo(a = A)  // ambiguity
-}
-```
-
-However, the benefits of such variation are unclear, whereas it introduces 
-even more complication to a somehow convoluted rule.
