@@ -181,7 +181,7 @@ A context declaration is the documented declaration itself or some component of 
 Both Javadoc and KDoc give documented declarations the highest priority among all other declarations with the same name.
 If no suitable context declaration with a matching name was found, the search proceeds to other declarations.
 
-This mechanism is widely used in the various libraries (e.g. Kotlinx) because of its visual consistency and simplicity.
+This mechanism is widely used in the various libraries (e.g., Kotlinx) because of its visual consistency and simplicity.
 
 Note that the K1 implementation doesn't prioritize the documented declaration itself, but only its components.
 See [this section](#inconsistency-with-context-declarations) for more details on this issue.
@@ -427,7 +427,7 @@ The link `[abc]` leads to the same position in a source file independently of wh
 #### Related problem: Availability/Visibility of constructor parameters
 
 The K1 implementation considers primary constructor parameters as unavailable in class bodies.
-In K2, such parameters are available in all the nested scopes, even in scope of nested classes.
+In K2, such parameters are available in all the nested scopes, even in scopes of nested classes.
 
 ```kotlin
 class A(a: Int) {  
@@ -575,12 +575,12 @@ And while some of them are generic and can be used for all kinds of declarations
 most of them are clearly supposed to accept specific kinds of declarations.
 * `@param` should be used for function / constructor parameters / context parameters.
 * `@property` should be used for links to class properties: 
-both from the primary constructor and from the class body. .
+  both from the primary constructor and from the class body.
 * `@exception` / `@throws` should be used for `Throwable`s.
 
 However, a lot of users are not familiar with block tags.
 Additionally, the difference between parameter/property can easily be confusing in practice,
-so there are a lot of, e.g, links to parameters that are put in `@property` sections.
+so there are a lot of, e.g., links to parameters that are put in `@property` sections.
 
 The most obvious solution for this issue is to restrict the use of tag sections to their corresponding declaration kinds.
 In fact, the K1 implementation already does this, however, just for the `@param` tag.
@@ -909,7 +909,7 @@ The resolver should also handle `[this]` receiver links in a proper way.
 If the documented declaration is an extension callable, then `[this]` should be resolved
 to the extension receiver of the current declaration.
 In Kotlin, `this` is a special hard keyword, no declarations are allowed to be named this way,
-so there won't be any ambiguity and this step can be performed at any moment.
+so there won't be any ambiguity, and this step can be performed at any moment.
 
 ### Step 2. Perform scope traversal
 
@@ -1159,18 +1159,18 @@ but didn't work out as well as we expected.
 
 ### Special resolution context inside tag sections
 
-The following KDoc tag sections should introduce their new scope in the documentation:
+The following KDoc tag sections were to introduce their new scope in the documentation:
 `@constructor`, `@param`, `@property`. 
 Previously, these tag sections never affected the resolution of links placed inside them. 
-All other tag sections must not affect the resolution in any sense.
+All other tag sections would not affect the resolution in any sense.
 
 #### @constructor section
 
-The tag `@constructor` can be applied to classes
-and has context where parameters of the primary constructor and the constructor itself are available and prioritized.
-These declarations should not be accessible in the regular documentation section.
+The `@constructor` tag could be applied to classes
+and had context where parameters of the primary constructor and the constructor itself were available and prioritized.
+These declarations would not be accessible from the regular documentation section.
 
-The motivation behind this is rather simple: the class documentation should
+The motivation behind this was rather simple: the class documentation is used to
 describe the data the class represents and not how this class is constructed.
 
 ```kotlin
@@ -1208,7 +1208,7 @@ class A private constructor() {
 }
 ```
 
-Note that the constructor symbol is prioritized over parameter symbols:
+Note that the constructor symbol would be prioritized over parameter symbols:
 ```kotlin
 /**
  * [abc] - to the class
@@ -1219,12 +1219,12 @@ class abc(var abc: String)
 
 #### @param section
 
-`@param` section can be applied to classes and functions.
-When applied to classes, it also makes the constructor and its parameters available the same way `@constructor` does;
-however, parameters have higher priority.
+`@param` section could have been applied to classes and functions.
+When applied to classes, it would also have made the constructor and its parameters available the same way `@constructor` did;
+however, parameters would have had higher priority.
 
-The motivation for this is the same as for the `@constructor` section:
-the class documentation should describe the data the class and not some construction details.
+The motivation for this was the same as for the `@constructor` section:
+the class documentation should describe the data the class represents and not some construction details.
 
 ```kotlin
 /**
@@ -1242,8 +1242,8 @@ class A(var abc: String)
 class abc(var abc: String)
 ```
 
-In the case of functions, all the parameters are available from a regular KDoc.
-`@param` section can be used to refer to the parameter instead of the function in case of name clashes.
+In the case of functions, all the parameters were supposed to be available from a regular KDoc.
+`@param` section could be used to refer to the parameter instead of the function in case of name clashes.
 ```kotlin
 /** 
  * [abc] - to the function
@@ -1254,8 +1254,8 @@ fun abc(var abc: String) {}
 
 #### @property section
 
-`@property` section can be applied to classes to prioritize properties from this class.
-Note that class properties are accessible from other tag sections as well.
+`@property` section could have been applied to classes to prioritize properties from this class.
+Note that class properties would be accessible from other tag sections as well.
 
 ```kotlin
 /**
@@ -1323,9 +1323,9 @@ introduce a number of problems for documentation writers:
 
 ### Restrictions of multi-segment name resolution
 
-We would like our KDoc resolution to be as close as possible 
+We wanted our KDoc resolution to be as close as possible 
 to the way Kotlin resolves names in the code.
-So we should only resolve multi-segment names when the language does so.
+Hence, multi-segment names were expected to be resolved only when the language did so.
 
 Imagine that we have some name `A.B.C` that we would like to point to.
 The location of this declaration relatively to the given position is not important.
@@ -1427,10 +1427,10 @@ no other non-function (class or property) more local declarations that are resol
 Otherwise, some segment prefix is resolved to this declaration and the rest of the chain is unresolved,
 as the resolved declaration doesn't have any suitable nested symbols.
 
-This should be also taken into account when resolving links in KDoc:
-Before performing a [scope reduction](#scope-reduction-algorithm) for relative names, the resolver has to make sure that there are no
+This was also to be taken into account when resolving links in KDoc:
+Before performing a [scope reduction](#scope-reduction-algorithm) for relative names, the resolver had to make sure that there were no
 non-function declarations matching some segment prefix of the given name in a more local scope.
-If such a declaration is found in some scope, then there is no need to process all further scopes,
+If such a declaration was found in some scope, then there is no need to process all further scopes,
 as the compiler would resolve this segment prefix to the declaration in this scope.
 
 ```kotlin
@@ -1455,7 +1455,7 @@ class Usage {
 #### Why this idea was rejected
 
 The main problem is that KDoc resolution has a larger scope than the language does.
-That's because KDoc links ignore all visibility / accessibility modifiers during the search. 
+That's because KDoc links ignore visibility and accessibility during the search. 
 
 Take a look at the example below:
 ```kotlin
@@ -1499,12 +1499,12 @@ Since `Usage1.A` is not visible from `Usage1.Nested`, `A.B` in `Usage1.Nested` i
 However, `Usage2.A` is accessible from `Usage2.Nested`, so `A.B` in `Usage2.Nested` is unresolved,
 as the first segment `A` is actually resolved to `Usage2.A` property.
 
-But KDoc links ignore declaration visibility, so this `A` property is visible from 
+But KDoc links ignore declaration accessibility, so this `A` property is visible from 
 both KDoc comments. If we stop the resolution pipeline after encountering `val A`, 
 the `A.B` link in `Usage1` will be unresolved, even though it's a valid link from
 the language perspective.
 
-Additionaly, the language resolution doesn't always apply these restrictions when resolving multi-segment names.
+Additionally, the language resolution doesn't always apply these restrictions when resolving multi-segment names.
 Take a look at the following example:
 ```kotlin
 class A {
