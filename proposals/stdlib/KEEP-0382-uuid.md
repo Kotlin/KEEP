@@ -102,19 +102,44 @@ we may introduce dedicated comparators to accommodate such use cases.
 
 We have examined which UUID versions can be correctly generated within the stdlib and which versions are popular.
 
-Correctly generating time-based UUIDs is not straightforward. Each new UUID must have a timestamp that is not earlier
-than the timestamp of the previously generated one. Handling clock rollbacks and system restarts would require storing
-the last generated UUID in stable storage, as described in the [RFC](https://www.rfc-editor.org/rfc/rfc9562.html#name-uuid-generator-states). 
-We believe the Standard Library is not an appropriate place to implement such logic.
-Hence, it was decided not to implement the generation of time-based UUIDs.
+Some versions require functionality not available in the Standard library, or not available across all supported platforms.
 
-The popularity of each UUID version was also explored. Our findings indicate that in approximately 90 percent of cases
-users generate a UUID version 4 (random). Excluding time-based UUIDs, this figure rises to over 97 percent.
+For example, UUID versions 2, 3, and 5 require support of `MD5` and `SHA-1` hash functions, which are currently unsupported.
+Correctly generating time-based UUIDs (versions 1, 6, 7) comes with its own set of challenges as proper generation have to
+guarantee monotonicity. Such a guarantee is hard to support without making different trade-offs.
 
-Considering this, it was decided to initially provide an API only for generating version 4 (random) UUIDs.
-These UUIDs are produced using a cryptographically secure pseudorandom number generator (CSPRNG) available
-on the platform. For more details about the underlying APIs used to produce the random `Uuid` in each of the
-supported targets, refer to the official documentation of the `Uuid.random()` function.
+In terms of popularity, our findings indicate that in approximately 90 percent of cases users generate a UUID version 4 (random).
+Yet another UUID version gaining popularity, especially in domains relative to databases, is version 7.
+
+Hence, it was decided to implement only UUID versions 4 and 7 generation for now, and consider providing generators
+for other versions based on demand and technical limitations we have.
+
+Corresponding generator functions were named `Uuid.generateV4()` and `Uuid.generateV7()`. 
+For convenience, a `Uuid.random()` function is also provided. `Uuid.random()` generates V4 UUID and is fully replaceable
+with `Uuid.generateV4()`, yet its name is more friendly to users who unfamiliar with UUID and only need to generate any
+random UUID.
+
+Both UUID version 4 and 7 include a random part that [should be](https://www.rfc-editor.org/rfc/rfc9562.html#name-unguessability) 
+generated using a cryptographically secure pseudorandom number generator (CSPRNG).
+Implementations provided in the Standard library utilize CSPRNGs available on a platform.
+For more details about the underlying APIs used to produce the random `Uuid` in each of the supported targets,
+refer to the official documentation of UUID generation functions.
+
+UUID V7 is a time-based UUID, and as it was mentioned, correctly generating time-based UUIDs is not straightforward.
+Each new UUID must have a timestamp that is not earlier than the timestamp of the previously generated one. 
+[RFC](https://www.rfc-editor.org/rfc/rfc9562.html#name-uuid-best-practices) describes multiple possible trade-offs in its
+"UUID Best Practices" section, and for UUID V7 generation we decided to guarantee a monotonicity of generated UUIDs 
+within an application lifetime. Providing no monotonicity guarantees would compromise the whole point of UUID V7 existence,
+and providing monotonicity for a different scope would be hard or impossible.
+Please refer to `Uuid.generateV7()` documentation for additional details on monotonicity guarantee and how it is implemented.
+
+With all that being said about version 7's monotonicity, there are scenarios requiring creation of such UUIDs corresponding
+for some fixed moment in time. For example, inserting events corresponding to past moments of time into a database.
+
+To accommodate generation of such UUIDs we provided additional function - `Uuid.generateV7NonMonotonicAt(timestamp: Instant)`.
+As the name suggests, this function generates `Uuid` for a given `Instant`, 
+and it does not provide any monotonicity guarantees (meaning that two `Uuid`s generated
+for the same `timestamp` value are not guaranteed to be ordered in any particular way).
 
 #### UUID string formats the Kotlin Standard Library should parse and format to
 
@@ -502,10 +527,25 @@ ByteArray.toHexString(format: HexFormat = HexFormat.Default): String
 
 It was discovered that some UUID use-cases may require accepting any of the supported string representations.
 The `parse` function is aimed to fulfill these scenarios,
-and it will throw `IllegalStateException` only if a supplied string's format could not be recognized.
+and it will throw `IllegalArgumentException` only if a supplied string's format could not be recognized.
 If any new formats are supported in the future, `parse` will start accepting them as well.
 For scenarios where UUID string representations in an exact format are expected, specialized functions, such as
 `parseHexDash` and `parseHex`, should be used instead.
+
+#### Invalid inputs handling
+
+In some scenarios strings not matching a UUID format are expected (to some extent), and require specific handling.
+To aim with invalid inputs processing, all three `parse`-functions have counterparts returning either an
+`Uuid`, if the input string conformed a format, or `null` otherwise.
+
+For consistency with other functions in the Standard library, these functions use `OrNull` suffix in their name:
+
+| Function throwing `IllegalArgumentException` on invalid input | Function returning `null` on invalid input           |
+|---------------------------------------------------------------|------------------------------------------------------|
+| `Uuid.parse(uuidString: String): Uuid`                        | `Uuid.parseOrNull(uuidString: String): Uuid?`        |
+| `Uuid.parseHex(uuidString: String): Uuid`                     | `Uuid.parseHexOrNull(uuidString: String): Uuid?`     |
+| `Uuid.parseHexDash(uuidString: String): Uuid`                 | `Uuid.parseHexDashOrNull(uuidString: String): Uuid?` |
+
 
 ## Dependencies
 
