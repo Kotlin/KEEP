@@ -608,6 +608,9 @@ The only operators that are not allowed to be `suspend`, represent properties: `
 because properties are meant to be lightweight.
 Since `operator fun of` doesn't represent properties, in this proposal, we allow it to be `suspend`.
 
+Specifically for `suspend`, it has to be all or nothing: either all `of` functions are `suspend` or none of them are
+`suspend`.
+
 **Allowance 3.**
 It's allowed to have overloads that differ in number of arguments:
 ```kotlin
