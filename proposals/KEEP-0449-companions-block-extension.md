@@ -3,7 +3,7 @@
 * **Type**: Design proposal
 * **Author**: Alejandro Serrano
 * **Contributors**: Marat Akhin, Nikita Bobko, Yuliya Karalenka, Roman Venediktov, Mikhail Vorobev, Mikhail Zarechenskii
-* **Discussion**: 
+* **Discussion**: [#467](https://github.com/Kotlin/KEEP/discussions/467)
 * **Status**: In progress
 * **Related YouTrack issues**:
   [KT-11968](https://youtrack.jetbrains.com/issue/KT-11968),
