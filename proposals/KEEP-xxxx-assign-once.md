@@ -402,6 +402,18 @@ public inline val @receiver:AccessibleAssignOncePropertyLiteral KProperty0<*>.is
     get() = throw NotImplementedError("Implementation is intrinsic")
 ```
 
+## Summary
+
+Below is a brief comparison of the two design approaches
+in terms of assign-once properties features.
+
+| Feature         | Delegate-Based Assign-Once Properties                                                                       | Language Built-In Assign-Once Properties                                                  |
+|-----------------|-------------------------------------------------------------------------------------------------------------|-------------------------------------------------------------------------------------------|
+| Thread-Safety   | ✅ Customizable with a builder function parameter                                                            | ❌ New syntax is necessary if customization is desired                                     |
+| Annotations     | :warning: Use-site target is required which is expected for a delegated property                            | ❌ Use-site target is required which is confusing compared to `lateinit var`               |
+| Smartcasts      | :warning: Could be supported, but would make assign-once properties an exception among delegated properties | ✅ Could be supported                                                                      |
+| `isInitialized` | :warning: Implementation requires delegate-access or intrinsic                                              | :warning: Implementation requires intrinsic or reflection API support and delegate access |
+
 # Rationale
 
 ## No General Stable Semantics
