@@ -133,9 +133,10 @@ In this section we describe two possible ways to introduce assign-once propertie
 
 Both options are still backed up by the same `AssignOnce` delegate 
 implementation and differ primarily in syntax and ergonomics. 
-They also can coexist in the language,
-but it does not seem to provide significant benefits,
-while increasing complexity.
+They could technically coexist in the language. 
+However, doing so would introduce two ways to express the same semantics,
+increasing the cognitive load for users, complicating documentation, 
+and imposing maintenance burden on the compiler, IDE, and tooling.
 
 ## Delegate-first Approach
 
@@ -151,7 +152,7 @@ fun <T> assignOnce(
 }
 ```
 
-This way, assign-once properties can be defined by plain delegation:
+This way, an assign-once property definition is a delegation:
 
 ```kotlin
 class Example {
@@ -179,13 +180,22 @@ More on that below.
 
 ## Language-builtin Approach
 
-We can introduce a new property modifier `assignonce` to the language:
+We could surface assign-once properties in the language directly.
+There are at least two ways to do so:
+* Extend `lateinit` modifier to `val`s.
+This approach expands the existing notion of `lateinit`.
+However, `lateinit val`s would become `val`s that can be assigned after the declaration,
+which is conceptually confusing as `val`s are expected to be immutable.
+* Add a new `assignonce` modifier for `var`s.
+It avoids confusion of mutable `lateinit val`s and 
+expresses the intent of assign-once semantics more clearly.
+However, this approach requires an introduction of a new soft keyword.
 
 ```kotlin
 class Example {
     assignonce var property: String
-    // another possible syntax is to extend `lateinit` to `val`s:
-    // lateinit val property: String
+    // alternative syntax:
+    lateinit val property: String
 
     fun setup() {
         property = "Initialized"
@@ -196,7 +206,9 @@ class Example {
 }
 ```
 
-This syntax is translated to a delegated property under the hood:
+We would like to hear from the community on which syntax is more natural.
+
+In any case, the built-in syntax is translated to a delegated property under the hood:
 
 ```kotlin
 class Example {
@@ -204,8 +216,7 @@ class Example {
 }
 ```
 
-With this approach, a declaration clearly expresses
-the intent of assign-once semantics. 
+With this approach, a declaration clearly expresses the intent of assign-once semantics. 
 However, it comes with the following downsides:
 * Customization of the semantics, e.g., thread-safety mode,
 is not possible without additional syntax.
@@ -213,8 +224,8 @@ is not possible without additional syntax.
 for other non-delegated properties, especially `lateinit var`s,
 which may lead to confusion.
 Particularly, interaction with annotations becomes complicated,
-as `assignonce var` does not create a backing field.
-More on that below.
+as `lateinit val` (or `assignonce var`) does not create a backing field.
+See the [Annotations](#annotations) section below for details.
 
 # Features
 
@@ -276,7 +287,7 @@ special stable delegated properties.
 `Lazy` delegate could be handled similarly,
 but we refrain from introducing general support for
 stable property delegates at this point.
-For more details, see the [General Stable Semantics](#general-stable-semantics) section.
+For more details, see the [No General Stable Semantics](#no-general-stable-semantics) section.
 
 A special keyword for declaring assign-once properties
 in the language-builtin approach aligns well with
@@ -311,16 +322,13 @@ class Application {
 }
 ```
 
-We propose to implement an intention in the IDE which suggests
-adding the `@set:` target automatically for known DI annotations
-when applied to delegated properties.
-
 From this perspective, the delegate-first approach is more consistent 
-because assign-once properties interact with annotations
+as assign-once properties interact with annotations
 in the same way as other delegated properties do.
 With the language-builtin approach, assign-once properties might 
-create an expectation that they have backing fields
-and annotations can be applied to them, but that is not the case:
+create an expectation that they have backing fields, 
+and annotations can be applied to them similarly to `lateinit var`s, 
+but this is not the case:
 
 ```kotlin
 class Application {
@@ -331,6 +339,11 @@ class Application {
     @set:Inject assignonce var service: Service
 }
 ```
+
+We propose to implement an intention in the IDE which suggests
+adding the `@set:` target automatically for known DI annotations
+when applied to assign-once properties,
+regardless of whether they are delegated or built-in.
 
 ## `isInitialized`
 
@@ -375,7 +388,19 @@ With language-builtin approach, to implement `isInitialized` check,
 we would have to treat assign-once properties specially by either:
 * Expose them as delegated properties in reflection API
 and use the same code as above.
-* Introduce an intrinsic similar to that for `lateinit var`s.
+* Introduce an intrinsic similar to that for `lateinit var`s:
+
+```kotlin
+// Currently in the stdlib:
+public inline val @receiver:AccessibleLateinitPropertyLiteral KProperty0<*>.isInitialized: Boolean
+    get() = throw NotImplementedError("Implementation is intrinsic")
+
+// Proposed addition:
+public inline val @receiver:AccessibleAssignOncePropertyLiteral KProperty0<*>.isInitialized: Boolean
+    // Generated code is something like:
+    // return (this.getDelegate() as AssignOnce<*>).isInitialized
+    get() = throw NotImplementedError("Implementation is intrinsic")
+```
 
 # Rationale
 
@@ -442,7 +467,10 @@ This means that, strictly speaking, the compiler would have to
 deduce stability of the getter from stability of the delegate's `getValue` method and arguments passed to it.
 This indirection introduces yet another special case the compiler must handle.
 
-So general stable-semantics support for delegated properties would end up relying on non-verifiable assumptions and special cases. Because of that, we propose to avoid the complexity of general stable semantics and support smartcasts only for assign-once properties for now.
+So general stable-semantics support for delegated properties would end up 
+relying on non-verifiable assumptions and special cases. 
+Because of that, we propose to avoid the complexity of general stable semantics 
+and support smartcasts only for assign-once properties for now.
 
 ## Compilation Strategy
 
