@@ -221,18 +221,25 @@ More on that below.
 In this section we discuss the interaction of assign-once properties with other Kotlin features. 
 Along the way, we compare both design approaches outlined above.
 
-## Synchronization
+## Thread-Safety
 
 Currently, `Lazy` is the only delegate in the standard library
-which has implementations with different synchronization modes
-and provides strong thread-safety by default.
+which has implementations with different thread-safety modes
+and provides synchronization by default.
 Other delegates, e.g. `Delegates.vetoable`, are not thread-safe.
 
 On one hand, assign-once properties are similar to `var`s and
 `Delegates.vetoable` in that only a write concurrent to another
-operation could lead to a data-race condition. 
-In contrast, if we tak unsychronized `Lazy` implementation, two concurrent reads of a lazy
-property could trigger concurrent initializations and lead to a data-race.
+operation could lead to a data-race condition.
+So we could refrain from synchronizing assign-once properties,
+requiring users to ensure safety in a multithreaded environment,
+similar to `var` declarations.
+In contrast, if we take non-synchronized `Lazy` implementation, 
+two concurrent reads of a lazy property could trigger 
+concurrent initializations and lead to a data-race.
+This unintuitive behavior is an argument for
+making `Lazy` delegate synchronized by default,
+but it does not apply to assign-once properties.
 
 On the other hand, thread-safe `AssignOnce` delegate can be
 implemented efficiently with compare-and-set primitives.
