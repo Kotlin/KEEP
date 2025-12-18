@@ -20,12 +20,52 @@ delegate-first approach and language-builtin approach.
 
 Currently, the most popular use cases by far for Kotlin `lateinit var` properties are:
 * **Assign Once**: Variable initialized during setup, initialization, or when dependencies become available. The variable is never changed after that.
-For example: Android view binding, test data initialization.
+For example, Android view binding, test data initialization.
 * **Dependency Injection**: Similar to assign once, but done by libraries or frameworks, often guided with annotations. This use-case also includes mock injection for testing.
 * **Late Initialization**: Variables with delayed initialization, but possibly reassigned multiple times.
 One example of such usage is the builder pattern.
 
-The first two use cases are the most common ones.
+```kotlin
+// Assign Once use-case
+class MyActivity : AppCompatActivity() {
+    lateinit var view: ImageView
+    
+    // `onCreate` is called early in the lifecycle
+    override fun onCreate(...) {
+        view = findViewById(R.id.image)
+        // view is never reassigned after this
+    }
+}
+
+// Dependency Injection use-case
+class MyApplication {
+    // `service` is injected after the application is created
+    @Inject lateinit var service: Service
+    
+    fun doStuff() {
+        // `service` is guaranteed to be initialized at this point
+        serivice.someMethod()
+    }
+}
+
+// Late Initialization use-case
+class MyRequestBuilder {
+    lateinit var headers: Headers
+    
+    fun build(): Request {
+        // `headers` are expected to be initialized before calling `build`
+        // (they can be reassigned multiple times)
+        require(::headers.isInitialized) { 
+            "Headers are not initialized" 
+        }
+        return Request(headers = headers)
+    }
+}
+```
+
+The first two use cases are the most common ones,
+accounting for up to 80% of `lateinit var` usage 
+according to our open-source code survey.
 They are also similar in the semantics: 
 the property is stable after the first assignment.
 
