@@ -106,13 +106,13 @@ class AssignOnce<T>(
 }
 ```
 
-Given code is only a reference implementation, the actual one might differ, 
+This code is only a reference implementation, the actual one might differ  
 but should provide the same semantics. 
 In particular, note that nullable types are supported
 in contrast to `lateinit var`. Thus `null` can be a valid domain value for the property.
 
-Also, given implementation is not thread-safe. 
-A synchronized version can implemented through
+Also, the given implementation is not thread-safe. 
+A synchronized version can be implemented through
 compare-and-set operations on the `_value` field.
 Any synchronized implementation should provide
 safe assign-once semantics with the following properties:
@@ -204,10 +204,10 @@ class Example {
 }
 ```
 
-With this approach, the intent of assign-once semantics
-is clearly expressed by the declaration. 
+With this approach, a declaration clearly expresses
+the intent of assign-once semantics. 
 However, it comes with the following downsides:
-* Customization the semantics, e.g., thread-safety mode,
+* Customization of the semantics, e.g., thread-safety mode,
 is not possible without additional syntax.
 * Compilation strategy is more complex than
 for other non-delegated properties, especially `lateinit var`s,
@@ -218,7 +218,7 @@ More on that below.
 
 # Features
 
-In this section we discuss interaction of assign-once properties with other Kotlin features. 
+In this section we discuss the interaction of assign-once properties with other Kotlin features. 
 Along the way, we compare both design approaches outlined above.
 
 ## Synchronization
@@ -229,7 +229,7 @@ and provides strong thread-safety by default.
 Other delegates, e.g. `Delegates.vetoable`, are not thread-safe.
 
 On one hand, assign-once properties are similar to `var`s and
-`Delegates.vetoable` in that only a write concurrent to other
+`Delegates.vetoable` in that only a write concurrent to another
 operation could lead to a data-race condition. 
 In contrast, if we tak unsychronized `Lazy` implementation, two concurrent reads of a lazy
 property could trigger concurrent initializations and lead to a data-race.
@@ -245,14 +245,14 @@ involves just one assignment, during setup or initialization.
 Thus, with optimistic reads, the overhead of synchronization
 would be negligible in practice.
 
-With above considerations in mind, we propose to make
+With the above considerations in mind, we propose to make
 assign-once properties thread-safe by default,
 independent of the design approach.
 
 Speaking of the design, the delegate-first approach is more flexible
-in this regard, as it allows to choose desired synchronization mode
+in this regard, as it allows choosing the desired synchronization mode 
 through parameters of the builder function.
-With language-builtin approach, we can have to invent additional syntax
+With the language-builtin approach, we can have to invent additional syntax
 if we are to allow customization.
 
 ## Smartcasts
@@ -264,14 +264,14 @@ We call this behavior stability and such properties stable.
 
 We propose to enable smartcasts for assign-once properties,
 so they benefit from the same safety and convenience as `val` properties.
-This requires compiler to handle assign-once properties as 
+This requires the compiler to handle assign-once properties as 
 special stable delegated properties. 
 `Lazy` delegate could be handled similarly,
 but we refrain from introducing general support for
 stable property delegates at this point.
 For more details, see the [General Stable Semantics](#general-stable-semantics) section.
 
-Special keyword for declaring assign-once properties
+A special keyword for declaring assign-once properties
 in the language-builtin approach aligns well with
 this dedicated support for smartcasts.
 In the delegate-first approach, assign-once properties
@@ -282,7 +282,7 @@ for which smartcasts are not supported.
 
 One of the most common use-cases for `lateinit var` properties
 and one of intended use-cases for assign-once properties is dependency injection.
-Considerable amount of DI frameworks used in Kotlin come from Java ecosystem
+A considerable number of DI frameworks used in Kotlin come from the Java ecosystem 
 and do not provide Kotlin-specific integration.
 They often rely on annotations, e.g. `@Inject`, to mark properties for injection.
 
@@ -292,8 +292,8 @@ Luckily, most DI frameworks support injection through methods as well,
 so they inject to the generated setter of the property.
 
 However, because of the current defaulting rule for annotation application,
-one can not apply annotations to a delegated property without specifying
-use-site target explicitly. The `@set:` target must be used to apply annotation to the setter:
+one cannot apply annotations to a delegated property without specifying a use-site target explicitly.
+The `@set:` target must be used to apply annotation to the setter:
 
 ```kotlin
 class Application {
@@ -305,13 +305,13 @@ class Application {
 ```
 
 We propose to implement an intention in the IDE which suggests
-to add the `@set:` target automatically for known DI annotations
+adding the `@set:` target automatically for known DI annotations
 when applied to delegated properties.
 
-From this perspective, the delegate-first approach is more consistent,
+From this perspective, the delegate-first approach is more consistent 
 because assign-once properties interact with annotations
 in the same way as other delegated properties do.
-With language-builtin approach, assign-once properties might 
+With the language-builtin approach, assign-once properties might 
 create an expectation that they have backing fields
 and annotations can be applied to them, but that is not the case:
 
@@ -332,14 +332,14 @@ check which tells if the property has been initialized.
 This check is implemented as a special case for property 
 reflection in the compiler and an intrinsic.
 
-Necessity of supporting an analogous check for assign-once properties is debatable,
+The necessity of supporting an analogous check for assign-once properties is debatable,
 as they are intended to be initialized explicitly no more than once. 
 If special logic around initialization status becomes unavoidable,
 it is a sign that plain nullable `var` might be of better use.
 
-If we decide to support such check,
-it is straightforward to do so with delegate-first approach
-assuming that delegate access feature is introduced in Kotlin:
+If we decide to support such a check,
+it is straightforward to do so with the delegate-first approach
+assuming that the delegate access feature is introduced in Kotlin:
 
 ```kotlin
 class AssignOnce<T> {
@@ -414,7 +414,7 @@ not just of the `getValue` method.
 For example, to deduce that `AssignOnce` is stable,
 we have to ensure that `setValue` does not change the value
 after the first assignment.
-So verifying stability of arbitrary user-defined delegates would be hard for the compiler in practice.
+So verifying the stability of arbitrary user-defined delegates would be hard for the compiler in practice.
 This means the compiler would have to treat stability as a trusted assumption.
 
 Second, a delegated property read calls `getValue` method indirectly, 
@@ -439,13 +439,13 @@ So general stable-semantics support for delegated properties would end up relyin
 
 ## Compilation Strategy
 
-If we adopt language-builtin design for assign-once properties,
+If we adopt the language-builtin design for assign-once properties,
 compiling them as delegated properties is an unobvious choice.
 Naturally, one could consider compilation schemes similar 
 to the `lateinit var`.
 Implementing assign-once properties by a backing field
 might be simpler and more performant, 
-saving an allocation compared to delegation approach.
+saving an allocation compared to the delegation approach.
 
 In this case, the backing field should be private
 so that it could not be modified externally,
@@ -458,7 +458,7 @@ of the property:
 Then assign-once properties would be limited to non-nullable types only,
 just like `lateinit var`s. 
 But dependency injection annotations can be used in this case
-without explicit use-site target
+without an explicit use-site target
 as DI frameworks commonly support injection to private fields.
 * Use a special marker object as in `AssignOnce` delegate.
 This way, nullable types are supported. 
@@ -492,10 +492,10 @@ for synchronization primitives.
 
 This makes us believe that compilation to delegated properties
 is simpler overall, 
-while it provides consistent experience,
+while it provides a consistent experience,
 allowing nullable types and synchronization customization.
-However, it comes at the price of slightly less
-convenient application of DI annotations.
+However, it comes at the price of a slightly less
+convenient interaction with DI annotations.
 
 ## `StableValue`
 
