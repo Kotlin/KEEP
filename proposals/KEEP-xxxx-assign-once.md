@@ -80,6 +80,45 @@ This proposal aims to introduce better support for assign-once properties in Kot
 * Offer runtime support to prevent accidental reassignment.
 * Enable smartcasts for assign-once properties.
 
+# Semantics
+
+Based on the motivational examples above, 
+we define semantics for assign-once properties as follows:
+* An assign-once property is declared without an initializer
+and starts in a special uninitialized state.
+  * There are no restrictions on the type of the property.
+    In particular, nullable types are allowed.
+* An assign-once property can be assigned after declaration:
+  * If it is in the uninitialized state, it is initialized with the given value.
+  * Otherwise, an exception is thrown indicating an attempt to reassign the property.
+* An assign-once property can be read:
+  * If it is in the uninitialized state, an exception is thrown 
+    indicating an attempt to read the uninitialized property.
+  * Otherwise, the previously assigned value is returned.
+
+It is important to note that adherence to the assign-once semantics 
+is enforced at runtime rather than ensured at compile time.
+In other words, the compiler would not check statically that an assign-once property
+is initialized before the first read and never reassigned after initialization.
+In the intended use-cases for assign-once properties,
+we expect accidental violations of assign-once semantics to be rare.
+Thus, we intend the runtime enforcement to be a bug-catching check.
+Users should not build logic around the initialization status of an assign-once property,
+a `var` or `lateinit var` should be preferred for such purposes.
+This is also an argument against supporting [`isInitizaled`](#isinitialized) check.
+
+A thread-safe implementation of properties with assign-once semantics 
+should also provide the following guarantees:
+* For any number of potentially concurrent assignments,
+  exactly one of them succeeds, and all others throw an exception.
+* All reads that happen after a successful assignment
+  see the same previously assigned value.
+
+Whether assign-once properties should be thread-safe by default
+is discussed in the [Thread-Safety](#thread-safety) section.
+
+Below we outline two approaches to bring properties with assign-once semantics to Kotlin.
+
 # Implementation
 
 Desired assign-once semantics of a property can be
@@ -138,7 +177,7 @@ However, doing so would introduce two ways to express the same semantics,
 increasing the cognitive load for users, complicating documentation, 
 and imposing maintenance burden on the compiler, IDE, and tooling.
 
-## Delegate-first Approach
+## Delegate-First Approach
 
 We can surface `AssignOnce` delegate directly in the Kotlin standard library,
 providing a builder function similar to `lazy`:
@@ -178,7 +217,7 @@ is a bit more obfuscated compared to a dedicated language construct.
 the `AssignOnce` delegate would become a special case in the compiler.
 More on that below.
 
-## Language-builtin Approach
+## Language-Builtin Approach
 
 We could surface assign-once properties in the language directly.
 There are at least two ways to do so:
