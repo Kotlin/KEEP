@@ -161,7 +161,7 @@ Automatic smart cast on properties with EBF is disabled inside Public-API inline
 
 * Property with EBF must not have a custom getter. 
 * Property with EBF can't be `var`. 
-* Property with EBF must have `final` modality.
+* Property with EBF must have effectively `final` modality.
 * Delegated properties can't have EBF.
 * The type of the explicit backing field must be a subtype of the property's type.
 * `private` is the default and the only allowed visibility for explicit backing fields.
