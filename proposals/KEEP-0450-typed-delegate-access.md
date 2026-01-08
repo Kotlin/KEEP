@@ -4,6 +4,7 @@
 - **Author**: Roman Venediktov
 - **Contributors**: Michail Zarečenskij
 - **Status**: Public discussion
+- **Discussion**: [#468](https://github.com/Kotlin/KEEP/discussions/468)
 - **YouTrack Issue**: [KT-30631](https://youtrack.jetbrains.com/issue/KT-30631)
 
 ## Abstract
