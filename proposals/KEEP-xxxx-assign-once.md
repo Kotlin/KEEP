@@ -318,21 +318,58 @@ every successful read returns the same value.
 We call this behavior stability and such properties stable.
 
 We propose to enable smartcasts for assign-once properties,
-so they benefit from the same safety and convenience as `val` properties.
-This requires the compiler to handle assign-once properties as 
-special stable delegated properties. 
+so they benefit from the same safety and convenience as `val` properties:
+
+```kotlin
+class Example {
+    var property: CharSequence by assignOnce()
+
+    fun setup() {
+        property = "Initialized"
+    }
+    
+    fun method() {
+        if (property is String) {
+            // smartcast to String
+            println(property.length)
+        }
+    }
+}
+```
+
+In the delegate-first approach, assign-once properties
+would become an exception among other delegated properties,
+for which smartcasts are not supported.
+On the other hand, a special keyword for declaring assign-once properties
+in the language-builtin approach aligns better with this dedicated support:
+
+```kotlin
+class Example {
+    // assignonce properties can be smartcasted
+    assignonce var property: String
+
+    fun setup() {
+        property = "Initialized"
+    }
+    
+    fun method() {
+        if (property is String) {
+            // smartcast to String
+            println(property.length)
+        }
+    }
+}
+```
+
+Regardless of the chosen design, 
+such smartcasts require the compiler to handle assign-once properties as
+special stable delegated properties.
 `Lazy` delegate could be handled similarly,
 but we consider this enhancement to be outside the scope of this KEEP.
 We also refrain from introducing general support for
 stable property delegates at this point.
 For more details, see the [No General Stable Semantics](#no-general-stable-semantics) section.
 
-A special keyword for declaring assign-once properties
-in the language-builtin approach aligns well with
-this dedicated support for smartcasts.
-In the delegate-first approach, assign-once properties
-would become an exception among other delegated properties,
-for which smartcasts are not supported.
 
 ## Annotations
 
