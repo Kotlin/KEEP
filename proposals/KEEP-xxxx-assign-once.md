@@ -23,6 +23,7 @@ delegate-first approach and language-builtin approach.
 * [Abstract](#abstract)
 * [Table of Contents](#table-of-contents)
 * [Motivation](#motivation)
+* [Goals](#goals)
 * [Semantics](#semantics)
 * [Design](#design)
   * [Delegate-First Approach](#delegate-first-approach)
@@ -100,10 +101,21 @@ But `lateinit var` declaration does not correspond well to this assign-once sema
 
 Due to the compilation scheme, `lateinit var` is also limited to non-nullable reference types only.
 
-This proposal aims to introduce better support for assign-once properties in Kotlin:
-* Provide a way to clearly express the intent of assign-once semantics in the code.
-* Offer runtime support to prevent accidental reassignment.
-* Enable smartcasts for assign-once properties.
+# Goals
+
+This proposal aims to introduce first-class support for assign-once properties in Kotlin:
+* Express assign-once semantics directly in code, rather than relying on convention.
+* Offer runtime support to prevent accidental semantic violations.
+* Enable smartcasts for assign-once properties, similarly to stable `val` properties.
+
+In addition, the following secondary goals were not hard requirements,
+but they guided design and implementation choices:
+* Assign-once properties should be type-agnostic, including support for nullable types.
+* Annotation usage should remain ergonomic for assign-once properties, 
+  especially for DI-related annotations like `@Inject`. 
+  See [Features/Annotations](#annotations) for discussion.
+* Thread-safe runtime semantics should be available for assign-once properties.
+  Whether it should be the default or not is discussed in [Features/Thread-Safety](#thread-safety).
 
 # Semantics
 
