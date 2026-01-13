@@ -37,6 +37,7 @@ delegate-first approach and language-builtin approach.
 * [Implementation](#implementation)
   * [Compilation Strategy](#compilation-strategy)
   * [`AssignOnce` Delegate](#assignonce-delegate)
+* [Migration from `lateinit var`](#migration-from-lateinit-var)
 * [Additional Considerations](#additional-considerations)
   * [No General Stable Semantics](#no-general-stable-semantics)
   * [Using `StableValue`](#using-stablevalue)
@@ -579,7 +580,36 @@ Also, the given implementation is not thread-safe.
 A synchronized version can be implemented through
 compare-and-set operations on the `_value` field.
 
+# Migration from `lateinit var`
+
+It is important to note we **do not** propose deprecation of `lateinit var`s in this KEEP,
+because `lateinit var`s have proper use-cases that assign-once properties do not cover,
+for example, builder pattern.
+Also, a developer might still prefer to use `lateinit var` in some contexts:
+* They make a better trade-off for performance and memory usage
+  compared to assign-once properties,
+  as they do not require additional allocations for delegate instance and synchronization primitives.
+* They can be used with dependency injection frameworks that don't support injection through setters or
+  with serialization frameworks that can't serialize delegated properties,
+  so assign-once properties are not an option.
+
+However, we propose to add a suggestion in IDE that would facilitate 
+the transition from `lateinit var` to assign-once properties 
+in the dependency injection use-case.
+This would also contribute to the discoverability of the feature:
+
+```kotlin
+class Application {
+    @Inject lateinit var service: Service
+    // IDE suggests a rewrite to assignonce var:
+    @set:Inject assignonce var service: Service
+}
+```
+
 # Additional Considerations
+
+In this section we discuss topics that are less immediately relevant 
+to the design of assign-once properties, but are worth mentioning for completeness. 
 
 ## No General Stable Semantics
 
