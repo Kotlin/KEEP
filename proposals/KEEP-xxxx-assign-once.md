@@ -39,6 +39,7 @@ delegate-first approach and language-builtin approach.
   * [`AssignOnce` Delegate](#assignonce-delegate)
 * [Migration from `lateinit var`](#migration-from-lateinit-var)
 * [Additional Considerations](#additional-considerations)
+  * [Serialization](#serialization)
   * [No General Stable Semantics](#no-general-stable-semantics)
   * [Using `StableValue`](#using-stablevalue)
 <!-- TOC -->
@@ -647,6 +648,24 @@ class Application {
 
 In this section we discuss topics that are less immediately relevant 
 to the design of assign-once properties, but are worth mentioning for completeness. 
+
+## Serialization
+
+Support for delegated properties in Kotlin serialization frameworks is limited in general.
+In particular, `kotlinx.serialization` treats delegated properties as transient by default.
+Thus implementing assign-once properties with delegation makes them harder to integrate with serialization.
+In this regard, assign-once properties are inferior to `lateinit var`s which are usually supported.
+
+However, we do not address this issue in this proposal for the following reasons:
+- We expect that in most of the intended use-cases for assign-once properties,
+  they would hold values that are not serializable themselves, 
+  e.g., service implementations or Android views, see [Motivation](#motivation).
+- We consider serialization support for delegated properties to be
+  a separate design problem outside the scope of this KEEP.
+
+If serialization is desired for a property, a developer can do one of the following:
+- Implement a custom serializer to support assign-once properties an object has.
+- Fall back to `lateinit var`s or even a plain nullable `var`.
 
 ## No General Stable Semantics
 
