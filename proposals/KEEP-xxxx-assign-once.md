@@ -36,6 +36,7 @@ The language-builtin alternative is included mainly to drive discussion.
   * [`isInitialized`](#isinitialized)
   * [Summary](#summary)
 * [Implementation](#implementation)
+  * [Implementation of `lateinit var`](#implementation-of-lateinit-var)
   * [Compilation Strategy](#compilation-strategy)
   * [`AssignOnce` Delegate](#assignonce-delegate)
 * [Migration from `lateinit var`](#migration-from-lateinit-var)
@@ -583,6 +584,62 @@ in terms of assign-once properties features.
 In this section we briefly discuss the implementation of assign-once properties,
 focusing mainly on the reasoning behind the delegation-based compilation scheme.
 
+## Implementation of `lateinit var`
+
+We believe it is beneficial to bring implementation of `lateinit var` and the reasoning behind it 
+into context to make comparison while discussing the implementation of assign-once properties.
+A `lateinit var` is compiled into a public backing field of a nullable type:
+
+```kotlin
+class Example {
+  lateinit var property: String
+  // Generated code:
+  // Note that the backing field is public by default
+  var property: String? = null
+  // Note that the argument is non-nullable
+  fun setProperty(value: String) { property = value }
+  fun getProperty(): String = property ?: throw ...
+}
+```
+
+The reason why nullable types are not allowed for `lateinit var`s is that
+`null` is used as a special marker for uninitialized state.
+This approach was chosen to support dependency injection into the field.
+If some other special object was used instead of `null`, 
+the type of the backing field would have to be changed to `Any?`.
+This would break dependency injection, because frameworks decide
+what to inject based on the type of the field:
+
+```kotlin
+class Example {
+  @Inject lateinit var service: Service?
+  // Generated code:
+  // error: don't know how to inject `Any?`
+  @Inject var property: Any? = UNINITIALIZED_VALUE
+  fun setProperty(value: Service?) { property = value }
+  fun getProperty(): Service? {
+      if (property === UNINITIALIZED_VALUE) throw ...
+      return property as Service?
+  }
+}
+```
+
+Another downside of this scheme is that the backing field is public,
+probably because some frameworks did not support private fields
+at the moment of introduction of `lateinit var`.
+It allows Java code to access the field directly and set it to `null`.
+Thus, a previously initialized `lateinit var` property could become uninitialized again
+which is not fully consistent with the semantics of `lateinit var` in Kotlin.
+
+It worth to note that Kotlin allowed `lateinit val` for some time.
+The compilation scheme was similar to the `lateinit var`.
+However, they were prohibited starting from Kotlin 1.0,
+mainly because of the possibility to break the semantics from Java
+in a way similar to the one described above for `lateinit var`.
+
+See [Migration from `lateinit var`](#migration-from-lateinit-var) for the discussion
+on why we do not propose deprecation of `lateinit var`s in this KEEP.
+
 ## Compilation Strategy
 
 If we adopt the language-builtin design for assign-once properties,
@@ -604,8 +661,8 @@ of the property:
   just like `lateinit var`s.
   But dependency injection annotations can be used in this case
   without an explicit use-site target
-  as DI frameworks commonly support injection to private fields.
-* Use a special marker object as in `AssignOnce` delegate.
+  as DI frameworks now commonly support injection to private fields.
+* Use a special marker object.
   This way, nullable types are supported.
   But the type of the backing field becomes `Any?`,
   which makes injection possible only through the setter,
@@ -616,12 +673,12 @@ class Example {
     assignonce var property: String
     // null-based compilation scheme:
     private var property: String? = null
-        get() { ... }
-        set(value: String) { ... }
+    fun setProperty(value: String) { ... }
+    fun getProperty(): String { ... }
     // marker-based compilation scheme:
     private var property: Any? = UNINITIALIZED_VALUE
-        get() { ... }
-        set(value: String) { ... }
+    fun setProperty(value: String) { ... }
+    fun getProperty(): String { ... }
 
     // both schemes support injection through the setter:
     @set:Inject assignonce var service: Service
