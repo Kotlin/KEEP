@@ -514,7 +514,7 @@ regardless of whether the feature is exposed via delegation or built-in syntax.
 
 Kotlin `lateinit var` properties have a built-in `isInitialized` 
 check which tells if the property has been initialized.
-This check is implemented as a special case for property 
+This check is implemented as a combination of a special case for property 
 reflection in the compiler and an intrinsic.
 
 The necessity of supporting an analogous check for assign-once properties is debatable,
@@ -578,6 +578,9 @@ in terms of assign-once properties features.
 | Annotations     | ⚠️ Use-site target is required which is expected for a delegated property                            | ❌ Use-site target is required which is confusing compared to `lateinit var`        |
 | Smartcasts      | ⚠️ Could be supported, but would make assign-once properties an exception among delegated properties | ✅ Could be supported                                                               |
 | `isInitialized` | ⚠️ Implementation requires delegate-access or intrinsic                                              | ⚠️ Implementation requires intrinsic or reflection API support and delegate access |
+
+In short, the delegate-based approach provides a smoother user experience overall
+in terms of the most important features: thread-safety, annotations, and smartcasts.
 
 # Implementation
 
