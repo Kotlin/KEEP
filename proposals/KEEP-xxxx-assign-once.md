@@ -872,5 +872,3 @@ It's successor, [JEP-526: `LazyConstant`](https://openjdk.org/jeps/526), does no
 [Project Amber team suggested](https://mail.openjdk.org/pipermail/amber-dev/2025-November/009470.html) 
 that functionality similar to that of `StableValue`
 might be exposed in the future through `VarHandle` API.
-
-
