@@ -2,9 +2,9 @@
 
 * **Type**: Design Proposal
 * **Author**: Mikhail Vorobev
-* **Contributors**: TODO
+* **Contributors**: Marat Akhin, Faiz Ilham Muhammad
 * **Discussion**: TODO
-* **Status**: Public Discussion
+* **Status**: Internal Discussion
 
 # Abstract
 
