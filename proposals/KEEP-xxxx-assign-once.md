@@ -25,7 +25,7 @@ The language-builtin alternative is included mainly to drive discussion.
 * [Table of Contents](#table-of-contents)
 * [Motivation](#motivation)
 * [Goals](#goals)
-* [Semantics](#semantics)
+* [Intended Semantics](#intended-semantics)
 * [Design](#design)
   * [Delegate-First Approach](#delegate-first-approach)
   * [Language-Builtin Approach](#language-builtin-approach)
@@ -120,7 +120,7 @@ but they guided the design and implementation choices:
 * Thread-safe runtime semantics should be available for assign-once properties.
   Whether it should be the default or not is discussed in [Features/Thread-Safety](#thread-safety).
 
-# Semantics
+# Intended Semantics
 
 Based on the motivational examples above, 
 we define the semantics for assign-once properties as follows:
@@ -313,7 +313,7 @@ that has implementations with different thread-safety modes
 and provides synchronization by default.
 Other delegates, e.g. `Delegates.vetoable`, are not thread-safe.
 
-On one hand, a possibility of a data-race for an assign-once property
+On the one hand, a possibility of a data-race for an assign-once property
 is represented in the source code the same way
 as for a `Delegates.vetoable` or `var` property:
 a write operation concurrent with another operation.
@@ -322,7 +322,7 @@ requiring users to ensure safety in a multithreaded environment,
 similar to `var` declarations.
 
 In contrast, if we take the non-synchronized `Lazy` implementation,
-a code that does not contain a data-race for the lazy property might cause it elsewhere.
+code that does not contain a data-race for the lazy property might cause it elsewhere.
 In particular, two concurrent reads of a lazy property could trigger 
 concurrent initialization and lead to a data-race on another property:
 
