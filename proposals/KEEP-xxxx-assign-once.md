@@ -123,7 +123,7 @@ but they guided the design and implementation choices:
 # Semantics
 
 Based on the motivational examples above, 
-we define semantics for assign-once properties as follows:
+we define the semantics for assign-once properties as follows:
 * An assign-once property is declared without an initializer
 and starts in a special uninitialized state.
   * There are no restrictions on the type of the property.
@@ -136,16 +136,20 @@ and starts in a special uninitialized state.
     indicating an attempt to read the uninitialized property.
   * Otherwise, the previously assigned value is returned.
 
-It is important to note that adherence to the assign-once semantics 
-is enforced at runtime rather than ensured at compile time.
-In other words, the compiler would not check statically that an assign-once property
-is initialized before the first read and never reassigned after initialization.
-In the intended use-cases for assign-once properties,
-we expect accidental violations of assign-once semantics to be rare.
-Thus, we intend the runtime enforcement to be a bug-catching check.
-Users should not build logic around the initialization status of an assign-once property,
-a `var` or `lateinit var` should be preferred for such purposes.
-This is also an argument against supporting [`isInitialized`](#isinitialized) check.
+Note that this specification implies the following:
+* Adherence to assign-once semantics is enforced at runtime
+  by throwing an exception in case of an uninitialized read or a reassignment.
+* There is no requirement for the compiler to ensure at compile time that
+  an assign-once property is initialized before the first read and never reassigned.
+* Building logic around the initialization status of an assign-once property is discouraged
+  as assign-once properties may not expose an API for 
+  initialization status check or set-if-uninitialized assignment.
+
+This matches the intended use-cases for assign-once properties,
+where we expect accidental violations of assign-once semantics to be rare,
+so runtime bug-catching checks are enough to prevent them.
+In addition, if a problem requires logic around the initialization status of a variable,
+we recommend using a `var` or `lateinit var` instead of an assign-once property.
 
 A thread-safe implementation of properties with assign-once semantics 
 should also provide the following guarantees:
