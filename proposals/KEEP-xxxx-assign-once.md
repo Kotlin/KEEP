@@ -114,7 +114,7 @@ This proposal aims to introduce first-class support for assign-once properties i
 In addition, the following secondary goals were not hard requirements,
 but they guided the design and implementation choices:
 * Assign-once properties should be type-agnostic, including support for nullable types.
-* Annotation usage should remain ergonomic for assign-once properties, 
+* Annotation usage should remain ergonomic for assign-once properties,
   especially for DI-related annotations like `@Inject`. 
   See [Features/Annotations](#annotations) for discussion.
 * Thread-safe runtime semantics should be available for assign-once properties.
@@ -188,7 +188,7 @@ providing a builder function similar to `lazy`:
 ```kotlin
 fun <T> assignOnce(
     mode: AssignOnceThreadSafetyMode = AssignOnceThreadSafetyMode.SAFE
-): ReadWriteProperty<Any?, T> = when (mode) {
+): AssignOnce<T> = when (mode) {
     AssignOnceThreadSafetyMode.SAFE -> ThreadSafeAssignOnce()
     AssignOnceThreadSafetyMode.NONE -> UnsafeAssignOnce()
 }
@@ -215,10 +215,10 @@ require changes of the syntax.
 
 On the other hand: 
 * The intent of assign-once semantics
-is a bit more obfuscated compared to a dedicated language construct.
-* If we are to enable smartcasts for assign-once properties, 
-the `AssignOnce` delegate would become a special case in the compiler.
-See the [Smartcasts](#smartcasts) section below for details.
+  is a bit more obfuscated compared to a dedicated language construct.
+* If we are to enable smartcasts for assign-once properties,
+  the `AssignOnce` delegate would become a special case in the compiler.
+  See the [Smartcasts](#smartcasts) section below for details.
 
 ## Language-Builtin Approach
 
@@ -650,9 +650,9 @@ on why we do not propose deprecation of `lateinit var`s in this KEEP.
 ## Compilation Strategy
 
 If we adopt the language-builtin design for assign-once properties,
-compiling them as delegated properties is an unobvious choice.
-Naturally, one could consider compilation schemes similar to the `lateinit var`.
-Implementing assign-once properties by a backing field
+compiling them as delegated properties is a non-obvious choice.
+Naturally, one could consider compilation schemes similar to `lateinit var`.
+Implementing assign-once properties with a backing field
 might be simpler and more performant,
 saving an allocation compared to the delegation approach.
 
@@ -689,21 +689,40 @@ class Example {
 
     // both schemes support injection through the setter:
     @set:Inject assignonce var service: Service
-    // only null-based scheme supports injection through the field:
+    // only null-based scheme supports injection to the field:
     @Inject assignonce var service: Service
 }
 ```
 
 Also, if we are to provide thread-safety by default for assign-once properties,
 this compilation scheme becomes more complex
-as we would have to introduce additional fields
-for synchronization primitives.
+as we need to introduce additional fields for synchronization primitives.
 
-This makes us believe that compilation to delegated properties is simpler overall,
-while it provides a consistent experience,
-allowing nullable types and synchronization customization.
-However, it comes at the price of a slightly less
-convenient interaction with DI annotations.
+We believe that compilation to delegated properties is simpler overall,
+while it provides a consistent experience by allowing nullable types.
+It also corresponds to the delegate-first design for assign-once properties,
+which is more flexible as it allows choosing the desired synchronization mode.
+
+```kotlin
+class Example {
+    // Language-builtin approach:
+    assignonce var property: String? // Note that nullable types are supported.
+    // Generated code is equivalent to:
+    var property: String? by AssignOnce()
+  
+    // Delegate-first approach:
+    var property: String? by assignOnce(
+      // Note that customization is possible through parameters of the builder function.
+      mode = AssignOnceThreadSafetyMode.NONE
+    )
+}
+```
+
+However, it comes with the following disadvantages:
+* It requires additional allocation for the delegate instance.
+  This is a performance penalty compared to the backing field scheme.
+* It makes annotation usage less convenient.
+  In most cases, an explicit use-site target is required.
 
 ## `AssignOnce` Delegate
 
