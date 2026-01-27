@@ -378,7 +378,7 @@ if we are to allow customization.
 ## Smartcasts
 
 Assign-once properties do not change after initialization.
-They are similar to `val` and lazy properties in that 
+They are similar to `val` and lazy properties since
 every successful read returns the same value.
 We call this behavior stability and such properties stable.
 
@@ -410,7 +410,7 @@ in the language-builtin approach aligns better with this dedicated support:
 
 ```kotlin
 class Example {
-    // assignonce properties can be smartcasted
+    // assignonce properties can be smart-cast
     assignonce var property: String
 
     fun setup() {
@@ -429,10 +429,32 @@ class Example {
 Regardless of the chosen design, 
 such smartcasts require the compiler to handle assign-once properties as
 special stable delegated properties.
-`Lazy` delegate could be handled similarly,
-but we consider this enhancement to be outside the scope of this KEEP.
-We also refrain from introducing general support for
-stable property delegates at this point.
+In particular, if the delegate of a property implements the `AssignOnce` interface,
+the compiler should assume that the property is stable.
+Note that in the delegate-first approach,
+if the information about stability is tied 
+to the builder function instead of the delegate type,
+it would create complications with writing wrappers around `assignOnce`:
+
+```kotlin
+fun <T> myWrapper(): AssignOnce<T> {
+    // Example: determine thread-safety mode
+    val mode: AssignOnceThreadSafetyMode = TODO()
+    return assignOnce(mode)
+}
+
+class Example {
+    // Is this property stable?
+    var property: String by myWrapper()
+}
+```
+
+As delegates implementing `AssignOnce` interface are considered stable by convention,
+it has to be made sealed to prohibit extensions that do not conform to stability.
+This is the problem with enabling smartcasts for `Lazy` delegates in the similar way,
+as users can technically define their own `Lazy` delegates that are not stable.
+
+We also refrain from introducing general support for stable property delegates at this point.
 For more details, see the [No General Stability Semantics](#no-general-stability-semantics) section.
 
 ## Annotations
