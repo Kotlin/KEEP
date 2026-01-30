@@ -3,7 +3,7 @@
 * **Type**: Design proposal
 * **Author**: Alejandro Serrano
 * **Contributors**: Yahor Berdnikau, Joffrey Bion, Pavel Kunyavskiy, Alexander Likhachev, Adam Semenenko, Timofey Solonin
-* **Discussion**: 
+* **Discussion**: [KEEP-469](https://github.com/Kotlin/KEEP/discussions/469)
 * **Status**: In progress
 * **Related YouTrack issues**: 
   [KT-76146](https://youtrack.jetbrains.com/issue/KT-76146/Add-the-ability-to-declare-friend-dependencies), 
