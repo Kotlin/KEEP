@@ -4,7 +4,7 @@
 * **Author**: Mikhail Vorobev
 * **Contributors**: Marat Akhin, Faiz Ilham Muhammad
 * **Discussion**: TODO
-* **Status**: Internal Discussion
+* **Status**: Public Discussion
 
 # Abstract
 
