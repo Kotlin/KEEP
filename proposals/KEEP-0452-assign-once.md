@@ -3,7 +3,7 @@
 * **Type**: Design Proposal
 * **Author**: Mikhail Vorobev
 * **Contributors**: Marat Akhin, Faiz Ilham Muhammad
-* **Discussion**: TODO
+* **Discussion**: [KEEP-0452](https://github.com/Kotlin/KEEP/discussions/471)
 * **Status**: Public Discussion
 
 # Abstract
