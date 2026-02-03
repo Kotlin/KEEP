@@ -550,7 +550,7 @@ it is a sign that plain nullable `var` might be of better use.
 
 If we decide to support such a check,
 it is straightforward to do so with the delegate-first approach
-assuming that the delegate access feature is introduced in Kotlin:
+assuming that the delegate access feature ([KEEP-0450](https://github.com/Kotlin/KEEP/blob/main/proposals/KEEP-0450-typed-delegate-access.md)) is introduced in Kotlin:
 
 ```kotlin
 class AssignOnce<T> {
