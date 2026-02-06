@@ -6,8 +6,8 @@
 ## Abstract
 
 > Project Loom is to intended to explore,
-incubate and deliver Java VM features and APIs built on top of them for the purpose of supporting easy-to-use,
-high-throughput lightweight concurrency and new programming models on the Java platform.
+> incubate and deliver Java VM features and APIs built on top of them for the purpose of supporting easy-to-use,
+> high-throughput lightweight concurrency and new programming models on the Java platform.
 >
 > Source: https://wiki.openjdk.org/display/loom/Main
 
@@ -75,7 +75,7 @@ As we can see Virtual Threads are not yet as powerful as Coroutines are.
 Depending on your use case it can be either a good or a bad thing.
 
 The good thing about Virtual threads is that they are simplier to use.
-The good thing about Coroutines is that they give your more flexibility (and they are potentially statically safer, as we will see it further)
+The good thing about Coroutines is that they give your more flexibility (and they are potentially safer in terms of compile time checks, as we will see it further)
 
 Before jumping to discussing how Virtual Threads and coroutines could be integrated together,
 it's worth to understand why suspension points matter.
@@ -156,8 +156,8 @@ For one, thread confinement has an advantage over `Mutex` by being deadlock-free
 For another, it has less stronger atomicity and transactionality guarantees.
 In other words, thread confinement has the "problem" of _interleaving_.
 Interleaving means that the code is not atomic,
-it may be interrupted and the dispatcher returned by `limitedParallelism` function may start doing some other job if the current job suspends.
-To our advantage, the semantics of interleaving is very precise.
+it may be interrupted, and the dispatcher returned by `limitedParallelism` function may start doing some other job if the current job suspends.
+To our advantage, the semantics of interleaving is precise and well defined.
 The interleaving can happen only at locations known at compile time - the suspension points.
 
 `to.changeBalanceBy(amount)` is our suspension point that splits up the precondition check and the change of the current balance.
@@ -188,7 +188,7 @@ So that the final version of `transfer` function is as follows:
     suspend fun transfer(to: BankAccount, amount: Int) = withContext(threadConfinement) {
         noSuspend { // Prevent double-spending bug
             if (amount > balance) error("Insufficient funds")
-            // ↑ ↓ No suspension points should sneak between these two lines
+            // ↑ ↓ No suspension points can now sneak between these two lines
             balance -= amount
         }
         to.changeBalanceBy(amount)
@@ -199,15 +199,15 @@ Tada! You've got deadlock-free, data-race-free implementation of `BankAccount`,
 but you - the developer have to pay attention to suspension points.
 Luckily, you know them at compile time.
 
-### Potential integration \#1. Deprecate Kotlin CPS-transformation machinary, create a Virtual Thread for every Coroutines
+### Potential integration \#1. Deprecate Kotlin compiler CPS-transformation machinary, create a Virtual Thread for every Coroutines
 
 > _CPS-transformation_ stands for Continuation Passing Style transformation.
 
 Coroutines are sometimes advertised as lightweight threads.
 Virtual Threads are also advertised as lightweight threads.
 So the first naive and the most radical idea is to stop doing CPS-transformations in Kotlin, and always use Virtual Threads that Java provides.
-The complicated operation of suspending translates into a good old thread blockage.
-It's a language-level integration
+The complicated operation of suspending translates into a good old thread blocking.
+It's a language-level integration.
 
 Unfortunately, Coroutines are not always translatable to Virtual Threads.
 Coroutines are more powerful than Virtual Threads.
@@ -218,9 +218,9 @@ Coroutines are more powerful than Virtual Threads.
   Suspension doesn't necessarily mean that the computation should be paused.
   There are quite a few features in Kotlin that are implemented using `suspend` functions.
   In case of `kotlin.sequences.sequence`, suspension means that the next element of the Sequence is produced.
-  In case of `kotlin.DeepRecursiveFunction`, suspension means that the stack should be unwind and saved to the heap, but the computation should continue.
+  In case of `kotlin.DeepRecursiveFunction`, suspension means that the stack should be saved to the heap, but the computation should continue.
 
-### Potential integration \#2. Block instead of suspend
+### Potential integration \#2. Block instead of suspending in kotlinx.coroutines
 
 Since we rejected the previous language-level integration,
 let's explore kotlinx.coroutines library-level integration.
@@ -232,10 +232,19 @@ public suspend fun delay(duration: Duration) {
     if (Thread.currentThread().isVirtual) {
         Thread.sleep(duration.inWholeMilliseconds)
     } else {
-        // suspending delay logic
+        // The previous suspending delay logic
     }
 }
 ```
+
+This naive approach will lead to deadlocks in a simple case where the coroutines machinary runs on a single virtual thread:
+```
+
+```
+
+
+
+
 
 As we saw, we can't run coroutines unconditionally on Virtual Threads.
 But if the user runs their coroutine on a Virtual Thread explicitly themselves, we could theoretically
