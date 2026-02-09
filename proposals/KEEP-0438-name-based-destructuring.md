@@ -495,6 +495,32 @@ The translation of the new syntax for position-based destructuring follows
 the same rules of
 [current syntax](https://kotlinlang.org/spec/operator-overloading.html#destructuring-declarations).
 
+**Lambdas and loops.** Only `val` may be used for destructuring in the element
+position of loops, and the argument position of lambdas. The destructuring
+should happen as first statements in the body (in argument order, in case of
+lambdas), following the
+[specification](https://kotlinlang.org/spec/expressions.html#lambda-literals).
+
+The following code exemplifies this translation:
+
+```kotlin
+for ((val age, val name = fullName) in people) { ... }
+// translates to
+for ($tmp in people) { 
+  val age = $tmp.age
+  val name = $tmp.fullName
+  ...
+}
+
+{ (val argumentTypes, val returnType) -> ... }
+// translates to
+{ $arg1 -> 
+  val argumentTypes = $arg1.argumentTypes
+  val returnType = $arg1.returnType
+  ...
+}
+```
+
 **Smart casting**. The translation rules may have additional typing implications
 if contracts for properties are added to the language.
 
