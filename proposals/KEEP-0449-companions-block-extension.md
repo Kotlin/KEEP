@@ -104,7 +104,7 @@ assigns relative importance to them. Since Kotlin has a big user base, any
 problem that affects a seemingly minor percentage of users may still affect
 a large absolute number of people.
 
-**(§1) Extending the companion scope**.
+**(#1) Extending the companion scope**.
 Companion objects are in many ways no different than any other object in Kotlin.
 In particular, you can write an _extension_ to a companion object to create
 a new callable that can be accessed through the classifier's name.
@@ -120,7 +120,7 @@ It's an [old issue](https://youtrack.jetbrains.com/issue/KT-11968) to remove
 this gate-keeping, and make extending the companion scope available regardless
 of the presence of an actual companion object class.
 
-**(§2) More direct mapping to platform statics.**
+**(#2) More direct mapping to platform statics.**
 Kotlin prides itself in good interoperability with the underlying platforms
 it runs. And most of them (JVM, JS, Swift) feature a notion of _static member_.
 In some scenarios, it becomes very important to generate such a static member
@@ -145,13 +145,13 @@ platform well. In many cases, failing to add the corresponding annotation
 either breaks at runtime, or may succeed to run with unintended behavior
 (like tests failing or passing when they should not).
 
-**(§3) Multiplatform `@Static` annotation.**
+**(#3) Multiplatform `@Static` annotation.**
 The current design also require an annotation for every platform
 (`@JvmStatic`, `@JsStatic`, and so forth). This issue impact authors of
 multiplatform libraries mostly, that need to remember all those annotations
 to expose their API in the way expected by every target platform.
 
-**(§4) Additional object allocation.**
+**(#4) Additional object allocation.**
 Since companion objects are indeed objects, they require an allocation the
 first time they are used. This is a problem in the JVM and Native targets.
 
@@ -195,7 +195,7 @@ and [dropping the companion if empty](https://youtrack.jetbrains.com/issue/KT-15
 However, doing so in a naive way impact binary compatibility, since methods
 or class that were created before would no longer be available.
 
-**(§5) No expect/actual matching**.
+**(#5) No expect/actual matching**.
 Since static members do not exist in the Kotlin language, matching classes
 in a multiplatform environment becomes more complicated than expected.
 For example, it may be desirable to declare a expected `Vector` type,
@@ -234,7 +234,7 @@ existing features. In the new design we try to follow a few principles:
 ### Companion extensions
 
 This is a direct way to declare functions accessible through the type name
-(that is, class members). This solves problem §1.
+(that is, class members). This solves problem #1.
 
 ```kotlin
 companion val Vector.UnitX get() = Vector(1.0, 0.0)
@@ -258,7 +258,7 @@ companion extensions define alongside the type itself.
 
 ### Companion blocks
 
-Solving problem §4 requires changes to the current code generation strategy. 
+Solving problem #4 requires changes to the current code generation strategy. 
 In particular, in order to generate code that doesn't allocate a companion
 object we need to ensure that its instance is not used. We have considered
 several approaches to this mechanism, ultimately choosing for companion blocks.
@@ -286,7 +286,7 @@ but do not include any of the properties associated with an _object_:
 
 The compilation strategy for companion blocks should not be fixed.
 However, in those platforms that support statics, we propose to use those
-features, solving §2 and §4. This also alleviates the need for §3,
+features, solving #2 and #4. This also alleviates the need for #3,
 that remains out-of-scope for this KEEP document
 
 ### Discarded ideas
@@ -408,7 +408,7 @@ reasons for that choice, mostly for the sake of simplicity.
 - It gives a clear answer to what is in scope and with what priority when
   we are in the body of a companion block, companion extension, and companion
   object member, by reusing the same machinery (receivers) that we already
-  have in Kotlin (see examples ⌘2.1 to ⌘2.3).
+  have in Kotlin (see examples Example 2.1 to Example 2.3).
 - Companion object members and extensions can always be disambiguated by
   _explicitly_ writing `T.Companion`, something that is not possible with
   the other kinds of companions.
@@ -440,16 +440,31 @@ confusion especially among experienced Kotlin developers.
 ### Declaration
 
 **§1.1** (_grammar_): the [Kotlin grammar](https://kotlinlang.org/spec/syntax-and-grammar.html#syntax-grammar)
-is modified as follows.
+is modified as follows. Note that only function and property declarations are
+allowed in a companion block.
 
 ```diff
    classMemberDeclaration:
        ...
      | companionObject
-+    | companionDeclaration
-
-+  companionDeclaration:
-+    'companion' {NL} classBody
++    | companionBlock
++
++  companionBlock:
++    'companion' {NL} companionBlockBody
++
++  companionBlockBody:
++     '{'
++     {NL}
++     companionBlockDeclarations
++     {NL}
++     '}'
++
++  companionBlockDeclarations:
++     {companionBlockDeclaration [semis]}
++
++ companionBlockDeclaration:
++     functionDeclaration
++   | propertyDeclaration
 
    memberModifier
        ...
@@ -556,7 +571,7 @@ if desired.
 are updated to include properties defined in companion blocks or as companion
 extensions.
 
-**⌘1.1** (_example_): the following code should be accepted. Note that it
+**Example 1.1** (_example_): the following code should be accepted. Note that it
 uses two separate companion blocks, declares properties with an initializer,
 and the last one is marked as constant.
 
@@ -577,7 +592,7 @@ data class Vector(val x: Double, val y: Double) {
 }
 ```
 
-**⌘1.2** (_operators_): the following code uses `invoke` to define
+**Example 1.2** (_operators_): the following code uses `invoke` to define
 a fake constructor that `suspend`s.
 
 ```kotlin
@@ -642,7 +657,7 @@ object by using its classifier name.
 **§2.1.2** (_`this` expressions_): phantom static implicit `this` is not
 available through [explicit `this` expressions](https://kotlinlang.org/spec/overload-resolution.html#receivers).
 Access to companion block members must always be done either implicitly or
-through an explicit type receiver, as defined in §2.3.
+through an explicit type receiver, as defined in §2.3.1.
 
 **§2.2.1** (_companion block members, receiver_): the implicit `this` receiver
 for the class is **not** available for companion block members. As a result,
@@ -672,7 +687,7 @@ The rules are updated as follows (updates in boldface):
 This approach is consistent with the definition of phantom static `this` in the
 specification as a receiver with more priority than the companion.
 
-**⌘2.1** (_priority_): the code below exemplifies how companion extensions win
+**Example 2.1** (_priority_): the code below exemplifies how companion extensions win
 even over companion object members, and how to refer to companion object
 members in such a situation.
 
@@ -691,7 +706,7 @@ fun example() {
 }
 ```
 
-**⌘2.2** (_absence of companion object members in extensions_): the code below
+**Example 2.2** (_absence of companion object members in extensions_): the code below
 exemplifies the fact that companion object members are not available in
 companion extensions, since they only have the phantom static implicit `this`
 as an implicit receiver.
@@ -709,7 +724,7 @@ companion fun Example.example() {
 }
 ```
 
-**⌘2.4** (_resolution in companion blocks_): the code below exemplifies that
+**Example 2.4** (_resolution in companion blocks_): the code below exemplifies that
 companion block members and companion block extensions may be called without
 qualification from any of those places.
 
@@ -734,7 +749,7 @@ companion fun Example.testInCompanionExtension() {
 ```
 
 
-**⌘2.4** (_receiver in companion objects_): in the case of members or extensions
+**Example 2.4** (_receiver in companion objects_): in the case of members or extensions
 to the companion object, the corresponding receiver is introduced with the 
 highest priority. In the case of companion object members, the phantom static
 implicit `this` of the enclosing class is still available.
@@ -782,7 +797,7 @@ The rules are updated as follows (updates in boldface):
 In the case of a companion extension, the receiver type is not visible in
 the type of the obtained callable reference.
 
-**⌘2.4** (_callable references_): the code below should be accepted.
+**Example 2.5** (_callable references_): the code below should be accepted.
 
 ```kotlin
 data class Vector(val x: Double, val y: Double) {
@@ -936,7 +951,7 @@ properties are compiled into static private fields.
 
 **§4.1.2** (_JVM, companion initialization_): companion initialization is
 compiled into the static initializer `<clinit>`, following the order described
-in §3.4.
+in §3.2.2.
 
 **§4.1.3** (_JVM, companion extensions_): companion extensions are compiled
 as static members of the corresponding `FileKt` class, without any value
@@ -946,7 +961,7 @@ are compiled into static private fields.
 The name of this static member is the same given in the source code, unless
 it has been overridden using a `@JvmName` annotation.
 
-**⌘4.1.1** (_JVM example_): the code below,
+**Example 4.1.1** (_JVM example_): the code below,
 
 ```kotlin
 // in file 'Vector.kt'
@@ -967,7 +982,7 @@ is compiled into bytecode equivalent to the following Java code,
 class Vector {
     // instance fields and constructor omitted 
 
-    private static Vector Zero;
+    private static final Vector Zero;
     public static Vector getZero() { return Zero; }
 
     public static final int Dimensions = 2;
@@ -982,7 +997,7 @@ class VectorKt {
 }
 ```
 
-**⌘4.1.2** (_avoiding platform clashes_): the rules above may lead to platform
+**Example 4.1.2** (_avoiding platform clashes_): the rules above may lead to platform
 clashes in both class bodies and companion extensions. Note that the JVM
 forbids defining a static and instance method with the same signature. The
 solution is to use `@JvmName` to rename one of them.
@@ -1053,6 +1068,11 @@ public class Vector {
 }
 ```
 
+**§4.1.5** (_JVM, expect/actual matching_): the described compilation strategy
+should be taken into account for `actual`izing an `expect` declaration with
+a Java implementation. In particular, static members in a Java class may
+`actual`ize companion block members.
+
 **§4.2.1** (_JS, companion block members_): companion block members are
 compiled into [static members](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Classes/static)
 of the enclosing class.
@@ -1074,7 +1094,7 @@ into the initializer of that property.
 as any other top-level declaration. The name in JS is taken verbatim from
 the declaration, although it can be overridden using `@JsName`.
 
-**⌘4.2.1** (_JS example_): the code below,
+**Example 4.2.1** (_JS example_): the code below,
 
 ```kotlin
 data class Vector(val x: Double, val y: Double) {
@@ -1145,7 +1165,7 @@ as an [extension](https://docs.swift.org/swift-book/documentation/the-swift-prog
 holding the members. Other than that, the compilation scheme is similar
 to that of companion block members.
 
-**⌘4.3.1** (_Swift example_): the code below,
+**Example 4.3.1** (_Swift example_): the code below,
 
 ```kotlin
 data class Vector(val x: Double, val y: Double) {
@@ -1187,7 +1207,7 @@ the package is updated as follows.
 
 2. `KClass` implements `KCompanionDeclarationContainer`.
 
-**§6.2** (_companion "receiver"_):
+**§5.2** (_companion "receiver"_):
 the following property is added to `KCallable`. This property should be `null`
 whenever the callable is neither a companion extension nor defined in a 
 companion block.
@@ -1215,7 +1235,7 @@ interface KCompanionParameter {
 Note that the `type` is a `KClass` and not a `KType` because those relate to
 the _class itself_, not a particular instantiation thereof.
 
-**§6.3** (_no additional arguments to `call`_):
+**§5.3** (_no additional arguments to `call`_):
 no value should be passed in the position of receiver for neither 
 companion block members nor companion extensions
 when using `call`, `callBy` from `KCallable`, and the corresponding
@@ -1239,7 +1259,7 @@ We should acknowledge that removing the companion object is
 a _binary breaking change_, and library authors should act accordingly.
 If their goal is to re-expose the same functionality from companion objects
 as companion blocks, the best solution is to use `@JvmStatic` (and similar
-annotations in other platforms). Another solution that improves on problem §4
+annotations in other platforms). Another solution that improves on problem #4
 is to manually keep both versions, but that has additional boilerplate.
 
 ```kotlin
@@ -1268,11 +1288,11 @@ platform. In this section we discuss how the entire proposal "translates" to
 the JVM side of things.
 
 Companion blocks translate to **static members**. Since this mapping works well
-in both directions, this solves problems §2 (mapping to platform statics) and 
-§5 (expect/actual matching). 
+in both directions, this solves problems #2 (mapping to platform statics) and 
+#5 (expect/actual matching). 
 
 Using static members alleviate the need for an object allocation, solving
-problem §4. However, in order to have good performance, we need a way to
+problem #4. However, in order to have good performance, we need a way to
 prevent re-computation of values; for that reason the proposal allows for
 properties in companion blocks and companion extensions to have **backing
 fields and initializers**.
