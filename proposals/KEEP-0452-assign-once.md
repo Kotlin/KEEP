@@ -450,9 +450,13 @@ class Example {
 ```
 
 As delegates implementing `AssignOnce` interface are considered stable by convention,
-it has to be made sealed to prohibit extensions that do not conform to stability.
-This is the problem with enabling smartcasts for `Lazy` delegates in the similar way,
+allowing users to extend it freely might be dangerous.
+This is the problem with enabling smartcasts for `Lazy` delegates in a similar way,
 as users can technically define their own `Lazy` delegates that are not stable.
+We see two possible solutions for `AssignOnce`:
+* Make it sealed, thus prohibiting custom implementations altogether.
+* Mark it with `@SubclassOptInRequired` [annotation](https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-subclass-opt-in-required/),
+  forcing opt-in to extend and thus requiring carefulness from users.
 
 We also refrain from introducing general support for stable property delegates at this point.
 For more details, see the [No General Stability Semantics](#no-general-stability-semantics) section.
@@ -660,7 +664,7 @@ It allows Java code to access the field directly and set it to `null`.
 Thus, a previously initialized `lateinit var` property could become uninitialized again
 which is not fully consistent with the semantics of `lateinit var` in Kotlin.
 
-It worth to note that Kotlin allowed `lateinit val` for some time.
+It is worth noting that Kotlin allowed `lateinit val` for some time.
 The compilation scheme was similar to the `lateinit var`.
 However, they were prohibited starting from Kotlin 1.0,
 mainly because of the possibility to break the semantics from Java
@@ -913,7 +917,7 @@ and support smartcasts only for assign-once properties for now.
 [JEP-502](https://openjdk.org/jeps/502) proposed to introduce `StableValue` API,
 which could potentially serve as a compilation target for assign-once properties on JVM.
 However, `StableValue` was removed in JDK 26.
-It's successor, [JEP-526: `LazyConstant`](https://openjdk.org/jeps/526), does not fit the use-case.
+Its successor, [JEP-526: `LazyConstant`](https://openjdk.org/jeps/526), does not fit the use-case.
 [Project Amber team suggested](https://mail.openjdk.org/pipermail/amber-dev/2025-November/009470.html) 
 that functionality similar to that of `StableValue`
 might be exposed in the future through `VarHandle` API.
