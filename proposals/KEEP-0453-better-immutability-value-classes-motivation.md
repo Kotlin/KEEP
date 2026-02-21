@@ -4,7 +4,7 @@
 * **Author**: Marat Akhin
 * **Contributors**: Roman Elizarov, Nikita Bobko, Komi Golova, Pavel Kunyavskiy, Alejandro Serrano Mena, Evgeniy Moiseenko, Alexander Udalov, Wout Werkman, Mikhail Zarechenskiy, Evgeniy Zhelenskiy, Filipp Zhinkin
 * **Status**: Public discussion
-* **Discussion**: TBD
+* **Discussion**: [GitHub](https://github.com/Kotlin/KEEP/discussions/472)
 * **Related YouTrack issue**: [KT-77734](https://youtrack.jetbrains.com/issue/KT-77734)
 
 ## Abstract
@@ -404,7 +404,7 @@ Some of the questions we have for you are:
 * Which style of ergonomic updates (if any) would you prefer and enjoy using the most? Or is any option something you fundamentally disagree with?
 * Anything and everything else you care about.
 
-If you have the time to share, please go to the [discussion](TBD) and leave your feedback.
+If you have the time to share, please go to the [discussion](https://github.com/Kotlin/KEEP/discussions/472) and leave your feedback.
 
 ## References
 

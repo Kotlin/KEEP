@@ -4,7 +4,7 @@
 * **Author**: Marat Akhin
 * **Contributors**: Roman Elizarov, Nikita Bobko, Komi Golova, Pavel Kunyavskiy, Alejandro Serrano Mena, Evgeniy Moiseenko, Alexander Udalov, Wout Werkman, Mikhail Zarechenskiy, Evgeniy Zhelenskiy, Filipp Zhinkin
 * **Status**: Public discussion
-* **Discussion**: TBD
+* **Discussion**: [GitHub](https://github.com/Kotlin/KEEP/discussions/473)
 * **Related YouTrack issue**: [KT-77734](https://youtrack.jetbrains.com/issue/KT-77734)
 
 ## Abstract
