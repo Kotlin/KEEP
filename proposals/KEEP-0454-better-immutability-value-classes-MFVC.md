@@ -9,7 +9,7 @@
 
 ## Abstract
 
-> Note: the motivation behind the improvements to immutability in Kotlin is covered in their respective [KEEP](TBD).
+> Note: the motivation behind the improvements to immutability in Kotlin is covered in their respective [KEEP](https://github.com/Kotlin/KEEP/blob/main/proposals/KEEP-0453-better-immutability-value-classes-motivation.md).
 
 This proposal talks about the introduction of Multi-Field Value Classes (MFVC) to Kotlin, and presents their design and implementation details.
 We discuss what MFVCs represent, what their limitations are, how they interoperate with different platforms which Kotlin supports, and what the migration story around them is.
@@ -743,7 +743,7 @@ We are interested in your feedback on the overall design for MFVCs, but are part
 * Would you (not) migrate some of your existing classes to MFVCs and what should be different in the migration story?
 * How should `===` work for value types and how important is its performance for you?
 
-> Important: if you (and you probably do) have some questions and feedback on other parts of the overall Better Immutability in Kotlin story, e.g., ergonomic updates or deep immutability, please send them either to the [Motivation KEEP](TBD) if they are high-level ones or to their specific KEEPs once they are published.
+> Important: if you (and you probably do) have some questions and feedback on other parts of the overall Better Immutability in Kotlin story, e.g., ergonomic updates or deep immutability, please send them either to the [Motivation KEEP](https://github.com/Kotlin/KEEP/blob/main/proposals/KEEP-0453-better-immutability-value-classes-motivation.md) if they are high-level ones or to their specific KEEPs once they are published.
 
 ## References
 
