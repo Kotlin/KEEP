@@ -46,6 +46,8 @@ represent call-site information, and a way to access call-site information from 
   * [Function Calls](#function-calls)
   * [String Message Calls](#string-message-calls)
 * [Use Cases](#use-cases)
+  * [JUnit Integration](#junit-integration)
+  * [Soft Assertions](#soft-assertions)
 * [Advanced](#advanced)
   * [Runtime Dependency](#runtime-dependency)
   * [Backwards Compatibility](#backwards-compatibility)
@@ -519,12 +521,123 @@ is not annotated with `@PowerAssert`.
 
 # Use Cases
 
-[//]: # (
-TODO should there be use case section?
- * include examples!
- * integration with JUnit
- * building a fluent assertion library
-)
+[//]: # (TODO provide a description for this section?)
+
+## JUnit Integration
+
+[//]: # (TODO provide an example description)
+[//]: # (TODO document example)
+
+```kotlin
+@PowerAssert
+fun powerAssert(condition: Boolean, @PowerAssert.Ignore message: String? = null) {
+    contract { returns() implies condition }
+    if (!condition) {
+        val explanation = PowerAssert.explanation
+            ?: throw AssertionFailedError(message)
+
+        val equalityErrors = buildList {
+            for (expression in explanation.expressions) {
+                if (expression is EqualityExpression && expression.value == false) {
+                    add(expression)
+                }
+            }
+        }
+
+        val failureMessage = buildString {
+            // OpenTest4J likes to trim messages. Use zero-width space (U+200B) characters to preserve newlines.
+            appendLine(message?.takeIf { it.isNotBlank() } ?: "\u200B")
+            append(explanation.toDefaultMessage())
+            append("\u200B")
+        }
+
+        throw when (equalityErrors.size) {
+            0 -> AssertionFailedError(failureMessage)
+
+            1 -> {
+                val error = equalityErrors[0]
+                AssertionFailedError(failureMessage, error.rhs, error.lhs)
+            }
+
+            else -> {
+                MultipleFailuresError(
+                    failureMessage,
+                    equalityErrors.map { EqualityError(it) },
+                )
+            }
+        }
+    }
+}
+
+private class EqualityError(
+    expression: EqualityExpression
+) : AssertionFailedError(
+    "Expected <${expression.rhs}>, actual <${expression.lhs}>",
+    expression.rhs, expression.lhs,
+) {
+    override fun fillInStackTrace(): Throwable = this // Stack trace is unnecessary.
+}
+```
+
+## Soft Assertions
+
+[//]: # (TODO provide an example description)
+[//]: # (TODO document example)
+
+```kotlin
+@PowerAssert.Ignore
+interface AssertScope<T> {
+    val subject: T
+    fun collectFailure(message: String?, explanation: Explanation?)
+}
+
+@PowerAssert
+fun <T> assertThat(subject: T, block: AssertScope<T>.() -> Unit) {
+    val primary = PowerAssert.explanation ?: error("power-assert compiler-plugin is required")
+    val failures = mutableListOf<Pair<String?, List<Expression>>>()
+    object : AssertScope<T> {
+        override val subject: T get() = subject
+        override fun collectFailure(message: String?, explanation: Explanation?) {
+            val adjusted = explanation?.expressions?.map { it.copy(explanation.offset - primary.offset) }.orEmpty()
+            failures.add(message to adjusted)
+        }
+    }.block()
+
+    if (failures.isNotEmpty()) {
+        val expressions = failures
+            .flatMap { it.second }
+            // attempt to reduce duplication of similar expressions.
+            .distinctBy { Pair(primary.source.substring(it.startOffset, it.endOffset), it.value) }
+        val synthetic = Argument(-1, -1, Argument.Kind.VALUE, expressions)
+        val combined = CallExplanation(primary.offset, primary.source, primary.arguments + synthetic)
+        val message = buildString {
+            appendLine("Assertion failed:")
+            for ((msg, _) in failures) {
+                if (msg != null) appendLine(" * $msg")
+            }
+            appendLine(combined.toDefaultMessage())
+        }
+        throw AssertionError(message)
+    }
+}
+
+@PowerAssert
+fun AssertScope<String>.hasLength(length: Int) {
+    if (subject?.length != length) {
+        collectFailure("String `${subject}` does not have length `${length}`.", PowerAssert.explanation)
+    }
+}
+
+@PowerAssert
+fun AssertScope<String>.startsWith(prefix: String, ignoreCase: Boolean = false) {
+    if (subject?.startsWith(prefix, ignoreCase) != true) {
+        collectFailure(
+            "String `${subject}` does not start with `${prefix}`${if (ignoreCase) " (ignoring case)" else ""}.",
+            PowerAssert.explanation,
+        )
+    }
+}
+```
 
 # Advanced
 
