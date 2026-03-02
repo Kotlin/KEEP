@@ -133,8 +133,6 @@ annotation class AssignOnceSubclassing
 interface AssignOnce<T> {
     val value: T
     fun initialize(value: T)
-    // Optional:
-    fun isInitialized(): Boolean
 }
 
 operator fun <T> AssignOnce<T>.getValue(thisRef: Any?, property: KProperty<*>): T = value
@@ -301,7 +299,17 @@ For assign-once properties, building logic around initialization status is disco
 If such logic is needed, a nullable `var` or `lateinit var` may be a better fit.
 For this reason, we propose to omit `isInitialized` for assign-once properties in the beginning.
 
-If it is introduced later, explicitly delegated properties can support it
+If it is introduced later, `AssignOnce` can be extended with the method:
+
+```kotlin
+interface AssignOnce<T> {
+    val value: T
+    fun initialize(value: T)
+    fun isInitialized(): Boolean
+}
+```
+
+Explicitly delegated properties can then support it
 through the delegate access feature
 ([KEEP-0450](https://github.com/Kotlin/KEEP/blob/main/proposals/KEEP-0450-typed-delegate-access.md)):
 
