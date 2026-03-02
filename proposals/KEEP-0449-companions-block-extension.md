@@ -662,9 +662,12 @@ through an explicit type receiver, as defined in §2.3.1.
 **§2.2.1** (_companion block members, receiver_): the implicit `this` receiver
 for the class is **not** available for companion block members. As a result,
 the phantom static implicit `this` becomes the receiver with the most priority.
+In practice, that means that you cannot call instance members in a companion
+block, but you can access other members in the companion block unqualified.
 
-The current class companion object receiver is not present either. But we
-cannot define it anyway, as companion blocks and objects may not co-exist.
+The current class companion object receiver is not present either. That means
+that you cannot call members of the companion object unqualified within the
+companion block. Note that you can still use `Type.member` to access it.
 
 **§2.2.2** (_companion extensions, receiver_): in the body of a companion
 extension the phantom static implicit `this` is introduced with the highest
@@ -749,7 +752,7 @@ companion fun Example.testInCompanionExtension() {
 ```
 
 
-**Example 2.4** (_receiver in companion objects_): in the case of members or extensions
+**Example 2.5** (_receiver in companion objects_): in the case of members or extensions
 to the companion object, the corresponding receiver is introduced with the 
 highest priority. In the case of companion object members, the phantom static
 implicit `this` of the enclosing class is still available.
@@ -797,7 +800,7 @@ The rules are updated as follows (updates in boldface):
 In the case of a companion extension, the receiver type is not visible in
 the type of the obtained callable reference.
 
-**Example 2.5** (_callable references_): the code below should be accepted.
+**Example 2.6** (_callable references_): the code below should be accepted.
 
 ```kotlin
 data class Vector(val x: Double, val y: Double) {
@@ -838,6 +841,55 @@ rest of the static and companion scope (from the companion blocks members).
 
 As a consequence, it is possible to refer to constant properties defined
 anywhere in a class during companion initialization of that same class.
+
+**§2.5 (_superclass scope linking_):** the 
+[specification](https://kotlinlang.org/spec/scopes-and-identifiers.html#linked-scopes)
+states that the scope of a parent class is linked to that of a child.
+In practice, that means that we can access companion block members of a parent
+unqualified in the child, but not qualified.
+
+This is **not** inheritance, simply a matter of nested scopes.
+A member is a companion block does not override any member in the companion
+block of its parent, although it may **hide** it.
+
+The phantom static implicit `this` only gives you access to the companion
+members and extensions of the type, but none of its parents. This may lead to
+surprises during resolution.
+
+**Example 2.7** (_qualified vs. unqualified for parent companions_):
+
+```kotlin
+class Foo {
+    companion {
+        fun moo() { }
+    }
+}
+
+companion fun Foo.pip() { }
+
+class Bar : Foo() {
+    fun bar() { 
+        moo()      // ok, through scope linking
+        Foo.moo()  // ok
+        Bar.moo()  // error, parent not available through static 'this'
+
+        pip()      // error, extensions are only available through static 'this'
+        Foo.pip()  // ok
+        Bar.pip()  // error, parent not available through static 'this'
+    }
+
+    companion {
+        fun baz() { /* same as above */ }
+    }
+}
+```
+
+> [!NOTE]
+> A previous iteration of this proposal included information about
+> [deprecating superclass linking](https://github.com/Kotlin/KEEP/blob/statics/proposals/statics.md#deprecate-superclass-scope-linking).
+> We follow its lead and decide against doing so in this KEEP, even though
+> it leads to a more complicated mental model.
+
 
 ### Initialization
 
