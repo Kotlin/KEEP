@@ -256,9 +256,35 @@ The trade-offs compared to `lateinit var` are:
 
 # Interaction with Other Features
 
+For properties explicitly delegated to `AssignOnce`,
+interaction with other features follows the standard rules for delegated properties.
+`lateinit val`, however, does not look like a delegated property despite being compiled as one,
+which leads to some non-obvious behaviors discussed below.
+
 ## Annotations
 
-TODO
+Since `lateinit val` is compiled to a delegated property,
+there is no backing field for annotations to target.
+This is a notable difference from `lateinit var`,
+where annotations like `@Inject` target the backing field by default.
+
+For `lateinit val`, DI annotations must use
+an explicit `@set:` use-site target to reach the generated setter:
+
+```kotlin
+class Application {
+    // Works with lateinit var:
+    @Inject lateinit var service: Service
+
+    // Requires explicit target with lateinit val:
+    @set:Inject lateinit val service: Service
+}
+```
+
+To ease this, we propose an IDE intention
+that suggests adding the appropriate use-site target
+for known annotations (e.g., `@set:` for `@Inject`)
+when used on `lateinit val` or `AssignOnce`-delegated properties.
 
 ## `isInitialized`
 
