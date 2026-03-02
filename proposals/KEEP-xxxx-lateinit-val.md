@@ -78,7 +78,7 @@ However, `lateinit var` does not express this assign-once intent:
 
 Due to the compilation scheme, `lateinit var` is also limited to non-nullable reference types only.
 
-## Goals
+# Goals
 
 This proposal aims to introduce first-class support for assign-once properties in Kotlin:
 * Express assign-once semantics directly in code, rather than relying on convention.
@@ -117,9 +117,67 @@ A thread-safe implementation additionally guarantees:
 
 # Design
 
+We propose to base assign-once properties on the `AssignOnce` delegate interface
+in the standard library.
+`lateinit val` declarations are a language-level construct built on top of it,
+with additional compiler support such as smartcasts.
+
 ## `AssignOnce` Delegate
 
-TODO
+We introduce an `AssignOnce` interface to the standard library:
+
+```kotlin
+@RequiresOptIn
+annotation class AssignOnceSubclassing
+
+@SubclassOptInRequired(AssignOnceSubclassing::class)
+interface AssignOnce<T> {
+    val value: T
+    fun initialize(value: T)
+    // Optional:
+    fun isInitialized(): Boolean
+}
+
+operator fun <T> AssignOnce<T>.getValue(thisRef: Any?, property: KProperty<*>): T = value
+operator fun <T> AssignOnce<T>.setValue(thisRef: Any?, property: KProperty<*>, value: T) { initialize(value) }
+```
+
+`AssignOnce` is marked with `@SubclassOptInRequired`
+to allow users to provide custom implementations when needed,
+while signaling that doing so requires care
+to preserve the stability contract.
+This also leaves room for changes to the `AssignOnce` behavior in the future.
+
+The standard library provides both thread-safe and non-thread-safe implementations.
+A builder function, similar to `lazy`, selects between them:
+
+```kotlin
+fun <T> assignOnce(
+    mode: AssignOnceThreadSafetyMode = AssignOnceThreadSafetyMode.SAFE
+): AssignOnce<T>
+```
+
+The thread-safe implementation is used by default.
+The non-thread-safe one can be selected
+when synchronization overhead is undesirable
+and the caller guarantees the absence of data races.
+
+An assign-once property then can be defined by delegation:
+
+```kotlin
+class Example {
+    var service: Service by assignOnce()
+
+    fun setup() {
+        service = createService()
+        // Reassignment throws:
+        service = createService()
+    }
+}
+```
+
+Properties explicitly delegated to `AssignOnce` are normal delegated properties.
+In particular, smartcasts do not work for them.
 
 ## `lateinit val` Declaration
 
