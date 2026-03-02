@@ -181,7 +181,39 @@ In particular, smartcasts do not work for them.
 
 ## `lateinit val` Declaration
 
-TODO
+We introduce `lateinit val` as a language construct
+for declaring assign-once properties:
+
+```kotlin
+class Example {
+    lateinit val service: Service
+
+    fun setup() {
+        service = createService()
+    }
+
+    fun use() {
+        if (service is SpecificService) {
+            // smartcast works
+            service.specificMethod()
+        }
+    }
+}
+```
+
+Unlike properties explicitly delegated to `AssignOnce`,
+`lateinit val` properties **support smartcasts**.
+Since the value is stable after initialization,
+the compiler treats them similarly to `val` properties.
+
+Together with existing declarations,
+`lateinit val` contributes to a consistent property model
+where the `lateinit` modifier moves compile-time read-write invariants to runtime:
+
+|       |                      `var`                      |               `lateinit var`               |               `lateinit val`               |                      `val`                      |
+|:-----:|:-----------------------------------------------:|:------------------------------------------:|:------------------------------------------:|:-----------------------------------------------:|
+| read  | after first write<br/>(ensured at compile-time) | after first write<br/>(ensured at runtime) | after first write<br/>(ensured at runtime) | after first write<br/>(ensured at compile-time) |
+| write |                     anytime                     |                  anytime                   |       once<br/>(ensured at runtime)        |       once<br/>(ensured at compile-time)        |
 
 ### Compilation Strategy
 
