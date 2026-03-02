@@ -181,7 +181,8 @@ In particular, smartcasts do not work for them.
 ## `lateinit val` Declaration
 
 We introduce `lateinit val` as a language construct
-for declaring assign-once properties:
+for declaring assign-once properties.
+`lateinit val` is applicable in the same declaration sites as `lateinit var`.
 
 ```kotlin
 class Example {
