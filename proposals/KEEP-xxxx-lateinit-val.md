@@ -217,7 +217,42 @@ where the `lateinit` modifier moves compile-time read-write invariants to runtim
 
 ### Compilation Strategy
 
-TODO
+`lateinit val` declarations are compiled to delegation
+to the thread-safe `AssignOnce` implementation:
+
+```kotlin
+class Example {
+    lateinit val service: Service
+    // Compiles to (roughly):
+    private val service$delegate = assignOnce<Service>()
+    var service: Service
+        get() = service$delegate.getValue(this, ::service)
+        set(value) = service$delegate.setValue(this, ::service, value)
+}
+```
+
+Thread-safety by default imposes a synchronization overhead on every access.
+In practice, we expect this overhead to be small:
+an efficient implementation based on compare-and-set primitives is feasible,
+and the intended use cases involve a single write with little or no contention.
+
+An alternative would be a backing-field scheme similar to `lateinit var`,
+where `null` or a sentinel object marks the uninitialized state.
+The delegation-based scheme is chosen for the following reasons:
+* It provides thread-safety through the delegate implementation
+  without requiring additional fields to store synchronization primitives.
+* It supports both nullable types and dependency injection at the same time:
+  * A sentinel object is used to represent the uninitialized state instead of `null`.
+  * Dependency injection frameworks can target the property setter,
+    resolving the right type through reflection.
+* It prevents Java code from modifying the stored value directly,
+  as the underlying field is not exposed.
+
+The trade-offs compared to `lateinit var` are:
+* An additional allocation for the delegate instance,
+  which is a memory and performance penalty.
+* No exposed backing field, which may be a source of confusion
+  given that `lateinit val` looks similar to `lateinit var`.
 
 # Interaction with Other Features
 
