@@ -80,7 +80,15 @@ Due to the compilation scheme, `lateinit var` is also limited to non-nullable re
 
 ## Goals
 
-TODO
+This proposal aims to introduce first-class support for assign-once properties in Kotlin:
+* Express assign-once semantics directly in code, rather than relying on convention.
+* Offer runtime support to prevent accidental semantic violations.
+* Enable smartcasts for assign-once properties, similarly to stable `val` properties.
+
+In addition, the following secondary goals guided the design:
+* Assign-once properties should be safe to use in concurrent contexts by default.
+* Annotations, especially DI-related ones like `@Inject`, should work with assign-once properties.
+* Assign-once properties should be type-agnostic, including support for nullable types.
 
 # Intended Semantics
 
