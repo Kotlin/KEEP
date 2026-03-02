@@ -326,11 +326,26 @@ class Example {
 
 ## Serialization
 
-TODO
+Since `lateinit val` is compiled to a delegated property,
+it inherits the limitations of delegated properties with respect to serialization.
+In particular, `kotlinx.serialization` treats delegated properties as transient by default.
+This is another difference from `lateinit var`, which is usually supported by serialization frameworks.
+
+In most intended use cases, assign-once properties hold
+non-serializable values such as service instances or Android views,
+so this limitation is unlikely to be a practical concern.
+Proper handling of `lateinit val` in `kotlinx.serialization`
+may be addressed separately in the future.
 
 ## Reflection
 
-TODO
+We propose to expose `lateinit val` properties as `KProperty` in the reflection API,
+consistent with their `val` nature.
+
+Although `lateinit val` has a generated setter,
+exposing it as `KMutableProperty` would contradict the assign-once semantics.
+This may be optionally relaxed in the future
+if reflective writes prove necessary in practice.
 
 # Migration from `lateinit var`
 
