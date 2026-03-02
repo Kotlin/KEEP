@@ -38,7 +38,6 @@ though as a regular delegated property it does not benefit from smartcasts.
   * [`isInitialized`](#isinitialized)
   * [Serialization](#serialization)
   * [Reflection](#reflection)
-* [Migration from `lateinit var`](#migration-from-lateinit-var)
 <!-- TOC -->
 
 # Motivation
@@ -215,6 +214,10 @@ where the `lateinit` modifier moves compile-time read-write invariants to runtim
 | read  | after first write<br/>(ensured at compile-time) | after first write<br/>(ensured at runtime) | after first write<br/>(ensured at runtime) | after first write<br/>(ensured at compile-time) |
 | write |                     anytime                     |                  anytime                   |       once<br/>(ensured at runtime)        |       once<br/>(ensured at compile-time)        |
 
+Note that we **do not** propose deprecation of `lateinit var`.
+It covers use cases beyond assign-once semantics, such as the builder pattern,
+and may be preferred in performance-sensitive contexts.
+
 ### Compilation Strategy
 
 `lateinit val` declarations are compiled to delegation
@@ -346,7 +349,3 @@ Although `lateinit val` has a generated setter,
 exposing it as `KMutableProperty` would contradict the assign-once semantics.
 This may be optionally relaxed in the future
 if reflective writes prove necessary in practice.
-
-# Migration from `lateinit var`
-
-TODO
