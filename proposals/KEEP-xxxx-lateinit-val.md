@@ -92,7 +92,28 @@ In addition, the following secondary goals guided the design:
 
 # Intended Semantics
 
-TODO
+Based on the use cases described above,
+we define the semantics for assign-once properties as follows.
+
+An assign-once property is declared without an initializer
+and starts in a special uninitialized state.
+Accessing the property before and after initialization behaves differently:
+* **Write**: if the property is uninitialized, it is initialized with the given value.
+  Otherwise, an exception is thrown indicating a reassignment attempt.
+* **Read**: if the property is initialized, the assigned value is returned.
+  Otherwise, an exception is thrown indicating an attempt to read an uninitialized property.
+
+That is, once initialized, the value is retained permanently.
+The property is thus stable: every successful read returns the same value.
+
+Adherence to assign-once semantics is enforced at runtime.
+There is no requirement for the compiler to ensure at compile time
+that the property is initialized before the first read and never reassigned.
+
+A thread-safe implementation additionally guarantees:
+* For any number of potentially concurrent assignments,
+  exactly one succeeds and all others throw an exception.
+* All reads after a successful assignment observe the same value.
 
 # Design
 
