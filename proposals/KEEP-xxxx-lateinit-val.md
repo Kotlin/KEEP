@@ -6,12 +6,25 @@
 * **Discussion**: [KEEP-0452](https://github.com/Kotlin/KEEP/discussions/471)
 * **Status**: Public Discussion
 
-## Abstract
+# Abstract
 
-TODO
+We propose to introduce `lateinit val` declarations to Kotlin
+to provide first-class support for properties
+with delayed initialization and assign-once semantics.
 
-## Table of Contents
+`lateinit val` bridges the gap between `lateinit var` and `val`:
+it allows late initialization while preventing reassignment
+and enabling smartcasts.
+It is compiled to delegation to the thread-safe `AssignOnce` delegate
+provided by the standard library.
 
+The `AssignOnce` delegate can also be used directly
+for cases where customization (e.g., thread-safety mode) is desired,
+though as a regular delegated property it does not benefit from smartcasts.
+
+# Table of Contents
+
+<!-- TOC -->
 * [Abstract](#abstract)
 * [Motivation](#motivation)
 * [Goals](#goals)
@@ -26,8 +39,9 @@ TODO
   * [Serialization](#serialization)
   * [Reflection](#reflection)
 * [Migration from `lateinit var`](#migration-from-lateinit-var)
+<!-- TOC -->
 
-## Motivation
+# Motivation
 
 TODO
 
@@ -35,42 +49,42 @@ TODO
 
 TODO
 
-## Intended Semantics
+# Intended Semantics
 
 TODO
 
-## Design
+# Design
 
-### `AssignOnce` Delegate
-
-TODO
-
-### `lateinit val` Declaration
+## `AssignOnce` Delegate
 
 TODO
 
-#### Compilation Strategy
+## `lateinit val` Declaration
 
 TODO
 
-## Interaction with Other Features
-
-### Annotations
+### Compilation Strategy
 
 TODO
 
-### `isInitialized`
+# Interaction with Other Features
+
+## Annotations
 
 TODO
 
-### Serialization
+## `isInitialized`
 
 TODO
 
-### Reflection
+## Serialization
 
 TODO
 
-## Migration from `lateinit var`
+## Reflection
+
+TODO
+
+# Migration from `lateinit var`
 
 TODO
