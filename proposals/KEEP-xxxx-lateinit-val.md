@@ -288,7 +288,41 @@ when used on `lateinit val` or `AssignOnce`-delegated properties.
 
 ## `isInitialized`
 
-TODO
+Kotlin `lateinit var` properties provide an `isInitialized` check
+to query initialization status, implemented as a compiler intrinsic.
+However, it is used in only about 5% of `lateinit var` declarations
+according to our open-source code survey.
+
+For assign-once properties, building logic around initialization status is discouraged.
+If such logic is needed, a nullable `var` or `lateinit var` may be a better fit.
+For this reason, we propose to omit `isInitialized` for assign-once properties in the beginning.
+
+If it is introduced later, explicitly delegated properties can support it
+through the delegate access feature
+([KEEP-0450](https://github.com/Kotlin/KEEP/blob/main/proposals/KEEP-0450-typed-delegate-access.md)):
+
+```kotlin
+// In the standard library:
+val <T> KDelegatedProperty0<T, AssignOnce<T>>.isInitialized: Boolean
+    get() = getDelegate().isInitialized()
+
+class Example {
+    var service: Service by assignOnce()
+
+    fun check(): Boolean = ::service.isInitialized
+}
+```
+
+For `lateinit val`, the check would need to be provided through an intrinsic,
+similar to `lateinit var`:
+
+```kotlin
+class Example {
+    lateinit val service: Service
+
+    fun check(): Boolean = ::service.isInitialized
+}
+```
 
 ## Serialization
 
