@@ -199,9 +199,11 @@ class Example {
 }
 ```
 
+In contrast with `val`, `lateinit val` properties can be assigned
+outside of constructors and `init` blocks.
 Unlike properties explicitly delegated to `AssignOnce`,
-`lateinit val` properties **support smartcasts**.
-Since the value is stable after initialization,
+they **support smartcasts**:
+since the value is stable after initialization,
 the compiler treats them similarly to `val` properties.
 
 Together with existing declarations,
