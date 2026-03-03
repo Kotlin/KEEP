@@ -575,9 +575,9 @@ Power-Assert with other compiler-plugins.
 
 # Use Cases
 
-We're excited to share that everything you've read up to this point is ready for experimentation in Kotlin 2.4.0-Beta1!
-Some things may change before the official release, but if you want to try this new version of Power-Assert, all you
-need to do is add the new runtime library depenedency to your project.
+We're excited to share that everything you've read up to this point is ready for experimentation in the upcoming Kotlin
+2.4.0-Beta1 release! Some things may change before the final 2.4.0 release, but if you want to try this new version of
+Power-Assert today, all you need to do is add the new runtime library dependency to your project.
 
 ```kotlin
 plugins {
