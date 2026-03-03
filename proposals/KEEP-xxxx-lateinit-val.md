@@ -34,6 +34,7 @@ though as a regular delegated property it does not benefit from smartcasts.
   * [`lateinit val` Declaration](#lateinit-val-declaration)
     * [Compilation Strategy](#compilation-strategy)
 * [Interaction with Other Features](#interaction-with-other-features)
+  * [Inheritance](#inheritance)
   * [Annotations](#annotations)
   * [`isInitialized`](#isinitialized)
   * [Serialization](#serialization)
@@ -266,6 +267,24 @@ For properties explicitly delegated to `AssignOnce`,
 interaction with other features follows the standard rules for delegated properties.
 `lateinit val`, however, does not look like a delegated property despite being compiled as one,
 which leads to some non-obvious behaviors discussed below.
+
+## Inheritance
+
+For override matching purposes, `lateinit val` is similar to `val`,
+with an exception that it can't be overridden by a `val`, because
+`lateinit val` has a generated setter, while `val` doesn't:
+
+| declaration \ can be overridden by  | `val` | `lateinit val` | `var` | `lateinit var` |
+|:-----------------------------------:|:-----:|:--------------:|:-----:|:--------------:|
+|     **abstract or open `val`**      |  yes  |      yes       |  yes  |      yes       |
+|       **open `lateinit val`**       |  no   |      yes       |  yes  |      yes       |
+|     **abstract or open `var`**      |  no   |       no       |  yes  |      yes       |
+|       **open `lateinit var`**       |  no   |       no       |  yes  |      yes       |
+
+Just as with `lateinit var`, abstract `lateinit val` is not supported.
+While `open lateinit val` is technically allowed, it is discouraged: 
+the late initialization semantics is an implementation detail
+that subclasses should not need to inherit or rely on.
 
 ## Annotations
 
