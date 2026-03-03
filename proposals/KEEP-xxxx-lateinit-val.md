@@ -3,8 +3,9 @@
 * **Type**: Design Proposal
 * **Author**: Mikhail Vorobev
 * **Contributors**: Marat Akhin, Faiz Ilham Muhammad
-* **Discussion**: [KEEP-0452](https://github.com/Kotlin/KEEP/discussions/471)
-* **Status**: Public Discussion
+* **Status**: Internal Review
+* **Supersedes**: [KEEP-0452](https://github.com/Kotlin/KEEP/blob/main/proposals/KEEP-0452-assign-once.md)
+  ([Public Discussion](https://github.com/Kotlin/KEEP/discussions/471))
 
 # Abstract
 
