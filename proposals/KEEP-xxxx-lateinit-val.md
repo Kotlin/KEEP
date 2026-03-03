@@ -360,3 +360,5 @@ Although `lateinit val` has a generated setter,
 exposing it as `KMutableProperty` would contradict the assign-once semantics.
 This may be optionally relaxed in the future
 if reflective writes prove necessary in practice.
+Note that the generated setter remains accessible through Java reflection, 
+which is sufficient for dependency injection use cases.
