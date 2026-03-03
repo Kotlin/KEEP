@@ -45,17 +45,19 @@ represent call-site information, and a way to access call-site information from 
   * [Function Declarations](#function-declarations)
   * [Function Calls](#function-calls)
   * [String Message Calls](#string-message-calls)
-* [Use Cases](#use-cases)
-  * [JUnit Integration](#junit-integration)
-  * [Soft Assertions](#soft-assertions)
 * [Advanced](#advanced)
   * [Runtime Dependency](#runtime-dependency)
   * [Backwards Compatibility](#backwards-compatibility)
   * [Security](#security)
   * [Interactions](#interactions)
+* [Use Cases](#use-cases)
+  * [IntelliJ Integration](#intellij-integration)
+  * [Soft/Fluent Assertions](#softfluent-assertions)
+  * [Custom Diagrams](#custom-diagrams)
 * [Feedback](#feedback)
-  * ["Why is there only one interesting `Expression` subclass?"](#why-is-there-only-one-interesting-expression-subclass)
+  * ["Why are there so few interesting `Expression` subclass?"](#why-are-there-so-few-interesting-expression-subclass)
   * ["Why the `Explanation` base class?"](#why-the-explanation-base-class)
+  * ["Can you add XYZ to `Explanation`/`Expression`?"](#can-you-add-xyz-to-explanationexpression)
   * ["Why an expression List and not a tree?"](#why-an-expression-list-and-not-a-tree)
 <!-- TOC -->
 
@@ -308,8 +310,12 @@ public abstract class Expression internal constructor(
 )
 ```
 
-There are currently only two implementations of `Expression`: `ValueExpression` and `EqualityExpression`. For more
-information on these classes, see their [documentation in the source code]().
+There are currently only three implementations of `Expression`:
+  * `ValueExpression` - Holds a value calculated at runtime.
+  * `ConstantExpression` - Holds a constant value calculated and excluded by default from diagrams. 
+  * `EqualityExpression` - Holds the result of an equality check and includes the left-hand and right-hand side values.
+ 
+For more information on these classes, see their [documentation in the source code]().
 
 [//]: # (TODO include link to runtime source code)
 
@@ -519,23 +525,98 @@ assert(tmp3, { CallExplanation(...).toDefaultMessage() })
 This means that existing users of Power-Assert will see an improvement to diagram rendering even if the called function
 is not annotated with `@PowerAssert`.
 
+# Advanced
+
+## Runtime Dependency
+
+When the Gradle plugin for Power-Assert is applied to a project, the Power-Assert runtime library will automatically be
+added as an `implementation` dependency to all source sets that Power-Assert is enabled for. Adding of the runtime
+library dependency can be disabled by setting the Gradle `powerAssert.addRuntimeDependency` property to `false`. This
+would allow libraries to add the runtime library as a `compileOnly` dependency so it is not included transitively. 
+
+[//]: # (TODO finalize new Gradle plugin configurations)
+
+## Backwards Compatibility
+
+As a whole, the API for the Power-Assert runtime library is considered unstable. However, in most cases, classes are
+considered stable for use but unstable for implementation. We'll be doing our best to keep the API stable, but as we
+start to support more use cases, things may need to change in incompatible ways. We expect most new use cases will be
+supported through additional subclasses of `Explanation` and `Expression`.
+
+## Security
+
+Given the nature of the Power-Assert transformation, it is possible for a library to gain access to source code and
+expressions not explicitly provided by the user. This provides a potential security risk that must be carefully
+considered by users of the Power-Assert compiler-plugin. However, given that Power-Assert is a compiler-plugin that must
+be explicitly added by the user, and the fact that it is not enabled in `main` source sets by default, this sufficiently
+reducese the risk of accidental exposure.
+
+As a user of Power-Assert, it is important to be aware of all call sites that are transformed by the compiler-plugin.
+And when a new version of a library is available, consider how this might change what call sites are transformed.
+We're working on ways to make this transformation more obvious at the call site, but we unfortuantely have nothing to
+share yet.
+
+## Interactions
+
+The `@PowerAssert` annotation may be applied to all sorts of functions. This means that the compiler-plugin must be able
+to interact correctly with existing Kotlin features, including default arguments, `inline`, `abstract`/`open`,
+`expect`/`actual`, etc.  
+
+Some combinations work without any special configuration: like default arguments, `inline`, or `suspend`. In the case of
+`abstract`/`open` functions, the `@PowerAssert` annotation must be applied to the base function declaration of a
+hierarchy and may be excluded from inheriting functions. For `expect`/`actual` functions, the annotation must be present
+on both functions.
+
+When combining Power-Assert with other compiler-plugins, behavior is not well-defined. For example, a `@Composable` and
+`@PowerAssert` function is possible if the compiler-plugins run in the same order at both the function delcaration and
+the function call-site. However, such a function does not make logical sense, as it violates many `@Composable`
+guarantees by providing access to non-parameter expressions. As such, at this time, it is not recommended to combine
+Power-Assert with other compiler-plugins.
+
 # Use Cases
 
-[//]: # (TODO provide a description for this section?)
+We're excited to share that everything you've read up to this point is ready for experimentation in Kotlin 2.4.0-Beta1!
+Some things may change before the official release, but if you want to try this new version of Power-Assert, all you
+need to do is add the new runtime library depenedency to your project.
 
-## JUnit Integration
+```kotlin
+plugins {
+    kotlin("jvm") version "2.4.0-Beta1"
+    kotlin("plugins.power-assert") version "2.4.0-Beta1"
+}
 
-[//]: # (TODO provide an example description)
-[//]: # (TODO document example)
+dependencies {
+    implementation(kotlin("power-assert-runtime"))
+}
+
+powerAssert {
+    defaultSourceSets = PowerAssertSourceSets.ALL
+}
+```
+
+Adding the above to your `build.gradle.kts` file will enable the Power-Assert compiler-plugin for all source sets. The
+important part is the addition of the runtime library, you to experiment with the new `PowerAssert` annotation and
+`CallExplanation`. The presence of the runtime library will also enable the `CallExplanation(...).toDefaultMessage()`
+style messages for existing function calls, so you can experience the those improved diagrams.
+
+Here are some examples of what you could build!
+
+## IntelliJ Integration
+
+Tired of not getting great IntelliJ integration with Power-Assert? In this example, we can use the presence of failed
+`EqualityExpression`s to construct the right set assertion errors so "click to see difference" is shown in IntelliJ!
 
 ```kotlin
 @PowerAssert
 fun powerAssert(condition: Boolean, @PowerAssert.Ignore message: String? = null) {
-    contract { returns() implies condition }
+    contract { returns() implies condition } // Support smart-casts from the condition!
+
     if (!condition) {
+        // If Power-Assert is not applied, fallback to using a simple message.
         val explanation = PowerAssert.explanation
             ?: throw AssertionFailedError(message)
 
+        // Find all equality expressions that failed. 
         val equalityErrors = buildList {
             for (expression in explanation.expressions) {
                 if (expression is EqualityExpression && expression.value == false) {
@@ -544,6 +625,7 @@ fun powerAssert(condition: Boolean, @PowerAssert.Ignore message: String? = null)
             }
         }
 
+        // Provide an OpenTest4J-compatible error message. 
         val failureMessage = buildString {
             // OpenTest4J likes to trim messages. Use zero-width space (U+200B) characters to preserve newlines.
             appendLine(message?.takeIf { it.isNotBlank() } ?: "\u200B")
@@ -551,6 +633,7 @@ fun powerAssert(condition: Boolean, @PowerAssert.Ignore message: String? = null)
             append("\u200B")
         }
 
+        // Based on the number of failed equality expressions, throw the appropriate error.
         throw when (equalityErrors.size) {
             0 -> AssertionFailedError(failureMessage)
 
@@ -579,13 +662,14 @@ private class EqualityError(
 }
 ```
 
-## Soft Assertions
+## Soft/Fluent Assertions
 
-[//]: # (TODO provide an example description)
-[//]: # (TODO document example)
+Prefer a fluent or soft-assert style of writing assertions? Power-Assert can help you achieve this as well! By combining
+multiple `CallExplanation`s into a single explanation, we can write a DSL which provides information on both the subject
+and the asserted qualities.
 
 ```kotlin
-@PowerAssert.Ignore
+@PowerAssert.Ignore // Always exclude the assertion scope from Power-Assert explanations. 
 interface AssertScope<T> {
     val subject: T
     fun collectFailure(message: String?, explanation: Explanation?)
@@ -594,43 +678,49 @@ interface AssertScope<T> {
 @PowerAssert
 fun <T> assertThat(subject: T, block: AssertScope<T>.() -> Unit) {
     val primary = PowerAssert.explanation ?: error("power-assert compiler-plugin is required")
+    
     val failures = mutableListOf<Pair<String?, List<Expression>>>()
-    object : AssertScope<T> {
+    val scope = object : AssertScope<T> {
         override val subject: T get() = subject
         override fun collectFailure(message: String?, explanation: Explanation?) {
+            // Adjust the offset of the expressions to be relative to the primary explanation.
             val adjusted = explanation?.expressions?.map { it.copy(explanation.offset - primary.offset) }.orEmpty()
             failures.add(message to adjusted)
         }
-    }.block()
+    }
 
+    scope.block()
     if (failures.isNotEmpty()) {
-        val expressions = failures
-            .flatMap { it.second }
-            // attempt to reduce duplication of similar expressions.
+        val expressions = failures.flatMap { it.second }
+            // Attempt to reduce duplication of similar expressions by comparing source code and value.
             .distinctBy { Pair(primary.source.substring(it.startOffset, it.endOffset), it.value) }
+
+        // Create a fake argument to combine failures with primary explanation.
         val synthetic = Argument(-1, -1, Argument.Kind.VALUE, expressions)
         val combined = CallExplanation(primary.offset, primary.source, primary.arguments + synthetic)
-        val message = buildString {
+
+        // Craft a message that includes all failure messages and diagram of entire assertion scope.
+        throw AssertionError(buildString {
             appendLine("Assertion failed:")
             for ((msg, _) in failures) {
                 if (msg != null) appendLine(" * $msg")
             }
             appendLine(combined.toDefaultMessage())
-        }
-        throw AssertionError(message)
+        })
     }
 }
 
 @PowerAssert
 fun AssertScope<String>.hasLength(length: Int) {
-    if (subject?.length != length) {
+    // Adding custom assertions is as easy as writing the condition and failure message!
+    if (subject.length != length) {
         collectFailure("String `${subject}` does not have length `${length}`.", PowerAssert.explanation)
     }
 }
 
 @PowerAssert
 fun AssertScope<String>.startsWith(prefix: String, ignoreCase: Boolean = false) {
-    if (subject?.startsWith(prefix, ignoreCase) != true) {
+    if (!subject.startsWith(prefix, ignoreCase)) {
         collectFailure(
             "String `${subject}` does not start with `${prefix}`${if (ignoreCase) " (ignoring case)" else ""}.",
             PowerAssert.explanation,
@@ -639,56 +729,64 @@ fun AssertScope<String>.startsWith(prefix: String, ignoreCase: Boolean = false) 
 }
 ```
 
-# Advanced
+## Custom Diagrams
 
-## Runtime Dependency
+Why stop at assertions? Power-Assert can be used to provide expression information for all sorts of use cases. With a
+little bit of creativity, we can create a custom Power-Assert based pretty-print!
 
-[//]: # (
-TODO details about runtime dependency in Gradle
- * compileOnly for non-call-site transformed source sets?
- * implementation for call-site transformed source sets?
-)
+```kotlin
+@PowerAssert
+fun pprintln(message: String) {
+    val explanation = PowerAssert.explanation
+    if (explanation == null) {
+        println(message)
+        return
+    }
 
-## Backwards Compatibility
-
-[//]: # (
-TODO add a backwards compatibility section
- * what gaurentees are provided today?
- * be explicit about what might change in the future?
-)
-
-## Security
-
-[//]: # (
-TODO add a security section
-)
-
-## Interactions
-
-[//]: # (
-TODO is there an interaction section
- * Compose
- * inline
- * default arguments
- * @JvmName
- * open and abstract
- * expect and actual
-)
+    println(buildString {
+        val source = explanation.source
+        var start = 0
+        for (expression in explanation.expressions) {
+            val prefix = source.getOrNull(expression.startOffset - 1)
+            val suffix = source.getOrNull(expression.endOffset)
+            if (prefix == '$') {
+                append(source.substring(start, expression.startOffset))
+                append("{") // Add surrounding braces.
+                append(source.substring(expression.startOffset, expression.endOffset))
+                append(" = ")
+                append(expression.value)
+                append("}")
+                start = expression.endOffset
+            } else if (prefix == '{' && suffix == '}') {
+                append(source.substring(start, expression.startOffset))
+                append(source.substring(expression.startOffset, expression.endOffset))
+                append(" = ")
+                append(expression.value)
+                start = expression.endOffset
+            }
+        }
+        append(source.substring(start))
+    }.trimIndent())
+}
+```
 
 # Feedback
 
 We look forward to your feedback!
 
-There are a few expected questions, so here are some additional details in those areas to help guide your feedback. 
+There are a few expected questions, so here are some additional details in those areas to help guide your feedback.
 
-## "Why is there only one interesting `Expression` subclass?"
+## "Why are there so few interesting `Expression` subclass?"
+
+The `ConstantExpression` class exists so that a `CallExplanation` can always be generated for a function call, yet
+values which are present in the source code can be excluded from the default Power-Assert diagram.
 
 The `EqualityExpression` class was specifically designed with IntelliJ "click to see difference" functionality in mind.
 This expression can be used to provide an expected and actual value for a variety of exceptions that IntelliJ supports.
 
 In the future, more `Expression` subclasses may be added to cover more use cases. For example, a
 `StringTemplateExpression` could be introduced to help describe String concatenation and each of the arguments provided.
-If you have additional use case ideas that do not violate a non-goals, we would love to hear them!
+If you have additional use case ideas that do not violate a non-goal, we would love to hear them!
 
 ## "Why the `Explanation` base class?"
 
@@ -708,6 +806,12 @@ There are a number of concerns with this idea:
 We will continue to explore the potential of this idea.
 
 And again, if you have additional use case ideas that do not violate a non-goals, we would love to hear them!
+
+## "Can you add XYZ to `Explanation`/`Expression`?"
+
+We'd love to hear your ideas! But the scope of additional features for Kotlin 2.4.0 is extremely limited. However, we
+want to hear your feedback so we can adjust the current API to better support your use cases in the future. While we may
+not be able to add your idea now, we could adjust the API to better support adding it in the future!
 
 ## "Why an expression List and not a tree?"
 
