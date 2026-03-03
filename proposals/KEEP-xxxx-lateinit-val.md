@@ -7,6 +7,11 @@
 * **Supersedes**: [KEEP-0452](https://github.com/Kotlin/KEEP/blob/main/proposals/KEEP-0452-assign-once.md)
   ([Public Discussion](https://github.com/Kotlin/KEEP/discussions/471))
 
+> **Note**: This proposal is a focused follow-up to [KEEP-0452](https://github.com/Kotlin/KEEP/blob/main/proposals/KEEP-0452-assign-once.md) 
+> and its [community discussion](https://github.com/Kotlin/KEEP/discussions/471), 
+> capturing the resulting design decision. 
+> Readers are encouraged to consult those for a broader context.
+
 # Abstract
 
 We propose to introduce `lateinit val` declarations to Kotlin
