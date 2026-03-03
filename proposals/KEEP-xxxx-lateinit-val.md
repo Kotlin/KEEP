@@ -201,9 +201,9 @@ class Example {
 ```
 
 `lateinit val` differs from related declarations in the following ways:
-* They can be late initialized in any scope, unlike `val` class properties which restrict deferred initialization to `init` blocks.
-* They support **smartcasts**, unlike properties explicitly delegated to `AssignOnce`: since the value is stable after initialization, the compiler treats them similarly to `val` properties.
-* They have no restrictions on the property type: nullable and primitive types are allowed, in contrast with `lateinit var`.
+* It can be late initialized in any scope, unlike `val` class properties which restrict deferred initialization to `init` blocks.
+* It supports **smartcasts**, unlike properties explicitly delegated to `AssignOnce`: since the value is stable after initialization, the compiler treats it similarly to `val` properties.
+* It has no restrictions on the property type: nullable and primitive types are allowed, in contrast with `lateinit var`.
 
 Together with existing declarations,
 `lateinit val` contributes to a consistent property model
@@ -238,6 +238,7 @@ class Example {
 Without thread-safety, concurrent access could silently violate
 the stability contract that smartcasts rely on,
 leading to subtle, hard-to-debug issues.
+
 Thread-safety imposes a synchronization overhead on every access.
 In practice, we expect this overhead to be small:
 an efficient implementation based on compare-and-set primitives is feasible,
@@ -270,9 +271,9 @@ which leads to some non-obvious behaviors discussed below.
 
 ## Inheritance
 
-For override matching purposes, `lateinit val` is similar to `val`,
-with an exception that it can't be overridden by a `val`, because
-`lateinit val` has a generated setter, while `val` doesn't:
+For override matching purposes, `lateinit val` is treated as `val`.
+The one exception is that an `open lateinit val` cannot be overridden by a plain `val`,
+because `lateinit val` has a generated setter that `val` lacks:
 
 | declaration \ can be overridden by  | `val` | `lateinit val` | `var` | `lateinit var` |
 |:-----------------------------------:|:-----:|:--------------:|:-----:|:--------------:|
