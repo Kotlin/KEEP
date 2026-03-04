@@ -4,6 +4,7 @@
 * **Author**: Mikhail Vorobev
 * **Contributors**: Marat Akhin, Faiz Ilham Muhammad
 * **Status**: Public Discussion
+* **Discussion**: [KEEP-0455](https://github.com/Kotlin/KEEP/discussions/475)
 * **Supersedes**: [KEEP-0452](https://github.com/Kotlin/KEEP/blob/main/proposals/KEEP-0452-assign-once.md)
   ([Public Discussion](https://github.com/Kotlin/KEEP/discussions/471))
 
