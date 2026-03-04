@@ -321,21 +321,17 @@ For more information on these classes, see their [documentation in the source co
 
 ## Functions
 
-A few top-level functions will be included as well, to provide Power-Assert style rendering of an `Explanation`. These
-functions will be used to replace the current compile-time generated `String` for overload style Power-Assert
+A top-level function will be included as well, to provide Power-Assert style rendering of an `Explanation`. This
+function will be used to replace the current compile-time generated `String` for overload style Power-Assert
 transformation.
 
 ```kotlin
 public fun Explanation.toDefaultMessage(
     render: (Expression) -> String? /* = <default> */,
-): String = toDiagram(render)
-
-public fun Explanation.toDiagram(
-    render: (Expression) -> String? /* = <default> */,
 ): String
 ```
 
-While any project can use these functions to generate a Power-Assert style message for exceptions, it is recommended
+While any project can use this function to generate a Power-Assert style message for exceptions, it is recommended
 that assertion libraries implement their own rendering logic. This avoids needing to wait for the compiler-plugin to be
 updated for improvements and will also help match any existing reporting style.
 
