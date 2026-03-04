@@ -7,10 +7,28 @@
 * **Supersedes**: [KEEP-0452](https://github.com/Kotlin/KEEP/blob/main/proposals/KEEP-0452-assign-once.md)
   ([Public Discussion](https://github.com/Kotlin/KEEP/discussions/471))
 
-> **Note**: This proposal is a focused follow-up to [KEEP-0452](https://github.com/Kotlin/KEEP/blob/main/proposals/KEEP-0452-assign-once.md) 
+> ## Note
+> 
+> This proposal is a focused follow-up to [KEEP-0452](https://github.com/Kotlin/KEEP/blob/main/proposals/KEEP-0452-assign-once.md) 
 > and its [community discussion](https://github.com/Kotlin/KEEP/discussions/471), 
-> capturing the resulting design decision. 
-> Readers are encouraged to consult those for a broader context.
+> capturing the resulting design decisions. 
+> Readers are encouraged to consult them for additional context.
+> Below is a summary of what changed since KEEP-0452.
+> 
+> ### Decisions Made
+>
+> - Both `AssignOnce` delegate and `lateinit val` declaration are introduced to Kotlin.
+> - `lateinit val` is compiled to delegation against a thread-safe `AssignOnce` implementation.
+>   - As a language construct, it is treated as stable by the compiler and supports smartcasts.
+> - `AssignOnce` is an interface provided by the standard library.
+>   - It is marked with `@SubclassOptInRequired`, signaling that extending it requires care to preserve the stability contract.
+>   - Properties explicitly delegated to `AssignOnce` are normal delegated properties and do not support smartcasts.
+>
+> ### New in This Proposal
+>
+> - [Inheritance](#inheritance): override matching rules for `lateinit val`.
+> - [Reflection](#reflection): behavior of `lateinit val` in the reflection API.
+
 
 # Abstract
 
