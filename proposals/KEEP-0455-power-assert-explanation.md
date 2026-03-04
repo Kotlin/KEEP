@@ -421,17 +421,19 @@ CallExplanation(
                     displayOffset = 54,
                     value = tmp2,
                 ),
-                ValueExpression(
+                ConstantExpression(
                     startOffset = 62,
                     endOffset = 69,
                     displayOffset = 62,
                     value = tmp3,
                 ),
-                ValueExpression(
+                EqualityExpression(
                     startOffset = 48,
                     endOffset = 69,
                     displayOffset = 59,
                     value = tmp4,
+                    lhs = tmp2,
+                    rhs = tmp3,
                 ),
             ),
         ),
@@ -504,8 +506,9 @@ Will result in:
 ```kotlin
 val tmp1 = mascot
 val tmp2 = tmp1.name
-val tmp3 = tmp2 == "Kodee"
-`powerAssert$powerassert`(tmp3, { CallExplanation(...) })
+val tmp3 = "Kodee"
+val tmp4 = tmp2 == tmp3
+`powerAssert$powerassert`(tmp4, { CallExplanation(...) })
 ```
 
 ## String Message Calls
@@ -518,7 +521,8 @@ the following.
 ```kotlin
 val tmp1 = mascot
 val tmp2 = tmp1.name
-val tmp3 = tmp2 == "Kodee"
+val tmp3 = "Kodee"
+val tmp4 = tmp2 == tmp3
 assert(tmp3, { CallExplanation(...).toDefaultMessage() })
 ```
 
@@ -542,6 +546,10 @@ As a whole, the API for the Power-Assert runtime library is considered unstable.
 considered stable for use but unstable for implementation. We'll be doing our best to keep the API stable, but as we
 start to support more use cases, things may need to change in incompatible ways. We expect most new use cases will be
 supported through additional subclasses of `Explanation` and `Expression`.
+
+Offset values within the `Explanation` and `Expression` classes are not guaranteed to be stable across different
+versions of the compiler-plugin. While the semantics of the values will not change, we may make adjustments to the
+values at any time to render better Power-Assert style diagrams.
 
 ## Security
 
@@ -570,8 +578,9 @@ on both functions.
 When combining Power-Assert with other compiler-plugins, behavior is not well-defined. For example, a `@Composable` and
 `@PowerAssert` function is possible if the compiler-plugins run in the same order at both the function delcaration and
 the function call-site. However, such a function does not make logical sense, as it violates many `@Composable`
-guarantees by providing access to non-parameter expressions. As such, at this time, it is not recommended to combine
-Power-Assert with other compiler-plugins.
+guarantees by providing access to non-parameter expressions. As such, at this time, it is strongly recommended to not
+combine Power-Assert with other compiler-plugins without sufficiently understanding the behavior of both
+compiler-plugins.
 
 # Use Cases
 
@@ -586,18 +595,20 @@ plugins {
 }
 
 dependencies {
+    // (1) For now, the Gradle plugin does not automatically add the runtime library.
     implementation(kotlin("power-assert-runtime"))
 }
 
 powerAssert {
+    // (2) New Gradle configuration to include all source sets by default.
     defaultSourceSets = PowerAssertSourceSets.ALL
 }
 ```
 
 Adding the above to your `build.gradle.kts` file will enable the Power-Assert compiler-plugin for all source sets. The
-important part is the addition of the runtime library, you to experiment with the new `PowerAssert` annotation and
+important part is the addition of the runtime library so you can experiment with the new `PowerAssert` annotation and
 `CallExplanation`. The presence of the runtime library will also enable the `CallExplanation(...).toDefaultMessage()`
-style messages for existing function calls, so you can experience the those improved diagrams.
+style messages for existing function calls, so you can experience the improved diagrams.
 
 Here are some examples of what you could build!
 
@@ -779,7 +790,7 @@ There are a few expected questions, so here are some additional details in those
 ## "Why are there so few interesting `Expression` subclass?"
 
 The `ConstantExpression` class exists so that a `CallExplanation` can always be generated for a function call, yet
-values which are present in the source code can be excluded from the default Power-Assert diagram.
+values which are explicit in the source code can be excluded from the default Power-Assert diagram.
 
 The `EqualityExpression` class was specifically designed with IntelliJ "click to see difference" functionality in mind.
 This expression can be used to provide an expected and actual value for a variety of exceptions that IntelliJ supports.
