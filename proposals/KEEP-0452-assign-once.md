@@ -4,7 +4,7 @@
 * **Author**: Mikhail Vorobev
 * **Contributors**: Marat Akhin, Faiz Ilham Muhammad
 * **Discussion**: [KEEP-0452](https://github.com/Kotlin/KEEP/discussions/471)
-* **Status**: Public Discussion
+* **Status**: Superseded by [KEEP-0455](https://github.com/Kotlin/KEEP/blob/main/proposals/KEEP-0455-lateinit-val.md)
 
 # Abstract
 
