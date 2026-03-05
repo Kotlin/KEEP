@@ -339,8 +339,8 @@ updated for improvements and will also help match any existing reporting style.
 
 There are a lot of "offsets" in the Power-Assert runtime library classes, and it may not be clear what they mean.
 * `Explanation.offset` is the character offset of `Explanation.source` within the containing file.
-* `Expression.startOffset`, `Expression.endOffset`, and `Expression.displayOffset` are character offsets
-**within the explanation** for the expression source.
+* `Expression.startOffset` (inclusive), `Expression.endOffset` (exclusive), and `Expression.displayOffset` are character
+offsets **within the explanation** for the expression source.
 
 Thus, given an explanation and an expression, a user of these classes can get the source for a particular expression by
 taking a substring of `source` starting at `startOffset` and ending at `endOffset`. The `displayOffset` will always be
@@ -376,65 +376,16 @@ Offsets for the four expressions contained within the explanation will be as fol
 
 ```text
                           powerAssert(
-        s      d  e - start, display, and end offsets for `mastcot.name`
-        |      |  |
-        |      |  |    s,d   e - start, display, and end offsets for `"Kodee"`
-        |      |  |    |     |
+        s      d   e - start, display, and end offsets for `mastcot.name`
+        |      |   |
+        |      |   |   s,d    e - start, display, and end offsets for `"Kodee"`
+        |      |   |   |      |
         mascot.name == "Kodee"
-        |    |      |        |
-        s    |      d        e - start, display, and end offsets for `mascot.name == "Kodee"`
-        |    |
-        s,d  e - start, display, and end offsets for `mascot`
+        |     |     |         |
+        s     |     d         e - start, display, and end offsets for `mascot.name == "Kodee"`
+        |     |
+        s,d   e - start, display, and end offsets for `mascot`
     )
-```
-
-Putting everything together for the above example - assuming the sample is the complete file - a `CallExplanation` like
-the following will be generated:
-
-```kotlin
-val tmp1 = mascot
-val tmp2 = tmp1.name
-val tmp3 = "Kodee"
-val tmp4 = tmp2 == tmp3
-CallExplanation(
-    offset = 13,
-    source = "                          powerAssert(\n        mascot.name == \"Kodee\"\n    )",
-    arguments = listOf(
-        Argument(
-            startOffset = 48,
-            endOffset = 69,
-            kind = Kind.VALUE,
-            expressions = listOf(
-                ValueExpression(
-                    startOffset = 47,
-                    endOffset = 53,
-                    displayOffset = 47,
-                    value = tmp1,
-                ),
-                ValueExpression(
-                    startOffset = 47,
-                    endOffset = 58,
-                    displayOffset = 54,
-                    value = tmp2,
-                ),
-                ConstantExpression(
-                    startOffset = 62,
-                    endOffset = 69,
-                    displayOffset = 62,
-                    value = tmp3,
-                ),
-                EqualityExpression(
-                    startOffset = 48,
-                    endOffset = 69,
-                    displayOffset = 59,
-                    value = tmp4,
-                    lhs = tmp2,
-                    rhs = tmp3,
-                ),
-            ),
-        ),
-    ),
-)
 ```
 
 # Transformations
@@ -530,11 +481,31 @@ is not annotated with `@PowerAssert`.
 ## Runtime Dependency
 
 When the Gradle plugin for Power-Assert is applied to a project, the Power-Assert runtime library will automatically be
-added as an `implementation` dependency to all source sets that Power-Assert is enabled for. Adding of the runtime
-library dependency can be disabled by setting the Gradle `powerAssert.addRuntimeDependency` property to `false`. This
-would allow libraries to add the runtime library as a `compileOnly` dependency so it is not included transitively. 
+added as an `implementation` dependency to all source sets that Power-Assert is enabled for.
+
+If a library wants to support Power-Assert but doesn't want to include the runtime library transitively, automatic
+adding of the runtime library dependency can be disabled by setting the Gradle `powerAssert.addRuntimeDependency`
+property to `false`. This would allow libraries to add the runtime library as a `compileOnly` dependency so it is not
+included transitively.
 
 [//]: # (TODO finalize new Gradle plugin configurations)
+
+```kotlin
+plugins {
+    kotlin("jvm") version "2.4.0-Beta1"
+    kotlin("plugins.power-assert") version "2.4.0-Beta1"
+}
+
+dependencies {
+    // (1) Explicitly add the runtime dependency as a compile-only dependency.
+    compileOnly(kotlin("power-assert-runtime"))
+}
+
+powerAssert {
+    // (2) Don't automatically add the runtime dependency.
+    addRuntimeDependency = false
+}
+```
 
 ## Backwards Compatibility
 
@@ -574,9 +545,8 @@ on both functions.
 When combining Power-Assert with other compiler-plugins, behavior is not well-defined. For example, a `@Composable` and
 `@PowerAssert` function is possible if the compiler-plugins run in the same order at both the function delcaration and
 the function call-site. However, such a function does not make logical sense, as it violates many `@Composable`
-guarantees by providing access to non-parameter expressions. As such, at this time, it is strongly recommended to not
-combine Power-Assert with other compiler-plugins without sufficiently understanding the behavior of both
-compiler-plugins.
+guarantees by providing access to non-parameter expressions. As such, at this time, it is strongly discouraged to have
+both `@PowerAssert` and `@Composable` on the same function. 
 
 # Use Cases
 
@@ -606,12 +576,20 @@ important part is the addition of the runtime library so you can experiment with
 `CallExplanation`. The presence of the runtime library will also enable the `CallExplanation(...).toDefaultMessage()`
 style messages for existing function calls, so you can experience the improved diagrams.
 
+If you want to experiment with Power-Assert before 2.4.0-Beta1 is released, check out this [Github project](), which is
+built against a development version of Kotlin.
+
+[//]: # (TODO add link to github project with bootstrap builds)
+
 Here are some examples of what you could build!
 
 ## IntelliJ Integration
 
 Tired of not getting great IntelliJ integration with Power-Assert? In this example, we can use the presence of failed
 `EqualityExpression`s to construct the right set assertion errors so "click to see difference" is shown in IntelliJ!
+
+<details>
+<summary>Definition of `powerAssert` function.</summary>
 
 ```kotlin
 @PowerAssert
@@ -669,15 +647,83 @@ private class EqualityError(
 }
 ```
 
+</details>
+
+<details>
+<summary>Example use of `powerAssert` function.</summary>
+
+```kotlin
+class JunitTests {
+    @Test
+    fun simpleNone() {
+        val mascot: Any? = "Kodee"
+        powerAssert(mascot is Int)
+    }
+
+    @Test
+    fun simpleSingle() {
+        val mascot: Any? = "Kodee"
+        powerAssert(mascot == "Kodee" && mascot == "Duke")
+    }
+
+    @Test
+    fun simpleMultiple() {
+        val mascot: Any? = "Kodee"
+        powerAssert(mascot == "Duke" || mascot == "Ferris")
+    }
+}
+```
+
+</details>
+
+<details>
+<summary>Example output.</summary>
+
+```text
+powerAssert(mascot is Int)
+            |      |
+            Kodee  false
+
+
+powerAssert(mascot == "Kodee" && mascot == "Duke")
+            |      |             |      |
+            Kodee  true          Kodee  false
+
+Expected :Duke
+Actual   :Kodee
+<Click to see difference>
+
+
+powerAssert(mascot == "Duke" || mascot == "Ferris")
+            |      |            |      |
+            Kodee  false        Kodee  false
+            
+Expected <Duke>, actual <Kodee>
+Expected :Duke
+Actual   :Kodee
+<Click to see difference>
+
+Expected <Ferris>, actual <Kodee>
+Expected :Ferris
+Actual   :Kodee
+<Click to see difference>
+```
+
+</details>
+
+
 ## Soft/Fluent Assertions
 
 Prefer a fluent or soft-assert style of writing assertions? Power-Assert can help you achieve this as well! By combining
 multiple `CallExplanation`s into a single explanation, we can write a DSL which provides information on both the subject
 and the asserted qualities.
 
+<details>
+<summary>Definition of `assertThat`, `hasLength`, and `startsWith` functions.</summary>
+
 ```kotlin
 @PowerAssert.Ignore // Always exclude the assertion scope from Power-Assert explanations. 
-interface AssertScope<T> {
+interface AssertScope<out T> {
     val subject: T
     fun collectFailure(message: String?, explanation: Explanation?)
 }
@@ -712,7 +758,7 @@ fun <T> assertThat(subject: T, block: AssertScope<T>.() -> Unit) {
             for ((msg, _) in failures) {
                 if (msg != null) appendLine(" * $msg")
             }
-            appendLine(combined.toDefaultMessage())
+            append(combined.toDefaultMessage())
         })
     }
 }
@@ -721,7 +767,7 @@ fun <T> assertThat(subject: T, block: AssertScope<T>.() -> Unit) {
 fun AssertScope<String>.hasLength(length: Int) {
     // Adding custom assertions is as easy as writing the condition and failure message!
     if (subject.length != length) {
-        collectFailure("String `${subject}` does not have length `${length}`.", PowerAssert.explanation)
+        collectFailure("String \"${subject}\" does not have length '${length}'.", PowerAssert.explanation)
     }
 }
 
@@ -729,17 +775,64 @@ fun AssertScope<String>.hasLength(length: Int) {
 fun AssertScope<String>.startsWith(prefix: String, ignoreCase: Boolean = false) {
     if (!subject.startsWith(prefix, ignoreCase)) {
         collectFailure(
-            "String `${subject}` does not start with `${prefix}`${if (ignoreCase) " (ignoring case)" else ""}.",
+            "String \"${subject}\" does not start with \"${prefix}\"${if (ignoreCase) " (ignoring case)" else ""}.",
             PowerAssert.explanation,
         )
     }
 }
 ```
 
+</details>
+
+<details>
+<summary>Example use of `assertThat`, `hasLength`, and `startsWith` functions.</summary>
+
+```kotlin
+class FluentTests {
+    @Test
+    fun simpleTest() {
+        val subject = "Unknown"
+        assertThat(subject) {
+            hasLength("Kodee".length)
+            startsWith("Kodee".substring(0, 1))
+        }
+    }
+}
+```
+
+</details>
+
+<details>
+<summary>Example output.</summary>
+
+```text
+Assertion failed:
+ * String "Unknown" does not have length '5'.
+ * String "Unknown" does not start with "K".
+assertThat(subject) {
+           |
+           Unknown
+
+    hasLength("Kodee".length)
+                      |
+                      5
+
+    startsWith("Kodee".substring(0, 1))
+                       |
+                       K
+
+}
+```
+
+</details>
+
 ## Custom Diagrams
 
 Why stop at assertions? Power-Assert can be used to provide expression information for all sorts of use cases. With a
 little bit of creativity, we can create a custom Power-Assert based pretty-print!
+
+<details>
+<summary>Definition of `pprintln` function.</summary>
 
 ```kotlin
 @PowerAssert
@@ -777,11 +870,39 @@ fun pprintln(message: String) {
 }
 ```
 
+</details>
+
+<details>
+<summary>Example use of `pprintln` function.</summary>
+
+```kotlin
+fun main() {
+    val name = "World"
+    pprintln("""
+        Hello, $name!
+        My name is ${Random.nextInt()}.
+    """.trimIndent())
+}
+```
+</details>
+
+<details>
+<summary>Example output.</summary>
+
+```text
+pprintln("""
+    Hello, ${name = World}!
+    My name is ${Random.nextInt() = -780043044}.
+""".trimIndent())
+```
+
+</details>
+
 # Feedback
 
 We look forward to your feedback!
 
-There are a few expected questions, so here are some additional details in those areas to help guide your feedback.
+There are a few questions we expect, so here are some additional details in those areas to help guide your feedback.
 
 ## "Why are there so few interesting `Expression` subclass?"
 
@@ -811,8 +932,6 @@ There are a number of concerns with this idea:
    determined by the code author without much additional burden.
 
 We will continue to explore the potential of this idea.
-
-And again, if you have additional use case ideas that do not violate a non-goals, we would love to hear them!
 
 ## "Can you add XYZ to `Explanation`/`Expression`?"
 
