@@ -220,10 +220,9 @@ Unfortunately, with the limited APIs that Java/JVM exposes we find it hardly fea
 1. `suspend` functions allow you to choose which threads to schedule your asynchronous work on.
   It's very important for programming UIs where you submit asynchronous work to the main thread.
   Virtual Threads don't allow you to choose the carrier thread.
-2. `suspend` functions are generally not about concurrent computations.
-  Suspension doesn't necessarily mean that the computation should be paused.
-  There are quite a few features in Kotlin that are implemented using `suspend` functions.
-  In case of `kotlin.sequences.sequence`, suspension means that the next element of the Sequence is produced.
+2. `suspend` functions are generally not about parallel computations.
+  There are quite a few other features in Kotlin that are implemented using `suspend` functions.
+  In case of `kotlin.sequences.sequence`, suspension means that the next element of the Sequence is produced (concurrent but not parallel computation).
   In case of `kotlin.DeepRecursiveFunction`, suspension means that the stack should be saved to the heap, but the computation should continue.
 
 ### Integrating Virtual Threads and kotlinx.coroutines together
@@ -268,7 +267,7 @@ object JvmVirtualThreadsCoroutineDispatcher : CoroutineDispatcher(), Delay {
     // For kotlinx.coroutines.delay implementation
     override fun scheduleResumeAfterDelay(timeMillis: Long, continuation: CancellableContinuation<Unit>) {
         check(continuation.context[CoroutineVirtualThreadUniqueToken] != null)
-        // Yay! We can just sleep instead of suspending
+        // Yay! We can just sleep instead of suspending (todo: support cancellation)
         Thread.sleep(timeMillis)
         continuation.resume(Unit)
     }
