@@ -80,7 +80,7 @@ As for data classes, the state of MFVCs is represented by their primary properti
 However, as they are value-based, this primary state is the *only* thing which is actually stored.
 If an MFVC declares some additional properties, they cannot be stored properties, i.e., cannot have a backing field or be implemented via a delegate.
 
-Unlike data classes, MFVCs do not support positional-based destructuring, they should be used together with [name-based destructuring](https://github.com/Kotlin/KEEP/blob/main/proposals/KEEP-0438-name-based-destructuring.md).
+Unlike data classes, MFVCs do not support positional-based destructuring, they should be used together with [name-based destructuring](https://github.com/Kotlin/KEEP/blob/main/proposals/KEEP-0438-name-based-destructuring.md). Specifically, `val (x, y) = e` is interpreted as name-based destructuring when `e` is an expression of a value class type.
 
 #### MFVC Primary Constructor
 
