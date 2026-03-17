@@ -3,14 +3,13 @@
 * **Type**: Standard Library API proposal
 * **Author**: Abduqodiri Qurbonzoda, Ilya Gorbunov
 * **Contributors**: Vsevolod Tolstopyatov, Filipp Zhinkin
-* **Status**: Proposed
-* **Prototype**: TDB
+* **Status**: Experimental in 2.4.0
 * **Target issue**: [KT-67337](https://youtrack.jetbrains.com/issue/KT-67337)
 * **Discussion**: TBD
 
 ## Summary
 
-Introduce `Map.getOrElse` variants that handle `null` entry values differently.
+Introduce alternatives to `Map.getOrElse` and `Map.getOrPut` that handle `null` entry values differently.
 
 ## Motivation
 
@@ -18,7 +17,7 @@ Currently, the Standard Library provides the following function:
 ```kotlin
 public inline fun <K, V> Map<K, V>.getOrElse(key: K, defaultValue: () -> V): V
 ```
-This function treats a `null` value as an absent entry and returns the result of the `defaultValue()` function.
+This function treats a mapping to a `null` value as an absent entry and returns the result of the `defaultValue()` function.
 Similarly, the `MutableMap.getOrPut` function:
 ```kotlin
 public inline fun <K, V> MutableMap<K, V>.getOrPut(key: K, defaultValue: () -> V): V
@@ -73,7 +72,7 @@ Note that in Java, the suffixes `IfAbsent` and `IfPresent` signify if a value is
 ## Proposal
 
 It is proposed to introduce two variants of `Map.getOrElse`:
-* `getOrElseIfNull` - Returns the mapped value if it exists and is not `null`; otherwise, returns the result of `defaultValue()`. 
+* `getOrElseIfNull` - Returns the mapped value if it exists and is not `null`; otherwise, returns the result of `defaultValue()`.
   This function mirrors the behavior of the existing `getOrElse`.
 * `getOrElseIfMissing` - Returns the mapped value if it exists, even if it is `null`; otherwise, returns the result of `defaultValue()`.
 
@@ -81,6 +80,12 @@ Similarly, for `MutableMap.getOrPut`:
 * `getOrPutIfNull` - Returns the mapped value if it exists and is not `null`; otherwise, puts and returns the result of `defaultValue()`.
   This function mirrors the behavior of the existing `getOrPut`.
 * `getOrPutIfMissing` - Returns the mapped value if it exists, even if it is `null`; otherwise, puts and returns the result of `defaultValue()`.
+
+While `ConcurrentMap` implementations in JVM usually do not allow `null` values, it's proposed to provide the following overloads for them as well
+taking into account their specifics:
+* `getOrElseIfMissing` - Same as `getOrElseIfMissing` for `Map`, but checks atomically whether the key is present in the map and gets its value if it is.
+* `getOrPutIfMissing` - Same as `getOrPutIfMissing` for `Map`, but checks atomically whether the key is present in the map.
+* `getOrPutIfNull` - Same as `getOrPutIfNull` for `Map`, but checks atomically whether the key is present in the map and is not mapped to `null`.
 
 This `null`-handling differentiation is relevant only for maps with nullable value types.
 However, due to the limitations of Kotlin type system in resolving functions only for nullable generic type parameters,
@@ -159,7 +164,12 @@ firstChoice.getOrElse(key) { fallback.get(key) }
 
 ## Dependencies
 
-Only a subset of Kotlin Standard Library available on all supported platforms is required.
+Only a subset of Kotlin Standard Library available on all supported platforms is required for the proposed Map extensions.
+
+In order to provide the correct implementations of the proposed extensions for concurrent maps on JVM,
+the `Map` interface operations introduced in Java 8 are required.
+When running on Android, this will require the Android SDK level 24.
+On earlier Android versions, these operations will work but fallback to non-atomic behavior.
 
 ## Placement
 
