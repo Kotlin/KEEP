@@ -3,7 +3,7 @@
 * **Type**: Design proposal
 * **Author**: Alejandro Serrano
 * **Contributors**: Marat Akhin, Dmitry Khalanskiy, Pavel Kunyavskiy, Nikolay Lunyak
-* **Discussion**: 
+* **Discussion**: [KEEP-476](https://github.com/Kotlin/KEEP/discussions/476)
 * **Status**: In progress
 * **Related YouTrack issues**: [KT-83683](https://youtrack.jetbrains.com/issue/KT-83683)
 
