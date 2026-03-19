@@ -185,6 +185,9 @@ When it is implemented, you would be able to migrate your value classes to typed
 Similarly to [data objects](https://github.com/Kotlin/KEEP/blob/main/proposals/KEEP-0317-data-objects.md), once we allow MFVC with 1+ primary properties, it makes sense to generalize and also allow MFVC with 0 primary properties aka value objects.
 In the same fashion, their main use is to represent unit types.
 
+Because value objects have zero primary properties, and the stored state of an MFVC consists solely of its primary properties, value objects carry *no stored state* at all.
+Like other MFVCs, any additional properties they declare must be computed via custom getters and cannot use backing fields or delegates.
+
 The difference between `data object` and `value object` mirrors the difference between `data class` and `value class`: data objects have identity, value objects do not.
 
 For data objects, while they are intended to be singletons, you can still observe different instances via referential equality (`===`): for example, through deserialization or reflection.
