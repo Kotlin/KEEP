@@ -14,7 +14,7 @@
 
 # Abstract
 
-The Power-Assert compiler-plugin allows transforming function calls to include detailed information about the call-site.
+The Power-Assert compiler plugin allows transforming function calls to include detailed information about the call-site.
 This information is currently in the form of a compile-time generated String passed as an argument to the function.
 We will introduce a new annotation to automatically trigger transformation of function calls, new data structures to
 represent call-site information, and a way to access call-site information from an annotated function.
@@ -37,8 +37,9 @@ represent call-site information, and a way to access call-site information from 
 * [API Overview](#api-overview)
   * [`@PowerAssert`](#powerassert)
   * [`CallExplanation`](#callexplanation)
-  * [`Explanation`](#explanation)
   * [`Expression`](#expression)
+  * [`CallExplanation.Argument`](#callexplanationargument)
+  * [`Explanation`](#explanation)
   * [Functions](#functions)
   * [Source and Offsets](#source-and-offsets)
 * [Transformations](#transformations)
@@ -94,39 +95,40 @@ assert(mascot.name == "Kodee")
 ```
 
 This transformation is not limited to only `kotlin.assert`, but may be applied to any function that can take a `String`
-or `() -> String` as the **last argument**. Functions like `kotlin.test.assertTrue` and `kotlin.test.assertEquals` are
+or `() -> String` as the ***last argument***. Functions like `kotlin.test.assertTrue` and `kotlin.test.assertEquals` are
 good candidates for Power-Assert transformation.
 
 Unfortunately, specifying these functions is required for every compilation. And there is no way for an assertion
-library to specify which functions support Power-Assert to the compiler-plugin for automatic transformation. This means
+library to specify which functions support Power-Assert to the compiler plugin for automatic transformation. This means
 that every Gradle project must configure these functions.
 
 ## Key Problems
 
 From this overview, we can extract three key problems with Power-Assert:
 
-1. Verbose configuration that complicates onboarding.
-2. Brittle function parameter requirements that confuse adopters.
+1. Verbose build-system configuration that complicates onboarding.
+2. Confusing function parameter requirements that rely on convention.
 3. Static diagram generation that limits tooling integration.
 
 ## Goals
 
 In this proposal, we will outline changes which attempt to tackle all of these problems.
 
-1. Power-Assert capable functions should be discoverable rather than needing to be configured. This avoids complex build
-configuration needed for the compiler-plugin.
-2. Power-Assert capable functions should not rely on argument convention but transformation by the compiler-plugin
+1. Power-Assert capable functions should be discoverable rather than needing to be configured. This avoids the complex
+build-system configuration needed for the compiler plugin.
+2. Power-Assert capable functions should not rely on argument convention but transformation by the compiler plugin
 instead. This removes confusing function parameter requirements and enables easier integration for adopting libraries.
 3. Power-Assert capable functions should be provided with detailed call-site information. This improves diagram render
 by making it more dynamic and enables better tooling integration.
 
 ## Non-Goals
 
-While these goals are important, there are also directions we explicitly do not intend to pursue with Power-Assert.
+While these goals are important, there are also directions we explicitly do not intend to pursue with Power-Assert at
+this time.
 
-1. Power-Assert is ***not*** a macro or dynamic code execution system. The compiler-plugin needs to remain simple and
+1. Power-Assert is ***not*** a macro or dynamic code execution system. The compiler plugin needs to remain simple and
 focused.
-2. Power-Assert is ***not*** a replacement for an assertion library. The compiler-plugin needs to help enhance existing
+2. Power-Assert is ***not*** a replacement for an assertion library. The compiler plugin needs to help enhance existing
 assertion libraries.
 
 [//]: # (TODO add a third thing here to maintain the rule of 3)
@@ -146,7 +148,7 @@ import kotlinx.powerassert.toDefaultMessage
 @PowerAssert
 fun powerAssert(condition: Boolean, @PowerAssert.Ignore message: String? = null) {
     if (!condition) {
-        val explanation: CallExplanation? = PowerAssert.explanation // Intrinsic property provided by compiler-plugin.
+        val explanation: CallExplanation? = PowerAssert.explanation // Intrinsic property provided by compiler plugin.
         throw AssertionError(buildString {
             append("Assertion failed:")
             if (message != null) append(" ").append(message)
@@ -157,8 +159,8 @@ fun powerAssert(condition: Boolean, @PowerAssert.Ignore message: String? = null)
 ```
 
 These annotations and data structures help fix the key problems with Power-Assert!
-1. The `@PowerAssert` annotation makes functions discoverable by the compiler-plugin at call-sites.
-2. The `PowerAssert.explanation` intrinsic property provided by the compiler-plugin means no more confusing function
+1. The `@PowerAssert` annotation makes functions discoverable by the compiler plugin at call-sites.
+2. The `PowerAssert.explanation` intrinsic property provided by the compiler plugin means no more confusing function
 parameter requirements.
 3. The `CallExplanation` data structure can help build a dynamic diagram message and adjust assertion exception.
 
@@ -171,60 +173,59 @@ no longer required!
 
 This also means that if an assertion library were to adopt use of `@PowerAssert`, support for providing a diagram of the
 call-site would be seamless and transparent to the end user. All the end user would need to do is apply the
-compiler-plugin to their project. If you are the user of such a project, you should reach out to the author and
+compiler plugin to their project. If you are the user of such a project, you should reach out to the author and
 encourage them to provide feedback on this KEEP!
 
 ## Declaration
 
-A keen observer may also notice that this means the Power-Assert compiler-plugin now needs to be applied to function
+A keen observer may also notice that this means the Power-Assert compiler plugin now needs to be applied to function
 declarations as well. To provide the `CallExplanation` from the call-site to the `@PowerAssert` annotated function, the
-Power-Assert compiler-plugin must generate a synthetic copy of the annotated function which has an additional parameter
+Power-Assert compiler plugin must generate a synthetic copy of the annotated function which has an additional parameter
 of type `() -> CallExplanation`. This allows Power-Assert to transform the call-site and provide this data structure.
 
-Details on this `CallExplanation` [transformation by the Power-Assert compiler-plugin](#function-declarations) will be
+Details on this `CallExplanation` [transformation by the Power-Assert compiler plugin](#function-declarations) will be
 explored later in this proposal.
 
 ## Existing Behavior
 
-If you are worried that the ability for the Power-Assert compiler-plugin to generate a compile-time `String` diagram is
-being removed, worry not! The compiler-plugin will continue to accept fully-qualified function names as configuration
+If you are worried that the ability for the Power-Assert compiler plugin to generate a compile-time `String` diagram is
+being removed, worry not! The compiler plugin will continue to accept fully-qualified function names as configuration
 for functions which are not annotated with `@PowerAssert`. In fact, this behavior is being improved as well: by using
 `CallExplanation` to generate a diagram at runtime, we can improve the diagram rendering dramatically by changing the
 layout of the diagram based on the results of each intermediate expression.
 
-Details on this new `String` diagram [transformation by the Power-Assert compiler-plugin](#string-message-calls) will be
+Details on this new `String` diagram [transformation by the Power-Assert compiler plugin](#string-message-calls) will be
 explored later in this proposal.
 
 # API Overview
 
-This section will give a _**brief overview**_ of some classes from the new Power-Assert runtime library. We encourage
-those who want a more in-depth look at the classes to read the [documentation in the source code]().
-
-[//]: # (TODO include link to runtime source code)
+This section will give a ***brief overview*** of some classes from the new Power-Assert runtime library. We encourage
+those who want a more in-depth look at the classes to read the [documentation in the source code][power-assert-runtime].
 
 ## `@PowerAssert`
 
 A new annotation will be introduced to mark functions which support being
-[transformed by the Power-Assert compiler-plugin](#transformation). This annotation also provides access to a compiler-plugin
+[transformed by the Power-Assert compiler plugin](#transformation). This annotation also provides access to a compiler plugin
 intrinsic `CallExplanation` property which can be used to access call-site information.
 
 ```kotlin
 @Target(AnnotationTarget.FUNCTION)
 @Retention(AnnotationRetention.BINARY)
-annotation class PowerAssert {
-    companion object {
-        val explanation: CallExplanation? // Implemented as compiler-plugin intrinsic.
+public annotation class PowerAssert {
+    public companion object {
+        @JvmStatic
+        public val explanation: CallExplanation? // Implemented as compiler plugin intrinsic.
     }
 }
 ```
 
-If the compiler-plugin is not applied when compiling access of the `explanation` property, access will result in a
-runtime error. The compiler-plugin will also limit property access to within functions annotated with `@PowerAssert` at
+If the compiler plugin is not applied when compiling access of the `explanation` property, access will result in a
+runtime error. The compiler plugin will also limit property access to within functions annotated with `@PowerAssert` at
 compile-time.
 
 The `explanation` property will return `null` in cases when a `@PowerAssert` annotated function is called without
 call-site information, including:
- * The call-site was compiled without the compiler-plugin applied.
+ * The call-site was compiled without the compiler plugin applied.
  * When called from non-Kotlin code. For example, Java.
  * When called via reflection or method reference.
 
@@ -240,7 +241,7 @@ public class CallExplanation(
     public val arguments: List<Argument?>,
 ) : Explanation() {
     override val expressions: List<Expression>
-        get() = arguments.sortedBy { it.startOffset }.flatMap { it.expressions }
+        get() = arguments.sortedBy { it?.startOffset }.flatMap { it?.expressions.orEmpty() }
 
     public class Argument(
         public val startOffset: Int,
@@ -258,7 +259,40 @@ public class CallExplanation(
 }
 ```
 
-All arguments to the function call are provided as a `List` in **parameter** order. Arguments of different kinds are
+Details about `source` and offset properties will be [discussed later](#source-and-offsets), but for now, let's focus on
+two key classes at work within the `CallExplanation`: `Expression` and `Argument`.
+
+## `Expression`
+
+An `Expression` represents a value calculated at runtime. This could be the result of a function call, variable access,
+language operator, or anything else that results in a value.
+
+```kotlin
+public abstract class Expression internal constructor(
+    public val startOffset: Int,
+    public val endOffset: Int,
+    public val displayOffset: Int,
+    public val value: Any?,
+)
+```
+
+Expressions are organized within Power-Assert as `List`s and include all intermediate expresses. Lists of expressions
+will always be provided in evaluation order. For example, code like `1 + 2` will be represented as a `List` with three
+`Expression` elements in the following order:
+1. An expression with a `value` of `1`.
+2. An expression with a `value` of `2`.
+3. An expression with a `value` of `3`, the result of `1 + 2`.
+
+There are currently only three implementations of `Expression`:
+* `ValueExpression` - Holds a value calculated at runtime.
+* `LiteralExpression` - Holds a literal value, and excluded by default from diagrams.
+* `EqualityExpression` - Holds the result of an equality check, and includes the left-hand and right-hand side values.
+
+For more information on these classes, see their [documentation in the source code][power-assert-runtime].
+
+## `CallExplanation.Argument`
+
+All arguments to the function call are provided as a `List` in ***parameter*** order. Arguments of different kinds are
 always provided in the same order as the `Kind` enum.
 
 For example, consider a call to the following `example` function:
@@ -278,10 +312,27 @@ The explanation will always have six arguments specified in the following order:
 5. An argument with `Kind.VALUE` for the `param1` parameter.
 6. An argument with `Kind.VALUE` for the `param2` parameter.
 
-This order **will not change** no matter how the function is called. Even if argument order is changed with named
+This order ***will not change*** no matter how the function is called. Even if argument order is changed with named
 parameters, the `arguments` list remains in the same order. If an argument to the function is omitted due to a default
 value or is implicitly provided (as is common with context parameters) then the corresponding argument in the
 `CallExplanation` will be `null`.
+
+In cases when information about an argument is never used, it might be useful to exclude this infromation using the
+`@PowerAssert.Ignore` annotation.
+
+```kotlin
+public annotation class PowerAssert {
+    @Target(AnnotationTarget.VALUE_PARAMETER, AnnotationTarget.CLASS)
+    @Retention(AnnotationRetention.BINARY)
+    public annotation class Ignore
+}
+```
+
+This annotation can be applied directly to a function parameter so that the `Argument` is always `null` in the
+`CallExplanation`. It can also be applied to a class, and all parameters of that type will be automatically ignored.
+This helps during [function call transformation](#function-calls), as the compiler plugin will not need to generate
+temporary variables for the argument subexpressions, thus potentially saving on compiler performance and runtime
+overhead. 
 
 ## `Explanation`
 
@@ -296,29 +347,6 @@ public abstract class Explanation internal constructor() {
 }
 ```
 
-## `Expression`
-
-An `Expression` represents a value calculated at runtime. This could be the result of a function call, variable access,
-language operator, or anything else that results in a value.
-
-```kotlin
-public abstract class Expression internal constructor(
-    public val startOffset: Int,
-    public val endOffset: Int,
-    public val displayOffset: Int,
-    public val value: Any?,
-)
-```
-
-There are currently only three implementations of `Expression`:
-  * `ValueExpression` - Holds a value calculated at runtime.
-  * `LiteralExpression` - Holds a literal value calculated and excluded by default from diagrams. 
-  * `EqualityExpression` - Holds the result of an equality check and includes the left-hand and right-hand side values.
- 
-For more information on these classes, see their [documentation in the source code]().
-
-[//]: # (TODO include link to runtime source code)
-
 ## Functions
 
 A top-level function will be included as well, to provide Power-Assert style rendering of an `Explanation`. This
@@ -332,7 +360,7 @@ public fun Explanation.toDefaultMessage(
 ```
 
 While any project can use this function to generate a Power-Assert style message for exceptions, it is recommended
-that assertion libraries implement their own rendering logic. This avoids needing to wait for the compiler-plugin to be
+that assertion libraries implement their own rendering logic. This avoids needing to wait for the compiler plugin to be
 updated for improvements and will also help match any existing reporting style.
 
 ## Source and Offsets
@@ -340,14 +368,14 @@ updated for improvements and will also help match any existing reporting style.
 There are a lot of "offsets" in the Power-Assert runtime library classes, and it may not be clear what they mean.
 * `Explanation.offset` is the character offset of `Explanation.source` within the containing file.
 * `Expression.startOffset` (inclusive), `Expression.endOffset` (exclusive), and `Expression.displayOffset` are character
-offsets **within the explanation** for the expression source.
+offsets ***within the explanation*** for the expression source.
 
 Thus, given an explanation and an expression, a user of these classes can get the source for a particular expression by
 taking a substring of `source` starting at `startOffset` and ending at `endOffset`. The `displayOffset` will always be
 within the range of `startOffset` and `endOffset`, and is useful for indicating the location of the expression's
 `value` in a Power-Assert style diagram.
 
-The `source` provided by an `Explanation` will always be a **block** of text, and contain all leading
+The `source` provided by an `Explanation` will always be a ***block*** of text, and contain all leading
 whitespace of the original code. Text not part of the source code range will be redacted with spaces. Even single-line
 function calls will have leading spaces preserved. For example, an explanation of the call to the `powerAssert`
 function:
@@ -395,7 +423,7 @@ with and without the `@PowerAssert` annotation are transformed in different ways
 
 ## Function Declarations
 
-When `@PowerAssert` is added to a function, the compiler-plugin will generate a synthetic copy of the function. This
+When `@PowerAssert` is added to a function, the compiler plugin will generate a synthetic copy of the function. This
 synthetic copy adds a parameter of type `() -> CallExplanation`. Both functions are then transformed to replace any
 calls to `PowerAssert.explanation`, with either `null` in the case of the original function, or the additional parameter
 in the case of the synthetic copy.
@@ -438,8 +466,8 @@ This means that the original function can be used without a runtime dependency o
 
 ## Function Calls
 
-If a function is annotated with `@PowerAssert`, and has itself been transformed by the compiler-plugin, this will result
-in any call to said function being automatically transformed by the compiler-plugin to include a `CallExplanation`
+If a function is annotated with `@PowerAssert`, and has itself been transformed by the compiler plugin, this will result
+in any call to said function being automatically transformed by the compiler plugin to include a `CallExplanation`
 parameter.
 
 For example:
@@ -492,8 +520,8 @@ included transitively.
 
 ```kotlin
 plugins {
-    kotlin("jvm") version "2.4.0-Beta1"
-    kotlin("plugins.power-assert") version "2.4.0-Beta1"
+    kotlin("jvm") version "2.4.0-Beta2"
+    kotlin("plugin.power-assert") version "2.4.0-Beta2"
 }
 
 dependencies {
@@ -515,25 +543,25 @@ start to support more use cases, things may need to change in incompatible ways.
 supported through additional subclasses of `Explanation` and `Expression`.
 
 Offset values within the `Explanation` and `Expression` classes are not guaranteed to be stable across different
-versions of the compiler-plugin. While the semantics of the values will not change, we may make adjustments to the
+versions of the compiler plugin. While the semantics of the values will not change, we may make adjustments to the
 values at any time to render better Power-Assert style diagrams.
 
 ## Security
 
 Given the nature of the Power-Assert transformation, it is possible for a library to gain access to source code and
 expressions not explicitly provided by the user. This provides a potential security risk that must be carefully
-considered by users of the Power-Assert compiler-plugin. However, given that Power-Assert is a compiler-plugin that must
+considered by users of the Power-Assert compiler plugin. However, given that Power-Assert is a compiler plugin that must
 be explicitly added by the user, and the fact that it is not enabled in `main` source sets by default, this sufficiently
 reduces the risk of accidental exposure.
 
-As a user of Power-Assert, it is important to be aware of all call sites that are transformed by the compiler-plugin.
+As a user of Power-Assert, it is important to be aware of all call sites that are transformed by the compiler plugin.
 And when a new version of a library is available, consider how this might change what call sites are transformed.
 We're working on ways to make this transformation more obvious at the call site, but we unfortuantely have nothing to
 share yet.
 
 ## Interactions
 
-The `@PowerAssert` annotation may be applied to all sorts of functions. This means that the compiler-plugin must be able
+The `@PowerAssert` annotation may be applied to all sorts of functions. This means that the compiler plugin must be able
 to interact correctly with existing Kotlin features, including default arguments, `inline`, `abstract`/`open`,
 `expect`/`actual`, etc.  
 
@@ -542,22 +570,22 @@ Some combinations work without any special configuration: like default arguments
 hierarchy and may be excluded from inheriting functions. For `expect`/`actual` functions, the annotation must be present
 on both functions.
 
-When combining Power-Assert with other compiler-plugins, behavior is not well-defined. For example, a `@Composable` and
-`@PowerAssert` function is possible if the compiler-plugins run in the same order at both the function declaration and
-the function call-site. However, such a function does not make logical sense, as it violates many `@Composable`
+When combining Power-Assert with other compiler plugins, the behavior is not well-defined. For example, a `@Composable`
+and `@PowerAssert` function is possible if the compiler plugins run in the same order at both the function declaration
+and the function call-site. However, such a function does not make logical sense, as it violates many `@Composable`
 guarantees by providing access to non-parameter expressions. As such, at this time, it is strongly discouraged to have
 both `@PowerAssert` and `@Composable` on the same function.
 
 # Use Cases
 
 We're excited to share that everything you've read up to this point is ready for experimentation in the upcoming Kotlin
-2.4.0-Beta1 release! Some things may change before the final 2.4.0 release, but if you want to try this new version of
+2.4.0-Beta2 release! Some things may change before the final 2.4.0 release, but if you want to try this new version of
 Power-Assert today, all you need to do is add the new runtime library dependency to your project.
 
 ```kotlin
 plugins {
-    kotlin("jvm") version "2.4.0-Beta1"
-    kotlin("plugins.power-assert") version "2.4.0-Beta1"
+    kotlin("jvm") version "2.4.0-Beta2"
+    kotlin("plugin.power-assert") version "2.4.0-Beta2"
 }
 
 dependencies {
@@ -571,15 +599,13 @@ powerAssert {
 }
 ```
 
-Adding the above to your `build.gradle.kts` file will enable the Power-Assert compiler-plugin for all source sets. The
+Adding the above to your `build.gradle.kts` file will enable the Power-Assert compiler plugin for all source sets. The
 important part is the addition of the runtime library, so you can experiment with the new `PowerAssert` annotation and
 `CallExplanation`. The presence of the runtime library will also enable the `CallExplanation(...).toDefaultMessage()`
 style messages for existing function calls, so you can experience the improved diagrams.
 
-If you want to experiment with Power-Assert before 2.4.0-Beta1 is released, check out this [Github project](), which is
-built against a development version of Kotlin.
-
-[//]: # (TODO add link to github project with bootstrap builds)
+If you want to experiment with Power-Assert before 2.4.0-Beta2 is released, check out 
+this [Github project][power-assert-examples], which is built against a development version of Kotlin.
 
 Here are some examples of what you could build!
 
@@ -711,7 +737,6 @@ Actual   :Kodee
 
 </details>
 
-
 ## Soft/Fluent Assertions
 
 Prefer a fluent or soft-assert style of writing assertions? Power-Assert can help you achieve this as well! By combining
@@ -730,7 +755,7 @@ interface AssertScope<out T> {
 
 @PowerAssert
 fun <T> assertThat(subject: T, block: AssertScope<T>.() -> Unit) {
-    val primary = PowerAssert.explanation ?: error("power-assert compiler-plugin is required")
+    val primary = PowerAssert.explanation ?: error("power-assert compiler plugin is required")
     
     val failures = mutableListOf<Pair<String?, List<Expression>>>()
     val scope = object : AssertScope<T> {
@@ -924,11 +949,11 @@ explanation of local variables along with a `CallExplanation`, enriching the dat
 
 There are a number of concerns with this idea:
 
-1. **Security** – Even more information about the call-site is sent to the called function, which increases the security
+1. ***Security*** – Even more information about the call-site is sent to the called function, which increases the security
    risk of leaking sensitive information.
-2. **Performance** – Excessive call-site transformation may result in slower code, which may not be needed if the
+2. ***Performance*** – Excessive call-site transformation may result in slower code, which may not be needed if the
    explanation is never used.
-3. **Syntax** – Determining what local variables are transformed and how their information is propagated should be
+3. ***Syntax*** – Determining what local variables are transformed and how their information is propagated should be
    determined by the code author without much additional burden.
 
 We will continue to explore the potential of this idea.
@@ -941,16 +966,19 @@ not be able to add your idea now, we could adjust the API to better support addi
 
 ## "Why an expression List and not a tree?"
 
-The design for `Expression` means that a complex expression like `1 + 2 + 3` will be represented as a _**list**_ of
-expressions and not a _**tree**_. This is an intentional design decision. A list greatly simplifies the data structure
-needed to represent complex expressions, while a tree brings along many additional design decisions on how exactly some
+The design for `Expression` means that an expression like `1 + 2 + 3` will be represented as a ***list*** of expressions
+and not a ***tree***. This is an intentional design decision. A list greatly simplifies the data structure needed to
+represent complex expressions, while a tree brings along many additional design decisions on how exactly some
 expressions should be represented.
 
-This decision is also heavily influenced by the current implementation of the Power-Assert compiler-plugin. During the
-call-site transformation, the compiler-plugin does not maintain the tree structure of the expression and only stores a
+This decision is also heavily influenced by the current implementation of the Power-Assert compiler plugin. During the
+call-site transformation, the compiler plugin does not maintain the tree structure of the expression and only stores a
 list of the temporary variables used in the expression. To support a tree-based representation, significant parts of the
-compiler-plugin would need to be rewritten.
+compiler plugin would need to be rewritten.
 
 It is important to note that these designs are not mutually exclusive! In the future, as we explore additional use
 cases, we may switch to represent expressions as a tree. We should be able to migrate to a tree representation without 
 breaking existing code, as the existing list properties could be converted to a DFS walk of the tree.
+
+[power-assert-runtime]: https://github.com/JetBrains/kotlin/tree/master/plugins/power-assert/power-assert-runtime/src/commonMain/kotlin/kotlin/powerassert
+[power-assert-examples]: https://github.com/bnorm/power-assert-examples
