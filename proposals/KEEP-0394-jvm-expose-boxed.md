@@ -104,8 +104,8 @@ We propose introducing a new `@JvmExposeBoxed` annotation, defined as follows.
   // classifiers
   CLASS,
 )
-@Retention(RUNTIME)
-annotation class JvmExposedBoxed(val jvmName: String = "")
+@Retention(BINARY)
+annotation class JvmExposeBoxed(val jvmName: String = "")
 ```
 
 It is not allowed to apply the annotation to members marked with the `suspend` modifier.
@@ -281,7 +281,7 @@ interface Foo {
 
 One fair question is what should happen if the user indicates that they want to expose on a function-like declaration in which no inline value class in involved. We consider two different cases:
 
-- If the declaration is explicitly marked, that is, if the `@JvmExposeBoxed` annotation appears on the declaration itself, an _error_ should be raised.
+- If the declaration is explicitly marked, that is, if the `@JvmExposeBoxed` annotation appears on the declaration itself, a _warning_ should be raised.
 - If exposure is implicitly declared, by either a `@JvmExposeBoxed` on a class level, or by a compiler flag, the declaration is simply ignored.
 
 There is a corner case which needs special treatment: namely a top-level function or property which has no argument which is a value class, but returns a value class.
@@ -298,7 +298,7 @@ Annotations should be carried over to the boxed variant of a declaration, with t
 - If a declaration has a `@JvmName` annotation, that should appear only in the _unboxed_ variant, which is the one whose name is affected.
 - If a declaration has a `@JvmExposeBoxed` annotation, that should appear only in the _boxed_ variant.
 
-Furthermore, `@JvmExposeBoxed` annotations on classes "travel" to the declarations within it. As a result, both annotation processors and runtime reflection see `@JvmExposeBoxed` both in the class and in each individual operation.
+Furthermore, `@JvmExposeBoxed` annotations on classes "travel" to the declarations within it. As a result, both annotation processors and runtime reflection see `@JvmExposeBoxed` only on each individual operation.
 
 ### Other design choices
 
@@ -320,7 +320,7 @@ class Person {
 
 In the case above, libraries may inadvertently break some of the requirements of `PositiveInt` if a `Person` instance is created using reflection.
 
-We are currently investigating the required additional support. Some Java serialization libraries, like [Jackson](https://github.com/FasterXML/jackson-module-kotlin/blob/master/docs/value-class-support.md) already include specialized support for value classes. At this point, collaboration with the maintainers of the main libraries in the Java ecosystem seems like the most productive route.
+Some Java serialization libraries, like [Jackson](https://github.com/FasterXML/jackson-module-kotlin/blob/master/docs/value-class-support.md) already include specialized support for value classes, but additional work may be required in the future.
 
 ## Discarded potential features
 
