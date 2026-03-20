@@ -5,7 +5,7 @@
 * **Contributors**: Vsevolod Tolstopyatov, Filipp Zhinkin
 * **Status**: Experimental in 2.4.0
 * **Target issue**: [KT-67337](https://youtrack.jetbrains.com/issue/KT-67337)
-* **Discussion**: [KEEP-477](https://github.com/Kotlin/KEEP/discussions/477)
+* **Discussion**: [#477](https://github.com/Kotlin/KEEP/discussions/477)
 
 ## Summary
 
