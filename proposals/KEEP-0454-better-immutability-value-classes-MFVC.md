@@ -78,7 +78,28 @@ Continuing this line of thought, one could say that MFVCs are shallow immutable 
 
 As for data classes, the state of MFVCs is represented by their primary properties.
 However, as they are value-based, this primary state is the *only* thing which is actually stored.
-If an MFVC declares some additional properties, they cannot be stored properties, i.e., cannot have a backing field or be implemented via a delegate.
+If an MFVC declares some additional properties, they cannot be stored properties, i.e., cannot have a backing field.
+Delegated properties are allowed only when the delegate expression is *stable*: it must be computable without requiring a separate backing field to store the delegate instance.
+Stable expressions include the MFVC's own primary properties, top-level `val`s without getters, `const val`s, object declarations and their (stable) properties, enum entries, and other expressions the compiler can rely on being stable, i.e., their getter always return the same value.
+
+Normally, a delegated property `val x by expr` stores the result of `expr` in a hidden backing field so the same delegate instance is used on every access.
+When `expr` is stable, however, re-evaluating it is guaranteed to produce an equivalent result, so the compiler can simply re-evaluate the delegate expression each time `x` is accessed, eliminating the need for a backing field.
+
+```kotlin
+object Defaults {
+    val fallback: Map<String, String> = mapOf("host" to "localhost")
+}
+
+value class Config(val entries: Map<String, String>) {
+    val host: String by entries // OK: delegate is a primary property
+    val port: String by entries // OK: same
+}
+
+value class LocalConfig(val port: Int) {
+    val host: String by Defaults.fallback // OK: delegate is a stable object property
+    val port: String by lazy { "$port" }  // Error: `lazy` needs a backing field for the Lazy instance
+}
+```
 
 Unlike data classes, MFVCs do not support positional-based destructuring, they should be used together with [name-based destructuring](https://github.com/Kotlin/KEEP/blob/main/proposals/KEEP-0438-name-based-destructuring.md). Specifically, `val (x, y) = e` is interpreted as name-based destructuring when `e` is an expression of a value class type.
 
@@ -104,7 +125,7 @@ As a consequence, because primary properties are guaranteed to be stored fields 
 
 Another difference from data classes is that MFVCs can be abstract, in which case all the usual rules of abstract declarations apply.
 Additionally, no properties of an abstract value class can have backing fields, meaning they are either abstract or have custom getters and/or setters.
-This means they also cannot have delegated properties (as they need a backing field to store the delegate).
+Delegated properties are allowed when the delegate expression is stable (e.g., a top-level `val` or an object property).
 
 This restriction comes from the MFVCs being value types; if a value type can be created, it should be able to fully control how its state is stored.
 As abstract value classes cannot be created, they only describe the shape of the data, but the storage is handled by their concrete inheritors.
@@ -186,7 +207,8 @@ Similarly to [data objects](https://github.com/Kotlin/KEEP/blob/main/proposals/K
 In the same fashion, their main use is to represent unit types.
 
 Because value objects have zero primary properties, and the stored state of an MFVC consists solely of its primary properties, value objects carry *no stored state* at all.
-Like other MFVCs, any additional properties they declare must be computed via custom getters and cannot use backing fields or delegates.
+Like other MFVCs, any additional properties they declare must be computed via custom getters and cannot use backing fields.
+Delegated properties are allowed when the delegate expression is stable (e.g., a top-level `val` or an object property).
 
 The difference between `data object` and `value object` mirrors the difference between `data class` and `value class`: data objects have identity, value objects do not.
 
