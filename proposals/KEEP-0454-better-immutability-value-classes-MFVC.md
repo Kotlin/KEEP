@@ -30,6 +30,7 @@ We discuss what MFVCs represent, what their limitations are, how they interopera
       - [Migration between Different Kinds of Value Classes](#migration-between-different-kinds-of-value-classes)
       - [Migration between Non-Value and Value Classes](#migration-between-non-value-and-value-classes)
       - [Migration between Data and Value Classes](#migration-between-data-and-value-classes)
+      - [Evolving MFVC Declarations](#evolving-mfvc-declarations)
     - [Standard Library](#standard-library)
     - [Other Features and Interactions](#other-features-and-interactions)
       - [MFVC and `===`](#mfvc-and-identity)
@@ -512,6 +513,29 @@ For `copy()`, the situation is more nuanced: while we are designing ergonomic up
 > Note: value classes already generate structural `equals()`, `hashCode()`, and `toString()` by default, so the annotation on a value class would primarily control `componentN()` and `copy()`.
 
 This design will be refined as we gain more experience with MFVCs and as related features (ergonomic updates, name-based destructuring) mature.
+
+##### Evolving MFVC Declarations
+
+Adding a primary property to an existing MFVC is roughly analogous to adding a primary property to a data class: it is binary compatible (given a default value), but semantically breaking.
+
+**Binary compatibility.**
+As with data classes, adding a constructor parameter with a default value is binary compatible within the Kotlin ecosystem.
+On the JVM, we need to ensure the old constructor is available; it could be added manually or [`@IntroducedAt`](https://github.com/Kotlin/KEEP/blob/main/proposals/KEEP-0431-version-overloading.md) can also be used for this purpose.
+This holds for both Stage 1 and Stage 2: at Stage 2, Valhalla does not have any special treatment for binary evolution of value classes, so adding a field is compatible.
+On Native, Wasm, and JS, the closed-world compilation model re-resolves layouts at final compilation, so no binary compatibility issue should arise.
+
+**Semantic compatibility.**
+Again, as with data classes, adding a primary property changes `equals`, `hashCode`, and `toString` behavior.
+For data classes, this is generally accepted as a known trade-off.
+The same applies to MFVCs, and the [Primary Constructor](#mfvc-primary-constructor) section explains why: primary properties *are* the value, so changing them is inherently a semantic-incompatible change.
+
+**Foreign interop.**
+One area where MFVCs may differ from data classes is foreign interop.
+Within the Kotlin ecosystem, the compatibility story is described above.
+However, if at Stage 2 MFVCs are exported in a platform-specific way (e.g., Swift structs, Wasm struct types), adding a field changes the struct layout, which is ABI-breaking for pre-compiled dynamically-linked non-Kotlin consumers.
+For exported types, library authors should prefer opaque representations or plan for coordinated releases with their non-Kotlin consumers.
+
+> Note: we will be considering if and how this should be supported by the Kotlin language and tooling.
 
 #### Standard Library
 
