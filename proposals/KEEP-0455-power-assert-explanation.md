@@ -721,7 +721,8 @@ powerAssert(mascot is Int)
 
 powerAssert(mascot == "Kodee" && mascot == "Duke")
             |      |             |      |
-            Kodee  true          Kodee  false
+            |      true          |      false
+            "Kodee"              "Kodee"
 
 Expected :Duke
 Actual   :Kodee
@@ -730,7 +731,8 @@ Actual   :Kodee
 
 powerAssert(mascot == "Duke" || mascot == "Ferris")
             |      |            |      |
-            Kodee  false        Kodee  false
+            |      false        |      false
+            "Kodee"             "Kodee"
             
 Expected <Duke>, actual <Kodee>
 Expected :Duke
@@ -749,7 +751,7 @@ Actual   :Kodee
 
 Prefer a fluent or soft-assert style of writing assertions? Power-Assert can help you achieve this as well! By combining
 multiple `CallExplanation`s into a single explanation, we can write a DSL which provides information on both the subject
-and the asserted qualities.
+and the asserted conditions.
 
 <details>
 <summary>Definition of `assertThat`, `hasLength`, and `startsWith` functions.</summary>
@@ -844,7 +846,7 @@ Assertion failed:
  * String "Unknown" does not start with "K".
 assertThat(subject) {
            |
-           Unknown
+           "Unknown"
 
     hasLength("Kodee".length)
                       |
@@ -852,7 +854,7 @@ assertThat(subject) {
 
     startsWith("Kodee".substring(0, 1))
                        |
-                       K
+                       "K"
 
 }
 ```
