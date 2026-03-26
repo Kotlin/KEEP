@@ -3,10 +3,8 @@
 * **Type**: Design proposal
 * **Author**: Brian Norman
 * **Contributors**: Mikhail Zarechenskii, Marat Akhin
-* **Status**: Experimental in 2.4.0-Beta2
-* **Prototype**: Implemented
+* **Status**: Prototype available in 2.4.0-Beta2.
 * **Discussion**: TODO
-* **Status**: Public Discussion
 * **YouTrack Issue**:
   [KT-66807](https://youtrack.jetbrains.com/issue/KT-66807),
   [KT-66806](https://youtrack.jetbrains.com/issue/KT-66806),
@@ -56,7 +54,7 @@ structures to represent call-site information, and a way to access call-site inf
   * [Soft/Fluent Assertions](#softfluent-assertions)
   * [Custom Diagrams](#custom-diagrams)
 * [Feedback](#feedback)
-  * ["Why are there so few interesting `Expression` subclass?"](#why-are-there-so-few-interesting-expression-subclass)
+  * ["Why are there so few interesting `Expression` subclasses?"](#why-are-there-so-few-interesting-expression-subclasses)
   * ["Why the `Explanation` base class?"](#why-the-explanation-base-class)
   * ["Can you add XYZ to `Explanation`/`Expression`?"](#can-you-add-xyz-to-explanationexpression)
   * ["Why an expression List and not a tree?"](#why-an-expression-list-and-not-a-tree)
@@ -67,7 +65,7 @@ structures to represent call-site information, and a way to access call-site inf
 In general, this KEEP expects some familiarity with using Power-Assert as a Kotlin compiler plugin. There is
 [documentation available on the Kotlin website](https://kotlinlang.org/docs/power-assert.html) and a
 [talk from KotlinCont 2024](https://www.youtube.com/watch?v=N8u-6d0iCiE) if you want more background than what is
-present in this proposal.
+provided in this proposal.
 
 ## Background
 
@@ -171,8 +169,8 @@ parameter requirements.
 
 A keen observer may notice that none of the above impacts the call-site of a `@PowerAssert` annotated function. The
 Power-Assert transformation is quite invisible to the end user of such a function. And since the annotation helps
-automatically discover supported functions, this means the current configuration for fully-qualified function names is
-no longer required!
+automatically discover supported functions, this means the fully-qualified function name configuration is not required
+for annotated functions!
 
 This also means that if an assertion library were to adopt use of `@PowerAssert`, support for providing a diagram of the
 call-site would be seamless and transparent to the end user. All the end user would need to do is apply the
@@ -182,9 +180,9 @@ and encourage them to provide feedback on this KEEP!
 ## Declaration
 
 A keen observer may also notice that this means the Power-Assert compiler plugin now needs to be applied to function
-declarations as well. To provide the `CallExplanation` from the call-site to the `@PowerAssert` annotated function, the
-Power-Assert compiler plugin must generate a synthetic copy of the annotated function which has an additional parameter
-of type `() -> CallExplanation`. This allows Power-Assert to transform the call-site and provide this data structure.
+declarations as well. To provide a `CallExplanation` to the `@PowerAssert` annotated function, the Power-Assert compiler
+plugin must generate a synthetic copy of the annotated function which has an additional parameter of type
+`() -> CallExplanation`. This allows Power-Assert to transform the call-site and provide a `CallExplanation` instance.
 
 Details on this `CallExplanation` [transformation by the Power-Assert compiler plugin](#function-declarations) will be
 explored later in this proposal.
@@ -203,7 +201,8 @@ explored later in this proposal.
 # API Overview
 
 This section will give a ***brief overview*** of some classes from the new Power-Assert runtime library. We encourage
-those who want a more in-depth look at the classes to read the [documentation in the source code][power-assert-runtime].
+those who want a more in-depth and up-to-date look at the classes to read the
+[documentation in the source code][power-assert-runtime].
 
 ## `@PowerAssert`
 
@@ -279,7 +278,7 @@ public abstract class Expression internal constructor(
 )
 ```
 
-Expressions are organized within Power-Assert as `List`s and include all intermediate expresses. Lists of expressions
+Expressions are organized within Power-Assert as `List`s and include all intermediate expressions. Lists of expressions
 will always be provided in evaluation order. For example, code like `1 + 2` will be represented as a `List` with three
 `Expression` elements in the following order:
 1. An expression with a `value` of `1`.
@@ -320,7 +319,7 @@ parameters, the `arguments` list remains in the same order. If an argument to th
 value or is implicitly provided (as is common with context parameters) then the corresponding argument in the
 `CallExplanation` will be `null`.
 
-In cases when information about an argument is never used, it might be useful to exclude this infromation using the
+In cases when information about an argument is never used, it might be useful to exclude this information using the
 `@PowerAssert.Ignore` annotation.
 
 ```kotlin
@@ -572,8 +571,8 @@ to interact correctly with existing Kotlin features, including default arguments
 
 Some combinations work without any special configuration: like default arguments, `inline`, or `suspend`. In the case of
 `abstract`/`open` functions, the `@PowerAssert` annotation must be applied to the base function declaration of a
-hierarchy and may be excluded from inheriting functions. For `expect`/`actual` functions, the annotation must be present
-on both functions.
+hierarchy and is automatically inherited by all `override` functions. It may be repeated on `override` functions if
+desired for, but it is not required. For `expect`/`actual` functions, the annotation must be present on both functions.
 
 When combining Power-Assert with other compiler plugins, the behavior is not well-defined. For example, a `@Composable`
 and `@PowerAssert` function is possible if the compiler plugins run in the same order at both the function declaration
@@ -939,7 +938,7 @@ We look forward to your feedback!
 
 There are a few questions we expect, so here are some additional details in those areas to help guide your feedback.
 
-## "Why are there so few interesting `Expression` subclass?"
+## "Why are there so few interesting `Expression` subclasses?"
 
 The `LiteralExpression` class exists so that a `CallExplanation` can always be generated for a function call, yet
 values which are explicit in the source code can be excluded from the default Power-Assert diagram.
@@ -949,7 +948,8 @@ This expression can be used to provide an expected and actual value for a variet
 
 In the future, more `Expression` subclasses may be added to cover more use cases. For example, a
 `StringTemplateExpression` could be introduced to help describe String concatenation and each of the arguments provided.
-If you have additional use case ideas that do not violate a non-goal, we would love to hear them!
+If you have additional use case ideas ***that align with the [goals](#goals) and [non-goals](#non-goals)***, we would
+love to hear them!
 
 ## "Why the `Explanation` base class?"
 
@@ -964,7 +964,7 @@ There are a number of concerns with this idea:
 2. ***Performance*** – Excessive call-site transformation may result in slower code, which may not be needed if the
    explanation is never used.
 3. ***Syntax*** – Determining what local variables are transformed and how their information is propagated should be
-   determined by the code author without much additional burden.
+   controlled by the code author without much additional burden.
 
 We will continue to explore the potential of this idea.
 
@@ -988,7 +988,7 @@ compiler plugin would need to be rewritten.
 
 It is important to note that these designs are not mutually exclusive! In the future, as we explore additional use
 cases, we may switch to represent expressions as a tree. We should be able to migrate to a tree representation without 
-breaking existing code, as the existing list properties could be converted to a DFS walk of the tree.
+breaking existing code, as the existing list properties could be converted to a DFS walk of the expression tree.
 
 [power-assert-runtime]: https://github.com/JetBrains/kotlin/tree/master/plugins/power-assert/power-assert-runtime/src/commonMain/kotlin/kotlin/powerassert
 [power-assert-examples]: https://github.com/bnorm/power-assert-examples
