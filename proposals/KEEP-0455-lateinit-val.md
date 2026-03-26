@@ -18,12 +18,10 @@
 > 
 > ### Decisions Made
 >
-> - Both `AssignOnce` delegate and `lateinit val` declaration are introduced to Kotlin.
-> - `lateinit val` is compiled to delegation against a thread-safe `AssignOnce` implementation.
->   - As a language construct, it is treated as stable by the compiler and supports smartcasts.
-> - `AssignOnce` is an interface provided by the standard library.
->   - It is marked with `@SubclassOptInRequired`, signaling that extending it requires care to preserve the stability contract.
->   - Properties explicitly delegated to `AssignOnce` are normal delegated properties and do not support smartcasts.
+> - Drop the delegate-based approach to assign-once property declaration.
+> - Introduce `lateinit val` declaration to Kotlin.
+> - Treat `lateinit val` as stable and support smartcasts for it.
+> - Compile `lateinit val` to a backing field with thread-safe access.
 >
 > ### New in This Proposal
 >
@@ -38,14 +36,11 @@ to provide first-class support for properties
 with delayed initialization and assign-once semantics.
 
 `lateinit val` bridges the gap between `lateinit var` and `val`:
-it allows late initialization while preventing reassignment
+it allows late initialization while preventing reassignment 
 and enabling smartcasts.
-It is compiled to delegation to the thread-safe `AssignOnce` delegate
-provided by the standard library.
 
-The `AssignOnce` delegate can also be used directly
-for cases where customization (e.g., thread-safety mode) is desired,
-though as a regular delegated property it does not benefit from smartcasts.
+It is compiled to a private backing field.
+Thread-safe getter and setter enforce the assign-once semantics.
 
 # Table of Contents
 
@@ -55,9 +50,7 @@ though as a regular delegated property it does not benefit from smartcasts.
 * [Goals](#goals)
 * [Intended Semantics](#intended-semantics)
 * [Design](#design)
-  * [`AssignOnce` Delegate](#assignonce-delegate)
-  * [`lateinit val` Declaration](#lateinit-val-declaration)
-    * [Compilation Strategy](#compilation-strategy)
+  * [Compilation Strategy](#compilation-strategy)
 * [Interaction with Other Features](#interaction-with-other-features)
   * [Inheritance](#inheritance)
   * [Annotations](#annotations)
@@ -128,7 +121,6 @@ Accessing the property before and after initialization behaves differently:
 * **Read**: if the property is initialized, the assigned value is returned.
   Otherwise, an exception is thrown indicating an attempt to read an uninitialized property.
 
-That is, once initialized, the value is retained permanently.
 The property is thus stable: every successful read returns the same value.
 
 Adherence to assign-once semantics is enforced at runtime.
@@ -142,70 +134,7 @@ A thread-safe implementation additionally guarantees:
 
 # Design
 
-We propose to base assign-once properties on the `AssignOnce` delegate interface
-in the standard library.
-`lateinit val` declarations are a language-level construct built on top of it,
-with additional compiler support such as smartcasts.
-
-## `AssignOnce` Delegate
-
-We introduce an `AssignOnce` interface to the standard library:
-
-```kotlin
-@RequiresOptIn
-annotation class AssignOnceSubclassing
-
-@SubclassOptInRequired(AssignOnceSubclassing::class)
-interface AssignOnce<T> {
-    val value: T
-    fun initialize(value: T)
-}
-
-operator fun <T> AssignOnce<T>.getValue(thisRef: Any?, property: KProperty<*>): T = value
-operator fun <T> AssignOnce<T>.setValue(thisRef: Any?, property: KProperty<*>, value: T) { initialize(value) }
-```
-
-`AssignOnce` is marked with `@SubclassOptInRequired`
-to allow users to provide custom implementations when needed,
-while signaling that doing so requires care
-to preserve the stability contract.
-This also leaves room for changes to the `AssignOnce` behavior in the future.
-
-The standard library provides both thread-safe and non-thread-safe implementations.
-A builder function, similar to `lazy`, selects between them:
-
-```kotlin
-fun <T> assignOnce(
-    mode: AssignOnceThreadSafetyMode = AssignOnceThreadSafetyMode.SAFE
-): AssignOnce<T>
-```
-
-The thread-safe implementation is used by default.
-The non-thread-safe one can be selected
-when synchronization overhead is undesirable
-and the caller guarantees the absence of data races.
-
-An assign-once property then can be defined by delegation:
-
-```kotlin
-class Example {
-    var service: Service by assignOnce()
-
-    fun setup() {
-        service = createService()
-        // Reassignment throws:
-        service = createService()
-    }
-}
-```
-
-Properties explicitly delegated to `AssignOnce` are normal delegated properties.
-In particular, smartcasts do not work for them.
-
-## `lateinit val` Declaration
-
-We introduce `lateinit val` as a language construct
-for declaring assign-once properties.
+We introduce `lateinit val` as a language construct for declaring assign-once properties.
 `lateinit val` is applicable in the same declaration sites as `lateinit var`.
 
 ```kotlin
@@ -225,13 +154,22 @@ class Example {
 }
 ```
 
-`lateinit val` differs from related declarations in the following ways:
+`lateinit val` compares to related declarations in the following ways:
 * It can be late initialized in any scope, unlike `val` class properties which restrict deferred initialization to `init` blocks.
-* It supports **smartcasts**, unlike properties explicitly delegated to `AssignOnce`: since the value is stable after initialization, the compiler treats it similarly to `val` properties.
+* It supports **smartcasts**: since the value is stable after initialization, the compiler treats it similarly to `val` properties.
 * It has no restrictions on the property type: nullable and primitive types are allowed, in contrast with `lateinit var`.
+* It permits no custom setter or getter, similar to `lateinit var`.
+* It exposes no backing field on the source level. In particular, `@field:` annotation target is invalid for `lateinit val`.
+* It is thread-safe, meaning semantics are preserved in a multithreaded environment.
 
-Together with existing declarations,
-`lateinit val` contributes to a consistent property model
+The backing field is hidden in this design because interacting with it through annotations
+could bypass generated setter and violate assign-once semantics.
+
+Thread-safety is required by design because without it, 
+concurrent access could silently violate the stability contract that smartcasts rely on,
+leading to subtle, hard-to-debug issues.
+
+Together with existing declarations, `lateinit val` contributes to a consistent property model
 where the `lateinit` modifier moves compile-time read-write invariants to runtime:
 
 |       |                      `var`                      |               `lateinit var`               |               `lateinit val`               |                      `val`                      |
@@ -245,54 +183,76 @@ and may be preferred in performance-sensitive contexts.
 
 ### Compilation Strategy
 
-`lateinit val` declarations are compiled to delegation
-to the thread-safe `AssignOnce` implementation:
+We propose to compile `lateinit val` declarations to private backing fields
+with thread-safe setters and getters that enforce assign-once semantics.
+For example, on the JVM, the following code:
 
 ```kotlin
 class Example {
-    lateinit val service: Service
-    // Compiles to (roughly):
-    private val service$delegate = assignOnce<Service>()
-    var service: Service
-        get() = service$delegate.getValue(this, ::service)
-        set(value) = service$delegate.setValue(this, ::service, value)
+    lateinit val property: String
 }
 ```
 
-`lateinit val` uses the thread-safe `AssignOnce` implementation.
-Without thread-safety, concurrent access could silently violate
-the stability contract that smartcasts rely on,
-leading to subtle, hard-to-debug issues.
+could be compiled to (expressed in Java):
+
+```java
+public final class Example {
+    private static final Object UNINITIALIZED = new Object();
+
+    private static final AtomicReferenceFieldUpdater<Example, Object> propUpdater =
+            AtomicReferenceFieldUpdater.newUpdater(Example.class, Object.class, "_property");
+
+    private volatile Object _property = UNINITIALIZED;
+
+    @NotNull public String getProperty() {
+        Object p = _property;
+        if (p == UNINITIALIZED) {
+            throw new IllegalStateException("Property is uninitialized");
+        }
+        return (String) p;
+    }
+
+    public void setProperty(@NotNull String v) {
+        boolean updated = propUpdater.compareAndSet(this, UNINITIALIZED, v);
+        if (!updated) {
+            throw new IllegalStateException("Property already set");
+        }
+    }
+}
+```
+
+On other platforms, native atomic primitives may be used instead of `AtomicReferenceFieldUpdater`.
+
+Note that the `AtomicReferenceFieldUpdater` is a static class field, so
+it does not impose memory overhead on the class.
+The `UNINITIALIZED` sentinel object is also a static field,
+it can even be reused for all `lateinit val` properties of the class.
+Another option would be to provide it in the standard library,
+but then it would have to be public.
+If the sentinel and updater are made `protected` instead of `private`,
+inheritors can reuse them rather than generating their own.
 
 Thread-safety imposes a synchronization overhead on every access.
 In practice, we expect this overhead to be small:
-an efficient implementation based on compare-and-set primitives is feasible,
-and the intended use cases involve a single write with little or no contention.
+the intended use cases involve single write with little or no contention.
 
-An alternative would be a backing-field scheme similar to `lateinit var`,
+An alternative would be a public backing field scheme similar to `lateinit var`,
 where `null` or a sentinel object marks the uninitialized state.
-The delegation-based scheme is chosen for the following reasons:
-* It provides thread-safety through the delegate implementation
-  without requiring additional fields to store synchronization primitives.
+The proposed scheme is chosen for the following reasons:
 * It supports both nullable types and dependency injection at the same time:
   * A sentinel object is used to represent the uninitialized state instead of `null`.
   * Dependency injection frameworks can target the property setter,
     resolving the right type through reflection.
 * It prevents Java code from modifying the stored value directly,
-  as the underlying field is not exposed.
+  as the backing field is private.
 
-The trade-offs compared to `lateinit var` are:
-* An additional allocation for the delegate instance,
-  which is a memory and performance penalty.
-* No exposed backing field, which may be a source of confusion
-  given that `lateinit val` looks similar to `lateinit var`.
+The trade-off compared to `lateinit var` is
+no exposed backing field, which may create confusion
+given that `lateinit val` looks similar to `lateinit var`.
 
 # Interaction with Other Features
 
-For properties explicitly delegated to `AssignOnce`,
-interaction with other features follows the standard rules for delegated properties.
-`lateinit val`, however, does not look like a delegated property despite being compiled as one,
-which leads to some non-obvious behaviors discussed below.
+In this section, we describe how `lateinit val` interacts with other language features.
 
 ## Inheritance
 
@@ -314,13 +274,11 @@ that subclasses should not need to inherit or rely on.
 
 ## Annotations
 
-Since `lateinit val` is compiled to a delegated property,
-there is no backing field for annotations to target.
-This is a notable difference from `lateinit var`,
-where annotations like `@Inject` target the backing field by default.
+Although `lateinit val` has a backing field, we propose to hide it for annotations,
+because applying them to the field might bypass the generated setter of the property
+and thus violate assign-once semantics.
 
-For `lateinit val`, DI annotations must use
-an explicit `@set:` use-site target to reach the generated setter:
+So DI annotations must use an explicit `@set:` use-site target to reach the generated setter:
 
 ```kotlin
 class Application {
@@ -332,10 +290,10 @@ class Application {
 }
 ```
 
-To ease this, we propose an IDE intention
+To facilitate this use case, we propose an IDE intention
 that suggests adding the appropriate use-site target
 for known annotations (e.g., `@set:` for `@Inject`)
-when used on `lateinit val` or `AssignOnce`-delegated properties.
+when used on `lateinit val` properties.
 
 ## `isInitialized`
 
@@ -346,57 +304,21 @@ according to our open-source code survey.
 
 For assign-once properties, building logic around initialization status is discouraged.
 If such logic is needed, a nullable `var` or `lateinit var` may be a better fit.
-For this reason, we propose to omit `isInitialized` for assign-once properties in the beginning.
+For this reason, we propose to omit `isInitialized` for assign-once properties in the initial implementation.
 
-If it is introduced later, `AssignOnce` can be extended with the method:
-
-```kotlin
-interface AssignOnce<T> {
-    val value: T
-    fun initialize(value: T)
-    fun isInitialized(): Boolean
-}
-```
-
-Explicitly delegated properties can then support it
-through the delegate access feature
-([KEEP-0450](https://github.com/Kotlin/KEEP/blob/main/proposals/KEEP-0450-typed-delegate-access.md)):
-
-```kotlin
-// In the standard library:
-val <T> KDelegatedProperty0<T, AssignOnce<T>>.isInitialized: Boolean
-    get() = getDelegate().isInitialized()
-
-class Example {
-    var service: Service by assignOnce()
-
-    fun check(): Boolean = ::service.isInitialized
-}
-```
-
-For `lateinit val`, the check would need to be provided through an intrinsic,
-similar to `lateinit var`:
-
-```kotlin
-class Example {
-    lateinit val service: Service
-
-    fun check(): Boolean = ::service.isInitialized
-}
-```
+If it is introduced later, the check would need 
+to be provided through intrinsic, similar to `lateinit var`.
 
 ## Serialization
 
-Since `lateinit val` is compiled to a delegated property,
-it inherits the limitations of delegated properties with respect to serialization.
-In particular, `kotlinx.serialization` treats delegated properties as transient by default.
-This is another difference from `lateinit var`, which is usually supported by serialization frameworks.
+The backing field of a `lateinit val` effectively has `Any?` type,
+so serialization frameworks that rely on it cannot determine the actual property type.
+Also, the sentinel object is not serializable.
+Thus, serialization frameworks would need to provide special support for `lateinit val` properties.
 
-In most intended use cases, assign-once properties hold
-non-serializable values such as service instances or Android views,
-so this limitation is unlikely to be a practical concern.
-Proper handling of `lateinit val` in `kotlinx.serialization`
-may be addressed separately in the future.
+However, in most intended use cases, assign-once properties hold non-serializable values
+such as service instances or Android views, so it might be acceptable to ignore
+`lateinit val`s in serialization by default.
 
 ## Reflection
 
