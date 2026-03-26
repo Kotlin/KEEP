@@ -3,7 +3,7 @@
 * **Type**: Design proposal
 * **Author**: Brian Norman
 * **Contributors**: Mikhail Zarechenskii, Marat Akhin
-* **Status**: Experimental in 2.4
+* **Status**: Experimental in 2.4.0-Beta2
 * **Prototype**: Implemented
 * **Discussion**: TODO
 * **Status**: Public Discussion
@@ -14,10 +14,10 @@
 
 # Abstract
 
-The Power-Assert compiler plugin allows transforming function calls to include detailed information about the call-site.
-This information is currently in the form of a compile-time generated String passed as an argument to the function.
-We will introduce a new annotation to automatically trigger transformation of function calls, new data structures to
-represent call-site information, and a way to access call-site information from an annotated function.
+Power-Assert is a Kotlin compiler plugin which enables transforming function calls to include detailed information about
+the call-site. This information is currently in the form of a compile-time generated String passed as an argument to the
+function. We will introduce a new annotation to automatically trigger transformation of function calls, new data
+structures to represent call-site information, and a way to access call-site information from an annotated function.
 
 # Table of contents
 
@@ -33,7 +33,7 @@ represent call-site information, and a way to access call-site information from 
 * [Proposal](#proposal)
   * [Call-Site](#call-site)
   * [Declaration](#declaration)
-  * [Existing Behavior](#existing-behavior)
+  * [Maintained Behavior](#maintained-behavior)
 * [API Overview](#api-overview)
   * [`@PowerAssert`](#powerassert)
   * [`CallExplanation`](#callexplanation)
@@ -64,6 +64,11 @@ represent call-site information, and a way to access call-site information from 
 
 # Introduction
 
+In general, this KEEP expects some familiarity with using Power-Assert as a Kotlin compiler plugin. There is
+[documentation available on the Kotlin website](https://kotlinlang.org/docs/power-assert.html) and a
+[talk from KotlinCont 2024](https://www.youtube.com/watch?v=N8u-6d0iCiE) if you want more background than what is
+present in this proposal.
+
 ## Background
 
 Power-Assert transforms each function call that matches a set of fully-qualified function names. By default, it is
@@ -81,7 +86,7 @@ Into something similar to the following.
 val tmp1 = mascot
 val tmp2 = tmp1.name
 val tmp3 = tmp2 == "Kodee"
-assert(tmp3, { "assert(mascot.name == "Kodee")\n       |      |    |\n       |      |    $tmp3\n       |      $tmp2\n       $tmp1\n" })
+assert(tmp3, { "assert(mascot.name == \"Kodee\")\n       |      |    |\n       |      |    $tmp3\n       |      $tmp2\n       $tmp1\n" })
 ```
 
 The diagram is generated at compile time and produces an output like the following.
@@ -126,12 +131,10 @@ by making it more dynamic and enables better tooling integration.
 While these goals are important, there are also directions we explicitly do not intend to pursue with Power-Assert at
 this time.
 
-1. Power-Assert is ***not*** a macro or dynamic code execution system. The compiler plugin needs to remain simple and
-focused.
-2. Power-Assert is ***not*** a replacement for an assertion library. The compiler plugin needs to help enhance existing
+1. Power-Assert is ***not*** a macro or dynamic code execution system. The compiler plugin must remain focused on code
+descriptions and not metaprogramming use cases.
+2. Power-Assert is ***not*** a replacement for an assertion library. The compiler plugin must help enhance existing
 assertion libraries.
-
-[//]: # (TODO add a third thing here to maintain the rule of 3)
 
 # Proposal
 
@@ -141,9 +144,9 @@ annotation to mark function declarations that support Power-Assert transformatio
 Here's a quick example:
 
 ```kotlin
-import kotlinx.powerassert.PowerAssert
-import kotlinx.powerassert.CallExplanation
-import kotlinx.powerassert.toDefaultMessage
+import kotlin.powerassert.PowerAssert
+import kotlin.powerassert.CallExplanation
+import kotlin.powerassert.toDefaultMessage
 
 @PowerAssert
 fun powerAssert(condition: Boolean, @PowerAssert.Ignore message: String? = null) {
@@ -173,8 +176,8 @@ no longer required!
 
 This also means that if an assertion library were to adopt use of `@PowerAssert`, support for providing a diagram of the
 call-site would be seamless and transparent to the end user. All the end user would need to do is apply the
-compiler plugin to their project. If you are the user of such a project, you should reach out to the author and
-encourage them to provide feedback on this KEEP!
+compiler plugin to their project. If you are the user of such an assertion library, you should reach out to the author
+and encourage them to provide feedback on this KEEP!
 
 ## Declaration
 
@@ -186,13 +189,13 @@ of type `() -> CallExplanation`. This allows Power-Assert to transform the call-
 Details on this `CallExplanation` [transformation by the Power-Assert compiler plugin](#function-declarations) will be
 explored later in this proposal.
 
-## Existing Behavior
+## Maintained Behavior
 
-If you are worried that the ability for the Power-Assert compiler plugin to generate a compile-time `String` diagram is
-being removed, worry not! The compiler plugin will continue to accept fully-qualified function names as configuration
-for functions which are not annotated with `@PowerAssert`. In fact, this behavior is being improved as well: by using
-`CallExplanation` to generate a diagram at runtime, we can improve the diagram rendering dramatically by changing the
-layout of the diagram based on the results of each intermediate expression.
+If you are worried that the ability for the Power-Assert compiler plugin to support functions which take a `String` or
+`() -> String` diagram is being removed, worry not! The compiler plugin will continue to accept fully-qualified function
+names as configuration for functions which are not annotated with `@PowerAssert`. In fact, this behavior is being
+improved as well: by using `CallExplanation` to generate a diagram at runtime, we can improve the diagram rendering
+dramatically by changing the layout of the diagram based on the results of each intermediate expression.
 
 Details on this new `String` diagram [transformation by the Power-Assert compiler plugin](#string-message-calls) will be
 explored later in this proposal.
@@ -205,8 +208,8 @@ those who want a more in-depth look at the classes to read the [documentation in
 ## `@PowerAssert`
 
 A new annotation will be introduced to mark functions which support being
-[transformed by the Power-Assert compiler plugin](#transformation). This annotation also provides access to a compiler plugin
-intrinsic `CallExplanation` property which can be used to access call-site information.
+[transformed by the Power-Assert compiler plugin](#function-declarations). This annotation also provides access to a
+compiler plugin intrinsic `CallExplanation` property which can be used to access call-site information.
 
 ```kotlin
 @Target(AnnotationTarget.FUNCTION)
@@ -428,7 +431,7 @@ synthetic copy adds a parameter of type `() -> CallExplanation`. Both functions 
 calls to `PowerAssert.explanation`, with either `null` in the case of the original function, or the additional parameter
 in the case of the synthetic copy.
 
-For example, the following function declaration:
+For example, given the following function declaration:
 
 ```kotlin
 @PowerAssert
@@ -440,7 +443,7 @@ fun powerAssert(condition: Boolean) {
 }
 ```
 
-Will result in the following two functions, the original and the synthetic copy:
+Transformation by Power-Assert will result in two functions: the original and the synthetic copy.
 
 ```kotlin
 @PowerAssert
@@ -461,8 +464,6 @@ fun `powerAssert$powerassert`(condition: Boolean, `$explanation`: () -> CallExpl
     }
 }
 ```
-
-This means that the original function can be used without a runtime dependency on any Power-Assert related classes!
 
 ## Function Calls
 
@@ -508,15 +509,14 @@ is not annotated with `@PowerAssert`.
 
 ## Runtime Dependency
 
-When the Gradle plugin for Power-Assert is applied to a project, the Power-Assert runtime library will automatically be
-added as an `implementation` dependency to all source sets that Power-Assert is enabled for.
+When the Gradle plugin for Power-Assert is applied to a project, the Power-Assert runtime library [will automatically be
+added as an `implementation` dependency](https://youtrack.jetbrains.com/issue/KT-85250) to all source sets that
+Power-Assert is enabled for.
 
 If a library wants to support Power-Assert but doesn't want to include the runtime library transitively, automatic
 adding of the runtime library dependency can be disabled by setting the Gradle `powerAssert.addRuntimeDependency`
 property to `false`. This would allow libraries to add the runtime library as a `compileOnly` dependency so it is not
 included transitively.
-
-[//]: # (TODO finalize new Gradle plugin configurations)
 
 ```kotlin
 plugins {
@@ -534,6 +534,11 @@ powerAssert {
     addRuntimeDependency = false
 }
 ```
+
+If a library decides to not include the Power-Assert runtime library transitively, it should be careful of where
+functions annotated with `@PowerAssert` are used. While the `PowerAssert.explanation` property call is replaced with
+`null`, references to Power-Assert related classes are not removed. This could lead to errors at runtime or during
+linking. For example, on the JVM, this could lead to `NoClassDefFoundError` exceptions at runtime.
 
 ## Backwards Compatibility
 
@@ -556,7 +561,7 @@ reduces the risk of accidental exposure.
 
 As a user of Power-Assert, it is important to be aware of all call sites that are transformed by the compiler plugin.
 And when a new version of a library is available, consider how this might change what call sites are transformed.
-We're working on ways to make this transformation more obvious at the call site, but we unfortuantely have nothing to
+We're working on ways to make this transformation more obvious at the call site, but we unfortunately have nothing to
 share yet.
 
 ## Interactions
@@ -574,7 +579,8 @@ When combining Power-Assert with other compiler plugins, the behavior is not wel
 and `@PowerAssert` function is possible if the compiler plugins run in the same order at both the function declaration
 and the function call-site. However, such a function does not make logical sense, as it violates many `@Composable`
 guarantees by providing access to non-parameter expressions. As such, at this time, it is strongly discouraged to have
-both `@PowerAssert` and `@Composable` on the same function.
+both `@PowerAssert` and `@Composable` on the same function. Combinations of Power-Assert with other compiler plugins
+should follow similarly and avoid combining behaviors on the same function.
 
 # Use Cases
 
@@ -594,15 +600,17 @@ dependencies {
 }
 
 powerAssert {
-    // (2) New Gradle configuration to include all source sets by default.
-    defaultSourceSets = PowerAssertSourceSets.ALL
+    // (2) Gradle configuration to include all source sets by default.
+    includedSourceSets = provider { kotlin.sourceSets.map { it.name } }
 }
 ```
 
 Adding the above to your `build.gradle.kts` file will enable the Power-Assert compiler plugin for all source sets. The
 important part is the addition of the runtime library, so you can experiment with the new `PowerAssert` annotation and
 `CallExplanation`. The presence of the runtime library will also enable the `CallExplanation(...).toDefaultMessage()`
-style messages for existing function calls, so you can experience the improved diagrams.
+style messages for existing function calls, so you can experience the improved diagrams. Eventually, the runtime library
+will be [added automatically](#runtime-dependency), but this behavior is
+[not yet supported](https://youtrack.jetbrains.com/issue/KT-85250).
 
 If you want to experiment with Power-Assert before 2.4.0-Beta2 is released, check out 
 this [Github project][power-assert-examples], which is built against a development version of Kotlin.
