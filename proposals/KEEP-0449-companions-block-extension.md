@@ -62,11 +62,13 @@ together.
 * [Technical details](#technical-details)
     * [Declaration](#declaration)
     * [Resolution](#resolution)
-    * [Static initialization](#static-initialization)
+    * [Companion initialization](#companion-initialization)
     * [Compilation strategy](#compilation-strategy)
     * [Reflection](#reflection)
 * [Migration](#migration)
-* [What this proposal means for the JVM](#what-this-proposal-means-for-the-jvm)
+* [Platform-specific considerations](#platform-specific-considerations)
+    * [Java Virtual Machine](#java-virtual-machine)
+    * [Migration for non-JVM platforms](#migration-for-non-jvm-platforms)
 * [Acknowledgements](#acknowledgements)
 
 
@@ -905,7 +907,7 @@ class Bar : Foo() {
 > it leads to a more complicated mental model.
 
 
-### Static initialization
+### Companion initialization
 
 Companion block properties may have initializers, so a fair question is when
 and how such initialization is performed. Furthermore, we need to define the
@@ -916,23 +918,25 @@ possible.
 
 > [!NOTE]
 > To underline the difference between initialization of companion blocks
-> and regular member fields, we refer to the former as **static initialization**.
+> and regular member fields, we refer to the former as **companion initialization**.
 
-**§3.1** (_static initialization, requirements_): 
+**§3.1** (_companion initialization, requirements_): 
 initialization of properties in companion blocks
 _must_ happen before one of these conditions are met:
 
-1. one of the non-constant companion block members of that classifier is accessed;
+1. a constructor of that classifier is called;
 2. the companion object of that classifier is accessed;
-3. a constructor of that classifier is called, either directly or indirectly
-   via one of its subclasses.
+3. an enumeration entry of that classifier is accessed;
+4. one of the non-constant companion block members of that classifier is accessed or called;
+5. one of the implicit static members of that classifier (like `entries`)
+   is accessed or called.
 
 Initialization may happen in other scenarios depending on the target platform.
 For example, in the JVM 
 [reflection triggers static initialization](https://docs.oracle.com/javase/specs/jvms/se24/html/jvms-5.html#jvms-5.5).
 
-**§3.2** (_static initialization respects program order_):
-whenever static initialization happens, it should respect program order.
+**§3.2** (_companion initialization respects program order_):
+whenever companion initialization happens, it should respect program order.
 
 The only exception are _constants_, which should be initialized _before_ any
 other property in companion blocks.
@@ -949,14 +953,14 @@ particular members. The order should be:
 
 1. enumeration entries,
 2. initialization related to the implicit members `entries` and `values`,
-3. rest of static initialization, following program order.
+3. rest of companion initialization, following program order.
 
 That means that members in companion blocks may freely refer to enumeration
 entries without fear of initialization loops.
 
 > [!WARNING]
 > This KEEP does not mandate any particular behavior for out-of-order
-> references during  static initialization. For example, the following piece of
+> references during companion initialization. For example, the following piece of
 > code has undefined behavior.
 >
 > ```kotlin
@@ -975,13 +979,13 @@ entries without fear of initialization loops.
 
 **§3.3** (_initialization, inheritance_):
 following [JVM semantics](https://docs.oracle.com/javase/specs/jvms/se24/html/jvms-5.html#jvms-5.5),
-static initialization of a class should also trigger static initialization of:
+companion initialization of a class should also trigger companion initialization of:
 
 * its superclass, if present,
 * all of the superinterfaces that have at least one non-abstract member.
 
-Note that static initialization of one of the parent classifiers may trigger
-static initialization of other classifiers, recursively.
+Note that companion initialization of one of the parent classifiers may trigger
+companion initialization of other classifiers, recursively.
 
 **§3.4** (_companion extensions_):
 we remark that calling a companion extension does _not_ imply the
@@ -1343,7 +1347,9 @@ advisable. We _recommend_ beginning by migrating extensions to the companion
 object to companion extensions, and then dropping `object` to turn into a
 companion block. That way we have working code on each stage.
 
-## What this proposal means for the JVM
+## Platform-specific considerations
+
+### Java Virtual Machine
 
 JVM remains one of the most important targets for Kotlin, and in the _problems_
 section we discussed issues with code generation and interoperability on that
@@ -1359,6 +1365,28 @@ problem #4. However, in order to have good performance, we need a way to
 prevent re-computation of values; for that reason the proposal allows for
 properties in companion blocks and companion extensions to have **backing
 fields and initializers**.
+
+### Migration for non-JVM platforms
+
+The _Companion initialization_ and _Code generation_ sections accommodate JVM
+behavior, as discussed at the beginning. This means that other platforms may
+require some migration strategy. At the very least Kotlin/Native is affected,
+since it currently does not initialize superclasses and superinterfaces.
+
+For this migration, we have a few options:
+
+1. Use the new initialization since the version in which companion blocks
+  are available as experimental,
+2. Use the new initialization only when the feature is enabled.
+  That means that while the feature is experimental, we use the new strategy 
+  only when the corresponding compiler flag is enabled; and once the feature
+  is stable, we use it everywhere.
+3. Use the new initialization only for classes using companion blocks.
+
+We have decided to go with **option (2)**. Option (1) seems too risky, as the
+behavior may change just by updating the Kotlin version, even if no code
+changes. Option (3) seems too fine-grained, and also creates problems if some
+parent classifier starts using companion blocks.
 
 ## Acknowledgements
 
