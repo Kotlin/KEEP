@@ -4,7 +4,7 @@
 * **Author**: Brian Norman
 * **Contributors**: Mikhail Zarechenskii, Marat Akhin
 * **Status**: Prototype available in 2.4.0-Beta2.
-* **Discussion**: TODO
+* **Discussion**: [KEEP-478](https://github.com/Kotlin/KEEP/discussions/478)
 * **YouTrack Issue**:
   [KT-66807](https://youtrack.jetbrains.com/issue/KT-66807),
   [KT-66806](https://youtrack.jetbrains.com/issue/KT-66806),
