@@ -62,7 +62,7 @@ together.
 * [Technical details](#technical-details)
     * [Declaration](#declaration)
     * [Resolution](#resolution)
-    * [Initialization](#initialization)
+    * [Static initialization](#static-initialization)
     * [Compilation strategy](#compilation-strategy)
     * [Reflection](#reflection)
 * [Migration](#migration)
@@ -336,7 +336,7 @@ One consequence of this decision is the general prohibition of operators.
 class Example {
     companion {
         // if we were allowed to write this...
-        fun plus(x: Int): Int { ... }
+        operator fun plus(x: Int): Int { ... }
     }
 }
 
@@ -413,12 +413,26 @@ reasons for that choice, mostly for the sake of simplicity.
   _explicitly_ writing `T.Companion`, something that is not possible with
   the other kinds of companions.
 
-**Accommodate platform initialization semantics.** We want the "translation"
-from Kotlin code into the semantics of each platform to be straightforward.
-As we discuss in the _Initialization_ section below, our current targets 
-heavily differ on this point, so we need to cater to the common denominator.
-In our design this is visible by only allowing property initializers in 
-companion blocks, but not a more general notion of `init` for such blocks.
+**No complex initialization semantics.** 
+Having class members introduces an additional initialization phase, namely
+that of the class itself. Even though this has always existed in Kotlin —
+you can ask the question of when enumeration entries and companion objects
+are initialized — this issue becomes more pressing once we have a general
+facility to introduce such members.
+
+Initialization problems are already hard to diagnose and debug, and we
+definitely do not want to bring a new way to shoot yourself in the foot.
+For that reason, we limit the kind of initialization available in companion
+blocks, with no general `init` for such blocks.
+
+**Accommodate JVM initialization semantics.** 
+Given the multiplatform nature of Kotlin, initialization brings another dilemma.
+On the one hand, we may want our initialization semantics to be as close a
+possible to each underlying platform. Alas, that means potential different 
+behavior for companion blocks. We have decided to go in the opposite direction
+instead: having uniform semantics.
+Since the JVM is still the main target for Kotlin, and the one we have the least
+control over, this KEEP tries to accommodate that semantics specifically.
 
 ### On syntax
 
@@ -891,38 +905,62 @@ class Bar : Foo() {
 > it leads to a more complicated mental model.
 
 
-### Initialization
+### Static initialization
 
-Companion block properties may have initializers, but it is not immediately
-clear when those should run. Given the multiplatform nature of Kotlin,
-we need to cater for different initialization semantics.
-
-When talking about initialization, the first question is _when_ it is performed.
-There is a strict bound: companion block properties must be initialized, at
-the very latest, before they are accessed for the first time. But in some
-platforms, like the JVM, this initialization happens in response to many other
-runtime events, like when the class containing the property is instantiated.
-Other platforms, like Swift, have _lazy_ semantics that defer initialization of
-a property until the very latest moment possible.
+Companion block properties may have initializers, so a fair question is when
+and how such initialization is performed. Furthermore, we need to define the
+order of initialization in several cases: when inheritance enters the game,
+in relation to companion objects, and for enumerations. As described in the 
+_Main design decisions_ section, we try to accommodate JVM semantics whenever
+possible.
 
 > [!NOTE]
-> The JVM has a very specific
-> [set of rules](https://docs.oracle.com/javase/specs/jvms/se24/html/jvms-5.html#jvms-5.5)
-> for the moment static initialization runs.
-> The rules in this proposal are compliant with the JVM requirements.
+> To underline the difference between initialization of companion blocks
+> and regular member fields, we refer to the former as **static initialization**.
 
-Furthermore, some platforms like the JVM perform _bulk initialization_.
-That means that every static field (including the one representing the companion
-object) is initialized at the same time. At the other end of the spectrum
-we have _per-property initialization_, like in Swift, in which each property
-is initialized differently.
+**§3.1** (_static initialization, requirements_): 
+initialization of properties in companion blocks
+_must_ happen before one of these conditions are met:
+
+1. one of the non-constant companion block members of that classifier is accessed;
+2. the companion object of that classifier is accessed;
+3. a constructor of that classifier is called, either directly or indirectly
+   via one of its subclasses.
+
+Initialization may happen in other scenarios depending on the target platform.
+For example, in the JVM 
+[reflection triggers static initialization](https://docs.oracle.com/javase/specs/jvms/se24/html/jvms-5.html#jvms-5.5).
+
+**§3.2** (_static initialization respects program order_):
+whenever static initialization happens, it should respect program order.
+
+The only exception are _constants_, which should be initialized _before_ any
+other property in companion blocks.
+
+**§3.2.1** (_initialization, companion objects_):
+we remark that companion objects should also follow the previous rule, that is,
+respect program order.
+
+**§3.2.2** (_initialization, enumerations_):
+we remark that enumerations should lso follow the previous rule, that is,
+respect program order. Enumeration entries _must_ be declared before anything 
+else in the class, but we also have implicit initialization related to some
+particular members. The order should be:
+
+1. enumeration entries,
+2. initialization related to the implicit members `entries` and `values`,
+3. rest of static initialization, following program order.
+
+That means that members in companion blocks may freely refer to enumeration
+entries without fear of initialization loops.
 
 > [!WARNING]
-> When using bulk initialization it is possible to leak
-> intermediate values. For example, the following code,
+> This KEEP does not mandate any particular behavior for out-of-order
+> references during  static initialization. For example, the following piece of
+> code has undefined behavior.
 >
 > ```kotlin
-> class Bulk {
+> class Problem {
 >     companion {
 >         val a = getTheB()
 >         val b = 5
@@ -931,46 +969,21 @@ is initialized differently.
 > }
 > ```
 >
-> results in `a` having the (default) value `0` in the JVM.
+> In some platforms, fields get default values that can be observed during
+> initialization. As a particular case, the previous code results in `a` having 
+> the (default) value `0` in the JVM.
 
-Given our goal of behaving as close as possible to the usual behavior in
-each platform, we shall only describe when companion block properties
-are _required_ to be initialized. The compiler or the runtime are free to
-perform such initialization at any point _before_ such requirement.
+**§3.3** (_initialization, inheritance_):
+following [JVM semantics](https://docs.oracle.com/javase/specs/jvms/se24/html/jvms-5.html#jvms-5.5),
+static initialization of a class should also trigger static initialization of:
 
-**§3.1** (_general rule_): the initializer of a property in a companion block,
-if present, _must_ run before the first time the property is accessed. Such
-initialization may trigger more, if other properties with initializer are
-mentioned.
+* its superclass, if present,
+* all of the superinterfaces that have at least one non-abstract member.
 
-If any step in the initialization process leads to a loop, it results in
-unspecified behavior. This aligns with the "regular" initialization order in the
-[specification](https://kotlinlang.org/spec/declarations.html#classifier-initialization).
+Note that static initialization of one of the parent classifiers may trigger
+static initialization of other classifiers, recursively.
 
-**§3.2.1** (_bulk initialization, requirements_): in platforms with bulk
-initialization semantics, initialization of properties in companion blocks
-_must_ happen before one of these conditions are met:
-
-1. one of the non-constant companion block members of that classifier is accessed;
-2. the companion object of that classifier is accessed;
-3. a constructor of that classifier is called, either directly or indirectly
-   via one of its subclasses.
-
-It is not required to initialize the companion block members in parent
-classifiers, unless these are required by calling their constructors.
-Note that in the case of interfaces a subclass does not call a constructor.
-
-**§3.2.2** (_bulk initialization, order_):
-whenever bulk initialization happens, it should respect program order, with
-the companion object being initialized at the point it's declared. The only
-exception are _constants_, which should be initialized _before_ any other
-property in companion blocks.
-
-This proposal does not mandate any guarantees when accessing values defined
-later in program order during bulk initialization. As discussed above, this
-may result in intermediate or default values leaking.
-
-**§3.3** (_companion extensions_):
+**§3.4** (_companion extensions_):
 we remark that calling a companion extension does _not_ imply the
 initialization of the classifier being extended, as per the rules above.
 On the other hand, companion extension properties are treated with respect
@@ -985,16 +998,6 @@ fun findBasis(): List<Vector> {
 }
 ```
 
-**§3.4** (_enumerations_):
-in the case of enumerations, initialization of properties in companion block
-must happen after the initialization of:
-
-1. enumeration entries,
-2. initialization related to the implicit members `entries` and `values`.
-
-That means that members in companion blocks may freely refer to enumeration
-entries without fear of initialization loops.
-
 ### Compilation strategy
 
 **§4.1.1** (_JVM, companion block members_): companion block members are
@@ -1003,7 +1006,10 @@ properties are compiled into static private fields.
 
 **§4.1.2** (_JVM, companion initialization_): companion initialization is
 compiled into the static initializer `<clinit>`, following the order described
-in §3.2.2.
+in §3.2.
+
+The mental model for those acquainted with Java is that each companion block
+translated to static fields and methods in Java, plus a static initializer.
 
 **§4.1.3** (_JVM, companion extensions_): companion extensions are compiled
 as static members of the corresponding `FileKt` class, without any value
@@ -1134,9 +1140,10 @@ prototype chain, but when accessed through the class name the right overload
 is chosen, as shown in
 [this example in MDN](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Classes/static#using_static_members_in_classes).
 
-**§4.2.2** (_JS, companion initialization_): the initializer for a property
-in a companion block is translated into the initializer for the corresponding
-(private) backing field.
+**§4.2.2** (_JS, companion initialization_): companion initialization is
+compiled into a 
+[static initialization block](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Classes/Static_initialization_blocks), 
+following the order described in §3.2.
 
 **§4.2.3** (_JS, companion constants_): constants do not introduce a backing
 field, instead the property is directly exposed, and the initializer turns
@@ -1163,10 +1170,14 @@ is compiled to the following JS code,
 
 ``` js
 class Vector {
-    static #Zero = new Vector(0.0, 0.0);
+    static #Zero; 
     static get Zero() { return Vector.#Zero; }
 
     static Dimensions = 2;
+
+    static {
+        this.#Zero = new Vector(0.0, 0.0);
+    }
 }
 
 function getUnitVector(dimension) { ... }
@@ -1348,12 +1359,6 @@ problem #4. However, in order to have good performance, we need a way to
 prevent re-computation of values; for that reason the proposal allows for
 properties in companion blocks and companion extensions to have **backing
 fields and initializers**.
-
-On the topic of initialization, this proposal exposes a much narrower notion
-than static initialization in Java. In particular, there is **no `init` block
-for companion blocks**; only initializers in properties therein. This allows
-us to accommodate per-property semantics of initialization, as described in
-the corresponding section.
 
 ## Acknowledgements
 
