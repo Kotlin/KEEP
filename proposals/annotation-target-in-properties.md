@@ -114,14 +114,14 @@ The `all` target may **not** be used with [delegated properties](https://kotlinl
 
 The Kotlin compiler shall provide a flag to change the defaulting behavior.
 
-- `-Xannotation-defaulting=first-only` corresponds to the defaulting rule in version 1.9 of the Kotlin specification.
-- `-Xannotation-defaulting=param-property` corresponds to the new proposed param-and-property defaulting rule.
+- `-Xannotation-default-target=first-only` corresponds to the defaulting rule in version 1.9 of the Kotlin specification.
+- `-Xannotation-default-target=param-property` corresponds to the new proposed param-and-property defaulting rule.
 
 #### Migration
 
 The param-and-property defaulting rule should become the new defaulting rule in the language. For an orderly transition between the two worlds, we define an additional compiler flag.
 
-- `-Xannotation-defaulting=first-only-warn` behaves as `first-only`; in addition, it raises a warning whenever the following are true:
+- `-Xannotation-default-target=first-only-warn` behaves as `first-only`; in addition, it raises a warning whenever the following are true:
   - The annotation does _not_ have a explicit use-site target,
   - Both the `param` and one of `property` or `field` targets are allowed for the specific element.
 
