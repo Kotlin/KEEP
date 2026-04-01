@@ -23,6 +23,20 @@ class C {
 }
 ```
 
+## Table of contents
+
+* [Motivation](#motivation)
+  * [Expose wrapper API](#expose-wrapper-api)
+  * [Potential unification of `lateinit` and delegated properties](#potential-unification-of-lateinit-and-delegated-properties)
+* [Proposal](#proposal)
+* [Details](#details)
+  * [Requirements](#requirements)
+  * [Behavior in inline functions](#behavior-in-inline-functions)
+  * [Hierarchy of `KDelegated`](#hierarchy-of-kdelegated)
+  * [Additional extension functions](#additional-extension-functions)
+  * [Inlining optimizations](#inlining-optimizations)
+  * [Behavior in different scopes](#behavior-in-different-scopes)
+
 ## Motivation
 
 ### Expose wrapper API
@@ -70,7 +84,7 @@ Note that the specific details of this unification are not yet clear and are out
 
 ## Proposal
 
-The proposal is to resolve `::property` differently for delegated properties, allowing accessing the typed value of a delegate:
+The proposal is to resolve `::property` differently for delegated properties, allowing access to the typed value of a delegate:
 
 ```kotlin
 class C {
@@ -86,99 +100,78 @@ class C {
 }
 ```
 
-The first step to achieve it is to introduce an additional set of types `KDelegatedPropertyN` and `KMutableDelegatedPropertyN`, 
-which are parametrized by the type of the delegate and overrides the `getDelegate()` method with the proper return type. 
-For example, for `KDelegatedProperty0`:
+The first step to achieve it is to introduce an additional set of types `KDelegatedN`, 
+which are parameterized by the type of the delegate and declares the `getDelegate()` method with the proper return type. 
+For example, for `KDelegated0`:
 
 ```kotlin
-interface KDelegatedProperty0<out V, out Delegate> 
-    : KProperty0<V>, KDelegatedProperty<Delegate> {
-    public override fun getDelegate(): Delegate
+interface KDelegated<out Delegate>
+
+interface KDelegated0<out Delegate> : KDelegated<Delegate> {
+    fun getDelegate(): Delegate
 }
 ```
 
-The second step is to resolve `::property` to `KDelegatedPropertyN` for delegated properties.
-To prevent leaking implementation details, this new resolution will be available only inside the private scope of the property.
-This is similar to the resolution for [Explicit Backing Fields](https://github.com/Kotlin/KEEP/blob/main/proposals/KEEP-0430-explicit-backing-fields.md), where private type is also accessible only inside the private scope of the property.
+The second step is to provide a smart-cast for `::property` to `KDelegatedN` for delegated properties.
+To prevent leaking implementation details, this smart-cast will be available only inside the private scope of the property.
+This is similar to the behavior for [Explicit Backing Fields](https://github.com/Kotlin/KEEP/blob/main/proposals/KEEP-0430-explicit-backing-fields.md), where private type is also accessible only inside the private scope of the property.
 Another analogue is a mutable property with a private setter.
 It is resolved to `KMutablePropertyN` inside the private scope and to `KPropertyN` outside.
 Moreover, the anonymous class generated in the outer scope, does not inherit `KMutablePropertyN`, so it is not possible to access the setter even with the downcast.
 See the [Behavior in different scopes](#behavior-in-different-scopes) section for more details.
 
+> Note:
+> Hierarchy for KDelegatedN does not inherit from KProperty as it was done in the initial version of this proposal.
+> This is done to prevent explosion of interfaces in the hierarchy.
+> While the interfaces resulting from inheritance look manageable today:
+> 
+> ```kotlin
+> interface KProperty // with overrides for 0/1/2
+> interface KMutableProperty : KProperty // with overrides for 0/1/2
+> interface KDelegatedProperty : KProperty // with overrides for 0/1/2
+> interface KMutableDelegatedProperty : KMutableProperty, KDelegatedProperty // with overrides for 0/1/2
+> ```
+> 
+> In the future we might implement other kinds of properties, requiring different interfaces, and each of them would have to have a `Delegated` counterpart.
+> This not only would end up in too many different interfaces, but also significantly decreases the readability of them.
+
 ## Details
 
 ### Requirements
 
-The new resolution does not work for non-final delegated properties as they might be overridden with other delegates or just common properties.
+New smart-cast to `KDelegatedN` does not work for non-final delegated properties as they might be overridden with other delegates or just common properties.
 
-### Resolution in inline functions
+### Behavior in inline functions
 
-The resolution to `KDelegatedPropertyN` is disabled inside Public-API inline functions (with `public`, `protected` and `@PublishedApi internal` visibility).
+New smart-cast to `KDelegatedN` is disabled inside Public-API inline functions (with `public`, `protected` and `@PublishedApi internal` visibility).
 This is required to prevent leaking implementation details.
 This behavior is the same as for Explicit Backing Fields.
 
-### New hierarchy of `KProperty`
+### Hierarchy of `KDelegated`
 
-The proposed new hierarchy of `KProperty` is as follows:
+The proposed hierarchy of `KDelegated` is as follows:
 
 ```kotlin
-// Existing interfaces:
+interface KDelegated<out Delegate>
 
-public interface KProperty<out V> : KCallable<V>
-
-public interface KMutableProperty<V> : KProperty<V>
-
-public interface KProperty0<out V> : KProperty<V>, () -> V {
-    public fun getDelegate(): Any?
+interface KDelegated0<out Delegate> : KDelegated<Delegate> {
+    fun getDelegate(): Delegate
 }
 
-public interface KMutableProperty0<V> : KProperty0<V>, KMutableProperty<V>
-
-public interface KProperty1<T, out V> : KProperty<V>, (T) -> V {
-    public fun getDelegate(receiver: T): Any?
+interface KDelegated1<T, out Delegate> : KDelegated<Delegate> {
+    fun getDelegate(receiver: T): Delegate
 }
 
-public interface KMutableProperty1<T, V> 
-    : KProperty1<T, V>, KMutableProperty<V>
-
-public interface KProperty2<D, E, out V> : KProperty<V>, (D, E) -> V {
-    public fun getDelegate(receiver1: D, receiver2: E): Any?
+interface KDelegated2<D, E, out Delegate> : KDelegated<Delegate> {
+    fun getDelegate(receiver1: D, receiver2: E): Delegate
 }
-
-public interface KMutableProperty2<D, E, V> 
-    : KProperty2<D, E, V>, KMutableProperty<V>
-
-// New interfaces:
-
-public interface KDelegatedProperty<out V, out Delegate> : KProperty<V>
-
-public interface KDelegatedProperty0<out V, out Delegate> 
-    : KProperty0<V>, KDelegatedProperty<V, Delegate> {
-    public override fun getDelegate(): Delegate
-}
-
-public interface KMutableDelegatedProperty0<V, out Delegate> 
-    : KDelegatedProperty0<V, Delegate>, KMutableProperty0<V>
-
-public interface KDelegatedProperty1<T, out V, out Delegate> 
-    : KProperty1<T, V>, KDelegatedProperty<V, Delegate> {
-    public override fun getDelegate(receiver: T): Delegate
-}
-
-public interface KMutableDelegatedProperty1<T, V, out Delegate> 
-    : KDelegatedProperty1<T, V, Delegate>, KMutableProperty1<T, V>
-
-public interface KDelegatedProperty2<D, E, out V, out Delegate> 
-    : KProperty2<D, E, V>, KDelegatedProperty<V, Delegate> {
-    public override fun getDelegate(receiver1: D, receiver2: E): Delegate
-}
-
-public interface KMutableDelegatedProperty2<D, E, V, out Delegate> 
-    : KDelegatedProperty2<D, E, V, Delegate>, KMutableProperty2<D, E, V>
 ```
 
-The `getDelegate` method is currently available only for the JVM platform. 
-The current proposal includes the addition of this method to the `KPropertyN` interfaces on other platforms
+The `getDelegate` method is defined as a method rather than a property, to align with the corresponding methods in `KPropertyN` interfaces.
+On the use site, with `KPropertyN` as the main type and a smart-cast to `KDelegatedN`, the `getDelegate` method will be typed as an intersection override, effectively narrowing its return type from `Any?` to the concrete `Delegate` type taken from `KDelegatedN`.
+
+The `getDelegate` method is currently available only for the JVM platform.
+The current proposal includes the addition of this method to the `KPropertyN` interfaces on other platforms.
 
 ### Additional extension functions
 
@@ -203,29 +196,28 @@ fun <D> KProperty2<D, *, *>.getExtensionDelegate(receiver: D): Any?
 
 // New extensions:
 
-fun <Delegate> KDelegatedProperty1<*, *, Delegate>.getExtensionDelegate(): Delegate
+fun <Delegate> KDelegated1<*, Delegate>.getExtensionDelegate(): Delegate
 
-fun <D, Delegate> KDelegatedProperty2<D, *, *, Delegate>.getExtensionDelegate(receiver: D): Delegate
+fun <D, Delegate> KDelegated2<D, *, Delegate>.getExtensionDelegate(receiver: D): Delegate
 
 @InlineOnly
-inline val <Delegate> KDelegatedProperty0<*, Delegate>.delegate: Delegate
+inline val <Delegate> KDelegated0<Delegate>.delegate: Delegate
     get() = getDelegate()
 
 @InlineOnly
-inline val <T> KDelegatedProperty0<T, Lazy<T>>.isInitialized: Boolean
+inline val <T> KDelegated0<Lazy<T>>.isInitialized: Boolean
     get() = delegate.isInitialized()
-
 ```
 
 ### Inlining optimizations
 
-Generation of an additional class for `KDelegatedPropertyN` just to access the delegate might be an undesired performance overhead.
+Generation of an additional class for `KDelegatedN` just to access the delegate might be an undesired performance overhead.
 To overcome this, the compiler will try to inline these accesses if they occur on a statically known property in the scope of one function (after inlining).
 And if the property reference is not used for anything else, it will be eliminated.
 
 ### Behavior in different scopes
 
-The proposed behavior in different cases of reflection is the same as for property with private setter. 
+The proposed behavior in different cases of reflection is the same as for a property with a private setter.
 More precisely:
 
 ```kotlin
@@ -233,21 +225,21 @@ class C {
     val prop by lazy { 42 }
 
     fun foo1() {
-        val tmp = ::prop // KDelegatedProperty0<Int, Lazy<Int>>
+        val tmp = ::prop // KProperty0<Int> & KDelegated0<Lazy<Int>>
         val tmpDel: Lazy<Int> = tmp.getDelegate() // ok
     }
 
     fun foo2(other: C) {
-        val tmp = other::prop // KDelegatedProperty0<Int, Lazy<Int>>
+        val tmp = other::prop // KProperty0<Int> & KDelegated0<Lazy<Int>>
         val tmpDel: Lazy<Int> = tmp.getDelegate() // ok
     }
 
     fun foo3() {
-        val tmp = C::prop // KDelegatedProperty1<C, Int, Lazy<Int>>
+        val tmp = C::prop // KProperty1<C, Int> & KDelegated1<C, Lazy<Int>>
         val tmpDel: Lazy<Int> = tmp.getDelegate(C()) // ok
     }
 
-    fun leak(): KDelegatedProperty0<Int, Lazy<Int>> = ::prop
+    fun leak(): KDelegated0<Lazy<Int>> = ::prop
 }
 
 fun C.leakFoo() {
@@ -257,19 +249,19 @@ fun C.leakFoo() {
 fun C.externalFoo1() {
     val tmp: KProperty0<Int> = ::prop
     val tmpDel: Any? = tmp.getDelegate() // JVM: IllegalAccessException, ok after `tmp.isAccessible = true`; Other platforms: ok
-    tmp as KDelegatedProperty0<Int, Lazy<Int>> // ClassCastException
+    tmp as KDelegated0<Int, Lazy<Int>> // ClassCastException
 }
 
 fun C.externalFoo2() {
     val tmp: KProperty1<C, Int> = C::prop
     val tmpDel: Any? = tmp.getDelegate(this) // JVM: IllegalAccessException, ok after `tmp.isAccessible = true`; Other platforms: ok
-    tmp as KDelegatedProperty1<C, Int, Lazy<Int>> // ClassCastException
+    tmp as KDelegated1<C, Int, Lazy<Int>> // ClassCastException
 }
 
 fun reflectionFoo() {
     val tmp: KProperty1<C, *> = C::class.declaredMemberProperties.first() // JVM only
     @Suppress("UNCHECKED_CAST")
-    tmp as KDelegatedProperty1<C, Int, Lazy<Int>> // ok
+    tmp as KDelegated1<C, Lazy<Int>> // ok
     val tmpDel: Lazy<Int> = tmp.getDelegate(C()) // JVM: IllegalAccessException, ok after `tmp.isAccessible = true`; Other platforms: ok
 }
 ```
@@ -277,6 +269,6 @@ fun reflectionFoo() {
 This behavior is going to be achieved with the following compilation strategy:
 
 - For property references inside the class, an anonymous class is generated as it is now. 
-  The only change is that this class will have a more precise supertype, and it will have `getDelegate` method overridden to prevent `IllegalAccessException`.
+  The only change is that this class will have an additional superinterface, `KDelegatedN`, and it will have `getDelegate` method overridden to prevent `IllegalAccessException`.
 - For property references outside the class, the behavior does not change.
-- For reflection (including special operator functions `getValue`, `setValue` and `provideDelegate`), the only difference is a more precise supertype of the returned value.
+- For reflection (including special operator functions `getValue`, `setValue` and `provideDelegate`), the only difference is an additional superinterface of the returned value.
