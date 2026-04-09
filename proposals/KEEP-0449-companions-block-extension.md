@@ -65,6 +65,7 @@ together.
     * [Companion initialization](#companion-initialization)
     * [Compilation strategy](#compilation-strategy)
     * [Reflection](#reflection)
+    * [Binary compatibility validation](#binary-compatibility-validation)
 * [Migration](#migration)
 * [Platform-specific considerations](#platform-specific-considerations)
     * [Java Virtual Machine](#java-virtual-machine)
@@ -1260,6 +1261,8 @@ extension Vector {
 
 ### Reflection
 
+_The updates in this section concern the JVM-only side of reflection_.
+
 **§5.1** (_companion block members_):
 in those platforms in which `kotlin.reflect` contains `KDeclarationContainer`,
 the package is updated as follows.
@@ -1285,7 +1288,13 @@ companion block.
   }
 ```
 
-The `KCompanionParameter` interface mirrors `KParameter`.
+The `KCompanionParameter` interface mirrors `KParameter`, with the kind mirroring
+the different shapes of companion "parameters".
+* The `COMPANION_BLOCK` entry mirrors [`INSTANCE`](https://kotlinlang.org/api/core/kotlin-stdlib/kotlin.reflect/-k-parameter/-kind/-i-n-s-t-a-n-c-e/),
+* The `COMPANION_EXTENSION` entry mirrors mirror [`EXTENSION_RECEIVER`](https://kotlinlang.org/api/core/kotlin-stdlib/kotlin.reflect/-k-parameter/-kind/-e-x-t-e-n-s-i-o-n_-r-e-c-e-i-v-e-r/).
+
+Note that the `type` is a `KClass` and not a `KType` because those relate to
+the _class itself_, not a particular instantiation thereof.
 
 ```kotlin
 interface KCompanionParameter {
@@ -1299,9 +1308,6 @@ interface KCompanionParameter {
 }
 ```
 
-Note that the `type` is a `KClass` and not a `KType` because those relate to
-the _class itself_, not a particular instantiation thereof.
-
 **§5.3** (_no additional arguments to `call`_):
 no value should be passed in the position of receiver for neither 
 companion block members nor companion extensions
@@ -1313,6 +1319,20 @@ val p: KProperty0<Vector> = Vector::Zero  // note the 0 here
 val t = p.companionParameter?.type        // KClass representing 'Vector'
 val zero = p.get()                        // no argument required
 ```
+
+### Binary compatibility validation
+
+The [BCV plugin](https://kotlinlang.org/docs/gradle-binary-compatibility-validation.html)
+should take the different platform semantics into consideration.
+
+* For JVM, companion block members should appear as `static` members,
+  and companion extensions should not include their static receiver.
+* In Native, companion block members should be explicitly marked as such,
+  and companion extensions should include information about their static receiver.
+
+This showcases the expectations in different platforms: whereas in the JVM
+turning a callable into a companion extension is binary (yet not source)
+compatible, this is not the case in Native.
 
 ## Migration
 
