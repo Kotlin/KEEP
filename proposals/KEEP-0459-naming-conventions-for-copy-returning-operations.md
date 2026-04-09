@@ -4,6 +4,7 @@
 * **Author**: Dmitry Nekrasov
 * **Status**: Draft
 * **Applied in**: [`kotlinx-collections-immutable`](https://github.com/Kotlin/kotlinx.collections.immutable)
+* **Discussion**: [#480](https://github.com/Kotlin/KEEP/discussions/480)
 
 ## Summary
 
