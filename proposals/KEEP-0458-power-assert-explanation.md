@@ -117,12 +117,12 @@ From this overview, we can extract three key problems with Power-Assert:
 
 In this proposal, we will outline changes which attempt to tackle all of these problems.
 
-1. Power-Assert capable functions should be discoverable rather than needing to be configured. This avoids the complex
-build-system configuration needed for the compiler plugin.
-2. Power-Assert capable functions should not rely on argument convention but transformation by the compiler plugin
-instead. This removes confusing function parameter requirements and enables easier integration for adopting libraries.
-3. Power-Assert capable functions should be provided with detailed call-site information. This improves diagram render
-by making it more dynamic and enables better tooling integration.
+1. Power-Assert integrated functions should be discoverable rather than needing to be configured. This avoids the
+complex build-system configuration needed for the compiler plugin.
+2. Power-Assert integrated functions should not rely on argument convention but transformation by the compiler plugin
+instead. This avoids confusing function parameter requirements and enables easier integration for adopting libraries.
+3. Power-Assert integrated functions should be provided with detailed call-site information. This improves diagram
+rendering by making it more dynamic and enables better tooling integration.
 
 ## Non-Goals
 
@@ -133,6 +133,8 @@ this time.
 descriptions and not metaprogramming use cases.
 2. Power-Assert is ***not*** a replacement for an assertion library. The compiler plugin must help enhance existing
 assertion libraries.
+3. Power-Assert will ***not*** remove support for any currently supported functions. The compiler plugin must continue
+to support the compile-time `String` call-site transformation. 
 
 # Proposal
 
@@ -504,6 +506,12 @@ assert(tmp3, { CallExplanation(...).toDefaultMessage() })
 This means that existing users of Power-Assert will see an improvement to diagram rendering even if the called function
 is not annotated with `@PowerAssert`.
 
+If the `CallExplanation` class is not present during compilation, the compiler plugin will fall back to generating a
+compile-time `String` diagram as it does today. This means there are three types of call-site transfomrations that are
+performed by the Power-Assert compiler plugin: `CallExplanation` for annotated functions, `CallExplanation`-based
+`String` diagrams when the runtime library is present, and compile-time `String` diagrams when the runtime library is
+not present.
+
 # Advanced
 
 ## Runtime Dependency
@@ -583,9 +591,9 @@ should follow similarly and avoid combining behaviors on the same function.
 
 # Use Cases
 
-We're excited to share that everything you've read up to this point is ready for experimentation in the upcoming Kotlin
-2.4.0-Beta2 release! Some things may change before the final 2.4.0 release, but if you want to try this new version of
-Power-Assert today, all you need to do is add the new runtime library dependency to your project.
+We're excited to share that everything you've read up to this point is available in Kotlin 2.4.0-Beta2! Some things may
+change before the final 2.4.0 release, but if you want to try this new version of Power-Assert today, all you need to do
+is add the new runtime library dependency to your project.
 
 ```kotlin
 plugins {
@@ -611,8 +619,8 @@ style messages for existing function calls, so you can experience the improved d
 will be [added automatically](#runtime-dependency), but this behavior is
 [not yet supported](https://youtrack.jetbrains.com/issue/KT-85250).
 
-If you want to experiment with Power-Assert before 2.4.0-Beta2 is released, check out 
-this [Github project][power-assert-examples], which is built against a development version of Kotlin.
+If you want to quickly experiment with Power-Assert and see some use cases, check out this
+[Github project][power-assert-examples], which contains the following use cases as complete examples.
 
 Here are some examples of what you could build!
 
