@@ -1324,7 +1324,7 @@ should take the different platform semantics into consideration.
 
 This showcases the expectations in different platforms: whereas in the JVM
 turning a callable into a companion extension is binary (yet not source)
-compatible, this is not the case in Native.
+compatible, this may not be the case in other platforms.
 
 ## Migration
 
