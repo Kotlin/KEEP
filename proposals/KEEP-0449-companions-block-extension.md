@@ -1319,7 +1319,7 @@ should take the different platform semantics into consideration.
 
 * For JVM, companion block members should appear as `static` members,
   and companion extensions should not include their static receiver.
-* In Native, companion block members should be explicitly marked as such,
+* In other platforms, companion block members should be explicitly marked as such,
   and companion extensions should include information about their static receiver.
 
 This showcases the expectations in different platforms: whereas in the JVM
