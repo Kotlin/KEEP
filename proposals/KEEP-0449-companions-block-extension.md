@@ -1263,52 +1263,44 @@ extension Vector {
 
 _The updates in this section concern the JVM-only side of reflection_.
 
-**§5.1** (_companion block members_):
-in those platforms in which `kotlin.reflect` contains `KDeclarationContainer`,
-the package is updated as follows.
+**§5.1** (_companion block members in the standard library_):
+companion block members are available in the same way as any other members,
+that is, through the 
+[`members`](https://kotlinlang.org/api/core/kotlin-stdlib/kotlin.reflect/-k-declaration-container/members.html)
+property of [`KDeclarationContainer`](https://kotlinlang.org/api/core/kotlin-stdlib/kotlin.reflect/-k-declaration-container/).
 
-1. A new interface for containers of companion blocks.
+Companion blocks themselves are not reflected: irrespectively of using one
+or more companion blocks, those members are available through `members`.
 
-    ```kotlin
-    interface KCompanionDeclarationContainer {
-      val companionMembers: Collection<KCallable<*>>
-    }
-    ```
+> [!TIP]
+> You can distinguish whether a callable is a companion block member by checking
+> that it does not have a parameter of kind `INSTANCE` and is not a constructor.
 
-2. `KClass` implements `KCompanionDeclarationContainer`.
+**§5.2** (_companion block members in [`kotlin-reflect`](https://kotlinlang.org/api/core/kotlin-reflect/)_):
+companion block members are considered "static" for the purposes of
+`kotlin-reflect`. That means that:
 
-**§5.2** (_companion "receiver"_):
+- The `memberXXX` family _does not_ return companion block members.
+- The `staticXXX` family _does_ return companion block members.
+
+Since companion block members are not inherited, there is no need for new
+`declaredXXX` properties.
+
+**§5.3** (_companion extensions in the standard library_):
 the following property is added to `KCallable`. This property should be `null`
-whenever the callable is neither a companion extension nor defined in a 
-companion block.
+whenever the callable is not a companion extension.
 
 ```diff
   interface KCallable<out R> {
-+   val companionParameter: KCompanionParameter?
++   val companionExtensionClass: KClass<*>?
   }
 ```
 
-The `KCompanionParameter` interface mirrors `KParameter`, with the kind mirroring
-the different shapes of companion "parameters".
-* The `COMPANION_BLOCK` entry mirrors [`INSTANCE`](https://kotlinlang.org/api/core/kotlin-stdlib/kotlin.reflect/-k-parameter/-kind/-i-n-s-t-a-n-c-e/),
-* The `COMPANION_EXTENSION` entry mirrors mirror [`EXTENSION_RECEIVER`](https://kotlinlang.org/api/core/kotlin-stdlib/kotlin.reflect/-k-parameter/-kind/-e-x-t-e-n-s-i-o-n_-r-e-c-e-i-v-e-r/).
+**§5.4** (_companion extensions in [`kotlinx-metadata`](https://github.com/JetBrains/kotlin/tree/master/libraries/kotlinx-metadata/jvm)_):
+the `kotlinx-metadata` library should be updated to reflect information about
+companion extensions.
 
-Note that the `type` is a `KClass` and not a `KType` because those relate to
-the _class itself_, not a particular instantiation thereof.
-
-```kotlin
-interface KCompanionParameter {
-  val type: KClass<*>
-  val kind: Kind
-
-  enum class Kind {
-    COMPANION_BLOCK,
-    COMPANION_EXTENSION
-  } 
-}
-```
-
-**§5.3** (_no additional arguments to `call`_):
+**§5.5** (_no additional arguments to `call`_):
 no value should be passed in the position of receiver for neither 
 companion block members nor companion extensions
 when using `call`, `callBy` from `KCallable`, and the corresponding
