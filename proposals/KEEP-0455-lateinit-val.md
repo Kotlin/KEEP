@@ -55,8 +55,10 @@ Thread-safe getter and setter enforce the assign-once semantics.
   * [Inheritance](#inheritance)
   * [Annotations](#annotations)
   * [`isInitialized`](#isinitialized)
-  * [Serialization](#serialization)
   * [Reflection](#reflection)
+* [Frameworks](#frameworks)
+  * [Serialization Frameworks](#serialization-frameworks)
+  * [Persistence Frameworks](#persistence-frameworks)
 <!-- TOC -->
 
 # Motivation
@@ -309,17 +311,6 @@ For this reason, we propose to omit `isInitialized` for assign-once properties i
 If it is introduced later, the check would need 
 to be provided through intrinsic, similar to `lateinit var`.
 
-## Serialization
-
-The backing field of a `lateinit val` effectively has `Any?` type,
-so serialization frameworks that rely on it cannot determine the actual property type.
-Also, the sentinel object is not serializable.
-Thus, serialization frameworks would need to provide special support for `lateinit val` properties.
-
-However, in most intended use cases, assign-once properties hold non-serializable values
-such as service instances or Android views, so it might be acceptable to ignore
-`lateinit val`s in serialization by default.
-
 ## Reflection
 
 We propose to expose `lateinit val` properties as `KProperty` in the reflection API,
@@ -331,3 +322,69 @@ This may be optionally relaxed in the future
 if reflective writes prove necessary in practice.
 Note that the generated setter remains accessible through Java reflection, 
 which is sufficient for dependency injection use cases.
+
+# Frameworks
+
+In this section, we explore how `lateinit val` interacts with
+relevant frameworks and libraries in the Kotlin ecosystem.
+
+## Serialization Frameworks
+
+The backing field of a `lateinit val` effectively has `Any?` type,
+so serialization frameworks that rely on it cannot determine the actual property type.
+Also, the sentinel object is not serializable.
+Thus, serialization frameworks would need to provide special support for `lateinit val` properties.
+
+However, in most intended use cases, assign-once properties hold non-serializable values
+such as service instances or Android views, so it might be acceptable to ignore
+`lateinit val`s in serialization by default.
+
+## Persistence Frameworks
+
+For persistence frameworks like Hibernate,
+`lateinit val`s are a perfect fit semantically for modeling
+generated values that are set by the framework itself,
+e.g., primary keys of table entities. 
+However, technical limitations do not allow using
+`lateinit val`s this way.
+
+First, `lateinit val` has a private backing field,
+so Hibernate has to use `AccessType.PROPERTY`:
+
+```kotlin
+@Entity
+@Table(name = "items")
+class Item {
+    @get:Id
+    @get:GeneratedValue(strategy = GenerationType.IDENTITY)
+    @get:Access(AccessType.PROPERTY)
+    lateinit val id: Long
+}
+```
+
+But more importantly, Hibernate reads possibly-not-yet-initialized properties
+on `persist` calls to determine whether entity is new or detached.
+If a property contains a default value (`null` or `0`), 
+Hibernate considers the entity transient (new); otherwise it is detached:
+
+```kotlin
+@Entity
+@Table(name = "items")
+class Item {
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    var id: Long? = null
+}
+
+session.beginTransaction()
+val item = Item()
+// item.id is read here
+// item.id == null => transient entity
+session.persist(item)
+```
+
+Reading an uninitialized `lateinit val` property would throw in this case.
+
+We acknowledge that this is a limitation of the chosen compilation scheme
+for `lateinit val` and propose to add an IDE warning for
+`lateinit val` properties used with Hibernate.
