@@ -1333,31 +1333,49 @@ in place, and their extensions: should those be migrated over to companion
 blocks and extensions? First of all, note that migration is not possible if
 the companion object (1) is used as value, (2) participates in inheritance,
 or (3) defines operators other than `invoke` and `of`.
+In many cases, moving from companion objects to companion blocks provide very
+little gain in an already established codebase.
 
-We should acknowledge that removing the companion object is
-a _binary breaking change_, and library authors should act accordingly.
-If their goal is to re-expose the same functionality from companion objects
-as companion blocks, the best solution is to use `@JvmStatic` (and similar
-annotations in other platforms). Another solution that improves on problem #4
-is to manually keep both versions, but that has additional boilerplate.
+If neither source or binary compatibility is a concern, then migration is 
+quite easy. Only declaration sites require changes. Performing these tasks
+in the following order keeps code working at each stage.
 
-```kotlin
-class Example {
-    companion {
-        fun foo() { ... }
+1. Migrate existing extensions over the companion object to object extensions.
+2. Drop `object` from `companion object`.
+
+If the goal is to re-expose the same functionality from companion objects
+in a way that it's easier to consume from Java (and other JVM languages),
+the [`@JvmStatic`](https://kotlinlang.org/api/core/kotlin-stdlib/kotlin.jvm/-jvm-static/)
+annotation (and similar annotations in other platforms) provide the simplest
+way to do so. In fact, companion blocks are not even required.
+
+If you still want to perform the change from companion object to companion block,
+and help users of that code migrate:
+
+1. Introduce a "copy" of the methods as a companion block. Moving the code
+   to the companion block, and then make the companion object call that version
+   provides experience for the future.
+
+    ```kotlin
+    class Example {
+        companion {
+            fun foo() { ... }
+        }
+
+        companion object {
+            fun foo() = Example.foo()  // resolves to the companion block
+        }
     }
+    ```
 
-    companion object {
-        fun foo() = Example.foo()  // resolves to the companion block
-    }
-}
-```
-
-If breaking binary compatibility is not a concern and none of the use cases at
-the beginning of this section is required, migration to companion blocks is
-advisable. We _recommend_ beginning by migrating extensions to the companion
-object to companion extensions, and then dropping `object` to turn into a
-companion block. That way we have working code on each stage.
+2. Deprecate the companion object depending on the cases:
+  - If the library is used with Kotlin versions prior to the implementation
+    of this KEEP, you must keep the companion object as is. That way both
+    old and new versions remain source and binary compatible.
+  - If only binary compatibility is a concern, the best option is to deprecate
+    the companion object as hidden. That way you ensure that new code always
+    resolve to the companion block.
+  - After some time, you may consider removing the companion block altogether.
 
 ## Platform-specific considerations
 
