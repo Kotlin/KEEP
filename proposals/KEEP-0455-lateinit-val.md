@@ -53,6 +53,7 @@ Thread-safe getter and setter enforce the assign-once semantics.
   * [Compilation Strategy](#compilation-strategy)
 * [Interaction with Other Features](#interaction-with-other-features)
   * [Inheritance](#inheritance)
+  * [`expect`/`actual`](#expectactual)
   * [Annotations](#annotations)
   * [`isInitialized`](#isinitialized)
   * [Reflection](#reflection)
@@ -273,6 +274,15 @@ Just as with `lateinit var`, abstract `lateinit val` is not supported.
 While `open lateinit val` is technically allowed, it is discouraged: 
 the late initialization semantics is an implementation detail
 that subclasses should not need to inherit or rely on.
+
+## `expect`/`actual`
+
+In line with `lateinit var`, `expect lateinit val` is not supported.
+Although it is technically possible to support them,
+use-cases for `expect lateinit val` declarations are unclear.
+Additionally, the current `expect`/`actual` matching rules require
+the `lateinit` modifier to match exactly,
+so `expect val` or `expect var` cannot be actualized with `lateinit val`.
 
 ## Annotations
 
