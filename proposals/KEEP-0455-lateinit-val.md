@@ -57,6 +57,7 @@ Thread-safe getter and setter enforce the assign-once semantics.
   * [Annotations](#annotations)
   * [`isInitialized`](#isinitialized)
   * [Reflection](#reflection)
+  * [Augmented Assignments](#augmented-assignments)
 * [Frameworks](#frameworks)
   * [Serialization Frameworks](#serialization-frameworks)
   * [Persistence Frameworks](#persistence-frameworks)
@@ -332,6 +333,28 @@ This may be optionally relaxed in the future
 if reflective writes prove necessary in practice.
 Note that the generated setter remains accessible through Java reflection, 
 which is sufficient for dependency injection use cases.
+
+## Augmented Assignments
+
+In Kotlin, an augmented assignment like `a += b` 
+is resolved as `a.plusAssign(b)` or `a = a.plus(b)`.
+The latter is applicable only if `a` is a mutable variable.
+An ambiguity error is reported if both variants are applicable.
+
+Statement `a = a.plus(b)` includes a read of `a` on the right side
+and a write to `a` on the left side.
+For a `lateinit val a: T` such statement would throw an exception
+either on the read if `a` is uninitialized or
+on the write if `a` is already initialized.
+Thus resolving `a += b` to `a = a.plus(b)` makes no sense for a `lateinit val a: T`. 
+The `a = a.plus(b)` variant should be excluded from
+resolution, leaving only `a.plusAssign(b)` to be considered,
+similarly to augmented assignments of `val` properties.
+
+In general, the compiler or IDE may implement static detection
+for execution paths where a write unconditionally follows a read of a `lateinit val`.
+A warning can be reported for such cases,
+as they probably would lead to runtime errors.
 
 # Frameworks
 
