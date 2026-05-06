@@ -338,6 +338,19 @@ Example: [link](https://github.com/ktorio/ktor/blob/kotlin-community/dev/ktor-cl
 
 This exclusion keeps the warning focused on cases where a mutable local flows **into** an escaping lambda and later outer writes make the observed value depend on execution order.
 
+<details>
+<summary><b>Concern</b></summary>
+
+This exclusion is a pragmatic choice, not a proof that output-only captures are always safe.
+
+They can also depend on execution order. However, they represent a different problem. In the main case, the read happens inside the escaping lambda and may unexpectedly observe a later outer reassignment. This is the trap this proposal focuses on.
+
+In output-only captures, the value flows out of the lambda. This pattern is often intentional and is common in tests as a “local lateinit val”-like pattern.
+
+Because of that, this proposal does not report this case in the first version. We are open to alternative solutions that handle this case without making the warning too noisy.
+
+</details>
+
 ## What should be highlighted by the warning?
 
 ### Chosen approach: highlight the captured variable
