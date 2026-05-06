@@ -3,7 +3,7 @@
 * **Type**: Standard Library API proposal
 * **Author**: Abduqodiri Qurbonzoda
 * **Contributors**: Ilya Gorbunov, Filipp Zhinkin, Vsevolod Tolstopyatov, Dmitry Khalanskiy
-* **Status**: Implemented in Kotlin 2.0.20-Beta2
+* **Status**: Implemented in Kotlin 2.0.20-Beta2; Stable (with some exceptions) since 2.4.0
 * **Prototype**: Implemented
 * **Target issue**: [KT-31880](https://youtrack.jetbrains.com/issue/KT-31880)
 * **Discussion**: [KEEP-382](https://github.com/Kotlin/KEEP/issues/382)
