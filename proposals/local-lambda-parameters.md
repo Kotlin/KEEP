@@ -1,4 +1,4 @@
-# Local lambda modifier
+# Local lambda parameters (aka stable callsInPlace)
 
 * **Type**: Design proposal
 * **Authors**: Yuliya Karalenka, Michail Zarečenskij
@@ -55,7 +55,7 @@ Because of that, stabilizing the current form may not be enough. We propose to i
   * [Array constructor](#array-constructor)
   * [Migration plan](#migration-plan)
 * [Inheritance](#inheritance)
-  * [Compatibility with Ross Tate locality](#compatibility-with-ross-tate-locality)
+* [Compatibility with Ross Tate locality](#compatibility-with-ross-tate-locality)
 
 ## Current State & Capabilities
 
@@ -332,7 +332,7 @@ GitHub usage shows this distribution:
 >
 > `UNKNOWN` : [200](https://github.com/search?q=%2Fcontract%5Cs*%5C%7B%5Cs*callsInPlace%5Cs*%5C%28%5Cs*%5Cw%2B%5Cs*%2C%5Cs*InvocationKind%5C.UNKNOWN%5Cs*%5C%29%2F+language%3AKotlin&type=code)
 
-<img src="local-lambda-modifier/image-raw-usage-counts.png" alt="Raw usage counts of InvocationKind on GitHub" width="600">
+<img src="local-lambda-parameters/image-raw-usage-counts.png" alt="Raw usage counts of InvocationKind on GitHub" width="600">
 
 The most popular `InvocationKind` is `EXACTLY_ONCE`.
 
@@ -386,7 +386,7 @@ fun example(condition: Boolean) {
 
 The bar chart below shows the usage of kinds guarantee. As expected, `AT_MOST_ONCE` has no real usages for its intended use case. `AT_LEAST_ONCE` is almost never used. Therefore, only `UNKNOWN` and `EXACTLY_ONCE` seem important.
 
-<img src="local-lambda-modifier/image-call-site-usage.png" alt="Call-site usage of each InvocationKind guarantee" width="600">
+<img src="local-lambda-parameters/image-call-site-usage.png" alt="Call-site usage of each InvocationKind guarantee" width="600">
 
 ## Design of `once`
 
@@ -431,7 +431,7 @@ fun myWrapper(block: () -> Unit) {
 
 But the CFG graph shows a path where the function returns normally without a completed `block()` execution. Therefore, block lambda cannot be `local once`.
 
-<img src="local-lambda-modifier/image-cfg-try-catch.png" alt="CFG of the try/catch myWrapper example" width="250">
+<img src="local-lambda-parameters/image-cfg-try-catch.png" alt="CFG of the try/catch myWrapper example" width="250">
 
 Otherwise, the following errors would occur:
 
@@ -536,7 +536,7 @@ The same rule should apply to `expect`/`actual`: `actual` may provide the same o
 
 Although the modifier is written in the declaration, it is not part of the function signature and the modifier does not participate in overload resolution. Therefore, declarations that differ only by locality modifiers are conflicting declarations, not overloads.
 
-### Compatibility with Ross Tate locality
+## Compatibility with Ross Tate locality
 
 This direction aligns with Ross Tate's "local lifetimes" proposal, because we only apply `local` / `local once` in contexts where the lambda cannot be returned or stored, adopting Tate-style lifetime tracking later should be source-compatible with code that already follows these restrictions.
 
