@@ -5,6 +5,7 @@
 * **Proposal author**: Dmitry Khalanskiy
 * **Proposal contributors**: Leonid Startsev, Ilya Gorbunov, Filipp Zhinkin
 * **Status**: Prototype available in `kotlinx.coroutines` as `CopyableThrowable`
+* **Discussion**: https://github.com/Kotlin/KEEP/discussions/483
 
 ## Summary
 
