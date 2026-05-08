@@ -6,7 +6,7 @@
 Faiz Ilham Muhammad, Dmitriy Novozhilov, Stanislav Ruban, Roman Venediktov, 
 Michail Zarečenskij, Denis Zharkov
 * **Discussion**: [KEEP-427](https://github.com/Kotlin/KEEP/discussions/427)
-* **Status**: In progress
+* **Status**: Rejected in favor of [KEEP-449](https://github.com/Kotlin/KEEP/blob/main/proposals/KEEP-0449-companions-block-extension.md)
 * **Related YouTrack issues**:
   [KT-11968](https://youtrack.jetbrains.com/issue/KT-11968),
   [KT-15595](https://youtrack.jetbrains.com/issue/KT-15595),
@@ -22,6 +22,10 @@ We propose to bring the idea of _statics_ (as in _class members_)
 to Kotlin with _static members_ and _type extensions_. 
 The underlying idea is surfacing the notion of _static scope_ more clearly
 in the language.
+
+> [!IMPORTANT]
+> This KEEP has been rejected in favor of
+> [_Companion blocks and extensions_](https://github.com/Kotlin/KEEP/blob/main/proposals/KEEP-0449-companions-block-extension.md).
 
 ## Table of contents
 
