@@ -4,7 +4,7 @@
 * **Author**: Alejandro Serrano
 * **Contributors**: Marat Akhin, Nikita Bobko, Kirill Rakhman
 * **Discussion**: [#465](https://github.com/Kotlin/KEEP/discussions/465)
-* **Status**: Experimental in 2.4
+* **Status**: Experimental in 2.4 ([release notes](https://kotlinlang.org/docs/whatsnew-eap.html#explicit-context-arguments-for-context-parameters))
 
 ## Abstract
 
