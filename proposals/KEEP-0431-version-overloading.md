@@ -113,7 +113,6 @@ Using the annotation requires an opt-in of `ExperimentalVersionOverloading`.
 
 ```kotlin
 @ExperimentalVersionOverloading
-@Retention(AnnotationRetention.SOURCE)
 @Target(AnnotationTarget.VALUE_PARAMETER)
 annotation class IntroducedAt(val version: String)
 ```
@@ -170,8 +169,12 @@ fun Button(
 // generates 2 hidden overloads of Button, excluding $default: 
 // - Button(label="", color=..., onClick)                    base, "empty" version < v1.1
 // - Button(label="", color=..., borderColor=..., onClick)   v1.1
+```
 
-@Suppress("NON_ASCENDING_VERSION_ANNOTATION")
+Now consider the following code, in which version numbers appear in non-ascending order.
+
+```kotlin
+// the following code give a "non-ascending version annotation" error
 fun Box(
   label: String = "",
   width: Int = 1,
@@ -187,21 +190,21 @@ fun Box(
 // - Box(label="", width=1, height=1, depth=1, colorId=0)    v2
 ```
 
-Notice that if the version numbers appear not in ascending order, it might lead to source incompatibility.
-For example, the call `Box("a", 1, 2, 3)` is ambiguous when it uses the v1 library (setting `colorId` to 3) or the v2 library (setting `depth` to 3, `colorId` to the default value 0).
-This problem can be prevented by providing the parameters by name, such as `Box(label="a", width=1, height=2, colorId=3)`.
-Therefore, it is advisable to avoid adding new optional parameters in the middle of old ones, or encourage for providing the arguments by names.
+In such situations, we may end up with source incompatibility.
+For example, the call `Box("a", 1, 2, 3)` is ambiguous when it uses the v1 library (setting `colorId` to 3) or the v2 library (setting `depth` to 3, `colorId` to the default value 0). For that reason, version numbers **must** appear in ascending order.
+
+This problem can be prevented by providing the parameters by name, though, such as `Box(label="a", width=1, height=2, colorId=3)`.
+If in the future Kotlin gets named-only parameters, this restriction could be relaxed for those parameters.
 
 ### Validation
 
 The compiler validates the following conditions for each instance of `@IntroducedAt`:
 1. Only optional parameter can be annotated with `@IntroducedAt`.
 2. Non-final functions may not have version annotated parameter.
-3. A version annotated parameter's default value may not refer to an optional parameter annotated with a version later than itself.
-4. Functions with `@JvmOverloads` annotation may not have version annotated parameter (warning only, suppressible).
-5. Version annotated optional parameter may not appear before non-optional parameters except for a trailing lambda parameter (suppressible).
-6. Optional parameters, including the ones with empty version, appear in ascending order by the version numbers (warning only, suppressible), 
-   or must be forced-named parameters (currently unchecked).
+3. Optional parameters, including the ones with empty version, appear in ascending order by the version numbers.
+4. A version annotated parameter's default value may not refer to an optional parameter annotated with a version later than itself.
+5. Functions with `@JvmOverloads` annotation may not have version annotated parameter (warning only, suppressible).
+6. Version annotated optional parameter may not appear before non-optional parameters except for a trailing lambda parameter (suppressible).
 
 The first three rules always produce non-suppressible errors if violated, while the other three can be suppressed.
 As we mentioned previously, there will be source incompatibility issue if new optional parameters are added in the middle of the old parameters.
