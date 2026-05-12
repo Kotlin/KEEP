@@ -26,6 +26,8 @@ Total contract hits on github: [18.3k](https://github.com/search?q=%2Fcontract%5
 
 `callsInplace` contract hits on github: [11.8k](https://github.com/search?q=%2Fcontract%5Cs*%5C%7B%28%3Fs%29.*callsInPlace%5Cs*%5C%28%5B%5E%29%5D*%28EXACTLY_ONCE%7CAT_MOST_ONCE%7CAT_LEAST_ONCE%7CUNKNOWN%29%5B%5E%29%5D*%5C%29.*%3F%5C%7D%2F+language%3AKotlin&type=code)
 
+This popularity is expected: `callsInPlace` gives the compiler information about lambda execution order, which enables additional smart casts and definite-assignment analysis. These capabilities are described in more detail in [Current State & Capabilities](#current-state--capabilities).
+
 However, the current contract syntax is still experimental and has several design limits: it is verbose, cannot be used in functions without bodies, and not fully verified.
 
 Because of that, stabilizing the current form may not be enough. We propose to introduce new syntax. The goal is to keep the useful behavior of `callsInPlace`, make it stable, and remove the main drawbacks of the current contract-based design.
@@ -43,7 +45,7 @@ Because of that, stabilizing the current form may not be enough. We propose to i
   * [Missing Features](#missing-features)
   * [Design Flaws](#design-flaws)
 * [Design of local](#design-of-local)
-  * [Deconstructing: Lifetime and Invocation Count](#deconstructing-lifetime-and-invocation-count)
+  * [Deconstructing: Locality and Invocation Count](#deconstructing-locality-and-invocation-count)
   * [Verification of `local`](#verification-of-local)
 * [Distribution of Invocation kinds usage](#distribution-of-invocation-kinds-usage)
   * [Raw Usage Counts](#raw-usage-counts)
@@ -63,11 +65,11 @@ Let's recap the syntax of `callsInPlace` and what functionality it has.
 
 ### Common
 
-The `callsInPlace` guarantees that a lambda will be executed immediately, before the function returns.
+The `callsInPlace` guarantees that if the lambda is executed, it is executed before the function returns.
 
 The contract can also specify how many times the lambda is guaranteed to be executed by using an `InvocationKind`.
 
-Because the lambda is executed in place, the compiler knows the execution order and can allow more smart casts. In this example, the lambda passed to `someFunction` is executed before `x = null`, so `x` can be smart-cast to `String` inside the lambda.
+Because the lambda is executed in place, the compiler knows enough of the execution order to allow some more smart casts. In this example, the lambda passed to `someFunction` is executed before `x = null`, so `x` can be smart-cast to `String` inside the lambda.
 
 ```kotlin
 fun useCaseCallsInPlace() {
@@ -107,7 +109,7 @@ fun useCase1() {
 
 Invocation count: 0 <= k <= 1
 
-The lambda may be executed once or not executed at all. The compiler can allow assignment to a captured `val` inside the lambda, because the lambda cannot run more than once. But the value cannot be used after the call, because the lambda may not have been executed.
+The lambda may be executed once or not executed at all. The compiler can allow assignment to a captured `val` inside the lambda, because the lambda cannot run more than once.
 
 ```kotlin
 fun useCase1AtMostOnce() {
@@ -115,9 +117,12 @@ fun useCase1AtMostOnce() {
     someFunctionAtMostOnce(true) {
         reportStatus = "Completed"
     }
-    // reportStatus can't be used here
+    // println(reportStatus) // Error: reportStatus may be uninitialized.
+    // reportStatus = "Failed" // Error: reportStatus may already be initialized.
 }
 ```
+
+After the call, the compiler does not know whether the assignment happened. Therefore, the `val` cannot be read, because it may be uninitialized. It also cannot be assigned again, because it may already be initialized.
 
 ### AT_LEAST_ONCE
 
@@ -160,7 +165,7 @@ Regular lambda parameters of `inline` functions are already treated as `callsInP
 
     Currently, non-local returns are only allowed for `inline` functions. However, since `callsInPlace` guarantees that a lambda executes within the caller, it makes sense to allow non-local returns. This is useful for large functions where inlining would cause code bloat.
 
-    But this feature is difficult to develop due to the absence of back-edges in Control Flow Graph (CFG).
+    Supporting non-local returns for non-inline `callsInPlace` lambdas has additional implementation challenges and is outside the scope of this proposal.
 
 ### Design Flaws
 
@@ -180,7 +185,7 @@ Analyzing the current `callsInPlace` usages helps to identify underlying design 
 
 `callsInPlace`-specific problem:
 
-* Unites two different ideas: lifetime and execution count.
+* Unites two different ideas: locality and execution count.
 
 General contract design problems:
 
@@ -193,16 +198,18 @@ Due to these design issues, the feature has remained experimental for a long tim
 
 ## Design of local
 
-### Deconstructing: Lifetime and Invocation Count
+### Deconstructing: Locality and Invocation Count
 
 Today, `callsInPlace` describes two different things, which is better to separate:
 
-* **Lifetime**: the lambda is executed only within the caller's execution.
+* **Locality**: the lambda is executed only within the caller's execution.
 * **Invocation count**: how many times the lambda is called.
 
 And, to address the main problem — that such contracts cannot be specified for functions without a body — we propose a new parameter modifier: `local`. This also makes the syntax simpler, because the parameter name no longer needs to be repeated inside a contract block.
 
-`local` definition: an entity marked as `local` cannot 'escape', which means it cannot:
+In general, an entity marked as `local` cannot escape.
+
+In this proposal, `local` is introduced only for function-type parameters. For such parameters, “cannot escape” means that the parameter cannot:
 
 * Be stored in a value without a local guarantee.
 * Be passed to another function that expects a non-local argument.
@@ -232,7 +239,7 @@ fun main() {
 
 </details>
 
-As a result, `callsInPlace(block, UNKNOWN)` can be seen as a locality/lifetime guarantee:
+As a result, `callsInPlace(block, UNKNOWN)` can be seen as a locality guarantee:
 
 ```kotlin
 local block: () -> Unit
@@ -248,13 +255,13 @@ The rule of thumb: `local` parameters shouldn't be escaped.
 
 This is very close to the current verification of `callsInPlace(block, InvocationKind.UNKNOWN)`.
 
-In practice, most `local` restrictions are already verified for `callsInPlace(block, UNKNOWN)`.
+In practice, most `local` restrictions are already checked for `callsInPlace(block, UNKNOWN)`, but only as warnings. For the new `local` modifier, violations of locality are compile-time errors.
 
 * Assignment to a variable without local guarantee - restricted
 
 ```kotlin
 fun synchronized(local block: () -> Unit) {
-    val myBlock = block // warning
+    val myBlock = block // Error: local parameter escapes.
 }
 ```
 
@@ -262,7 +269,7 @@ fun synchronized(local block: () -> Unit) {
 
 ```kotlin
 fun synchronized(local block: () -> Unit) {
-    escapingFun(block) // warning
+    escapingFun(block) // Error: local parameter is passed to a non-local parameter.
     block()
 }
 ```
@@ -271,7 +278,7 @@ fun synchronized(local block: () -> Unit) {
 
 ```kotlin
 fun synchronized(local block: () -> Unit) {
-    escapingFun { block() } // warning
+    escapingFun { block() } // Error: local parameter is captured by an escaping lambda.
     block()
 }
 ```
@@ -291,26 +298,6 @@ fun invalid(block: () -> Unit): () -> Unit {
 ```
 
 In practice, there are no valid use cases where returning a `callsInPlace` lambda is beneficial (no usages on internal/external user projects are found).
-
-**Open question:** inline parameters
-
-Should passing a `local` lambda to an `inline` parameter be valid?
-
-Today, it is not valid for `callsInPlace` lambdas and produces a warning.
-
-**Pros**: an `inline` lambda parameter is `local` by default, so it doesn't make the lambda escape.
-
-**Cons**: this may make rules for `local` verification less consistent and may be unexpected for developers.
-
-```kotlin
-@OptIn(ExperimentalContracts::class)
-fun exampleFun(size: Int, init: (Int) -> Any) {
-  contract { callsInPlace(init, InvocationKind.UNKNOWN) } // Warning
-  myFun(init)
-}
-
-inline fun myFun(init: (Int) -> Any) ...
-```
 
 ## Distribution of Invocation kinds usage
 
@@ -469,7 +456,7 @@ fun anotherFunction() {
 
 ## Migration
 
-Internal libraries already contain warnings for some usages of `callsInPlace`. These cases are important because they show which parts are still missing before `callsInPlace` can be replaced.
+Internal libraries already contain warnings for some usages of `callsInPlace`. These cases are important because the same violations would become compile-time errors after migration to `local`. Therefore, they show which cases must be supported or rewritten before `callsInPlace` can be replaced.
 
 ### Composable lambdas
 
@@ -482,11 +469,11 @@ return block()
 }
 ```
 
-The problem is caused by the `@Composable` annotation.
+The problem is caused by `@Composable` function types.
 
 Composable functions are special kind: [link](https://github.com/JetBrains/kotlin/blob/master/plugins/compose/compiler-hosted/src/main/java/androidx/compose/compiler/plugins/kotlin/k2/ComposeFirExtensions.kt#L47)
 
-Today, the contract checker recognizes only builtin lambdas invocations as `EXACTLY_ONCE`: [link](https://github.com/JetBrains/kotlin/blob/60a136bdedf38876ceeb2c3b5e951f46d89aff41/compiler/fir/checkers/src/org/jetbrains/kotlin/fir/analysis/cfa/FirCallsEffectAnalyzer.kt#L162)
+When checking the `callsInPlace`, the Kotlin compiler needs to handle calls to the `invoke` functions (as `block()` is actually desugared to `block.invoke()`), and currently only `invoke`s for the regular builtin functional types are [considered](https://github.com/JetBrains/kotlin/blob/60a136bdedf38876ceeb2c3b5e951f46d89aff41/compiler/fir/checkers/src/org/jetbrains/kotlin/fir/analysis/cfa/FirCallsEffectAnalyzer.kt#L162) as `callsInPlace(this, EXACTLY_ONCE)`. `@Composable` functional types are not treated like this, which causes the example code to trigger a warning.
 
 Possible solutions:
 
@@ -526,17 +513,22 @@ The existing `callsInPlace` contract should remain supported, because a lot of c
 
 This proposal does not remove the old contract syntax. It only introduces new modifiers intended to be stable and verified: `local` and `local once`. New code should prefer them.
 
+The IDE should support this migration with quick-fixes. When a `callsInPlace` contract can be safely replaced with `local` or `local once`, the IDE should suggest the corresponding modifier. Cases that do not satisfy the stricter `local` verification rules should not be migrated automatically.
+
 ## Inheritance
 
 Override compatibility follows order: `default` (no locality modifier) < `local` < `local once`.
 
 An overriding declaration may keep the same modifier or strengthen it, but it must not weaken it. So a default parameter may be overridden by default, `local`, or `local once`; a `local` parameter may be overridden by `local` or `local once`; and a `local` `once` only by `local once`.
 
-The same rule should apply to `expect`/`actual`: `actual` may provide the same or a stronger locality guarantee than `expect`. As in visibility modifiers, it can be applied only to final or effectively final classes. And for other cases, only exact locality modifiers are expected.
+The same compatibility rule should apply to `expect`/`actual` declarations. 
+If an `expect` callable is final or effectively final, the corresponding `actual` callable may provide the same or a stronger locality guarantee. For example, an `expect` parameter without a locality modifier may be actualized as `local` or `local once`.
+
+If an `expect` callable can be overridden, the corresponding `actual` callable must use exactly the same locality modifier.
 
 Although the modifier is written in the declaration, it is not part of the function signature and the modifier does not participate in overload resolution. Therefore, declarations that differ only by locality modifiers are conflicting declarations, not overloads.
 
-## Compatibility with Ross Tate locality
+## Potential future: introducing locality in Kotlin
 
 This direction aligns with Ross Tate's "local lifetimes" proposal, because we only apply `local` / `local once` in contexts where the lambda cannot be returned or stored, adopting Tate-style lifetime tracking later should be source-compatible with code that already follows these restrictions.
 
