@@ -94,16 +94,16 @@ fun main() = runBlocking {
 }
 ```
 
-- The line `launch { filter(ch, ch1, prime) }` starts a new coroutine. The lambda captures `ch` by reference.
-- Immediately after, the main thread reassigns the variable: `ch = ch1`
+- The line `launch { forward(ch, ch1) }` starts a new coroutine. The lambda captures `ch` by reference.
+- Immediately after, the main coroutine reassigns the variable: `ch = ch1`
 
 The program can hang indefinitely because `ch = ch1` happens before the lambda executes. Then the `forward` function tries to read and write at the same time to the channel `ch1` and suspends, waiting forever.
 
-This tricky example can be fixed by making a new, local `val` to hold the channel's value. It will be passed in the `filter` function instead of `ch`.
+This tricky example can be fixed by making a new, local `val` to hold the channel's value. It will be passed in the `forward` function instead of `ch`.
 
 ```kotlin
 val ch0 = ch
-launch { forward(ch0, ch1, prime) }
+launch { forward(ch0, ch1) }
 ch = ch1
 ```
 
@@ -115,7 +115,7 @@ So the bug occurs if **reassignment** (3) runs before **lambda execution** (2). 
 
 ```kotlin
 launch {(reference to ch) // (1) lambda creation 
-    forward(ch (copy of reference to ch), ch1, prime) // (2) lambda execution
+    forward(ch (copy of reference to ch), ch1) // (2) lambda execution
 }
 ch = ch1 // (3) reassignment
 ```
@@ -124,24 +124,24 @@ ch = ch1 // (3) reassignment
 
 To avoid ambiguity, the following definitions are used throughout:
 
-- **Pass by reference** - passing reference to object
-- **Pass by sharing** - passing copy of reference to object
-- **Pass by value** - passing full copy of value
+- **by reference** - passing reference to object
+- **by sharing** - passing copy of reference to object
+- **by value** - passing full copy of value
 
 The direct translation of the second example into Go does not fail:
 
 ```go
-go filter(ch, ch1, prime)
+go forward(ch, ch1)
 ch = ch1
 ```
 
-The difference is that in Go, `go filter(ch, ch1, prime)` evaluates and copies reference of `ch` into the goroutine call (**pass by sharing**). So, reassigning `ch` will not be seen inside goroutine. That shows that deferred execution itself is not the whole problem.
+The difference is that `go forward(ch, ch1)` passes the current value of `ch` as an argument. Since argument passing is **by sharing**, reassignment of `ch` will not be seen inside goroutine. That shows that deferred execution itself is not the whole problem.
 
-To understand what causes this confusion, let's take a look at passing rules in other languages.
+To understand what causes this confusion, let's compare argument passing and variable capturing in other languages.
 
 #### Go
 
-The main way to pass variables into lambdas in Go is **by sharing**.
+In Go, a common way to use a variable in a goroutine is to pass it as an argument to an anonymous function (**by sharing**). 
 
 ```go
 go func(name string) {    
@@ -160,22 +160,22 @@ name = "..."
 
 #### Java
 
-In Java, parameters **pass by sharing** in named functions. And the lambda capturing rules are a little bit stricter. The captured variable must be effectively final to prevent value inconsistency between the copy and the original. So variables cannot be reassigned.
+In Java, regular function arguments are **passed by sharing**. And the lambda capturing rules are a little bit stricter. The captured variable must be effectively final to prevent value inconsistency between the copy and the original. So variables cannot be reassigned.
 
-Therefore, both lambda capturing and parameter passing behave like **pass by sharing**.
+Therefore, both lambda capturing and argument passing behave like **pass by sharing**.
 
 #### C++
 
-In C++, the following rules apply for lambda capturing and parameter passing.
+In C++, the following rules apply for lambda capturing and argument passing.
 
 Explicit choice:
 
-- `[=]` full copy
-- `[&]` reference
-- `[x = std::move(obj)]` **capture by move** (transfers ownership into the lambda's scope).
+- `[=]` captures by value
+- `[&]` captures by reference
+- `[x = std::move(obj)]` **captures by move** (transfers ownership into the lambda's scope).
 
 ```cpp
-// value - full copy    
+// value - captures by value
 auto lambda = [value, &reference]() {
         std::cout << value; 
         std::cout << reference;
@@ -187,15 +187,15 @@ void printValues(int value, int& reference) {
 }
 ```
 
-As shown in the example, in C++ same syntax provides the same behavior for capturing and parameter passing.
+As shown in the example, in C++ same syntax provides the same behavior for variable capturing and argument passing.
 
 #### Kotlin
 
-As we can see, in languages above default ways of passing variables in anonymous function and in named function are similar.
+As we can see, in languages above default ways of variable capturing in anonymous functions and argument passing in regular function calls are similar.
 
-But in Kotlin, we encounter inconsistency. In a regular call in Kotlin, the callee receives the value computed at the call site (**pass by sharing**). Developers often carry that intuition into deferred execution and expect `launch { use(x) }` to mean "run use later with the value of x that existed here." But anonymous functions capture variables **by reference**, so later reassignments remain visible when the lambda eventually runs.
+But in Kotlin, we encounter inconsistency. In a regular function call in Kotlin, the callee receives the value computed at the call site (**pass by sharing**). Developers often carry that argument-passing intuition into deferred execution and expect `launch { use(x) }` to mean "run use later with the value of x that existed here." But lambdas capture variables **by reference**, so later reassignments remain visible when the lambda eventually runs.
 
-Also, there is only one way to pass variables into anonymous functions the same way they are passed to named functions: create a new `val` and copy the value into it.
+Also, there is only one way to get argument-passing-like behavior in a lambda: create a new `val` and copy the value into it.
 
 This leads to the following conclusion. The mismatch in Kotlin and the absence of familiar syntax for capturing variables **by sharing** is a big part of confusion.
 
@@ -204,7 +204,11 @@ This leads to the following conclusion. The mismatch in Kotlin and the absence o
 Looking at the examples mentioned above, it becomes clear that confusion occurs when the following three conditions are met:
 
 - **Escaping lambda:** Confusion arises when the execution order is non-linear. In particular, the problem appears when lambda creation and lambda execution do not happen at the same time, so it is unclear when a captured mutable variable will be read. This happens through escaping lambdas. Currently, all lambdas in Kotlin are considered escaping by default unless they have a `callsInPlace` contract.
-- **Visible reassignment:** There must be a visible reassignment located in a non-in-place node (outside the immediate synchronous flow). This reassignment may change the value observed by the lambda. As a result, different outcomes are possible depending on whether the read is expected to happen at creation time or at execution time. The first motivational example demonstrates this clearly.
+- **Visible reassignment:** We’re looking for cases where a variable captured by a lambda can be observed with different values depending on the execution order. 
+In practice, this means detecting reads inside so-called **non-in-place nodes** that can observe **visible reassignments**. A **non-in-place node** is a part of the program whose execution is not guaranteed to happen immediately in the current control flow. Typical examples are escaping lambdas, such as lambdas passed to `lazy`, `launch`.
+
+As a result, different outcomes are possible depending on whether the read is expected to happen at creation time or at execution time. The first motivational example demonstrates this clearly.
+
   ```kotlin
   var seed = 3
   val deferredResult = lazy { // lambda creation, seed = 3
@@ -213,7 +217,7 @@ Looking at the examples mentioned above, it becomes clear that confusion occurs 
   seed = 4
   println("Result is ${deferredResult.value}") // lambda execution, seed = 4
   ```
-- **Conflicting default:** The developer expects that default behaviour will be the same as in variable passing. In other words, they expect the read to happen at lambda creation time, not at lambda execution time.
+- **Conflicting default:** The developer expects that default behaviour will be the same as in argument passing. In other words, they expect the read to happen at lambda creation time, not at lambda execution time.
 
 Our goal is to report a warning on captured variables that meet the conditions described above. This pattern produces value inconsistency (expectation that lambda will use the old value) which leads to bugs that are hard to localize. Because the cause of the bug is split across two distant parts of the code: capture point (where variable is captured) and reassignment.
 
@@ -237,6 +241,8 @@ escapingFun {
 ```
 
 However, if a "read" is introduced alongside a visible reassignment, a warning would be reported.
+
+Case with only writes is different. It may still be suspicious concurrent code, but they do not contain this specific capture-by-reference trap: no read inside the escaping lambda observes a value changed by a visible reassignment.
 
 ```kotlin
 var r = 1
@@ -383,7 +389,13 @@ Message example: _"This escaping lambda captures mutable vars: seed, ch …"_
 
 ## Migration
 
-Although the problem seems quite narrow, our analysis of internal projects revealed near **4,5k** instances of this pattern. But the vast majority of warned variables (~45%) are captured by `callsInPlace` lambdas.
+Although the problem seems quite narrow, our analysis of internal projects revealed near **4,5k** instances of this pattern. 
+A large share of them, about **40%**, comes from lambdas that are effectively called in place, but the corresponding functions do not declare with a `callsInPlace` contract. Therefore, the compiler currently treats these lambdas as escaping and reports the warning.
+
+To reduce noise in the first version, we plan to introduce this diagnostic as an IDE inspection.
+At first, the inspection will run only for an allowlist of functions where lambda arguments are known to escape and the warning is expected to be useful.
+
+After validating the results, the allowlist can be removed.
 
 ## How to react to a warning?
 
@@ -420,7 +432,7 @@ If the lambda should observe the value from the capture point, introduce a new l
 
 ```kotlin
 val currentCh = ch
-launch { filter(currentCh, ch1, prime) }
+launch { forward(currentCh, ch1) }
 ch = ch1
 ```
 
@@ -439,7 +451,7 @@ var seed = 3
 val deferred = lazy { seed * 2 }
 ```
 
-Note that the annotation can allow capturing variables even in potentially unsafe closures added later, after the annotation has been placed on the variable. However, we consider it OK, as the annotation helps bring attention to the fact that the code might be tricky and helps with debugging.
+Note that the annotation can allow capturing variables even in potentially unsafe escaping lambdas added later, after the annotation has been placed on the variable. However, we consider it OK, as the annotation helps bring attention to the fact that the code might be tricky and helps with debugging.
 
 However, if variables participate in different escaping lambdas, it makes sense to mark the variable with an annotation to avoid mistakes in both places (as an example below, inspired by real code).
 
@@ -509,7 +521,7 @@ if (val foo = x.getFoo(); foo is String) {
 Applied to lambdas, the same style could provide an explicit **snapshot capture** (`val` will be initialized at lambda creation time, not at lambda execution time):
 
 ```kotlin
-lazy { val snapshot = seed -> // "captures" as a copy
+lazy { val snapshot = seed -> // captures as a copy
 	snapshot * 2
 }
 ```
