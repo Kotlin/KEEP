@@ -116,7 +116,9 @@ When the function takes an explicit argument that serves as a direct object - th
 
 The two rules above — "predicates and comparators are not direct objects" and "use `-ing` when a direct object is present" — can appear to conflict when a function has overloads with mixed parameter roles. For example, `removeAll` has both a collection overload (`removeAll(elements)`, where `elements` is a direct object) and a predicate overload (`removeAll(predicate)`, where the predicate is *not* a direct object).
 
-In such cases, **overload consistency takes precedence**: all overloads of the same function use the same participial form. The predicate in `removeAll(predicate)` is not a direct object, but `removingAll(predicate)` matches `removingAll(elements)` to keep the overload set uniform. Without this rule, a single function would have both a participial and an imperative overload, creating exactly the kind of ambiguity this convention is designed to prevent.
+For `removeAll` specifically, the verb `remove` inherently requires a direct object — *something* must always be removed — so `removingAll` is the natural participial form regardless of which overload it names. The alternative `removedAll(predicate)` does not parse as a collection with elements removed.
+
+More generally, when the suffix rules conflict across overloads, **overload consistency takes precedence**: all overloads of the same function use the same participial form. Without this rule, a single function would have both a participial and an imperative overload, creating exactly the kind of ambiguity this convention is designed to prevent.
 
 To summarize the priority:
 
