@@ -3,9 +3,9 @@
 * **Type**: Design proposal
 * **Author**: Dmitry Savvinov
 * **Contributors**: Timofey Solonin, Anton Lakotka, Andrei Tyrin
-* **Discussion**: [#461](https://github.com/Kotlin/KEEP/issues/461)
-* **Status**: Under consideration
-* **Prototype**: In progress [KT-74005](https://youtrack.jetbrains.com/issue/KT-74005)
+* **Discussion**: [#462](https://github.com/Kotlin/KEEP/discussions/462)
+* **Status**: [Declined](https://github.com/Kotlin/KEEP/discussions/462#discussioncomment-16907110)
+* **Prototype**: [KT-74005](https://youtrack.jetbrains.com/issue/KT-74005)
 * **Related YouTrack issue**: [KT-68323](https://youtrack.jetbrains.com/issue/KT-68323)
 
 ## Abstract
