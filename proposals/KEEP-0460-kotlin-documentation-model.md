@@ -46,7 +46,8 @@ dedicated KEEPs that formalize the resolution rules
 
 On top of the Analysis API sits [Dokka](https://kotl.in/dokka), the official documentation engine for Kotlin. Dokka
 reads Kotlin and Java sources, resolves declarations and KDoc through the Analysis API, and produces HTML, Markdown, or
-Javadoc-style output. It is distributed as a separate Gradle plugin with its own public, plugin-extensible API.
+Javadoc-style output. It is distributed as a separate Gradle or Maven plugin and a separate CLI, with its own public,
+plugin-extensible API.
 
 ## Motivation
 
