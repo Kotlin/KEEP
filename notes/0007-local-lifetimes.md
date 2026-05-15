@@ -3,7 +3,7 @@
 * **Type**: Design Notes
 * **Author**: Ross Tate
 * **Contributors**: Komi Golova, Mikhail Zarechenskiy, Alejandro Serrano Mena, Marat Akhin
-* **Discussion**: [#483](https://github.com/Kotlin/KEEP/discussions/485)
+* **Discussion**: [#485](https://github.com/Kotlin/KEEP/discussions/485)
 
 # Abstract
 

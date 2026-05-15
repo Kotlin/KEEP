@@ -3,7 +3,7 @@
 * **Type**: Design Notes
 * **Author**: Ross Tate
 * **Contributors**: Komi Golova, Mikhail Zarechenskiy, Alejandro Serrano Mena, Marat Akhin
-* **Discussion**: [#484](https://github.com/Kotlin/KEEP/discussions/484)
+* **Discussion**: [#486](https://github.com/Kotlin/KEEP/discussions/486)
 * **Prerequisite**: [Local Lifetimes for Kotlin](https://github.com/Kotlin/KEEP/blob/main/notes/0007-local-lifetimes.md)
 
 # Abstract
