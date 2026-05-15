@@ -159,7 +159,7 @@ Regular lambda parameters of `inline` functions are already treated as `callsInP
 
 * **Support for Nullable Lambdas**
 
-    `callsInPlace` does not support nullable lambdas. However, a nullable lambda is a valid candidate for the `UNKNOWN` invocation kind, as the function would simply execute between zero and infinity times within the caller.
+    `callsInPlace` does not support nullable lambdas. However, a nullable lambda is a valid candidate for the `UNKNOWN` and `AT_MOST_ONCE` invocation kind, as the function would simply execute zero times within the caller.
 
 * **Support for Non-Local Returns**
 
@@ -211,13 +211,13 @@ In general, an entity marked as `local` cannot escape.
 
 In this proposal, `local` is introduced only for function-type parameters. For such parameters, “cannot escape” means that the parameter cannot:
 
-* Be stored in a value without a local guarantee.
+* Be stored in another variable or property.
 * Be passed to another function that expects a non-local argument.
 * Be captured by a lambda that may escape.
 * Be returned from a function.
 <details><summary>The last rule may not be obvious at first, but it is important for safety.</summary>
 
-The code below can be compiled today when `callsInPlace(block, UNKNOWN)` is used.
+The code below can be compiled and fails after with `NullPointerException` when `callsInPlace(block, UNKNOWN)` is used.
 
 ```kotlin
 fun invalid(/*local*/ block: () -> Unit): () -> Unit {
@@ -283,9 +283,9 @@ fun synchronized(local block: () -> Unit) {
 }
 ```
 
-The only remaining difference is returning the lambda from the function.
+The only remaining missing check is returning the lambda from the function.
 
-According to `local` rules, this must be forbidden, but `callsInPlace` doesn't have such verification.
+According to `local` rules, this must be forbidden, but this case was missed in the current `callsInPlace` verification.
 
 ```kotlin
 fun invalid(block: () -> Unit): () -> Unit {
@@ -293,7 +293,7 @@ fun invalid(block: () -> Unit): () -> Unit {
         callsInPlace(block, InvocationKind.UNKNOWN)
     }
 
-    return block // Should be forbidden for local
+    return block // Should be forbidden for local and reported for callsInPlace
 }
 ```
 
@@ -463,6 +463,7 @@ Internal libraries already contain warnings for some usages of `callsInPlace`. T
 One group of warnings comes from composable lambdas.
 
 ```kotlin
+@Composable
 inline fun <T> scope(block: @Composable () -> T): T {
 contract { callsInPlace(block, InvocationKind.EXACTLY_ONCE) }
 return block()
@@ -485,28 +486,6 @@ Possible solutions:
 
     Decision: Supporting it on the backend is not trivial. This requires a separate discussion with Compose owners. The hard question is whether local can be applied to composable lambda.
 
-### Array constructor
-
-The Array constructor has a `callsInPlace` contract for init, but Array<T> is a built-in class with expect / actual declarations and no regular function body.
-
-It seems that we can mark them with a `local` modifier, even if it has no real implementation. So, this warning will be solved by introducing `expect`/`actual` rules.
-
-The compiler currently treats the `init` lambda as `noinline` and escaping by the compiler, because constructor parameters can't be `inline`. While `inline` constructor support exists, it was hardcoded exclusively for the `Array` class. So there are some missing hardcoded parts in the code and this is not supported by the backend.
-
-```kotlin
-@OptIn(ExperimentalContracts::class)
-
-inline fun <reified T> MutableVector(size: Int, noinline init: (Int) -> T): MutableVector<T> {
-   contract { callsInPlace(init) }
-   val arr = Array(size, init) // this can be rewritten as Array(size) { init(it) }
-   return MutableVector(arr as Array<T?>, size)
-}
-```
-
-Note: The modifier can be only `local`, because init runs for each element in the array.
-
-Useful links: 1) [Expect](https://github.com/JetBrains/kotlin/blob/bc0e36a84e3c48451c66d8f7f0402342890561e6/libraries/stdlib/src/kotlin/Array.kt#L20) 2) [Jvm actual builtin](https://github.com/JetBrains/kotlin/blob/2.3.20/libraries/stdlib/jvm/builtins/Array.kt) 3) [JS actual builtin](https://github.com/JetBrains/kotlin/blob/2.3.20/libraries/stdlib/js/builtins/Array.kt) 4) [Native actual](https://github.com/JetBrains/kotlin/blob/2.3.20/libraries/stdlib/wasm/builtins/kotlin/Array.kt)
-
 ### Migration plan
 
 The existing `callsInPlace` contract should remain supported, because a lot of code already depends on it. To preserve compatibility, current `callsInPlace` verification diagnostics should remain warnings, not errors. Also, `AT_MOST_ONCE` and `AT_LEAST_ONCE` should remain supported in contracts.
@@ -517,9 +496,9 @@ The IDE should support this migration with quick-fixes. When a `callsInPlace` co
 
 ## Inheritance
 
-Override compatibility follows order: `default` (no locality modifier) < `local` < `local once`.
+Override compatibility follows order: no locality modifier < `local` < `local once`.
 
-An overriding declaration may keep the same modifier or strengthen it, but it must not weaken it. So a default parameter may be overridden by default, `local`, or `local once`; a `local` parameter may be overridden by `local` or `local once`; and a `local` `once` only by `local once`.
+An overriding declaration may keep the same locality guarantee or strengthen it, but it must not weaken it. So a parameter without a locality modifier may be overridden by a parameter without a locality modifier, `local`, or `local once`; a `local` parameter may be overridden by `local` or `local once`; and a `local` `once` only by `local once`.
 
 The same compatibility rule should apply to `expect`/`actual` declarations. 
 If an `expect` callable is final or effectively final, the corresponding `actual` callable may provide the same or a stronger locality guarantee. For example, an `expect` parameter without a locality modifier may be actualized as `local` or `local once`.
