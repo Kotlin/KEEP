@@ -509,6 +509,6 @@ Although the modifier is written in the declaration, it is not part of the funct
 
 ## Potential future: introducing locality in Kotlin
 
-This direction aligns with Ross Tate's "local lifetimes" proposal, because we only apply `local` / `local once` in contexts where the lambda cannot be returned or stored, adopting Tate-style lifetime tracking later should be source-compatible with code that already follows these restrictions.
+This direction aligns with Ross Tate's "local lifetimes" [proposal](https://github.com/Kotlin/KEEP/blob/main/notes/0007-local-lifetimes.md), because we only apply `local` / `local once` in contexts where the lambda cannot be returned or stored, adopting Tate-style lifetime tracking later should be source-compatible with code that already follows these restrictions.
 
 Incompatibility occurs in inheritance model. Ross Tate's proposal starts with locality modifiers but then extends them into the type system. In that design inheritance rules above would need to be reconsidered. Moving later to a full lifetime-tracking type system would be a much larger change. In particular, Ross's draft notes that `Any?` would no longer be the top type, because it assumes an infinite lifetime. So, this KEEP is limited to the modifier-like design space.
