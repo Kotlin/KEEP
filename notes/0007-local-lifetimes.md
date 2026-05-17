@@ -111,7 +111,7 @@ At present, Kotlin objects all have infinite—or `global`—lifetimes.
 Yes, they get garbage-collected, but that's more of a resource-usage optimization than it is a part of the core semantics of the language.
 After all, if you had infinite memory (and no finalizers), you could never tell if/when an object is garbage-collected.
 
-`local` forces the type-checker to make sure the function is safe *without* assuming the corresponding parameter has an global lifetime; the type-checker is only allowed to assume the lifetime of the object at least exceeds the lifetime of the call.
+`local` forces the type-checker to make sure the function is safe *without* assuming the corresponding parameter has a global lifetime; the type-checker is only allowed to assume the lifetime of the object at least exceeds the lifetime of the call.
 Because the default lifetime is global, this means the type-checker needs to ensure the parameter does not flow into anything expecting a "standard" object.
 This means that the lifetimes of `local` parameters effectively become tracked by the type-checker.
 

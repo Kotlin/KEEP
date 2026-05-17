@@ -55,20 +55,119 @@ We are sharing it early because we want to collect feedback (hopes, concerns, su
       + [Redesigning with Locality](#redesigning-with-locality)
 <!-- TOC -->
 
+# Background
+
+The purpose of this is to provide safer and more compositional primitives for supporting coroutines.
+It is perfectly possible that these primitives could be shipped as only `internal` to the standard library, using them to improve the existing coroutine libraries Kotlin provides, as well as possibly provide new coroutine libraries, without ever giving Kotlin users direct access to the primitives.
+
+## Existing Coroutine Primitives
+
+Kotlin's coroutine libraries currently use a collection of primitives (i.e. intrinsics) that are implemented differently by each platform depending on what primitives the platform itself has (e.g. using continuation-passing style on JavaScript).
+These primitives have slight variations between them, but we will use the following two proxies to cleanly capture the key functionality for our purposes:
+```
+public fun <T> createCoroutineUnintercepted(suspendingBlock: suspend (T) -> Unit
+): Continuation<T>
+```
+
+```
+public suspend fun <T> suspendCoroutineUnintercepted(
+    handlingBlock: (Continuation<T>) -> Unit
+): T
+```
+
+When we call `val snapshot = createCoroutineUnintercepted(suspendingBlock)`, we effectively create a new suspended call stack that is primed to call `suspendingBlock` the first time it is resumed, i.e. the first time we invoke `snapshot.resume(value)` for some `value` of the input type `T` that `suspendingBlock` is waiting for.
+Once we invoke `snapshot.resume(value)`, the computuation `suspendingBlock(value)` will be executed on this newly created separate call stack, and it will run until it either completes *or* it makes a call to `suspendCoroutineUnintercepted`.
+
+If the call to `suspendingBlock` completes, then the call to `snapshot.resume(...)` that we had made to kick off that computation on the separate call stack returns.
+
+On the other hand, suppose `suspendingBlock` calls `suspendCoroutineUnintercepted(handlingBlock)`.
+Then a few steps happen:
+1. The separate call stack executing `suspendingBlock` gets suspended.
+2. We switch back to wherever the call to `snapshot.resume(...)` was made.
+3. We call `handlingBlock`, giving it the *new* snapshot of that *same* separate call stack that is now suspended in the middle of running `suspendingBlock` and is waiting to be resumed with whatever type of value that that call to `suspendCoroutineUnintercepted` was expected to return.
+4. Once `handlingBlock` returns, then we return from the call to `snapshot.resume(...)`.
+
+When the snapshot given to `handlingBlock` is resumed, it will switch control to the suspendind stack and run it until it either completes or calls `suspendCoroutineUnintercepted`, at which point it will switch control back to whoever resumed the snapshot.
+Thus these primitives essentially give us a way to switch control back and forth between two call stacks.
+
+Note that, when one of these snapshots is resumed, it is used up and cannot be used again.
+Thus, if the computation suspends, it is the responsibility of the `handlingBlock` given to `suspendCoroutineUnintercepted` to make the new snapshot available so that the computation can be resumed in the future.
+
+## Missing Invariants
+
+One detail is that, if an exception gets thrown from the `suspendingBlock` of one of these separate call stacks, then that exception is passed onto and thrown from the last invocation to `resume` that caused the separate call stack to execute.
+So, there's a way to throw an exception to the resumption site, but interestingly there's no way to return a value to the resumption site.
+That is, you would think that `suspendingBlock` could return a non-`Unit` value that would be returned from `resume` if the `suspendingBlock` completes.
+
+The issue is that each time `suspendingBlock` calls `suspendCoroutineUnintercepted`, a *new* snapshot is created.
+So to make such a pattern safe, we would need to maintain an invariant across these snapshots that their `resume` sites all expect that same type of return value.
+This requires adding a new type parameter to `Continuation`; right now it just has one indicating the *input* that it is waiting for, but we would need a new one to indicate the *output* that it is waiting for.
+However, that is not enough.
+The call to `suspendCoroutineUnintercepted` would need to know what return type is expected in order to what type of `Continuation` to give to its `handlingBlock`.
+So the `suspend` keyword would need to be parameterizerd, and our primitives would end up looking like the following:
+```
+public fun <T, R> createCoroutineUnintercepted(suspendingBlock: suspend<R> (T) -> R
+): Continuation<T, R>
+```
+
+```
+public suspend<R> fun <T, R> suspendCoroutineUnintercepted(
+    handlingBlock: (Continuation<T, R>) -> R
+): T
+```
+
+This obviously would complicate the design, but because of its absence, instead this pattern is supported by using mutable nullable references and unchecked downcasts.
+More generally, the current design has no way of enforcing invariants across resumption sites, which forces the standard library to use unchecked operations and implicit invariants to get around this lack of expressiveness.
+
+## Broken Compositionality
+
+A more severe problem arises when we try to compose or nest coroutine libraries and operations.
+For example, it's fairly obvious that the program
+```
+sequence {
+    runBlocking {
+        launch {
+            yield("Hello")
+        }
+        launch {
+            yield("World")
+        }
+    }
+}.forEach { println(it) }
+```
+*should* print either `Hello\nWorld\n` or `World\nHello\n`.
+But would actually happen if you were to run this program is it would just stall forever.
+
+The issue arises due to what is known is accidental interference.
+`sequence` is implemented using `createCoroutineUnintercepted`, and `yield` is implemented using `suspendCoroutineUnintercepted`.
+These two operations are conceptually meant to match with each other; this is, `yield` is meant to suspend the call stack created specifically by `sequence`.
+However, `launch` is also implemented using `createCoroutineUnintercepted` (and also has "matching" operations like `delay` implemented using `suspendCoroutineUnintercepeted`).
+Because `yield` is called inside these coroutine operations, its call to `suspendCoroutineUnintercepeted` ends up suspending the call stacks that `launch` created rather than the one created by `sequence`.
+Meanwhile, `launch` expects all of its "matching" operations to interact with the scheduler in their `handlingBlock`, so the program stalls because `yield` does not use the scheduler to pick a task to run next.
+
+At present, Kotlin attempts to hide these issues with the `@RestrictsSuspension` annotation.
+This annotation is directly supported by the compiler, and it effectively disallows composing libraries that use coroutines.
+For example, it disallows `yield` from being called anywhere but directly inside the `sequence` block, and it disallows `delay` from being called directly inside the `sequence` block.
+This is excessively restrictive, though, and in some cases the standard library drops the annotation because it is too prohibitive to be useful.
+And in these cases, like the library for asynchronous flows, bugs like [KT-3480](https://github.com/Kotlin/kotlinx.coroutines/issues/3480) do arise due to incomplete attempts to mitigate these fundamental issues with compositionality.
+
 # Design
 
-Coroutines are a widespread feature of the Kotlin language that gets used for many purposes.
-All these purposes, however, are (cleverly) shoehorned into a single bottleneck: `suspend` functions.
-Having just one notion of `suspend` both often requires this capability to be overpowered for the task at hand *and* limits how coroutine-based libraries can be combined.
-The former creates the need for `@RestrictsSuspension`, and the latter causes bugs such as [KT-3480](https://github.com/Kotlin/kotlinx.coroutines/issues/3480).
-
-With locality, we can generalize `suspend` because `local` objects (and functions) are safely able to use control that's local to the caller, such as suspending computation.
-Thus we can have two `local` objects that are each able to suspend the computation to different points.
+With [localities](https://github.com/Kotlin/KEEP/blob/main/notes/0007-local-lifetimes.md), we can generalize `suspend` because `local` objects (and functions) are safely able to use control that's local to the caller, such as suspending computation.
+Thus we can have two `local` objects that are each able to suspend the computation to different points (unlike `suspendCoroutineUnintercepeted`, which can only suspend up to the innermost point).
 The interface of these objects each dictate what kind of interaction they support; unlike `suspend`, these `local` objects can be used by the callee to suspend the computation *without* giving the callee complete access to the continuation.
 
-Of course, this presumes the caller providing the `local` objects has some way to suspend computation.
-Here I provide a design for stacks that provides such support in a locality-conscious way.
-Note that this document assumes the reader is familiar with [local lifetimes](https://github.com/Kotlin/KEEP/blob/main/notes/0007-local-lifetimes.md), including advanced features such as [explicit locality polymorphism](https://github.com/Kotlin/KEEP/blob/main/notes/0007-local-lifetimes.md#Advanced-Locality-Polymorphism).
+This means that localities provide us with an opportunity to develop a new, safer, and more compositional set of primitives for creating and working with call stacks.
+Here I provide a tentantive such design.
+It provides more flexibility in expressing invariants for coroutines so that coroutine libraries can avoid relying on implicit invariants and making unchecked downcasts, and it supports safely nesting coroutines even when composing functionality across independently developed coroutine libraries.
+
+This section describes the primitives.
+That is, it is essentially a technical manual for an API.
+These primitives are very low level so that they can efficiently support very advanced libraries and patterns like Kotlin's structured concurrency.
+As such, the [Practice](#practice) section provides a quick tutorial on how one can put these primitives together to build something higher level and more conveniently usable.
+After that, the [Applications](#applications) section illustrates a few of the concrete ways we can use this to address current issues in the standard library (and eliminate the need for `@RestrictsSuspension` and many dynamic checks).
+
+Note that this technical document assumes the reader is familiar with [local lifetimes](https://github.com/Kotlin/KEEP/blob/main/notes/0007-local-lifetimes.md), including advanced features such as [explicit locality polymorphism](https://github.com/Kotlin/KEEP/blob/main/notes/0007-local-lifetimes.md#Advanced-Locality-Polymorphism).
 
 ## Stack Lifetimes
 
@@ -144,7 +243,7 @@ fun <T> ignoreInput(
 ): StackContinuation<(T) -> Nothing>_{continuation}
     = StackContinuation(continuation.suspension) { _ ->
         continuation.resumer()
-    })
+    }
 ```
 
 In `StackContinuation`, we have `local resumption = public`.
@@ -200,7 +299,9 @@ The code outside a call to `restack` is the portion of the current stack that wi
 
 ### `StackRestacker`
 
-This `block` is given access to a local `StackRestacker` used to manipulate the current stack and other suspended stacks:
+This `block` is given access to a local `StackRestacker` used to manipulate the current stack and other suspended stacks.
+The `StackRestacker` class provides the bulk of the functionality, with each of its methods providing a primitive for rearranging and transferring control between call stacks.
+The signature of the `StackRestacker` class is as follows:
 ```
 public expect local class StackRestacker<out local_{this} resumption> internal expect constructor {
     fun <local_{resumption} arena, local that> mount(
