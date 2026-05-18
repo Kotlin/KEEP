@@ -628,7 +628,7 @@ Kotlin supports delegated properties, where a field is accessed and/or mutated t
 Interestingly, because the delegated properties of an object are (by default) only accessible within that object's lifetime, it is safe for the delegate object to be restricted to have only that lifetime.
 As such, because we can update the signature of `lazy` as follows, a `local` class can use `val foo: Foo by lazy {...}` where `...` executes within the `this` lifetime.
 ```
-public expect fun <T> lazy(local initializer: () -> T): Lazy<T>_{initializer}
+public expect fun <T> lazy(local_{} initializer: () -> T): Lazy<T>_{initializer}
 ```
 Similarly, local delegated properties in functions can use delegate objects with just the `local` lifetime, so the `...` in `val x: Int = lazy {...}` is free to access all `local` parameters and even do things like `return` from the function.
 
@@ -645,7 +645,7 @@ AutoCloseable {
 
 We are able to localize the signature for `AutoCloseable` as follows:
 ```
-public expect inline fun AutoCloseable(local closeAction: () -> Unit): AutoCloseable_{closeAction}
+public expect inline fun AutoCloseable(local_{} closeAction: () -> Unit): AutoCloseable_{closeAction}
 ```
 
 As such, the code in `AutoCloseable {...}` is allowed to access `local` parameters and perform local control.
