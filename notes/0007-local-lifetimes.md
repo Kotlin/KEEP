@@ -29,6 +29,7 @@ We are sharing it early because we want to collect feedback (hopes, concerns, su
       + [Inheritance](#inheritance)
    * [Preventing Escapes](#preventing-escapes)
    * [Backwards Compatibility](#backwards-compatibility)
+   * [Type-Checker Feedback](#type-checker-feedback)
    * [Compile-Time Implementation](#compile-time-implementation)
    * [Run-Time Implementation](#run-time-implementation)
       + [Lexical Aborts](#lexical-aborts)
@@ -234,6 +235,20 @@ In addition to enforcing certain useful software-engineering guarantees, this en
 Much of the design seems to be surprisingly backwards compatible and easy for users to adopt gradually.
 The key incompatibility is that `Any?` will no longer be the top type because it has a global lifetime.
 Of course, this is also an issue for many other potential extensions, so this might just be increasing pressure to address that need for change.
+
+## Type-Checker Feedback
+
+Experience so far is that this design allows libraries to incorporate local lifetimes into their signatures and have that added information automatically flow through application code without change.
+One might wonder how this impacts feedback from the type-checker while developing application code.
+In particular, is feedback going to be cluttered by lifetime information everywhere?
+
+Local lifetimes are essentially orthogonal to Kotlin's existing types.
+That means that, when a typing error is found, it will be either due to an error that would arise using Kotlin's existing types (e.g. using a `String` where an `Int` is expected) or due to something escaping its lifetime (e.g. a `local` parameter flowing into a global variable).
+So, in the former case, the error message can look the same as it does now, eliding lifetime information because it is irrelevant to the error.
+And, in the latter case, the error message can focus specifically on localities, showing the leak while eliding the class/interface information because it is irrelevant to the error.
+
+On the other hand, when a programmer hovers over something to find out what its type is, the IDE does not know what aspect of the type is relevant to the programmer's inquisition.
+Nonetheless, the IDE could still use formatting (e.g. color coding) to make it easy for the programmer to separate class/interface vs. lifetime information and focus on whichever aspect they are interested in.
 
 ## Compile-Time Implementation
 
