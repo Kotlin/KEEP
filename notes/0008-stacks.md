@@ -308,14 +308,14 @@ The `StackRestacker` class provides the bulk of the functionality, with each of 
 The signature of the `StackRestacker` class is as follows:
 ```
 public expect local class StackRestacker<out local_{this} resumption> internal expect constructor {
-    fun <local_{resumption} arena, local that> mount(
+    fun <local_{resumption} arena, E, local that> mount(
         environment: E_{resumption},
         mount: StackMount<arena, E>_{local},
         suspension: StackSuspension<that>_{mount.mounted},
         block: local StackRestacker<that>.(
         ) ->_{that} Nothing
     ): Nothing
-    fun <local_{resumption} arena> dismount(
+    fun <local_{resumption} arena, E> dismount(
         mount: StackMount<arena, E, mounted_{resumption}>_{local},
         block: local^{environment} StackRestacker<environment>.(
             local^{arena} environment: E,
@@ -345,7 +345,7 @@ In this way we essentially encode typestate; `restack` enters a restacking sessi
 
 The first operation is `mount`:
 ```
-fun <local_{resumption} arena, local that> mount(
+fun <local_{resumption} arena, E, local that> mount(
     mount: StackMount<arena, E>_{local},
     environment: E_{resumption},
     suspension: StackSuspension<that>_{mount.mounted},
@@ -363,7 +363,7 @@ Natively this can be performed without actually performing a context switch, tho
 
 The second operation is `dismount`:
 ```
-fun <local_{resumption} arena> dismount(
+fun <local_{resumption} arena, E> dismount(
     mount: StackMount<arena, E, mounted_{resumption}>_{local},
     block: local^{environment} StackRestacker<environment>.(
         local^{arena} environment: E,
