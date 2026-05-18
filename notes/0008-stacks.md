@@ -368,7 +368,7 @@ fun <local_{resumption} arena, E> dismount(
     block: local^{environment} StackRestacker<environment>.(
         local^{arena} environment: E,
         StackSuspension<resumption>_{mount.mounted}
-    ) ->_{environment} Nothing
+    ) ->_{arena} Nothing
 ): Nothing
 ```
 This operation is used to detach a (necessarily) __Mounted__ or __Pending__ (the current session) `StackMount` from its current resumption site.
