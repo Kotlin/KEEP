@@ -136,6 +136,7 @@ fun <A, B> local Iterator<A>.map(
 This extension method returns an `Iterator` whose method implementations capture the `this` and `transform` parameters.
 As such, the methods of this `Iterator` are only safe to invoke within the lifetimes of those parameters.
 The type modifier `_{this&transform}` indicates that, rather than having the default global lifetime, the returned `Iterator`'s lifetime is restricted by that of `this` and `transform`.
+(For functions with restricted lifetimes, we use the specialized syntax `(Input, ...) ->_{lifetime} Output`.)
 
 So `local` is, more precisely, an indicator that a lifetime should be tracked instead of assumed to be global.
 Because the default lifetime is global, that will prevent such parameters from flowing arbitrarily out of the function.
