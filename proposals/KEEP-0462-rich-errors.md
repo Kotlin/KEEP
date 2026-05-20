@@ -94,7 +94,7 @@ The full text of motivation with more examples and rationale can be found in the
 
 Any function that may fail in a recoverable way can declare this in its return type using
 union types of the form `ValueType | ErrorType1 | ErrorType2 | ...`. In combination with the must-use return values
-feature ([KEEP-412](./proposals/KEEP-0412-unused-return-value-checker.md)), the
+feature ([KEEP-412](./KEEP-0412-unused-return-value-checker.md)), the
 compiler will report an error if such a result is ignored.
 
 #### Example:
