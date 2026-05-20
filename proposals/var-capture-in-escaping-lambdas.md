@@ -390,10 +390,19 @@ Message example: _"This escaping lambda captures mutable vars: seed, ch …"_
 ## Migration
 
 Although the problem seems quite narrow, our analysis of internal projects revealed near **4,5k** instances of this pattern. 
-A large share of them, about **40%**, comes from lambdas that are effectively called in place, but the corresponding functions do not declare with a `callsInPlace` contract. Therefore, the compiler currently treats these lambdas as escaping and reports the warning.
+A large share of them, about **35%**, comes from lambdas that are effectively called in place, but the corresponding functions do not declare with a `callsInPlace` contract. Therefore, the compiler currently treats these lambdas as escaping and reports the warning.
 
 To reduce noise in the first version, we plan to introduce this diagnostic as an IDE inspection.
-At first, the inspection will run only for an allowlist of functions where lambda arguments are known to escape and the warning is expected to be useful.
+Initially, the inspection will be enabled only for a small allowlist of functions where lambda arguments are known to escape and the warning is expected to be useful.
+
+The initial allowlist includes:
+| Category | APIs |
+| --- | --- |
+| Coroutines | `kotlinx.coroutines.CoroutineScope.launch`, `kotlinx.coroutines.CoroutineScope.async`, `kotlinx.coroutines.Job.invokeOnCompletion` |
+| UI event dispatch | `javax.swing.SwingUtilities.invokeLater`, `java.awt.EventQueue.invokeLater`, `com.intellij.openapi.application.Application.invokeLater` |
+| Java executors | `java.util.concurrent.Executor.execute`, `java.util.concurrent.ExecutorService.submit` |
+| Threads | `java.lang.Thread constructors` |
+
 
 After validating the results, the allowlist can be removed.
 
