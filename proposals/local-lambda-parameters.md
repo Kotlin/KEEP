@@ -165,7 +165,7 @@ Regular lambda parameters of `inline` functions are already treated as `callsInP
 
     Kotlin already has a special [exception](https://kotlinlang.org/spec/asynchronous-programming-with-coroutines.html) to function-coloring rules for inline lambda parameters: when a higher-order function that invokes an inline lambda is called from a suspending function, this lambda is allowed to also have suspension points and call other suspending functions.
 
-    `callsInPlace` is a good prerequisite for extending this behavior to non-inline lambdas. Color-polymorphic code generation could allow to inherit the caller context and propagate it to `callsInPlace` lambda argument. This would allow such lambdas to retain outer function color and have suspension points. The same approach could also be used for `@Composable` lambdas. 
+    `callsInPlace` is a good prerequisite for extending this behavior to non-inline lambdas. However, this proposal does not support this extension.
 
 * **Support for Non-Local Returns**
 
@@ -504,7 +504,7 @@ The IDE should support this migration with quick-fixes. When a `callsInPlace` co
 
 Override compatibility follows order: no locality modifier < `local` < `local once`.
 
-An overriding declaration may keep the same locality guarantee or strengthen it, but it must not weaken it. So a parameter without a locality modifier may be overridden by a parameter without a locality modifier, `local`, or `local once`; a `local` parameter may be overridden by `local` or `local once`; and a `local` `once` only by `local once`.
+An overriding declaration may keep the same locality guarantee or strengthen it, but it must not weaken it. So a parameter without a locality modifier may be overridden by a parameter without a locality modifier, `local`, or `local once`; a `local` parameter may be overridden by `local` or `local once`; and a `local once` only by `local once`.
 
 The same compatibility rule should apply to `expect`/`actual` declarations. 
 If an `expect` callable is final or effectively final, the corresponding `actual` callable may provide the same or a stronger locality guarantee. For example, an `expect` parameter without a locality modifier may be actualized as `local` or `local once`.
@@ -512,6 +512,77 @@ If an `expect` callable is final or effectively final, the corresponding `actual
 If an `expect` callable can be overridden, the corresponding `actual` callable must use exactly the same locality modifier.
 
 Although the modifier is written in the declaration, it is not part of the function signature and the modifier does not participate in overload resolution. Therefore, declarations that differ only by locality modifiers are conflicting declarations, not overloads.
+
+When a class or interface inherits multiple overriding declarations for the same function, the parameter's contract must be at least as strict as the strictest modifier among all inherited declarations.
+
+If the subclass does not explicitly override the function, its implicit declaration automatically assumes the strictest modifier among its parents.
+
+```kotlin
+interface I { fun foo(local block: () -> Unit): Any }
+
+interface J { fun foo(block: () -> Unit): String }
+
+interface K : I, J {
+    // ERROR: Weakens the contract required by I
+    override fun foo(block: () -> Unit): String 
+
+    // OK: Satisfies both I and J -- implicit modifier type
+    override fun foo(local block: () -> Unit): String 
+
+    // OK: Strengthens the contract further, which is allowed
+    override fun foo(local once block: () -> Unit): String 
+}
+```
+
+### Java-Kotlin interoperability
+A challenge occurs when interacting with Java, as the JVM bytecode has no native concept of locality constraints or lambda lifetimes.
+A Java class could override a Kotlin function containig a `local` parameter and allow lambda to escape, breaking guarantees.
+
+```kotlin
+interface Processor {
+    fun process(local block: () -> Unit)
+}
+```
+
+```java
+public class JavaProcessor implements Processor {
+    private Runnable savedBlock;
+    
+    @Override
+    public void process(Function0<Unit> block) {
+        this.savedBlock = block; // Escaped! Java allows this.
+    }
+}
+```
+
+```kotlin
+fun execute(p: Processor) {
+    var text: String? = "Hello"
+    p.process { 
+        println(text!!.length) // Compiler allows smart cast because 'block' is local
+    }
+    text = null // Compiler assumes 'block' already executed inside 'process'
+}
+```
+
+We can propose 2 aproaches:
+
+#### Approach 1. Final-for-Java
+
+The compiler can mangle the JVM name of any non-inline function with `local` parameter. (`process` becomes `process$local`). 
+
+This effectively achieves a final-for-java modality:
+
+1. Kotlin subclasses can override the function normally.
+2. Java subclasses cannot override the declaration because they cannot match the mangled signature.
+
+#### Approach 2. IDE inspection for Java
+
+A more practical approach is to keep the JVM signature unchanged and add an IDE inspection for Java code.
+
+The inspection should report Java overrides of Kotlin functions with `local` or `local once` parameters when the corresponding parameter does not fulfill the required guarantees.
+
+This approach does not make the guarantee fully sound, because Java code can still be compiled without running the IDE inspection. However, it keeps Java interoperability simple and catches the most common unsafe cases in practice.
 
 ## Potential future: introducing locality in Kotlin
 
