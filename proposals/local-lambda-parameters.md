@@ -161,6 +161,12 @@ Regular lambda parameters of `inline` functions are already treated as `callsInP
 
     `callsInPlace` does not support nullable lambdas. However, a nullable lambda is a valid candidate for the `UNKNOWN` and `AT_MOST_ONCE` invocation kind, as the function would simply execute zero times within the caller.
 
+* **Retaining outer function color**
+
+    Kotlin already has a special [exception](https://kotlinlang.org/spec/asynchronous-programming-with-coroutines.html) to function-coloring rules for inline lambda parameters: when a higher-order function that invokes an inline lambda is called from a suspending function, this lambda is allowed to also have suspension points and call other suspending functions.
+
+    `callsInPlace` is a good prerequisite for extending this behavior to non-inline lambdas. Color-polymorphic code generation could allow to inherit the caller context and propagate it to `callsInPlace` lambda argument. This would allow such lambdas to retain outer function color and have suspension points. The same approach could also be used for `@Composable` lambdas. 
+
 * **Support for Non-Local Returns**
 
     Currently, non-local returns are only allowed for `inline` functions. However, since `callsInPlace` guarantees that a lambda executes within the caller, it makes sense to allow non-local returns. This is useful for large functions where inlining would cause code bloat.
