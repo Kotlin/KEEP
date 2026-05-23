@@ -584,7 +584,7 @@ members are shared.
 ### Deprecations
 
 We expect the Kotlin compiler to phase out all forms of "friend modules" in
-favor of this proposal. This includes, among others, the `-Xfriends-path`
+favor of this proposal. This includes, among others, the `-Xfriend-paths`
 compiler argument.
 
 ### Tooling
