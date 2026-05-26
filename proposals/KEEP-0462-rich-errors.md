@@ -268,7 +268,7 @@ graph BT
     Union["E | OtherError"]
     Union'["E | ParseError"]
     
-    UnionNeg["E | ParseError \ OtherError"]
+    UnionNeg["E | OtherError \ ParseError"]
     UnionNeg'["E | ParseError \ OtherError"]
     
     Neg2 --> Neg1
