@@ -312,13 +312,13 @@ The signature of the `StackRestacker` class is as follows:
 public expect local class StackRestacker<out local_{this} resumption> internal expect constructor {
     fun <local_{resumption} arena, E, local that> mount(
         environment: E_{resumption},
-        mount: StackMount<arena, E>_{local},
+        mount: StackMount<arena, E>,
         suspension: StackSuspension<that>_{mount.mounted},
         block: local StackRestacker<that>.(
         ) ->_{that} Nothing
     ): Nothing
     fun <local_{resumption} arena, E> dismount(
-        mount: StackMount<arena, E, mounted_{resumption}>_{local},
+        mount: StackMount<arena, E, mounted_{resumption}>,
         block: local^{environment} StackRestacker<environment>.(
             local^{arena} environment: E,
             StackSuspension<resumption>_{mount.mounted}
@@ -348,7 +348,7 @@ In this way we essentially encode typestate; `restack` enters a restacking sessi
 The first operation is `mount`:
 ```
 fun <local_{resumption} arena, E, local that> mount(
-    mount: StackMount<arena, E>_{local},
+    mount: StackMount<arena, E>,
     environment: E_{resumption},
     suspension: StackSuspension<that>_{mount.mounted},
     block: local StackRestacker<that>.(
@@ -366,7 +366,7 @@ Natively this can be performed without actually performing a context switch, tho
 The second operation is `dismount`:
 ```
 fun <local_{resumption} arena, E> dismount(
-    mount: StackMount<arena, E, mounted_{resumption}>_{local},
+    mount: StackMount<arena, E, mounted_{resumption}>,
     block: local^{environment} StackRestacker<environment>.(
         local^{arena} environment: E,
         StackSuspension<resumption>_{mount.mounted}
@@ -432,10 +432,10 @@ We can support this common pattern with the following extension method:
 fun <local arena, E, O> StackMount<arena, E>.new(
     after: (local E, O) ->_{arena} Nothing,
     block: () ->_{mounted} O
-): StackContinuation<mounted, () -> Nothing> = new { input ->
+): StackContinuation<mounted, () -> Nothing> = new {
     val output = block()
     restack {
-        dismount(this@new) { (environment, _) ->
+        dismount(this@new) { environment, _ ->
             finish {
                 after(environment, output)
             }
@@ -456,13 +456,13 @@ Finally it `finish`es the session by calling `after` (at the mounting site), giv
 The `StackContinuation` class has two fields tied together by its locality member.
 Rather than requiring the programmer to regularly access these fields at this low level, we can provide the following extension method for its most common usage pattern:
 ```
-fun <local_{local} arena, E, R, T> StackMount<arena, E>.resume(
+fun <local_{local} arena, E, R> StackMount<arena, E>.resume(
     environment: E_{local},
     continuation: StackContinuation<mounted, R>,
     block: (local R) ->_{mounted} Nothing
 ): Nothing {
     restack {
-        mount(this@new, continuation.suspension) {
+        mount(this@resume, environment, continuation.suspension) {
             finish {
                 block(continuation.resumer)
             }
@@ -485,12 +485,12 @@ Then it `finish`es the session and calls `block` with the `continuation`'s `resu
 The `StackContinuation` class has two fields tied together by its locality member.
 Rather than requiring the programmer to regularly access these fields at this low level, we can provide the following extension method for its most common usage pattern:
 ```
-fun_{mounted} <local arena, E, R, T> StackMount<arena, E>.suspend(
+fun_{mounted} <local arena, E, R> StackMount<arena, E>.suspend(
     resumer: R_{local},
     block: (local E, StackContinuation<mounted, R>) ->_{arena} Nothing
 ): Nothing {
     restack {
-        dismount(this@new) { (environment, suspension) ->
+        dismount(this@new) { environment, suspension ->
             finish {
                 block(environment, StackContinuation(suspension, resumer))
             }
@@ -530,17 +530,17 @@ local class PausingStack(
     private[this] val mount: StackMount<this, (Boolean) -> Nothing>
         = StackMount()
     private[this] var continuation: StackContinuation<mount.mounted, () -> Nothing>?
-        = mount.new({ (exit, _) -> exit(true) }) {
+        = mount.new({ exit, _ -> exit(true) }) {
             block pause@{
-                mount.suspend({ return@pause }) { (exit, continuation) ->
-                        this.continuation = continuation
-                        exit(false)
-                    }
+                mount.suspend({ return@pause }) { exit, continuation ->
+                    this.continuation = continuation
+                    exit(false)
                 }
             }
         }
     fun progress(): Boolean {
         mount.resume(
+            { return it },
             (continuation ?: return true).also { continuation = null }
         ) {
             it()
@@ -632,7 +632,7 @@ fun <R> onFreshStack(
     local block: () -> R
 ): R {
     val mount = StackMount()
-        // : StackMount<local, (R) -> Nothing>
+        // : StackMount<local, Unit>
     val continuation = mount.new(Unit)
         // : StackContinuation<mount.mounted, Unit>
     restack {
