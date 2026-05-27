@@ -222,38 +222,40 @@ Coroutines take turns suspending themselves and switching to some other coroutin
 They don't need any value to be resumed, they simply need control to be transferred back to them.
 In this pattern, a coroutine will suspend its stack and hand off a stack-allocated `() -> Nothing` function to be used to resume its code once we switch back to its stack.
 In this pattern, we'll have stack suspensions that all have the same lifetime but which each have their own `resumption` locality and each have an associated `() ->_{resumption} Nothing` object with that restricted lifetime.
+Nonetheless, even though these suspensions each have their own `resumption` locality, the entire cooperative-yielding computation might itself occur within some lifetime, i.e. the `arena` of the computation.
 
 We use `StackContinuation` to represent such a common pattern.
 A stack continuation is not a new primitive, just a convenient class that bundles a `StackSuspension` with an object to be used to transfer control back to the suspended code:
 ```
-public local class StackContinuation<out R>(
-    val suspension: StackSuspension<resumption>_{this},
+public class StackContinuation<local arena, out R>(
+    val suspension: StackSuspension<resumption>_{arena},
     val resumer: R_{resumption}
 ) {
-    local resumption = public
+    local^{arena} resumption = public
 }
 ```
-Here I introduce a *local member* `resumption`.
-Whereas type members allow each object to have its own associated type (like an existentially quantified type), local members allow each object to have its own associated locality (besides its lifetime).
-In this way, even though each cooperatively yielding coroutine's stack suspension has its own `resumption` lifetime, we can use `StackContinuation<() -> Nothing>_{arena}` to represent the common structure shared across these suspended coroutines.
+Here I introduce a *locality member* `resumption`.
+Whereas type members allow each object to have its own associated type (like an existentially quantified type), locality members allow each object to have its own associated locality (besides its lifetime).
+By using `local^{arena}`, we indicate that `resumption` is a sublifetime of `arena`, which ensures the `suspension`'s suspension point is necessarily within the lifetime of the `arena`.
+In this way, even though each cooperatively yielding coroutine's stack suspension has its own `resumption` lifetime, we can use `StackContinuation<arena, () -> Nothing>` to represent the common structure shared across these suspended coroutines.
 
 Many designs go straight for `StackContinuation`, bypassing `StackSuspension`.
 Because we have localities, we can operate a step lower.
 This enables us to directly implement operations that other designs would need to make primitive.
 For example, we can implement the following ourselves:
 ```
-fun <T> ignoreInput(
-    local continuation: StackContinuation<() -> Nothing>
-): StackContinuation<(T) -> Nothing>_{continuation}
+fun <local arena, T> ignoreInput(
+    continuation: StackContinuation<arena, () -> Nothing>
+): StackContinuation<arena, (T) -> Nothing>
     = StackContinuation(continuation.suspension) { _ ->
         continuation.resumer()
     }
 ```
 
-In `StackContinuation`, we have `local resumption = public`.
+In `StackContinuation`, we have `local^{arena} resumption = public`.
 When a `StackContinuation` is constructed, the value of its locality member is automatically inferred (which is why it can be used in the types of the constructor parameters).
 The `= public` means that the inferred value is part of the type after constructor.
-That is, the type of any interface/class can optionally indicate lower and upper bounds on type members—using the syntax `StackContinuation<() -> Nothing, resumption_{lower}^{upper}>`—and `= public` indicates that the result type of the constructed object should include the inferred bounds on that member.
+That is, the type of any interface/class can optionally indicate lower and upper bounds on type members, and `= public` indicates that the result type of the constructed object should include the inferred bounds on that member.
 Alternatively, a class could say `= private[this]`, which can be useful for concealing internal implementation details.
 
 ## Stack Mounts
@@ -270,7 +272,7 @@ public expect local class StackMount<local arena, E>() {
     local^{arena} mounted = private[this]
     fun_{global} <R> new(
         resumer: R_{mounted}
-    ): StackContinuation<R, resumption^{mounted}>_{mounted}
+    ): StackContinuation<mounted, R>
 }
 ```
 The `arena` locality parameter indicates the locality requirements of environments.
@@ -430,7 +432,7 @@ We can support this common pattern with the following extension method:
 fun <local arena, E, O> StackMount<arena, E>.new(
     after: (local E, O) ->_{arena} Nothing,
     block: () ->_{mounted} O
-): StackContinuation<() -> Nothing>_{mounted} = new { input ->
+): StackContinuation<mounted, () -> Nothing> = new { input ->
     val output = block()
     restack {
         dismount(this@new) { (environment, _) ->
@@ -451,12 +453,12 @@ Finally it `finish`es the session by calling `after` (at the mounting site), giv
 
 ## Resuming Stack Continuations
 
-The `StackContinuation` class has two fields tied together by its member lifetime.
+The `StackContinuation` class has two fields tied together by its locality member.
 Rather than requiring the programmer to regularly access these fields at this low level, we can provide the following extension method for its most common usage pattern:
 ```
 fun <local_{local} arena, E, R, T> StackMount<arena, E>.resume(
     environment: E_{local},
-    continuation: StackContinuation<R>_{mounted},
+    continuation: StackContinuation<mounted, R>,
     block: (local R) ->_{mounted} Nothing
 ): Nothing {
     restack {
@@ -480,12 +482,12 @@ Then it `finish`es the session and calls `block` with the `continuation`'s `resu
 
 ## Suspending Stack Continuations
 
-The `StackContinuation` class has two fields tied together by its member lifetime.
+The `StackContinuation` class has two fields tied together by its locality member.
 Rather than requiring the programmer to regularly access these fields at this low level, we can provide the following extension method for its most common usage pattern:
 ```
 fun_{mounted} <local arena, E, R, T> StackMount<arena, E>.suspend(
     resumer: R_{local},
-    block: (local E, StackContinuation<R>_{mounted}) ->_{arena} Nothing
+    block: (local E, StackContinuation<mounted, R>) ->_{arena} Nothing
 ): Nothing {
     restack {
         dismount(this@new) { (environment, suspension) ->
@@ -527,7 +529,7 @@ local class PausingStack(
 ) {
     private[this] val mount: StackMount<this, (Boolean) -> Nothing>
         = StackMount()
-    private[this] var continuation: StackContinuation<() -> Nothing>_{mount.mounted}?
+    private[this] var continuation: StackContinuation<mount.mounted, () -> Nothing>?
         = mount.new({ (exit, _) -> exit(true) }) {
             block pause@{
                 mount.suspend({ return@pause }) { (exit, continuation) ->
@@ -632,7 +634,7 @@ fun <R> onFreshStack(
     val mount = StackMount()
         // : StackMount<local, (R) -> Nothing>
     val continuation = mount.new(Unit)
-        // : StackContinuation<Unit>_{mount.mounted}
+        // : StackContinuation<mount.mounted, Unit>
     restack {
         mount(mount, Unit, continuation.suspension) {
             finish {
