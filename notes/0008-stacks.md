@@ -2,7 +2,7 @@
 
 * **Type**: Design Notes
 * **Author**: Ross Tate
-* **Contributors**: Komi Golova, Mikhail Zarechenskiy, Alejandro Serrano Mena, Marat Akhin
+* **Contributors**: Komi Golova, Mikhail Zarechenskiy, Alejandro Serrano Mena, Marat Akhin, Youssef Shoaib
 * **Discussion**: [#486](https://github.com/Kotlin/KEEP/discussions/486)
 * **Prerequisite**: [Local Lifetimes for Kotlin](https://github.com/Kotlin/KEEP/blob/main/notes/0007-local-lifetimes.md)
 
@@ -266,7 +266,7 @@ It is used
 * and to provide means for interacting with the current environment (e.g. how to return a value to the current environment and/or give a stack suspension to the current environment).
 
 ```
-public expect local class StackMount<out local arena, E>() {
+public expect local class StackMount<local arena, E>() {
     local^{arena} mounted = private[this]
     fun_{global} <R> new(
         resumer: R_{mounted}
