@@ -664,9 +664,9 @@ public interface Sequence<out T> {
 
 For the same reasons as with deeply-recursive functions, the `sequence` function is changed to use locality rather than `suspend`:
 ```
-public fun <T, local sequence> sequence(
-    block: local SequenceScope<T, sequence>.() ->_{sequence} Unit
-): Sequence<T>_{sequence} = Sequence { iterator(lock, block) }
+public fun <T> sequence(
+    local_{} block: local SequenceScope<T, block>.() ->_{block} Unit
+): Sequence<T>_{block} = Sequence { iterator(block) }
 ```
 Its implementation is actually identical to before, at least syntactically.
 That's because the real work is done in the corresponding `iterator` function.
@@ -702,7 +702,7 @@ In the following I split its definition across many code blocks so that I can ex
 
 ```
 public fun <T> iterator(
-    local block: local SequenceScope<T, block>.() -> Unit
+    local_{} block: local SequenceScope<T, block>.() -> Unit
 ): Iterator<T>_{block}
     = object : AbstractIterator<T>() {
 ```
