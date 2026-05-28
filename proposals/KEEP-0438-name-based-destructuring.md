@@ -223,7 +223,9 @@ destructuring can be thought as a shorthand for a sequence of simple
 declarations.
 The difference between the second and third option is whether we want the
 author of the class to have full control over what is exposed using name-based
-destructuring or not.
+destructuring or not. On the other hand, that also limits the availability of
+this feature, and creates a lack of uniformity which is not found in other
+places in the language. We choose the **third option** as our preferred design.
 
 **Lambdas and loops**. There is another place in which destructuring is
 available, namely in the declaration of parameters for loops and lambdas.
@@ -327,8 +329,16 @@ If possible, tooling should provide also automatic migration to the new syntax:
   name-based destructuring, potentially with renaming.
 - For other usages, move into the new position-based destructuring syntax.
 
-Those rules may be tweaked slightly for `Pair`, `Tuple`, key-value maps, and
-other types for which position-based destructuring makes more sense.
+Tooling should treat a few types for which position-based destructuring makes
+more sense in a special way, including `Pair`, `Tuple`, and `Map.Entry`.
+
+- The case of `Map.Entry` is a bit special since it's defined as an interface
+  and not as a data class. Still, we assume `component1` refers to the `key`,
+  and `component2` to the `value`, so `(key, value) = entry` should *not*
+  be flagged.
+
+We do _not_ introduce any way to extend this list of types with user-defined
+rules. Such a feature would only be useful during the migration period.
 
 **Phase 2.** At this phase we prepare the community for the flip. The nudge
 to move to the new syntax moves from tooling to the compiler itself, which
@@ -485,6 +495,11 @@ val x1 = $tmp.p1
 ...
 val xN = $tmp.pN
 ```
+
+> [!NOTE]
+> This translation scheme means that name-based destructuring is available
+> for **any property in any type**, including abstract properties (in classes
+> or interfaces), and extension properties, among others.
 
 This informs the expected behavior of the code, in particular with respect
 to the _order_ in which operations happen.
