@@ -181,7 +181,7 @@ that the only possible one for `==`.
 
 ## Proposal
 
-**Conceptual model.** One way to understand the propose design is as the
+**Conceptual model.** One way to understand the proposed design is as the
 `equals` operator actually corresponding to declaring an override for the
 `equals(other: Any?)` function, with additional checks and contracts.
 
@@ -258,7 +258,7 @@ choose for your operator.
 
 ```kotlin
 sealed interface Either<out L, out R> {
-  abstract operator fun equals(other: Either<*, *>)
+  abstract operator fun equals(other: Either<*, *>): Boolean
 
   data class Right<out R>(val value: R) : Either<Nothing, R> {
     // automatically generated strict equality
@@ -267,7 +267,7 @@ sealed interface Either<out L, out R> {
 }
 
 interface List<out L> {
-  abstract operator fun equals(other: List<*>)
+  abstract operator fun equals(other: List<*>): Boolean
 }
 
 
@@ -299,16 +299,16 @@ example, when implementing two unrelated interfaces.
 
 ```kotlin
 interface One {
-  abstract operator fun equals(other: One)
+  abstract operator fun equals(other: One): Boolean
 }
 
 interface Two {
-  abstract operator fun equals(other: Two)
+  abstract operator fun equals(other: Two): Boolean
 }
 
 class Three : One, Two {
   // this operator is required for compilation
-  operator fun equals(other: Three) { ... }
+  operator fun equals(other: Three): Boolean { ... }
 }
 ```
 
@@ -340,7 +340,7 @@ class A<T> {
 **Other `equals` members.** It is allowed to declare other members (or
 extensions) named `equals` and not marked as an operator. These members
 may not be defined as taking a single parameter with a type less specific
-than the declared equality bound (note than if they take zero or more
+than the declared equality bound (note that if they take zero or more
 than one parameter, there's no restriction). Since before this proposal the 
 declared equality bound is always `Any?`,
 and there's no type less specific than `Any?`, all code remains compatible.
@@ -478,7 +478,7 @@ In this case the strict equality invariant is not checked,
 but becomes an **implicit contract** that the `actual class` should abide by.
 
 > [!WARNING]
-> If you break the contact in your `actual` class, smart cast may fail at runtime.
+> If you break the contract in your `actual` class, smart cast may fail at runtime.
 >
 > ```kotlin
 > // common
@@ -525,7 +525,7 @@ same diagnostics.
 
 - Implementations are free to also report cases in which both sides are nullable,
   but would trigger an error if this was not the case. This discourages people 
-  from writing code that replies on implicit `null`, in favor of explicit `null`
+  from writing code that relies on implicit `null`, in favor of explicit `null`
    checking.
 
 **Equality bound.** For each type we compute an upper bound for the types it can
@@ -536,7 +536,7 @@ the equality bound of `A`.
   - In particular, data, enum, and value classes, and objects with 
     compiler-generated `equals` take the star-projected version of the
     classifier itself.
-  - For the case of undeclared equality bounds, check the _Multiplarform_
+  - For the case of undeclared equality bounds, check the _Multiplatform_
     section above.
   - If there's no definition of the `equals` operator, `Any` Is the declared 
     equality bound.
@@ -624,7 +624,7 @@ Kotlin's (and in fact, JVM's) standard library defines a Comparable interface.
 In most cases, this interface is used with a self type argument.
 
 ```kotlin
-data class Name: Comparable<Name> {
+data class Name(val first: String, val last: String): Comparable<Name> {
   override fun compareTo(other: Name): Int
 }
 ```
