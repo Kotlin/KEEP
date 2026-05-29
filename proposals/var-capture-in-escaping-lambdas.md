@@ -285,7 +285,7 @@ The current model is based on an existing analysis of variable lifetimes. The an
 
 ## Specific rules
 
-- **Escaping Lambdas Only:** The warning is applied to escaping lambdas. In `callsInPlace` lambdas, creation and execution happen together, so the confusion is not observable. In addition, lambda arguments of inline functions are `callsInPlace` by default.
+- **Escaping Lambdas Only:** The warning is applied to escaping lambdas and anonymous functions. In `callsInPlace` lambdas, creation and execution happen together, so the confusion is not observable. In addition, lambda arguments of inline functions are `callsInPlace` by default.
 - **Lambdas Only:** The warning is limited to lambdas. Capturing in local classes or functions is allowed as there's no escaping and there's a natural way to pass variables as regular arguments.
 In the example below, `i` is passed as an explicit argument, whereas `l` is captured **by reference**.
   ```kotlin
