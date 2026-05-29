@@ -146,8 +146,11 @@ The discussion above doesn't mean that we should simply remove position-based
 destructuring. There are a few types with an inherent notion of _ordering_
 between their elements, such as:
 
-* Ordered collection types such as `List`,
-* Unnamed tuples, such as `Pair` and `Triple`.
+* Ordered collection types such as `List` and arrays,
+* Unnamed tuples, such as `Pair` and `Triple`,
+* Key-value pairs, including `IndexedValue` and `Map.Entry`: in this case the
+  ordering is not inherent, but the standard library treats the key as first
+  component and the value as second (see [`associate`](https://kotlinlang.org/api/core/kotlin-stdlib/kotlin.collections/associate.html)).
 
 ### Out of scope
 
@@ -330,13 +333,8 @@ If possible, tooling should provide also automatic migration to the new syntax:
 - For other usages, move into the new position-based destructuring syntax.
 
 Tooling should treat a few types for which position-based destructuring makes
-more sense in a special way, including `Pair`, `Tuple`, and `Map.Entry`.
-
-- The case of `Map.Entry` is a bit special since it's defined as an interface
-  and not as a data class. Still, we assume `component1` refers to the `key`,
-  and `component2` to the `value`, so `(key, value) = entry` should *not*
-  be flagged.
-
+more sense in a special way, as described in the
+[corresponding section](#the-role-of-position-based-destructuring).
 We do _not_ introduce any way to extend this list of types with user-defined
 rules. Such a feature would only be useful during the migration period.
 
