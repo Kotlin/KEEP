@@ -2,26 +2,26 @@
 
 * **Type**: Design proposal
 * **Author**: Alejandro Serrano
-* **Contributors**: Marat Akhin, Dmitry Khalanskiy, Pavel Kunyavskiy, Nikolay Lunyak
+* **Contributors**: Marat Akhin, Dmitry Khalanskiy, Pavel Kunyavskiy, Nikolay Lunyak, Grigorii Solnyshkin, Deniz Zharkov
 * **Discussion**: [KEEP-476](https://github.com/Kotlin/KEEP/discussions/476)
 * **Status**: In progress
 * **Related YouTrack issues**: [KT-83683](https://youtrack.jetbrains.com/issue/KT-83683)
 
 ## Abstract
 
-We propose a way to override the `equals` function from `Any` with a more
-specific type, which in turn unlock additional use site diagnostics.
-This proposal respects the current compilation strategy for `equals`.
+We propose a way to declare that equality checks only make sense for a restricted
+subset of values, by stating an _equality bound_ on the `equals` function
+inherited from `Any`. This in turns unlocks additional use site diagnostics.
 
 ### TL;DR
 
 * You may define a single `equals` operator per classifier with a more
-  restricted type, although still in the same type hierarchy.
-* Compiler-generated `equals` become operators with a restricted type.
+  restricted equality bound. Classifiers may _refine_ this equality bound
+  to a more specific type.
+* The operator is still an `equals(other: Any?)` method, with additional checks
+  (and contracts).
 * The type of the right-hand side of an (un)equality expression is checked
   for compatibility with this more restricted type.
-* The operator is compiled as an `equals(other: Any?)` method, with additional
-  checks (and contracts).
 
 ## Table of contents
 
@@ -30,14 +30,15 @@ This proposal respects the current compilation strategy for `equals`.
 * [Table of contents](#table-of-contents)
 * [Motivation](#motivation)
   * [Equality bound](#equality-bound)
+  * [Reusing `equals(other: Any?)`](#reusing-equalsother-any)
   * [Other design decisions](#other-design-decisions)
 * [Proposal](#proposal)
   * [Declaration site](#declaration-site)
-  * [Code generation](#code-generation)
   * [Multiplatform](#multiplatform)
   * [Use site warnings](#use-site-warnings)
   * [Standard library](#standard-library)
   * [IDE support](#ide-support)
+  * [In the future: nicer syntax](#in-the-future-nicer-syntax)
 * [Alternative models](#alternative-models)
   * [`Equatable<T>` interface](#equatablet-interface)
   * [Type class](#type-class)
@@ -58,7 +59,8 @@ different underlying representations.
 Our goal is a system that **integrates** both notions: as much type safety as
 desired, but still allowing equality based on contents.
 In fact, there are two different elements for this feature:
-* **Declaration site**: being able to define `equals` as taking only the same type.
+* **Declaration site**: being able to define `equals` as being only sensible
+  to compare with a subset of types.
 * **Use site**: identify more potentially wrong cases at compile time.
 
 ### Equality bound
@@ -125,6 +127,20 @@ definition of **strict equality**:
 type(e1) is A && e1.equals(e2)  ==>  e2 is equality-bound(A)
 ```
 
+### Reusing `equals(other: Any?)`
+
+Another important design decision is to keep using the well-known `equals`
+overload that takes `Any?` as parameter type, inherited from `Any`.
+There are several advantages to this choice.
+
+First of all, we do not need to change our code generation strategy, 
+`x == y` keeps resolving to that `equals` overload in all cases.
+
+This choice also leads to better integration with existing code – both in
+multiplatform code that is actualized to Java classes, and in terms of binary
+interface of existing classes. In particular, you can add equality bounds to
+existing classes without breaking binary compatibility.
+
 ### Other design decisions
 
 **No multiversal equality.** One important design choice in this proposal is to
@@ -177,13 +193,19 @@ Our foremost goal is to remain source compatible: the same overload should
 be chosen before and after this proposal if no changes are made to the code.
 However, we also want a good migration story for those cases in which
 `equals` was defined over a more restrictive type, and you want to make
-that the only possible one for `==`.
+that the only possible one for `==`. In the case above, this means turning
+`equals` into an operator with a declared equality bound.
+
+```kotlin
+data class WrongEquals(val x: Int) {
+  operator fun equals(e: @Bound(WrongEquals::class) Any?): Boolean {
+    println("Hello")
+    return true
+  }
+}
+```
 
 ## Proposal
-
-**Conceptual model.** One way to understand the propose design is as the
-`equals` operator actually corresponding to declaring an override for the
-`equals(other: Any?)` function, with additional checks and contracts.
 
 ### Declaration site
 
@@ -191,88 +213,106 @@ that the only possible one for `==`.
 operator – we say that such a classifier defines a strict equality.
 This operator:
 
+- Must be public,
 - Must have no type arguments,
 - Must have no extension receiver nor context parameters,
-- Must return a Boolean value,
-- Must not capture any type arguments from outer scopes,
-  - In practice, that means every generic type must be star-projected,
-  - This also sidesteps any problem requiring `@UnsafeVariance`,
-- Must have a single parameter whose type must satisfy:
-  - Being equal or a superclassifier of the classifier defining it,
-  - Being equal or a subclassifier of the declared equality bound of every parent
-    classifier,
-  - Not having a default value,
-- Must be public,
-- Must not have the `override` modifier (even if it always actually overrides),
-- Must not be marked with any other annotation or modifier, other than those
-  described above.
+- Must take a single argument of type `Any?` without a default value,
+- Must return a Boolean value.
 
-In a grammar-esque definition, this `equals` member must look as follows:
+**Equality bound(s)**. The following three definitions describe how to compute
+the equality bound of a classifier.
 
-```
-[public] [abstract | open | final]
-operator fun equals(other: EqualityBound): Boolean
-```
+- The single argument of the `equals` operator may be annotated as
+  `@Bound(Class::class)`. This defines the _explicitly declared_ equality bound.
+- The _inherited_ equality bound is define as the intersection of the 
+  equality bounds of the parent classifiers.
+- The _equality bound_ is defined as the explicitly declared equality bound,
+  if present, or the inherited equality bound otherwise.
 
-The type of the single parameter of the `equals` operator is called the
-**declared equality bound** of the enclosing classifier.
+The `@Bound` annotation is defined as follows:
 
 ```kotlin
-class Name {
-  operator fun equals(other: Name) = first == other.first && last == other.last
-}
+@Target(AnnotationTarget.TYPE)
+annotation class Bound(val bound: KClass<*>)
 ```
+
+**Constraints on equality bounds**. The equality bound must satisfy the
+following restrictions:
+
+* It must be equal or a superclassifier of the classifier defining it,
+* It must be equal or a subclassifier of the inherited equality bound,
+* It must be a denotable classifier.
+
+This implies that the user needs to declare an equality bound if the inherited
+equality bound cannot be simplified to a single type.
 
 **Compiler-generated equals.** All the `equals` written by the compiler are
 considered operators from now on. The declared equality bound is the
-star-projected version of the declaring class.
+declaring classifier.
 
 - In particular, that means that every data, enum, and value class, and every
   object that does not override `equals` should be considered as defining a 
   strict equality.
 
-**Overriding.** An `equals` operator always overrides the following:
-- Any `equals` operator defined in a parent class, regardless of the 
-  type of its argument,
-- The `equals` overload defined on `Any`, that is, the overload with
-  `Any?` as the argument type (which also corresponds to the overload
-  coming from `Object` in the JVM).
-
-We could see this as creating two overriding hierarchies: one for `operator
-equals` (bound by its own rules) and other for the rest of `equals` overloads
-(bound by the usual overriding rules). The `equals` from `Any` is part of
-both hierarchies.
+Code compiled _before_ this KEEP must be considered by the compiler as having
+the same equality bound as the one described here.
 
 **Interfaces**. The JVM forbids overriding members of `Object` (Kotlin's `Any`)
 by default methods in interfaces. As a result, in the JVM the `equals` operator
-can only be defined as _abstract_ (since this doesn't affect compilation, as
-described in the _Code generation_ section).
-
+can only be defined as _abstract_.
 Even though we could keep this restriction to the JVM, we propose to apply it
-for any piece of Kotlin code. This ensures that code can easily be re-targeted
+for _any_ piece of Kotlin code. This ensures that code can easily be re-targeted
 to other platforms.
 
-**Examples.** The restrictions above allow defining both `Result`-type
-hierarchies and `List`-type hierarchies, depending on whether the type you
-choose for your operator.
+**Preliminary check**. The body of the `equals` operator must be taken
+as prefixed with `if (other !is EqualityBound) return false`. In particular,
+this implies that in the actual body the `other` parameter is smart casted
+to the star-projected version of the equality bound.
+
+**Example 1.** Sealed hierarchy in which each subclass is only equal to itself.
 
 ```kotlin
 sealed interface Either<out L, out R> {
-  abstract operator fun equals(other: Either<*, *>)
+  abstract operator fun equals(other: @Bound(Either::class) Any?)
 
   data class Right<out R>(val value: R) : Either<Nothing, R> {
     // automatically generated strict equality
-    // operator fun equals(other: Right<*>) = this.value == other.value
+    // operator fun equals(other: @Bound(Right::class) Any?) = 
+    //   this.value == other.value
   }
 }
+```
 
+**Example 2.** `Collection`-like hierarchy, in which all subclasses are
+comparable amongst themselves.
+
+```kotlin
 interface List<out L> {
-  abstract operator fun equals(other: List<*>)
+  abstract operator fun equals(other: @Bound(List::class) Any?)
 }
 
 
 class ArrayList<L> : List<L> {
-  operator fun equals(other: List<*>) = ... // uses supertype for equals
+  operator fun equals(other: Any?) = ... // uses inherited equality bound
+}
+```
+
+**Example 3.** Required explicitly declared equality bound because of a
+non-denotable inherited equality bound.
+
+```kotlin
+interface One {
+  abstract operator fun equals(other: @Bound(One::class) Any?)
+}
+
+interface Two {
+  abstract operator fun equals(other: @Bound(Two::class) Two)
+}
+
+class Three : One, Two {
+  // explicitly declared equality bound is required for compilation
+  // inherited equality bound is 'One & Two' (non-denotable)
+  operator fun equals(other: @Bound(Three::class) Any?) { ... }
 }
 ```
 
@@ -289,61 +329,13 @@ If this restriction was lifted,
 (for example, [KT-24874](https://youtrack.jetbrains.com/issue/KT-24874)),
 then it should also work for this new `equals` operator.
 
-**Inherited equals**. If there's no explicit `equals` operator, and the
-compiler doesn't generate one for us, then the constraints over the `equals`
-operator must be checked on the inherited one.
-
-Note that in some cases the compiler cannot create a single inherited version,
-and the user must define the `equals` operator themself. This may happen, for
-example, when implementing two unrelated interfaces.
-
-```kotlin
-interface One {
-  abstract operator fun equals(other: One)
-}
-
-interface Two {
-  abstract operator fun equals(other: Two)
-}
-
-class Three : One, Two {
-  // this operator is required for compilation
-  operator fun equals(other: Three) { ... }
-}
-```
-
-This imposes a small restriction, because `Three` cannot define an equality to
-values which are either `One` or `Two`, it must define strict equality with
-`Three` as bound. However, we think that this scenario is extremely uncommon,
-and in most cases you really want to define equality only over `Three`.
-
-> [!NOTE]
-> See the _Undeclared equality bound_ section for additional information
-> about how importing and inheriting from non-Kotlin types work.
-
-**Inner classes.** We remark that inner classes implicitly capture type
-arguments from the enclosing class. As a result, it may be required to state
-the star-projected version of such enclosing class.
-
-```kotlin
-class A<T> {
-  inner class B<R> {
-    // wrong! implicitly captures <T>
-    // operator fun equals(other: B<*>) { ... }
-
-    // use star-projected enclosing class
-    operator fun equals(other: A<*>.B<*>) { ... }
-  }
-}
-```
-
 **Other `equals` members.** It is allowed to declare other members (or
 extensions) named `equals` and not marked as an operator. These members
 may not be defined as taking a single parameter with a type less specific
 than the declared equality bound (note than if they take zero or more
 than one parameter, there's no restriction). Since before this proposal the 
-declared equality bound is always `Any?`,
-and there's no type less specific than `Any?`, all code remains compatible.
+equality bound is always `Any?`, and there's no type less specific than
+`Any?`, all code remains compatible.
 
 This restriction alleviates potential surprises. Consider the following
 two classes:
@@ -352,7 +344,7 @@ two classes:
 class A
 
 class B {
-  operator fun equals(other: B) { ... } // declared equality bound
+  operator fun equals(other: @Bound(B::class) Any?) { ... } // declares equality bound
   fun equals(other: A) { ... }
 }
 ```
@@ -366,63 +358,6 @@ If we now write an expression `e1 == e2` with `e1 : B`:
   The developer may still write `e1.equals(e2)`,
   and in that case the compiler picks the right overload.
 
-### Code generation
-
-**Single or multiple equals?** One important design choice is whether the code 
-generated for this new `equals` operator keeps the same declared signature, or 
-turns into a version with `Any?`. In our design we go with the second route, 
-since it has several advantages:
-
-- Better integration with existing code – both in multiplatform code that is
-  actualized to Java classes, and in terms of binary interface of existing
-  classes,
-- Generates the least amount of code – in the first case we would need to 
-  override all `equals` operators of the parent classes.
-
-**Strategy.** The `equals` operator turns into two elements in the code:
-
-1. An override of the `equals(other: Any?)` operator whose body is the same as
-   the `equals` operator in the code, but with a **preliminary check** for the type 
-   being the one declared in the operator, and a **contract** describing this
-   check.
-   - This override should not be present when the `equals` operator is abstract.
-2. Some metadata describing the declared equality bound.
-
-The example in the previous section leads to the following generated code 
-(described using Java syntax). The metadata is shown as annotations, but does 
-not preclude other ways to implement it.
-
-```java
-@StrictEquality(Either::class)
-interface Either<L, R> {
-  // no abstract equals
-
-  @StrictEquality(Right::class)
-  class Right<R> implements Either<Nothing, R> {
-    @Contract("returns(true) implies (obj is Right)")
-    @Override boolean equals(obj: Object) {
-      if (!(obj instanceof Right)) return false;
-      final var other = (Right)obj;
-      return (this.value.equals(other.value));
-    }
-  }
-}
-
-@StrictEquality(List::class)
-interface List<out L> {
-  // no abstract equals
-}
-
-@StrictEquality(List::class)
-class ArrayList<L> : List<L> {
-  @Contract("returns(true) implies (obj is List)")
-  @Override boolean equals(obj: Object) {
-    if (!(obj instanceof List)) return false;
-    // actual implementation
-  }
-}
-```
-
 ### Multiplatform
 
 The interaction with different underlying platforms is an important component
@@ -431,7 +366,7 @@ from directly importing classes (mostly from JVM), and explicit `expect`/
 `actual` matching.
 
 **Undeclared equality bound.** If metadata about the declared equality bound
-is missing for a type, then the compiler should assume that the declared
+is missing for a type, then the compiler should assume that the
 equality bound is the intersection of the equality bounds of all its parents.
 This requires inspecting the whole hierarchy once per imported type.
 
@@ -440,28 +375,9 @@ there's a possibility for that intersection to be empty. The compiler may
 choose to report such inconsistency during import, or wait until use site.
 In the second case, the rules described below would lead to a diagnostic.
 
-**Operator matching.**
-For many operators the Kotlin compiler tries to turn a matching overload of
-a function with the right name into an operator. This should not happen with
-the `equals` operator.
-
-```kotlin
-// Some.java
-public interface Some {
-  boolean equals(A other) { return false; }
-}
-
-// Else.kt
-abstract class A
-
-class B : A(), Some {
-  // the declared equality bound is still 'Any'
-  // the 'equals' in 'Some' is not taken as an operator
-}
-```
-
-The consequence is that all declared equality bound must stem from a Kotlin
-classifier.
+Note that compiler-generated `equals` are not considered undeclared. Instead,
+the compiler should assume that the equality bound is the defining class itself,
+even if compiled before the advent of this proposal.
 
 **Multiplatform.** Whenever we want to `actual`ize an `expect` class we first
 need to check whether the platform class or any of its parents declares
@@ -483,7 +399,7 @@ but becomes an **implicit contract** that the `actual class` should abide by.
 > ```kotlin
 > // common
 > expect class A {
->   operator fun equals(other: A)
+>   operator fun equals(other: @Bound(A::class) Any?)
 >   fun foo() 
 > }
 >
@@ -526,48 +442,50 @@ same diagnostics.
 - Implementations are free to also report cases in which both sides are nullable,
   but would trigger an error if this was not the case. This discourages people 
   from writing code that replies on implicit `null`, in favor of explicit `null`
-   checking.
+  checking.
 
-**Equality bound.** For each type we compute an upper bound for the types it can
-be compared against, which we call the _equality bound_. We write `eb(A)` for 
-the equality bound of `A`.
+**Equality type bound.** For each type we compute an upper bound for the types
+it can be compared against, which we call the _equality bound type_.
+We write `ebt(A)` for the equality type bound of `A`.
 
-- For classifiers, the upper bound is the declared equality bound.
-  - In particular, data, enum, and value classes, and objects with 
-    compiler-generated `equals` take the star-projected version of the
-    classifier itself.
+- For classifiers, the equality bound type is the star-projected version of
+  the equality bound (declared or inherited) of the classifier.
   - For the case of undeclared equality bounds, check the _Multiplarform_
     section above.
   - If there's no definition of the `equals` operator, `Any` Is the declared 
     equality bound.
 - If the type is nullable `T?`, we take the nullable version of the equality 
-  bound of `T`.
-- For intersection types, we take the intersection of the equality bounds.
-- For flexible types, we take the equality bound of the upper bound.
+  bound type of `T`.
+- For intersection types, we take the intersection of the equality bound types.
+- For flexible types, we take the equality bound type of the upper bound.
 - For captured types and type parameters, we take the intersection of the
-  equality bounds of their upper bounds.
+  equality bound types of their upper bounds.
 - Otherwise, we take `Any?` as the equality bound.
 
+By abuse of language, we say that `T` is the equality type bound of the
+expression `e` when `T` is the equality type bound of the type of `e`.
+
 **Equality checks.** For every expression of the form `e1 == e2`, or `e1 != e2`,
-we check the compatibility of the equality bound of the type of `e1` and the 
-type of `e2`, as defined by the 
+we check the compatibility of the equality bound type of `e1` and the type of
+`e2`, as defined by the 
 [RULES1 definition](https://youtrack.jetbrains.com/issue/KT-57779#rules1).
 
 If the previous "problematic equals" diagnostic is not triggered, then an
-additional smart cast is introduced: `e2` is now known to be instance of
-the equality bound of the type of `e1`.
+additional **smart cast** is introduced: if the result of the quality check is
+true (respectively false for inequality), then `e2` is now known to be instance
+of the equality bound type of `e1`.
 
 **Contracts**. Effectively, the checks work as if the following
 contracts were present (where `A` represents the type of `e1`).
 
 ```kotlin
 // For e1 == e2
-returns(true) implies (e2 is eb(A))
-(e2 !is eb(A)) implies returns(false)
+returns(true) implies (e2 is ebt(A))
+(e2 !is ebt(A)) implies returns(false)
 
 // For e1 != e2
-returns(false) implies (e2 is eb(A))
-(e2 !is eb(A)) implies returns(true)
+returns(false) implies (e2 is ebt(A))
+(e2 !is ebt(A)) implies returns(true)
 ```
 
 Note that the second contract is not currently expressible in Kotlin
@@ -578,9 +496,9 @@ only for expressions of the form `e1 == e2` and `e1 != e2`. It bears the
 question of what happens if you write `e1.equals(e2)` instead, and we resolve
 to the operator.
 
-Thanks to the _Code generation_ strategy defined in the previous section, 
-you still get the smart casting behavior. On the other hand, no checks are
-performed on `e2`, since `equals` still has `Any?` as argument.
+1. The compiler should resolve the call following the usual rules,
+2. If the call is ultimately resolved to the `equals(Any?)` overload, the
+   checks described in this section should be performed.
 
 **(Lack of) symmetry.** Unfortunately, the definition above is not symmetric:
 if `e1` defines strict equality but `e2` does not, then `e1 == e2` leads to an 
@@ -610,6 +528,14 @@ should suggest turning it into an operator, and drop the initial check.
 inheritors of a sealed hierarchy define a strict equality (either explicitly, 
 or using compiler-generated methods), it should suggest defining an abstract 
 `equals` operator in the common parent.
+
+### In the future: nicer syntax
+
+We acknowledge that the syntax proposed in this document is not the best.
+For example, this annotation introduces a smart cast — a power usually reserved
+for modifiers and expressions. However, the design and its benefits are clear,
+so we prefer to have an (experimental) implementation while working on the
+syntax.
 
 ## Alternative models
 
