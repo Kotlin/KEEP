@@ -376,7 +376,7 @@ The details could be found in the section [Why existing nullability operators ca
 Instead, we are introducing standard functions with the same behavior for explicit handling:
 
 ```kotlin
-inline fun <T : R, R : Value, E : Error, ER : Error> (T | E).ifError(onError: (E) -> (R | ER)): R | ER {
+inline fun <T : R, R : Value?, E : Error, ER : Error> (T | E).ifError(onError: (E) -> (R | ER)): R | ER {
     contract {
         callsInPlace(onError, InvocationKind.AT_MOST_ONCE)
         (this@ifError is Error) holdsIn onError
@@ -384,7 +384,7 @@ inline fun <T : R, R : Value, E : Error, ER : Error> (T | E).ifError(onError: (E
     return if (this is Error) onError(this) else this
 }
 
-inline fun <T : Value, E : Error> (T | E).ifError(onError: (E) -> Nothing): T {
+inline fun <T : Value?, E : Error> (T | E).ifError(onError: (E) -> Nothing): T {
     contract {
         returns() implies (this@ifError is Value)
         callsInPlace(onError, InvocationKind.AT_MOST_ONCE)
