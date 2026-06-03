@@ -3,8 +3,8 @@
 - **Type**: Design proposal
 - **Authors**: Yuliya Karalenka, Michail Zarečenskij
 - **Contributors**: Marat Akhin, Alejandro Serrano Mena, Komi Golova, Roman Venediktov, Mikhail Vorobev
-- **Status**: Internal review
-- **Discussion**: TBD
+* **Status**: Public discussion
+* **Discussion**: [#490](https://github.com/Kotlin/KEEP/discussions/490)
 - **Related YouTrack issue**: [KT-15514]([https://youtrack.jetbrains.com/issue/KT-15514](https://youtrack.jetbrains.com/issue/KT-15514))
 
 ## Abstract

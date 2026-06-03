@@ -3,9 +3,8 @@
 * **Type**: Design proposal
 * **Authors**: Yuliya Karalenka, Michail Zarečenskij
 * **Contributors**: Marat Akhin, Alejandro Serrano Mena, Komi Golova, Roman Venediktov, Mikhail Vorobev
-* **Status**: Internal review
-* **Discussion**: TBD
-
+* **Status**: Public discussion
+* **Discussion**: [#491](https://github.com/Kotlin/KEEP/discussions/490)
 ## Abstract
 
 Currently all lambda parameters in Kotlin are treated as escaping by default. This means they can be executed after the function call finishes. In real code, many lambdas are executed only during the function call. This behaviour is described in Kotlin with `callsInPlace` contract. Also, regular `inline` lambda parameters already have in-place behavior by default.
