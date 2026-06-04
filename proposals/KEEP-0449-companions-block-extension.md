@@ -4,7 +4,7 @@
 * **Author**: Alejandro Serrano
 * **Contributors**: Marat Akhin, Nikita Bobko, Yuliya Karalenka, Roman Venediktov, Mikhail Vorobev, Mikhail Zarechenskii
 * **Discussion**: [#467](https://github.com/Kotlin/KEEP/discussions/467)
-* **Status**: Experimental in 2.4.20
+* **Status**: Experimental in 2.5.0 (expected)
 * **Related YouTrack issues**:
   [KT-11968](https://youtrack.jetbrains.com/issue/KT-11968),
   [KT-15595](https://youtrack.jetbrains.com/issue/KT-15595),
