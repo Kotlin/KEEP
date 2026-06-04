@@ -127,7 +127,7 @@ For example, supporting the following function might be useful:
 ```
 fun <A, B> local Iterator<A>.map(
     local transform: (A) -> B
-): Iterator<B>_{this&transform} = object Iterator {
+): Iterator<B>_{this&transform} = object : Iterator {
     override fun hasNext() = this@map.hasNext()
     override fun next() = transform(this@map.next())
     override fun remove() = this@map.remove()
@@ -149,7 +149,7 @@ Above we defined an extension method for `Iterator`, so now consider the followi
 ```
 fun <A,B> local Iterable<A>.map(
     local transform: (A) -> B
-): Iterable<B>_{this&transform} = object Iterable {
+): Iterable<B>_{this&transform} = object : Iterable {
     override fun iterator() = this@map.iterator().map(transform)
 }
 ```
@@ -318,7 +318,7 @@ So, for example, we could make the signature for `Iterable.map` slightly more ex
 ```
 fun <A, B, local this, local transform> Iterator<A>_{this}.map(
     transform_{transform}: (A) -> B
-): Iterator<B>_{this&transform} = object Iterator {
+): Iterator<B>_{this&transform} = object : Iterator {
     override fun hasNext() = this@map.hasNext()
     override fun next() = transform(this@map.next())
     override fun remove() = this@map.remove()
@@ -363,7 +363,7 @@ This would allow one to express the more expressive signature for `map` without 
 ```
 fun <A, B> local_{} Iterator<A>.map(
     local_{} transform: (A) -> B
-): Iterator<B>_{this&transform} = object Iterator {
+): Iterator<B>_{this&transform} = object : Iterator {
     override fun hasNext() = this@map.hasNext()
     override fun next() = transform(this@map.next())
     override fun remove() = this@map.remove()
