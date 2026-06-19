@@ -1,8 +1,8 @@
-# More specific `equals` operator
+# More specific `equals`
 
 * **Type**: Design proposal
 * **Author**: Alejandro Serrano
-* **Contributors**: Marat Akhin, Dmitry Khalanskiy, Pavel Kunyavskiy, Nikolay Lunyak, Grigorii Solnyshkin, Deniz Zharkov
+* **Contributors**: Marat Akhin, Dmitry Khalanskiy, Pavel Kunyavskiy, Nikolay Lunyak, Grigorii Solnyshkin, Oleg Yukhnevich, Deniz Zharkov
 * **Discussion**: [KEEP-476](https://github.com/Kotlin/KEEP/discussions/476)
 * **Status**: In progress
 * **Related YouTrack issues**: [KT-83683](https://youtrack.jetbrains.com/issue/KT-83683)
@@ -77,7 +77,7 @@ However, this is too strong when we consider type arguments. Imagine the followi
 
 ```kotlin
 class A<T>(val value: T) {
-  fun equals(other: Any?) = other is A && this.value == other.value
+  override fun equals(other: Any?) = other is A && this.value == other.value
 }
 ```
 
@@ -194,11 +194,11 @@ be chosen before and after this proposal if no changes are made to the code.
 However, we also want a good migration story for those cases in which
 `equals` was defined over a more restrictive type, and you want to make
 that the only possible one for `==`. In the case above, this means turning
-`equals` into an operator with a declared equality bound.
+`equals` into an override with a declared equality bound.
 
 ```kotlin
 data class WrongEquals(val x: Int) {
-  operator fun equals(e: @Bound(WrongEquals::class) Any?): Boolean {
+  override fun equals(e: @Bound(WrongEquals::class) Any?): Boolean {
     println("Hello")
     return true
   }
@@ -218,6 +218,19 @@ This operator:
 - Must have no extension receiver nor context parameters,
 - Must take a single argument of type `Any?` without a default value,
 - Must return a Boolean value.
+
+In practice, you almost never spell out the `operator` modifier for this
+member. The reason is that a method satisfying the constraints describe above
+effectively describes an override of `equals` from `Any`, which is defined as
+follows:
+
+```kotlin
+class Any {
+  operator fun equals(other: Any?): Boolean
+}
+```
+
+By overriding this member, the override inherits the "operator-ness".
 
 **Equality bound(s)**. The following three definitions describe how to compute
 the equality bound of a classifier.
@@ -273,11 +286,11 @@ to the star-projected version of the equality bound.
 
 ```kotlin
 sealed interface Either<out L, out R> {
-  abstract operator fun equals(other: @Bound(Either::class) Any?)
+  abstract override fun equals(other: @Bound(Either::class) Any?)
 
   data class Right<out R>(val value: R) : Either<Nothing, R> {
     // automatically generated strict equality
-    // operator fun equals(other: @Bound(Right::class) Any?) = 
+    // override fun equals(other: @Bound(Right::class) Any?) = 
     //   this.value == other.value
   }
 }
@@ -288,12 +301,12 @@ comparable amongst themselves.
 
 ```kotlin
 interface List<out L> {
-  abstract operator fun equals(other: @Bound(List::class) Any?)
+  abstract override fun equals(other: @Bound(List::class) Any?)
 }
 
 
 class ArrayList<L> : List<L> {
-  operator fun equals(other: Any?) = ... // uses inherited equality bound
+  override fun equals(other: Any?) = ... // uses inherited equality bound
 }
 ```
 
@@ -302,17 +315,17 @@ non-denotable inherited equality bound.
 
 ```kotlin
 interface One {
-  abstract operator fun equals(other: @Bound(One::class) Any?)
+  abstract override fun equals(other: @Bound(One::class) Any?)
 }
 
 interface Two {
-  abstract operator fun equals(other: @Bound(Two::class) Two)
+  abstract override fun equals(other: @Bound(Two::class) Two)
 }
 
 class Three : One, Two {
   // explicitly declared equality bound is required for compilation
   // inherited equality bound is 'One & Two' (non-denotable)
-  operator fun equals(other: @Bound(Three::class) Any?) { ... }
+  override fun equals(other: @Bound(Three::class) Any?) { ... }
 }
 ```
 
@@ -344,7 +357,7 @@ two classes:
 class A
 
 class B {
-  operator fun equals(other: @Bound(B::class) Any?) { ... } // declares equality bound
+  override fun equals(other: @Bound(B::class) Any?) { ... } // declares equality bound
   fun equals(other: A) { ... }
 }
 ```
@@ -399,7 +412,7 @@ but becomes an **implicit contract** that the `actual class` should abide by.
 > ```kotlin
 > // common
 > expect class A {
->   operator fun equals(other: @Bound(A::class) Any?)
+>   override fun equals(other: @Bound(A::class) Any?)
 >   fun foo() 
 > }
 >
