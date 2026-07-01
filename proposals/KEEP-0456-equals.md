@@ -198,7 +198,7 @@ that the only possible one for `==`. In the case above, this means turning
 
 ```kotlin
 data class WrongEquals(val x: Int) {
-  override fun equals(e: @Bound(WrongEquals::class) Any?): Boolean {
+  override fun equals(e: @EqualityBound(WrongEquals::class) Any?): Boolean {
     println("Hello")
     return true
   }
@@ -236,16 +236,16 @@ By overriding this member, the override inherits the "operator-ness".
 the equality bound of a classifier.
 
 - The single argument of the `equals` operator may be annotated as
-  `@Bound(Class::class)`. This defines the _explicitly declared_ equality bound.
+  `@EqualityBound(Class::class)`. This defines the _explicitly declared_ equality bound.
 - The _inherited_ equality bound is define as the intersection of the 
   equality bounds of the parent classifiers.
 - The _equality bound_ is defined as the explicitly declared equality bound,
   if present, or the inherited equality bound otherwise.
 
-The `@Bound` annotation is defined as follows:
+The `@EqualityBound` annotation is defined as follows:
 
 ```kotlin
-@Target(AnnotationTarget.TYPE)
+@Target(AnnotationTarget.VALUE_PARAMETER)
 annotation class Bound(val bound: KClass<*>)
 ```
 
@@ -277,20 +277,48 @@ Even though we could keep this restriction to the JVM, we propose to apply it
 for _any_ piece of Kotlin code. This ensures that code can easily be re-targeted
 to other platforms.
 
-**Preliminary check**. The body of the `equals` operator must be taken
-as prefixed with `if (other !is EqualityBound) return false`. In particular,
-this implies that in the actual body the `other` parameter is smart casted
-to the star-projected version of the equality bound.
+**Prologue**. The body of the `equals` operator must be taken
+as prefixed with two preliminary checks. The reference equals (`===`) check
+should not be added if the class does not support it (for example, in the
+upcoming multi-field value classes).
+
+```kotlin
+class Foo : ... {
+  fun equals(@EqualityBound(Bar::class) other: Any?): Boolean {
+    // the actual body
+  }
+}
+
+// should be treated as
+
+class Foo : Bar {
+  fun equals(@EqualityBound(Bar::class) other: Any?): Boolean {
+    if (this === other) return true
+    if (this !is Bar) return false
+    // the actual body
+  }
+}
+```
+
+In particular, this implies that in the actual body the `other` parameter is
+smart casted to the star-projected version of the equality bound.
+
+> [!NOTE]
+> The reason to include the `if (this === other)` check in the prologue is to
+> avoid degrading performance in those cases in which this check was written
+> in the code. In other words, if a developer is writing that reference equals
+> check to improve performance, we would break this optimization by adding
+> an `is` check before it.
 
 **Example 1.** Sealed hierarchy in which each subclass is only equal to itself.
 
 ```kotlin
 sealed interface Either<out L, out R> {
-  abstract override fun equals(other: @Bound(Either::class) Any?)
+  abstract override fun equals(other: @EqualityBound(Either::class) Any?)
 
   data class Right<out R>(val value: R) : Either<Nothing, R> {
     // automatically generated strict equality
-    // override fun equals(other: @Bound(Right::class) Any?) = 
+    // override fun equals(other: @EqualityBound(Right::class) Any?) = 
     //   this.value == other.value
   }
 }
@@ -301,7 +329,7 @@ comparable amongst themselves.
 
 ```kotlin
 interface List<out L> {
-  abstract override fun equals(other: @Bound(List::class) Any?)
+  abstract override fun equals(other: @EqualityBound(List::class) Any?)
 }
 
 
@@ -315,17 +343,17 @@ non-denotable inherited equality bound.
 
 ```kotlin
 interface One {
-  abstract override fun equals(other: @Bound(One::class) Any?)
+  abstract override fun equals(other: @EqualityBound(One::class) Any?)
 }
 
 interface Two {
-  abstract override fun equals(other: @Bound(Two::class) Two)
+  abstract override fun equals(other: @EqualityBound(Two::class) Two)
 }
 
 class Three : One, Two {
   // explicitly declared equality bound is required for compilation
   // inherited equality bound is 'One & Two' (non-denotable)
-  override fun equals(other: @Bound(Three::class) Any?) { ... }
+  override fun equals(other: @EqualityBound(Three::class) Any?) { ... }
 }
 ```
 
@@ -357,7 +385,7 @@ two classes:
 class A
 
 class B {
-  override fun equals(other: @Bound(B::class) Any?) { ... } // declares equality bound
+  override fun equals(other: @EqualityBound(B::class) Any?) { ... } // declares equality bound
   fun equals(other: A) { ... }
 }
 ```
@@ -412,7 +440,7 @@ but becomes an **implicit contract** that the `actual class` should abide by.
 > ```kotlin
 > // common
 > expect class A {
->   override fun equals(other: @Bound(A::class) Any?)
+>   override fun equals(other: @EqualityBound(A::class) Any?)
 >   fun foo() 
 > }
 >
