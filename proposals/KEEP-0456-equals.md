@@ -314,11 +314,11 @@ smart casted to the star-projected version of the equality bound.
 
 ```kotlin
 sealed interface Either<out L, out R> {
-  abstract override fun equals(other: @EqualityBound(Either::class) Any?)
+  abstract override fun equals(@EqualityBound(Either::class) other: Any?)
 
   data class Right<out R>(val value: R) : Either<Nothing, R> {
     // automatically generated strict equality
-    // override fun equals(other: @EqualityBound(Right::class) Any?) = 
+    // override fun equals(@EqualityBound(Right::class) other: Any?) = 
     //   this.value == other.value
   }
 }
@@ -329,7 +329,7 @@ comparable amongst themselves.
 
 ```kotlin
 interface List<out L> {
-  abstract override fun equals(other: @EqualityBound(List::class) Any?)
+  abstract override fun equals(@EqualityBound(List::class) other: Any?)
 }
 
 
@@ -343,17 +343,17 @@ non-denotable inherited equality bound.
 
 ```kotlin
 interface One {
-  abstract override fun equals(other: @EqualityBound(One::class) Any?)
+  abstract override fun equals(@EqualityBound(One::class) other: Any?)
 }
 
 interface Two {
-  abstract override fun equals(other: @EqualityBound(Two::class) Two)
+  abstract override fun equals(@EqualityBound(Two::class) other: Two)
 }
 
 class Three : One, Two {
   // explicitly declared equality bound is required for compilation
   // inherited equality bound is 'One & Two' (non-denotable)
-  override fun equals(other: @EqualityBound(Three::class) Any?) { ... }
+  override fun equals(@EqualityBound(Three::class) other: Any?) { ... }
 }
 ```
 
@@ -385,7 +385,7 @@ two classes:
 class A
 
 class B {
-  override fun equals(other: @EqualityBound(B::class) Any?) { ... } // declares equality bound
+  override fun equals(@EqualityBound(B::class) other: Any?) { ... } // declares equality bound
   fun equals(other: A) { ... }
 }
 ```
@@ -440,7 +440,7 @@ but becomes an **implicit contract** that the `actual class` should abide by.
 > ```kotlin
 > // common
 > expect class A {
->   override fun equals(other: @EqualityBound(A::class) Any?)
+>   override fun equals(@EqualityBound(A::class) other: Any?)
 >   fun foo() 
 > }
 >
