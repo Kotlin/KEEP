@@ -198,15 +198,16 @@ If in the future Kotlin gets named-only parameters, this restriction could be re
 
 ### Validation
 
-The compiler validates the following conditions for each instance of `@IntroducedAt`:
-1. Only optional parameter can be annotated with `@IntroducedAt`.
-2. Non-final functions may not have version annotated parameter.
+The compiler validates the following conditions for each instance of `@IntroducedAt`, producing an error otherwise:
+1. Only final functions may have version annotated parameter.
+2. Parameters annotated with `@IntroducedAt`:
+    1. Must have a default value, that is, only optional parameters may be annotated.
+    2. Shall not be `vararg` parameters.
+    3. Shall not be the single argument of a `value class`.
 3. Optional parameters, including the ones with empty version, appear in ascending order by the version numbers.
 4. A version annotated parameter's default value may not refer to an optional parameter annotated with a version later than itself.
-5. Functions with `@JvmOverloads` annotation may not have version annotated parameter (warning only, suppressible).
-6. Version annotated optional parameter may not appear before non-optional parameters except for a trailing lambda parameter (suppressible).
+5. Version annotated optional parameter may not appear before non-optional parameters except for a trailing lambda parameter.
 
-The first three rules always produce non-suppressible errors if violated, while the other three can be suppressed.
 As we mentioned previously, there will be source incompatibility issue if new optional parameters are added in the middle of the old parameters.
 We currently warn users when this happened, and users may choose to suppress the warning if they want.
 A possible extension in the future is the [forced-named parameter requirement](https://youtrack.jetbrains.com/issue/KT-14934) for non-ordered versioned parameters.
@@ -225,7 +226,7 @@ fun xyz(
   @IntroducedAt("2") b: B = B(),    // added in v2
   @IntroducedAt("2") c: C = C(),    // added in v2
   @IntroducedAt("3") d: D = D(),    // added in v3
-  @IntroducedAt("3") e: E = E()    // added in v3
+  @IntroducedAt("3") e: E = E()     // added in v3
 ) // 3 overloads, excluding $default:
   //   xyz(A, B, C, D, E), @Deprecated xyz(A, B, C), @Deprecated xyz(A) 
 ```
@@ -274,34 +275,8 @@ We leave the decision whether to indefinitely keep or gradually remove the annot
 
 A similar annotation to `IntroducedAt` is the [JvmOverloads](https://kotlinlang.org/api/core/kotlin-stdlib/kotlin.jvm/-jvm-overloads/) annotation.
 Since both annotations generate extra overloads, there may be conflicting overloads.
-This is especially the case when the version numbers are not in ascending order.
 We discourage this by giving a warning when this occurs, but users may choose to suppress the warning.
-If users suppress the warning, the generated overloads of `IntroducedAt` is prioritized over `JvmOverloads`:
-
-```kotlin
-@Suppress("CONFLICT_WITH_JVM_OVERLOADS_ANNOTATION", "NON_ASCENDING_VERSION_ANNOTATION")
-@JvmOverloads
-fun xyz(
-    a: Int = 1,
-    @IntroducedAt("3") a1: Int = 2,
-    @IntroducedAt("2") b : Int = 3,
-) { }
-
-/* 
-IntroducedAt overloads only:
-  1. @Deprecated fun xyz(a: Int = 1)
-  2. @Deprecated fun xyz(a: Int = 1, b: Int = 3)
-
-JvmOverloads overloads only: 
-  3. fun xyz()
-  4. fun xyz(a: Int)             // clash with (1), not generated
-  5. fun xyz(a: Int, a1: Int)    // clash with (2), not generated
-*/
-```
-
-The generated overloads are (1), (2) and (3).
-Overloads (4) and (5) are not generated since their signature clash with overloads (1) and (2).
-
+If users suppress the warning, the overloads generated from `IntroducedAt` are prioritized over those coming from `JvmOverloads`, whenever the signatures conflict.
 
 ## Alternative designs
 
