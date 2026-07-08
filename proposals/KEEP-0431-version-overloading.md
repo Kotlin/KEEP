@@ -36,7 +36,7 @@ Consider the following example:
 
 ```kotlin
 // oldest version, v1.0
-@Deprecated("Deprecated", level=DeprecationLevel.HIDDEN)
+@Deprecated("Deprecated", level=DeprecationLevel.HIDDEN /* or .ERROR */)
 fun Button(
     label: String = "",
     color: Color = DefaultColor,
@@ -44,7 +44,7 @@ fun Button(
 ) = Button(label, color, DefautBorderColor, DefautBorderStyle, 1, onClick)
 
 // a past version, v1.1: Added borderColor 
-@Deprecated("Deprecated", level=DeprecationLevel.HIDDEN)
+@Deprecated("Deprecated", level=DeprecationLevel.HIDDEN /* or .ERROR */)
 fun Button(
     label: String = "",
     color: Color = DefaultColor,
@@ -143,7 +143,7 @@ For the ease of documentation and readability, however, it is most advisable to 
 
 ### Generating the overloads
 
-Version overloading generates N-1 extra hidden overloads, given N unique version numbers including the empty version.
+Version overloading generates N-1 extra "hidden" overloads (marked with `DeprecationLevel.ERROR`), given N unique version numbers including the empty version.
 This number does not include the synthetic `$default` overloads, which are generated for any function that has default parameters.
 If we count all overloads in the compiled binary, including the `$default` overloads and the actual function itself, there are 2N overloads for each version-overloaded function.
 This is also the case if the function is manually overloaded like in the first example.
