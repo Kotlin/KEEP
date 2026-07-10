@@ -102,7 +102,11 @@ value class LocalConfig(val port: Int) {
 }
 ```
 
-Unlike data classes, MFVCs do not support positional-based destructuring, they should be used together with [name-based destructuring](https://github.com/Kotlin/KEEP/blob/main/proposals/KEEP-0438-name-based-destructuring.md). Specifically, `val (x, y) = e` is interpreted as name-based destructuring when `e` is an expression of a value class type.
+Unlike data classes, MFVCs do not support positional-based destructuring by default, they should be used together with [name-based destructuring](https://github.com/Kotlin/KEEP/blob/main/proposals/KEEP-0438-name-based-destructuring.md).
+Specifically, `val (x, y) = e` is interpreted as name-based destructuring when `e` is an expression of a value class type.
+
+If one wants their value classes to support positional-based destructuring, it is done in the usual way: by providing the corresponding `componentN` functions manually.
+For example, classes such as `Pair` or `Tuple6` are good candidates for that.
 
 #### MFVC Primary Constructor
 
