@@ -96,9 +96,9 @@ value class Config(val entries: Map<String, String>) {
     val port: String by entries // OK: same
 }
 
-value class LocalConfig(val port: Int) {
+value class LocalConfig(val localPort: Int) {
     val host: String by Defaults.fallback // OK: delegate is a stable object property
-    val port: String by lazy { "$port" }  // Error: `lazy` needs a backing field for the Lazy instance
+    val port: String by lazy { "$localPort" }  // Error: `lazy` needs a backing field for the Lazy instance
 }
 ```
 
