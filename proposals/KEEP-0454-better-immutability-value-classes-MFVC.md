@@ -22,6 +22,8 @@ We discuss what MFVCs represent, what their limitations are, how they interopera
     - [MFVC Primary Constructor](#mfvc-primary-constructor)
     - [MFVC and Inheritance](#mfvc-and-inheritance)
     - [Abstract MFVC vs Interfaces](#abstract-mfvc-vs-interfaces)
+      - [Why Not Value Interfaces?](#why-not-value-interfaces)
+      - [Why Abstract Value Classes?](#why-abstract-value-classes)
     - [MFVC and `equals`](#mfvc-and-equals)
     - [Value Objects](#value-objects)
     - [Early Initialization](#early-initialization)
@@ -168,25 +170,107 @@ fun test() {
 
 For final and abstract MFVC, they can inherit from interfaces (as current inline value classes) and from abstract value classes.
 
-This means that value classes cannot inherit from non-value classes (but the opposite is allowed).
-The mental model for this restriction is the following: non-value classes require identity, value classes do not have identity.
-And you can add identity to a type without one (inherit a non-value class from a value one), but cannot take the identity away (inherit a value class from a non-value one).
+> Note: this means that value classes cannot inherit from non-value classes, but a non-value class may inherit from an abstract value class.
+> The mental model for this restriction is that a non-value superclass imposes an identity requirement which a value subclass cannot remove.
+> An abstract value class, on the other hand, similarly to an interface, is **identity-free**: it imposes no identity requirement of its own.
+> This allows both value and non-value classes to inherit from an abstract value class: a concrete value subclass is identity-less, while a concrete non-value subclass adds identity.
 
 #### Abstract MFVC vs Interfaces
 
-With the restriction on the stored state, an abstract MFVC looks very similar to an interface, and that is true.
-Their main difference is that, while interfaces do not say anything about their relation with identity, abstract MFVCs state that they are identity-less.
+These points raise the question: why abstract value classes and not (value) interfaces instead?
+There are two parts to answering this question.
 
-Their main use-case is to represent common implementations of identity-less types aka serve as root types for value hierarchies.
+1. Why are value interfaces not the right model?
+1. Why do abstract value classes make sense?
 
-Alternatively, we could introduce a `value interface` concept, but it does not have the same clear separation of identity-ness.
+##### Why Not Value Interfaces?
 
-* Regular classes require identity, value classes require identity-less
-* Regular interfaces are identity-agnostic, value interfaces require identity-less
+If we talk about the first part, an interface is primarily a contract about **behavior**.
+It describes which operations and properties an implementation exposes, independently of where or whether that implementation stores data.
+An interface property, for example, describes an accessor contract rather than reserving storage for that property.
+Interfaces are consequently **agnostic about identity and representation**: the same interface may be implemented by a value class, an identity class, or an object.
 
-This makes the story for potentially mixed "value -> non-value -> value" interface hierarchies more complicated.
+A class describes behavior and also participates in the **data model** of its instances: how it is initialized, stored and updated.
+And the `value` modifier primarily constrains this aspect of a type: it says that stored state constitutes the full value and that the class does not have stable identity.
+It does not introduce a separate kind of behavior: value classes still use functions and implement interfaces in the same way as other classes.
 
-Also, as identity (or not having one) is a property of an instantiated object, and objects always have a *single* runtime class, it is more logical to associate "valueness" with classes and not interfaces.
+Saying that there is a `value interface` would mean that such an interface defines not only behavior, but also a representation constraint: every implementation would have to be identity-less.
+We do not consider this combination of restrictions as useful.
+
+Also, it plays very poorly with interoperability.
+Suppose there is the following Kotlin declaration.
+
+```kotlin
+value interface ValueLike { ... }
+```
+
+On the JVM this declaration would have to be exposed as a *regular* Java interface.
+Java interfaces do not constrain whether their implementations have identity, so it would be possible to provide an identity-bearing implementation with *mutable stored state*.
+
+```java
+public final class MutableValue implements ValueLike {
+    private int value;
+
+    public int getValue() { return value; }
+    public void setValue(int value) { this.value = value; }
+}
+```
+
+The same issue exists in Swift export.
+A Swift protocol describes behavior, and Swift does not have a protocol constraint which permits only value types.
+The value-only guarantee would consequently exist only in Kotlin metadata and could be violated as soon as the interface crosses a language boundary.
+
+For these reasons, this proposal does not introduce a `value interface` concept.
+
+##### Why Abstract Value Classes?
+
+As we've just mentioned, the main property of a `value` modifier is that it restricts how data is stored and that the type does not have stable identity.
+An abstract value class takes a regular abstract class and applies this `value` restriction to it, removing the ability to have stored state and the presence of a stable identity.
+The resulting type does look like an interface, and we could design MFVCs to have only final value classes as concrete data carriers and interfaces as abstract behavior definitions, with no abstract value classes "in-between" these two concepts.
+
+If an interface is enough for your purposes of having an identity-free behavior abstraction, you do not have to use an abstract value class instead.
+For many cases that should actually be enough.
+
+However, we think it is important to introduce `abstract value class` for two reasons.
+First, abstract (value) classes allow initialization invariants to be centralized and enforced by a superclass.
+An interface may provide validation behavior, but it cannot participate in construction or require every implementation to definitely invoke that behavior.
+
+For example, several value classes may represent intervals over different ordered types while sharing the requirement that the lower bound does not exceed the upper bound.
+
+```kotlin
+sealed value class OrderedInterval<T : Comparable<T>> protected constructor(
+    start: T,
+    end: T,
+) {
+    init {
+        require(start <= end) { "The interval start must not exceed its end" }
+    }
+}
+
+value class IntInterval(val start: Int, val end: Int) :
+    OrderedInterval<Int>(start, end)
+
+value class LongInterval(val start: Long, val end: Long) :
+    OrderedInterval<Long>(start, end)
+```
+
+`OrderedInterval` stores neither bound, but its constructor runs for every concrete subclass and guarantees the invariant before construction completes.
+With an interface, each implementation would have to remember to call a validation function from its own initializer, and the validation guarantee is not automatically enforced.
+
+Second, current plans for project Valhalla include [support for abstract value classes](https://openjdk.org/jeps/401#Value-classes-and-subclassing), and even more so, such classes as `java.lang.Number` are planned to become abstract value classes.
+As Kotlin has implicit Java interop, not having abstract value classes would create friction in both directions.
+
+As an example, if one would want to commonize a Java library which adopted (abstract) value classes, they could need to do the following.
+
+```kotlin
+// jvmMain
+actual typealias DomainBase = ai.enterprise.AbstractDomainValueBase
+
+// commonMain
+expect abstract /* ??? */ class DomainBase()
+```
+
+Without abstract value classes, it would be impossible.
 
 #### MFVC and `equals`
 
