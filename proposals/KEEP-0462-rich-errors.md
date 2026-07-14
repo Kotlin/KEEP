@@ -192,7 +192,7 @@ For example, `A | B | C \ D \ E` is equivalent to `((A | B | C) \ D) \ E`.
 * A new type `Value` is a supertype of all non-error types.
 
 > [!Note]
-> Although `Value` appears in the source code as an abstract class, it is not represented as a real class at runtime.
+> Although `Value` appears in the source code as an interface, it is not represented at runtime.
 > The compiler handles it specially, similarly to `Nothing`.
 > For example, `is` checks for `Value` are compiled as inverted checks against `Error`:
 >
@@ -207,7 +207,7 @@ For example, `A | B | C \ D \ E` is equivalent to `((A | B | C) \ D) \ E`.
 > New `kotlin.Error` is not related to `java.lang.Error` in any way here
 
 > [!Note]
-> We understand that the class name `Value` may cause terminology confusion with `value` classes.
+> We understand that the name `Value` may cause terminology confusion with `value` classes.
 > However, finding a better name or another way to distinguish these terms remains an open question.
 
 ##### Illustrative examples
