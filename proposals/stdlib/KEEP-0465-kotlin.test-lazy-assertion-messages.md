@@ -5,7 +5,7 @@
 * **Contributors**: Ilya Gorbunov, Brian Norman
 * **Status**: Experimental in 2.4.20
 * **Related issues**: [KT-31305](https://youtrack.jetbrains.com/issue/KT-31305) 
-* **Discussion**: TBD
+* **Discussion**: [#493](https://github.com/Kotlin/KEEP/discussions/493)
 
 ## Summary
 
