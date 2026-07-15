@@ -44,7 +44,6 @@ This KEEP focuses on the formal specification of the feature: syntax, typing, se
     * [Types](#types)
       * [Error types](#error-types)
       * [Error unions](#error-unions)
-      * [Negative types](#negative-types)
       * [Type hierarchy](#type-hierarchy)
       * [Illustrative examples](#illustrative-examples)
       * [Generic parameters](#generic-parameters)
@@ -54,6 +53,10 @@ This KEEP focuses on the formal specification of the feature: syntax, typing, se
     * [Smart-casts](#smart-casts)
       * [Use negative information for smart-casts](#use-negative-information-for-smart-casts)
     * [Error traceability](#error-traceability)
+      * [Additional details](#additional-details-1)
+        * [One case of redundancy](#one-case-of-redundancy)
+        * [Potential new contract](#potential-new-contract)
+        * [Exempting type parameters from the traceability warning](#exempting-type-parameters-from-the-traceability-warning)
   * [Usage patterns](#usage-patterns)
     * [Expressive signatures](#expressive-signatures)
     * [Internal tags and in-place errors](#internal-tags-and-in-place-errors)
@@ -156,34 +159,6 @@ fun bar(): String | NetworkError? // compile-time error!
 It's a question whether we should allow nullable error types on their own though, 
 since they could be viewed as `Nothing? | NetworkError`.
 
-##### Negative types
-
-For error types it is allowed to not only state that some error class might be present in this union, but the opposite as well:
-
-```kotlin
-fun foo(v: Error \ Error1 \ Error2): { ... } 
-```
-
-Here `v` might contain any possible error except `Error1` and `Error2`.
-The same might be applied to the type parameters:
-
-```kotlin
-fun <E : Error \ Error1> bar() { ... }
-fun <E : Error> baz(v: E \ Error1) { ... }
-```
-
-To preserve decidable typing and keep type syntax simple and readable, there are several constraints on negative types:
-- Only error classifier-like types are allowed on the right-hand side of the `\` operator.
-- Negative types should be the right-most component of the error union type.
-- Negative types cannot be a component of the union itself, so it is not allowed to declare types like `A | (B \ C) | D`.
-
-When `|` and `\` are used in the same type, they are grouped according to the following rules:
-- `|` has higher precedence than `\`;
-- repeated uses of `|` are flattened, so associativity is not observable;
-- `\` is left-associative.
-
-For example, `A | B | C \ D \ E` is equivalent to `((A | B | C) \ D) \ E`.
-
 ##### Type hierarchy
 
 * All error types implicitly extend an abstract class `Error`.
@@ -260,31 +235,6 @@ graph BT
     Any --> AnyN
 ```
 
-```mermaid
-graph BT
-    Neg2["E \ ParseError \ OtherError"]
-    Neg1["E \ ParseError"]
-    Neg1'["E \ OtherError"]
-    Union["E | OtherError"]
-    Union'["E | ParseError"]
-    
-    UnionNeg["E | OtherError \ ParseError"]
-    UnionNeg'["E | ParseError \ OtherError"]
-    
-    Neg2 --> Neg1
-    Neg2 --> Neg1'
-    
-    Neg1' --> E
-    Neg1' --> UnionNeg'
-    Neg1 --> UnionNeg
-    Neg1 --> E
-    
-    UnionNeg' --> Union'
-    UnionNeg --> Union
-    E --> Union
-    E --> Union'
-```
-
 ##### Generic parameters
 
 Another limitation required for decidable typing of error unions is that there might be only one generic parameter bounded by the `Error` type in a union:
@@ -306,10 +256,8 @@ fun <T /* : Any? */, E : Error> fooIncorrect(arg: T | E) // compilation error: T
 ###### Normalization of types
 
 After being passed through the type system, error union types are normalized.
-Examples of such normalization include:
-- Reduction of repeated components: `Error1 | Error2 | Error1` is normalized to `Error1 | Error2`.
-- Reduction of negated components: `E | Error1 | Error2 \ Error1` is normalized to `E | Error2 \ Error1`.
-  - If no components remain in the union, the type is normalized to `Nothing`: `Error1 \ Error1` is normalized to `Nothing`.
+For example, repeated components are removed: `Error1 | Error2 | Error1` is normalized to `Error1 | Error2`.
+Note that a diagnostic might be reported in case such a type is explicitly written.
 
 Type aliases are not normalized at the level of the type alias itself.
 They are substituted as written and normalized later as part of the whole type.
@@ -507,15 +455,6 @@ fun bar() {
 }
 ```
 
-Negative smart-cast might not just filter out an explicit error class from the union but also introduce a negative type:
-
-```kotlin
-fun <T : Any> foo(v: T) {
-    if (v is Error1) return
-    // v is smart-casted to T \ Error1
-}
-```
-
 > [!Note]
 > As negative smart-casting is a new feature for the compiler, it adds significant complexity to the implementation. 
 > Thus, it might be delivered later than error unions themselves.
@@ -571,10 +510,10 @@ fun foo(viewer: UserId) {
 }
 ```
 
-To prevent this case from happening, we prohibit merging of errors from different sources.
+To prevent this case from happening, we report merging of errors from different sources.
 In the previous example, `AccessDenied` might come from two different sources: 
 through chain short-circuiting from `resolveUser` and as a result of `medicalRecord`.
-For this reason, this code is rejected as a compilation error.
+For this reason, a warning is reported for this call chain.
 To work around this properly, one must split this chain call into separate ones and handle the errors unambiguously:
 
 ```kotlin
@@ -595,7 +534,7 @@ fun foo(viewer: UserId) {
 }
 ```
 
-While this restriction requires more verbosity in error handling, it is for the better as it prevents programming mistakes and encourages proper error handling.
+While handling this warning requires more verbosity in error handling, it is for the better as it prevents programming mistakes and encourages proper error handling.
 Moreover, we do not expect different error types to be merged often as different steps of the chain usually perform different tasks and may produce a different set of errors.
 
 Another possible source of ambiguity could be demonstrated with the following example:
@@ -611,37 +550,21 @@ fun foo(list: List<Any>) {
 ```
 
 Such a mistake is quite common even now with the `firstOrNull` function.
-To prevent this, we disallow non-disjoint error unions in the function signatures.
-As a result, the declaration of `firstOrError` would be rejected.
-The correct way of declaring such a function is to exclude `NoSuchElement` from `T` with the negative type:
-
-```kotlin
-fun <T : Any? \ NoSuchElement> List<T>.firstOrError(): T | NoSuchElement
-
-fun fooIncorrect(list: List<Any>) {
-    val element = list.firstOrError() // compilation error: type parameter for the second call is not within bounds
-}
-
-fun fooCorrect(list: List<Any>) {
-    val element = if (list.isNotEmpty()) list[0] else { 
-        // process the empty list case
-    }
-}
-```
-
-The same might happen in the generic function:
+To prevent this, we report a warning on the call site if the actual type inferred for the type parameter leads to a non-disjoint error union in the signature.
+As a result, the shown call to `firstOrError` will be marked with a warning, hinting to the developer that this call might not work as expected for some inputs.
+The same might happen in a generic function:
 
 ```kotlin
 fun <V> applyToFirst(list: List<V>, f: (V) -> Unit) {
-    val first = list.firstOrError()
+    val first = list.firstOrError() // warning: V is not disjoint from NoSuchElement
     if (first is NoSuchElement) return
     f(first)
 }
 ```
 
-In this example, the call to `firstOrError` would not compile as `V` might contain `NoSuchElement` as a subtype.
-It is also correct in this case, as this call makes indistinguishable `NoSuchElement` as if there were no elements (which should not be passed to `f`) 
-and `NoSuchElement` as if it is the first element (which should be passed to `f`).
+In this example, the call to `firstOrError` is reported with a warning, because a value of type `V` might contain `NoSuchElement`.
+It is also correct in this case, as this call makes `NoSuchElement` indistinguishable regardless of whether there were no elements (which should not be passed to `f`) 
+or `NoSuchElement` was the first element (which should be passed to `f`).
 To overcome this and to achieve the correct behavior, one must implement this function using only functions that will not lead to any ambiguity:
 
 ```kotlin
@@ -651,20 +574,85 @@ fun <V> applyToFirst(list: List<V>, f: (V) -> Unit) {
 }
 ```
 
-While it is not that complicated in the current case, there might be some more complex function instead of `firstOrError`.
-In these cases, it might be easier to say that the outer function (`applyToFirst`) just inherits constraints from the inner one (`firstOrError`), with the upper bound `Any? \ NoSuchElement` for `V`:
+To summarize, the error traceability restriction consists of two independent call-site checks, both reported as warnings:
+- For the chaining operator `|.`, it is required that an error component of the receiver is disjoint from the error component of the function's inferred return type.
+- After type inference for a generic call, every inferred type argument is required to be disjoint from the rest of any error union in the substituted signature of the callee in which it participates.
+
+##### Additional details
+
+###### One case of redundancy
+
+There is one situation where the warning is redundant: when the enclosing function mixes the same
+error with the same type parameter in its own signature.
 
 ```kotlin
-fun <V : Any? \ NoSuchElement> applyToFirst(list: List<V>, f: (V) -> Unit) {
-    val first = list.firstOrError()
-    if (first is NoSuchElement) return
-    f(first)
+fun <T> List<T>.firstOrError(): T | NoSuchElement
+
+fun <V> List<V>.lastOrError(): V | NoSuchElement {
+    return asReversed().firstOrError() // 'V' might contain 'NoSuchElement', so this call gets the warning
 }
 ```
 
-To summarize, the error traceability restriction is applied in the two cases:
-- For the chaining operator `|.`, it is required that an error component of the receiver is disjoint from the error component of the function's inferred return type.
-- All error unions in the function signatures are required to be disjoint.
+Here any call to `lastOrError` with `NoSuchElement` inside `V` is already reported at *its* call site,
+so the warning inside the body is redundant, and we intend not to have it in this situation.
+
+###### Potential new contract
+
+Currently, the only way to silence the [error traceability](#error-traceability) warning for a generic call is `@Suppress`,
+which hides the problem for a single call without stating the underlying assumption.
+We might introduce a way to state that a type parameter is assumed not to contain a specific error,
+even though it does not participate in a union with it in the signature:
+
+```kotlin
+// The syntax below is purely illustrative.
+fun <V> List<V>.applyToFirst(f: (V) -> Unit) {
+    contract {
+        assuming<V>().doesNotContain<NoSuchElement>()
+    }
+    // ...
+}
+
+fun bar(ints: List<Int | NoSuchElement>) {
+    ints.applyToFirst { println(it) } // warning: 'V' is assumed not to contain 'NoSuchElement'
+}
+```
+
+This gives generic code a way to safely call union-returning functions by propagating the warning to the caller of this function instead of resorting to suppression:
+
+```kotlin
+fun <T> List<T>.firstOrError(): T | NoSuchElement
+
+fun <V> List<V>.applyToFirstUnsafe(f: (V) -> Unit) {
+    @Suppress("...") // suppression: hides the problem for this call only
+    val element = firstOrError()
+    if (element is NoSuchElement) return
+    f(element)
+}
+
+fun <V> List<V>.applyToFirstSafe(f: (V) -> Unit) {
+    contract {
+        assuming<V>().doesNotContain<NoSuchElement>()
+    }
+    val element = firstOrError() // no warning; the assumption is checked at call sites of applyToFirstSafe
+    if (element is NoSuchElement) return
+    f(element)
+}
+```
+
+###### Exempting type parameters from the traceability warning
+
+If the options above do not make generic programming with rich errors convenient enough,
+we might consider disabling the traceability warning when the inferred type argument is itself a type parameter:
+
+```kotlin
+fun <T> List<T>.firstOrError(): T | NoSuchElement
+
+fun <V> test(ts: List<V>, ints: List<Int | NoSuchElement>, anys: List<Any>) {
+    ts.firstOrError()   // no warning: inferred type is itself a type parameter
+    ints.firstOrError() // warning: Int | NoSuchElement is not disjoint from NoSuchElement
+    anys.firstOrError() // warning: Any is not disjoint from NoSuchElement
+}
+```
 
 ### Usage patterns
 
@@ -832,7 +820,7 @@ is exported as:
 export function loadUser(): User | NotFound | PermissionDenied;
 ```
 
-Therefore, declarations with error-union signatures can be exported in Kotlin/JS and Kotlin/Wasm, provided that the exported types do not contain negative types.
+Therefore, declarations with error-union signatures can be exported in Kotlin/JS and Kotlin/Wasm.
 
 ### Migration and compatibility
 
@@ -1053,13 +1041,13 @@ fun foo(): Int | Error1 | Error2 | *
 fun Int.bar(): String | Error3
 
 fun chainOpenUnion() {
-    foo()|.bar() // Compilation error: `Error3` might already be included in `*`
+    foo()|.bar() // warning: `Error3` might already be included in `*`
     foo()|.toString() // Ok, `toString` does not introduce new errors
 }
 ```
 
 Since `*` represents an arbitrary future error, the compiler cannot determine whether newly introduced errors are distinct from those already included in the open union.
-As a result, chaining is only allowed for operations that do not introduce additional errors.
+As a result, only chaining with operations that do not introduce additional errors is free of the warning.
 
 #### Operator `!!`
 
