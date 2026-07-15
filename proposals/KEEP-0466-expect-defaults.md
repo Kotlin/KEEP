@@ -1,4 +1,4 @@
-# Expect with fallback
+# Expect with defaults
 
 * **Type**: Design proposal
 * **Author**: Alejandro Serrano
@@ -11,15 +11,15 @@
 
 This proposal addresses the most common case of lack of reusability in
 Kotlin Multiplatform projects, by providing a way for expect declarations
-to define **fallback** implementations to be used whenever a platform does
+to define **default** implementations to be used whenever a platform does
 not actualize such expect implementation.
 
 ### TL;DR
 
-* Expect declarations may define a **fallback** implementation.
-* The fallback implementation implementation is used when there's no
+* Expect declarations may define a **default** implementation.
+* The default implementation implementation is used when there's no
   corresponding actual declaration in a platform for an expect.
-* Fallback implementation must define the declaration completely
+* Default implementations must define the declaration completely
   ("all-or-nothing" rule); leaving some parts unspecified is not allowed.
 
 ## Table of contents
@@ -27,12 +27,25 @@ not actualize such expect implementation.
 * [Abstract](#abstract)
   * [TL;DR](#tldr)
 * [Table of contents](#table-of-contents)
+* [⚠️ Nomenclature](#️-nomenclature)
 * [Motivation](#motivation)
   * [Design goals](#design-goals)
   * [Competing approaches](#competing-approaches)
   * [Design decisions](#design-decisions)
 * [Proposal](#proposal)
   * [Potential extensions](#potential-extensions)
+
+## ⚠️ Nomenclature
+
+The work "default" is already in use in the Kotlin language and surrounding
+ecosystems:
+
+* The value an optional parameter takes when not given explicitly is called
+  its _default value_,
+* Methods with body defined in an interface are called _default methods_.
+
+We have considered other terms like "fallback" (you can check the version
+history of this file!), but at the end "default" seems the best alternative.
 
 ## Motivation
 
@@ -119,28 +132,27 @@ uses a `nonJvm` source set, and
 [`ByteString`](https://github.com/search?q=repo%3Asquare%2Fokio+%22class+ByteString%22&type=code)
 defines some `commonX` functions to be used in different actualizations.
 
-
 ### Design decisions
 
-**No actual declaration needed to use fallback.** In order for this feature to
+**No actual declaration needed to use default.** In order for this feature to
 provide an advantage against other potential ways to solve this problem, it has
 to minimize the amount of code. And the minimal amount is none! In other words,
-we want a design in which there's no need to opt into the fallback
+we want a design in which there's no need to opt into the default
 implementation for a platform – otherwise you still need to define that source
 set in your build file.
 
-**Fallback body in expect declaration.** The fallback or default implementation
+**Default body in expect declaration.** The default implementation
 for an expect declaration could be given as a separate declaration, or directly
 in the expect declaration itself. We have taken the latter road, for a couple of
 reasons:
 1. It aligns with similar constructions in the language. For example, a default
    implementation for an interface method is given directly on the method itself,
    not separately.
-2. It avoids complications related to where the expect and fallback declarations
+2. It avoids complications related to where the expect and default declarations
    may or may not live (same source set? same file?).
 
 **No modifier.** In most cases the fact that there's a body in the expect
-declaration is enough to infer that such declaration defines a fallback.
+declaration is enough to infer that such declaration defines a default implementation.
 However, abstract methods do not define a body, so this means some code is
 ambiguous. For example, does the following code:
 
@@ -150,14 +162,14 @@ expect interface Bar {
 }
 ```
 
-... define a fallback implementation for `Bar`, to be used whenever a platform
+... define a default implementation for `Bar`, to be used whenever a platform
 doesn't actualize it further? Or does define an interface to be actualized in
 every platform? Note that the syntax is only ambiguous for classifiers with only
 abstract methods, though, a rather uncommon case for expect/actual
 
 On the other hand, having to write a modifier interrupts the "happy path" of 
-adding fallback implementations, since you need to remember this modifier.
-It also makes diagnostics a bit harder, since whether there's a fallback is 
+adding default implementations, since you need to remember this modifier.
+It also makes diagnostics a bit harder, since whether there's a default is 
 "inferred", rather than explicit. However, we think that the trade off should go
 in the direction of no modifier.
 
@@ -186,7 +198,7 @@ which implementation to use when both define a potential body.
 In our preliminary investigation the case of partial actualization is quite
 uncommon, so this seems like a good trade off. On top of that, the current
 design does not block a laxer design in the future. In conclusion, the current
-design requires either all members in a classifier to have a fallback, or none.
+design requires either all members in a classifier to have a default, or none.
 
 ## Proposal
 
@@ -196,26 +208,26 @@ property, property accessor) defines or has a body whenever:
 * The callable inherits an implementation in a non-ambiguous way,
 * It is marked as `abstract` or `external`.
 
-**Declaration with fallback.** We say that an expect declaration defines a
-fallback whenever:
+**Declaration with default.** We say that an expect declaration defines a
+default whenever:
 * In the case of functions, it defines a body.
 * In the case of properties, it defines a body for one of the accessors,
   or defines a body for the initializer.
-* In the case of classifiers, at least one of the members defines a fallback.
+* In the case of classifiers, at least one of the members defines a default.
 
 ```kotlin
-expect fun quux(x: String): String = x.drop(1)  // defines a fallback
+expect fun quux(x: String): String = x.drop(1)  // defines a default
 
 expect val OneLuckyNumber: Int         // actualization required
-expect val OtherLuckyNumber: Int = 7   // defines a fallback
+expect val OtherLuckyNumber: Int = 7   // defines a default
 
 expect abstract class Foo {
-  abstract fun b(): Int       // abstract member => defines a fallback
+  abstract fun b(): Int       // abstract member => defines a default
   fun c(): Int                // error: concrete member without body (see later)
 }
 ```
 
-**All-or-nothing.** If an expect declaration defines a fallback, then its body
+**All-or-nothing.** If an expect declaration defines a default, then its body
 follows the usual Kotlin rules for that declaration. In particular:
 * In the case of properties, they must either define a body for accessors,
   or define a body for the initializer;
@@ -235,21 +247,21 @@ expect abstract class Foo {
 }
 ```
 
-**Actualization of declarations with fallback.** Any actualization takes
-priority over the fallback implementation, regardless of the way it was done
+**Actualization of declarations with default.** Any actualization takes
+priority over the default implementation, regardless of the way it was done
 (for example, for classifiers we have actual class, actual typealias, 
 and actualization by Java class).
 
 **Shorthand syntax.** It is allowed to use combined primary constructor and 
 primary properties syntax in an expect class. Doing so implicitly defines a body
-for the properties, which in turns means that a fallback is defined for such a 
+for the properties, which in turns means that a default is defined for such a 
 classifier.
 
 ```kotlin
-// this defines a fallback
+// this defines a default
 expect class Point(val x: Float, val y: Float)
 
-// this defines no fallback
+// this defines no default
 expect class Point constructor(x: Float, y: Float) {
   val x: Float
   val y: Float
@@ -259,28 +271,28 @@ expect class Point constructor(x: Float, y: Float) {
 On the other hand, using the `data` modifier is not allowed. The syntax makes it
 unclear whether the automatically-generated methods should be taken as expect
 functions (so every actualization should define copy and components), or this
-only matters for the fallback.
+only matters for the default.
 
 **Interactions with expect-related annotations.**
-* It is not allowed to define a fallback for an expect class marked as
+* It is not allowed to define a default for an expect class marked as
   [`@OptionalExpectation`](https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-optional-expectation/).
 * It is not allowed to use 
   [`@ExpectRefinement`](https://kotlinlang.org/api/core/kotlin-stdlib/kotlin.experimental/-expect-refinement/)
-  alongside an expect class with a fallback.
+  alongside an expect class with a default.
 
 ### Potential extensions
 
 **Additions during actualization.** A somehow common use case is adding
-something to the fallback implementation of a class. For example, adding new
+something to the default implementation of a class. For example, adding new
 constructors for better interoperability with a platform type.
 
 We say that a classifier defines additions whenever:
-* The corresponding expect implementation has a fallback,
+* The corresponding expect implementation has a default,
 * There are no members marked with actual in the body of the actual classifier.
 * None of the members defined match a member in the expect declaration.
 
 In that case, the compiler should consider the actual implementation to be the
-combination of the fallback from the expect declaration, and all the additional 
+combination of the default from the expect declaration, and all the additional 
 declarations.
 
 ```kotlin
