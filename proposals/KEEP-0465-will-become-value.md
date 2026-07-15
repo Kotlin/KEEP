@@ -29,7 +29,6 @@ Without this mechanism, the adoption of full value classes would be a slower and
   * [Semantics](#semantics)
   * [Compiler warnings](#compiler-warnings)
   * [Applicability](#applicability)
-  * [Interaction with value classes](#interaction-with-value-classes)
 * [References](#references)
 
 # Motivation
@@ -185,11 +184,6 @@ It **cannot** be applied to:
 - `object` declarations (singletons intentionally have identity).
 - Enums (enumerations cannot become value types).
 - Open classes (value classes are not going to be supported to be `open`).
-
-## Interaction with value classes
-
-Once a class annotated with `@WillBecomeValue` is migrated to `value class`, the annotation
-should be removed. The compiler will report an error if `@WillBecomeValue` is present on a `value class`.
 
 # References
 
