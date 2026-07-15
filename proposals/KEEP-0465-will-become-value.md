@@ -11,9 +11,8 @@ This KEEP proposes the `@WillBecomeValue` annotation to mark existing reference-
 whose identity semantics should not be relied upon. That prepares them for migration
 to [full value classes](https://github.com/Kotlin/KEEP/blob/main/proposals/KEEP-0454-better-immutability-value-classes-MFVC.md).
 
-In particular, by using the annotation a developer initiates reporting warnings about usages of identity for those classes in the downstream code,
-allowing not to break with errors the downstream code immediately by marking the classes as `value class`es.
-The annotation is necessary for the gradual migration process.
+In particular, by using this annotation a developer helps their downstream users to not break their code when the class is changed to a value class, as those users will get migration warnings about usages which will stop being valid.
+Without this mechanism, the adoption of full value classes would be a slower and harder process.
 
 # Table of contents
 
@@ -37,11 +36,11 @@ The annotation is necessary for the gradual migration process.
 
 ## Background: value classes in Kotlin
 
-Kotlin supports `value class` — a class modifier that strips object identity, enabling more safety and effeciency. Value classes guarantee that two
+Kotlin supports `value class` — a class modifier that strips object identity, enabling more safety and efficiency. Value classes guarantee that two
 instances with the same state are indistinguishable: there is no reliable way to distinguish
 them by reference equality (`===`), `System.identityHashCode`, or synchronization. Thus, such usages are forbidden for them.
 
-Kotlin currently supports inline `value class`es which are a subset of `value class`es that have a single underlying field.
+Kotlin currently supports a very limited subset of `value class`es: inline `value class`es with a single underlying field.
 Their main purpose is to create type-safe wrappers around existing types being transparent in the runtime.
 Many libraries and frameworks (`kotlinx.serialization`, `Spring`) adopted the usage and embed the underlying field, keeping safe wrapper only on the source code level.
 Such a behavior is not acceptable for general purpose value classes.
@@ -129,7 +128,7 @@ The annotation is named **`@WillBecomeValue`**. The name was chosen over three o
 | `@TreatAsValue` | Does not explain *why* the class is not already a `value class`; also does not hint that usages produce warnings rather than errors. |
 
 `@WillBecomeValue` was selected because it:
-- Makes the migration intent explicit: the class *will become* a `value class`, but cannot be one yet due to compatibility or language constraints.
+- Makes the migration intent explicit: the class *will become* a `value class`, but cannot be one yet due to temporary language restrictions.
 - Explains why identity-sensitive usages produce warnings rather than errors — the class is not a value class *yet*, so the compiler warns rather than forbids.
 - Is unambiguous: it cannot be confused with `value class` itself, unlike `@ValueBased` or `@IdentityFree`.
 
