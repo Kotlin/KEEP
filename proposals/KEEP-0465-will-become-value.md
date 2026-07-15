@@ -115,16 +115,13 @@ to Kotlin-defined classes.
 
 ## Kotlin's need for an equivalent
 
-Kotlin needs the same mechanism for its own migration path:
+Kotlin needs the same mechanism for its own migration path, and the JDK's annotation cannot serve it:
 
-- Kotlin needs the annotation to be available on all target platforms.
-- Library authors (including the Kotlin standard library team) want to signal that a class is
-  should be marked `value`, but it cannot be done because of the compatibility constraint, usage restrictions,
-  field number restriction, and others.
-- The Kotlin compiler and tooling can then warn at use sites where identity-sensitive operations
-  are applied to annotated instances, giving developers time to fix their code.
-- When the class is eventually migrated to `value class`, the change will be much less likely
-  to cause silent regressions.
+- `@jdk.internal.ValueBased` is JVM-only, while Kotlin is not.
+- `@jdk.internal.ValueBased` is internal to the JDK.
+- Kotlin standard library has its own value-like classes awaiting migration.
+- Kotlin libraries authors need to start the migration beforehand.
+
 
 ## Naming
 
