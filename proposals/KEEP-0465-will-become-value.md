@@ -23,6 +23,7 @@ Without this mechanism, the adoption of full value classes would be a slower and
   * [The migration problem](#the-migration-problem)
   * [Java's solution: `@jdk.internal.ValueBased`](#javas-solution-jdkinternalvaluebased)
   * [Kotlin's need for an equivalent](#kotlins-need-for-an-equivalent)
+  * [Candidate classes in the standard library](#candidate-classes-in-the-standard-library)
   * [Naming](#naming)
 * [Design](#design)
   * [Annotation declaration](#annotation-declaration)
@@ -121,6 +122,38 @@ Kotlin needs the same mechanism for its own migration path, and the JDK's annota
 - Kotlin standard library has its own value-like classes awaiting migration.
 - Kotlin libraries authors need to start the migration beforehand.
 
+## Candidate classes in the standard library
+
+This section lists standard-library classes that are value-like (immutable, with no meaningful identity) and are therefore natural candidates for `@WillBecomeValue` now and for `value class` once [full value classes](https://github.com/Kotlin/KEEP/blob/main/proposals/KEEP-0454-better-immutability-value-classes-MFVC.md) are available.
+
+For contrast, some standard-library types are **already** inline `value class`es and need no migration: `UByte`, `UShort`, `UInt`, `ULong`, [`kotlin.time.Duration`](https://kotlinlang.org/api/core/kotlin-stdlib/kotlin.time/-duration/), and `Result`. Each of them wraps a single field, which is exactly the case the current inline `value class`es already cover.
+
+Not every candidate can carry `@WillBecomeValue` right away.
+Everything in the first two groups below can be annotated **today**:
+each is `final`, shallow-immutable, and has no `open` supertype, so it already passes the [applicability](#applicability) checks.
+The types in the last group are value-like too,
+but **cannot be annotated yet** because a `value class` may be neither `open` nor a subtype of an `open` class —
+they must first shed `open` from their own declaration or from the class they inherit.
+
+**Multi-field values, blocked only by the single-field restriction.** These are ordinary immutable `final` classes that cannot be inline `value class`es today solely because they hold more than one field, so they become expressible only with full (multi-field) value classes:
+
+- [`kotlin.uuid.Uuid`](https://kotlinlang.org/api/core/kotlin-stdlib/kotlin.uuid/-uuid/) — two `Long`s (`mostSignificantBits`, `leastSignificantBits`). Its own KDoc already states that it "has value semantics" and "may become a value class in the future".
+- [`kotlin.time.Instant`](https://kotlinlang.org/api/core/kotlin-stdlib/kotlin.time/-instant/) — `epochSeconds: Long` and `nanosecondsOfSecond: Int`.
+- [`KotlinVersion`](https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-kotlin-version/) — `major`, `minor`, `patch` (all `Int`).
+- [`kotlin.text.HexFormat`](https://kotlinlang.org/api/core/kotlin-stdlib/kotlin.text/-hex-format/) — an immutable formatting configuration (`upperCase: Boolean`, plus the nested `bytes` and `number` holders, which are themselves immutable multi-field configuration classes). Its KDoc explicitly states that the class "is immutable".
+
+**Tuples and small carriers.** Immutable `data class`es that already exhibit value semantics. Beyond identity, migrating a `data class` to a `value class` also replaces positional `componentN()`/`copy()` with name-based destructuring and copy vars, so estimating their impact must account for that as well:
+
+- [`Pair`](https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-pair/) (`first`, `second`) and [`Triple`](https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-triple/) (`first`, `second`, `third`) — the KDoc of both explicitly states that they exhibit value semantics.
+- [`kotlin.collections.IndexedValue`](https://kotlinlang.org/api/core/kotlin-stdlib/kotlin.collections/-indexed-value/) — `index: Int`, `value: T`.
+- [`kotlin.text.MatchGroup`](https://kotlinlang.org/api/core/kotlin-stdlib/kotlin.text/-match-group/) — `value: String` (and `range: IntRange` on supporting platforms).
+- [`kotlin.time.TimedValue`](https://kotlinlang.org/api/core/kotlin-stdlib/kotlin.time/-timed-value/) — `value: T`, `duration: Duration`.
+- [`kotlin.reflect.KTypeProjection`](https://kotlinlang.org/api/core/kotlin-stdlib/kotlin.reflect/-k-type-projection/) — `variance: KVariance?`, `type: KType?`.
+
+**Value-like, but not markable yet (blocked by `open`).** These types have value semantics, but currently fail the applicability checks because a `value class` may be neither `open` nor a subtype of an `open` class. None of them can carry `@WillBecomeValue` until that is resolved:
+
+- **Ranges and progressions.** The progression base classes `IntProgression`, `LongProgression`, `CharProgression` (and the unsigned `UIntProgression`, `ULongProgression`) are `open`, and the ranges inherit from them (`IntRange : IntProgression`, and so on). So *neither* the progressions *nor* the ranges [`IntRange`](https://kotlinlang.org/api/core/kotlin-stdlib/kotlin.ranges/-int-range/), `LongRange`, `CharRange`, `UIntRange`, `ULongRange` can be marked — they would first have to be redesigned as a `sealed`/`abstract` value-class hierarchy, precisely the abstract/sealed support that full value classes add.
+- [`kotlin.io.encoding.Base64`](https://kotlinlang.org/api/core/kotlin-stdlib/kotlin.io.encoding/-base64/) — an immutable configuration (`isUrlSafe`, `isMimeScheme`, `mimeLineLength`, `paddingOption`), but declared `open` (its `Default` companion object extends it), so it is blocked until it is made non-`open`.
 
 ## Naming
 
