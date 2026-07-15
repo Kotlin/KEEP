@@ -36,6 +36,7 @@ We discuss what MFVCs represent, what their limitations are, how they interopera
     - [Standard Library](#standard-library)
     - [Other Features and Interactions](#other-features-and-interactions)
       - [MFVC and `===`](#mfvc-and-identity)
+        - [Runtime Identity Check](#runtime-identity-check)
       - [MFVC and Smart Casts](#mfvc-and-smart-casts)
       - [MFVC and Compose](#mfvc-and-compose)
         - [Strong Skipping](#strong-skipping)
@@ -306,9 +307,17 @@ We discourage relying on referential equality for data objects, but do not prohi
 If used incorrectly, this can lead to subtle bugs when code assumes singleton identity but encounters another instance.
 
 For value objects, this problem does not exist: since `===` is disallowed on value types, you cannot observe whether two references point to the same instance or different instances.
-When we get a proper identity-less compilation scheme, the compiler is free to select a compilation scheme which stores the singleton instance (as we currently do for objects) or one which "recreates" it on-the-fly whenever it's needed.
 
-> Note: the second option could be extended to support erased parameters or arguments similar to what is available in other programming languages, but we leave this as future work.
+Like a regular `object`, a `value object` denotes a *single instance*, initialized once and referenced by its name.
+The difference is what this single-ness is anchored to.
+For a regular object, it is anchored to a stable instance with observable identity: there is exactly one instance, and that identity could be potentially observed (e.g., via `===`).
+For a value object, it is instead anchored to the *value*: a value object has zero primary properties, so its type is a unit type with exactly one possible value, and "single instance" and "single value" coincide no matter how many boxes the runtime actually allocates.
+
+This is precisely what lets the compiler choose freely between two compilation schemes: one which stores a canonical singleton instance (as we currently do for objects), and one which "recreates" the value on the fly whenever it is needed.
+In both cases, the value object initialization will be performed only once.
+Because identity is not observable and the underlying value is always the same, the two schemes are indistinguishable to the user: the familiar once-only, initialize-on-first-use behavior of objects is preserved as the default, while the actual runtime representation is flexible.
+
+> Note: the compilation scheme could be extended to support erased parameters or arguments similar to what is available in other programming languages, but we leave this as future work.
 
 ```kotlin
 sealed interface UserResponse
@@ -696,6 +705,22 @@ It also aligns with the direction taken by project Valhalla, where Java's `==` o
 
 On non-JVM platforms, there is a non-trivial runtime cost: the implementation of `===` would need to inspect the runtime type of its arguments, detect that they are value objects, and fall back to structural comparison.
 It would be a significant implementation effort to minimize the performance impact of such change.
+
+###### Runtime Identity Check
+
+Code which receives a value as `Any?`, an interface or an erased type parameter may sometimes need to determine whether the concrete runtime value supports identity-sensitive operations.
+For this purpose, we propose the following runtime check.
+
+```kotlin
+package kotlin
+
+fun Any?.hasIdentity(): Boolean
+```
+
+The function returns `true` when its non-null receiver has stable identity and `false` for `null` and identity-less values, including value classes.
+The result is determined from the concrete runtime class rather than the static type or the presence of a temporary box: an MFVC returns `false` even when represented by a reference-based box, while an identity class returns `true` regardless of how it's viewed in the code.
+
+This function provides runtime classification only; a compile-time constraint for APIs which require identity may be introduced separately.
 
 ##### MFVC and Smart Casts
 
