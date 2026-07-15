@@ -51,6 +51,10 @@ Representing such data as `value class`es rather than ordinary reference classes
 
 This is why it is desirable to migrate as many such classes as possible to `value class`es.
 
+The standard library already contains classes that behave like values — they are immutable,
+have no meaningful identity, and are candidates for eventually becoming `value class`. Examples
+include `Pair`, `Triple`, and various result/wrapper types.
+
 Kotlin currently supports a very limited subset of `value class`es: inline `value class`es with a single underlying field.
 Their main purpose is to create type-safe wrappers around existing types being transparent in the runtime.
 Many libraries and frameworks (`kotlinx.serialization`, `Spring`) adopted the usage and embed the underlying field, keeping safe wrapper only on the source code level.
@@ -78,10 +82,6 @@ However, the process of migrating existing classes to `value class` is a breakin
 
 The problems 2 and 3 are the valid reasons for the class not to become a `value class`.
 On the other hand, the first one can and should be mitigated.
-
-The standard library already contains classes that behave like values — they are immutable,
-have no meaningful identity, and are candidates for eventually becoming `value class`. Examples
-include `Pair`, `Triple`, and various result/wrapper types.
 
 ## The migration problem
 
