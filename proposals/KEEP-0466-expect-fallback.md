@@ -3,7 +3,7 @@
 * **Type**: Design proposal
 * **Author**: Alejandro Serrano
 * **Contributors**: 
-* **Discussion**: 
+* **Discussion**: [KEEP-494](https://github.com/Kotlin/KEEP/discussions/494)
 * **Status**: In progress
 * **Related YouTrack issues**: [KT-20427](https://youtrack.jetbrains.com/issue/KT-20427/Allow-expect-declarations-with-a-default-implementation)
 
@@ -25,14 +25,14 @@ not actualize such expect implementation.
 ## Table of contents
 
 * [Abstract](#abstract)
-    * [TL;DR](#tldr)
+  * [TL;DR](#tldr)
 * [Table of contents](#table-of-contents)
 * [Motivation](#motivation)
-    * [Design goals](#design-goals)
-    * [Competing approaches](#competing-approaches)
-    * [Design decisions](#design-decisions)
+  * [Design goals](#design-goals)
+  * [Competing approaches](#competing-approaches)
+  * [Design decisions](#design-decisions)
 * [Proposal](#proposal)
-    * [Potential extensions](#potential-extensions)
+  * [Potential extensions](#potential-extensions)
 
 ## Motivation
 
