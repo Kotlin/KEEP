@@ -55,31 +55,29 @@ Kotlin currently supports a very limited subset of `value class`es: inline `valu
 Their main purpose is to create type-safe wrappers around existing types being transparent in the runtime.
 Many libraries and frameworks (`kotlinx.serialization`, `Spring`) adopted the usage and embed the underlying field, keeping safe wrapper only on the source code level.
 Such a behavior is not acceptable for general purpose value classes.
-Due to this and other restrictions, far not all existing classes can be marked as `value class` while only inline `value class`es are supported.
+As a result, many classes that should have been `value` cannot be marked as such and remain ordinary reference classes.
 
 There are plans to support [full `value class`es](https://github.com/Kotlin/KEEP/blob/69d675e8a15f66ff6b3dace70b2d45bc3d6ad26a/proposals/KEEP-0454-better-immutability-value-classes-MFVC.md) in the future.
-These value classes behave similarly to `data class`es, but have no identity, component functions, copy function.
-They support multiple fields, abstract/sealed classes. Read more about them in the dedicated KEEP.
-They are the main target to migrate the existing immutable classes to.
+Unlike the currently supported inline `value class`es, they lift exactly the restrictions that blocked the data use-cases:
+* May have multiple fields.
+* Are not embedded into the underlying single field by libraries and frameworks, e.g. `kotlinx.serialization`, `Spring`.
+* Do not change the ABI and do not spoil Java interoperability.
+
+In other respects they behave like `data class`es without identity, component functions, or a `copy` function,
+but with name-based destructuring and copy vars.
+
+They also may be `abstract`/`sealed`.
+
+This makes full `value class`es the natural target for the value-like classes that could not be expressed before, and people would want to migrate their existing classes to them. Read more about them in the dedicated KEEP.
 
 However, the process of migrating existing classes to `value class` is a breaking change for several reasons:
 1. The mentioned restrictions regarding identity operations might break existing code.
-2. Currently existing `@JvmInline` value classes support only a single field.
-3. Currently existing `@JvmInline` value classes cannot be abstract/sealed.
+2. The `open` classes cannot be migrated because of the unclear semantics of the generated `equals`/`hashCode`/`toString` methods similar to `data class`es.
+3. The `var`-based data classes cannot be migrated because of the mutability restrictions.
 
-When migration to the existing inline `value class` is theoretically possible (the mentinioned problems do not apply),
-the following problems are still present:
-1. Change in the behavior of `kotlinx.serialization`, `Spring` and other frameworks which have special handling for inline `value class`es. 
-2. ABI change on JVM.
-3. Worse interoperability with Java.
 
-It stops users from migrating to inline `value class`es.
-
-Since only problem 3 can be mitigated (with `@JvmExposeBoxed`), the scope of the rest of the proposal is the migration to the full `value class`es.
-
-The only problem that still remains for full `value class`es is identity-related operation restrictions because:
-* ABI is kept the same (enabling support of [Project Valhalla](https://openjdk.org/projects/valhalla/) on JVM is going to change only the attributes, not descriptors or signatures).
-* The full `value class`es allow multiple fields and can be `abstract`/`sealed`.
+The problems 2 and 3 are the valid reasons for the class not to become a `value class`.
+On the other hand, the first one can and should be mitigated.
 
 The standard library already contains classes that behave like values — they are immutable,
 have no meaningful identity, and are candidates for eventually becoming `value class`. Examples
