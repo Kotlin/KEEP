@@ -40,6 +40,17 @@ Kotlin supports `value class` — a class modifier that strips object identity, 
 instances with the same state are indistinguishable: there is no reliable way to distinguish
 them by reference equality (`===`), `System.identityHashCode`, or synchronization. Thus, such usages are forbidden for them.
 
+A large part of the data programs manipulate is value-like by nature: points, dates, money amounts, ranges, complex numbers, wrappers, and similar types are defined entirely by their contents, and their identity is accidental rather than meaningful.
+Representing such data as `value class`es rather than ordinary reference classes brings several benefits:
+
+- It stops incidental identity operations: accidental `===`, a lock taken on a shared instance, or a cache keyed on identity can no longer silently behave differently from what the value semantics suggest.
+- It enables potential optimizations: value classes can be flattened into their fields and passed without boxing, instead of being heap-allocated and accessed through a pointer.
+- It allows smart-casts to cross module boundaries, since the absence of identity means the value cannot be mutated concurrently between the check and the use.
+- It ensures better concurrency guarantees: without shared mutable identity, instances are safe to publish and share across threads.
+- It provides support for the upcoming features [name-based destructuring](https://github.com/Kotlin/KEEP/blob/main/proposals/KEEP-0438-name-based-destructuring.md) and [copy vars](https://github.com/Kotlin/KEEP/blob/main/proposals/KEEP-0453-better-immutability-value-classes-motivation.md#mutable-value-semantics-and-copy-vars).
+
+This is why it is desirable to migrate as many such classes as possible to `value class`es.
+
 Kotlin currently supports a very limited subset of `value class`es: inline `value class`es with a single underlying field.
 Their main purpose is to create type-safe wrappers around existing types being transparent in the runtime.
 Many libraries and frameworks (`kotlinx.serialization`, `Spring`) adopted the usage and embed the underlying field, keeping safe wrapper only on the source code level.
