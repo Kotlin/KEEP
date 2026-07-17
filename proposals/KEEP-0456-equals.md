@@ -506,15 +506,96 @@ We write `ebt(A)` for the equality type bound of `A`.
 By abuse of language, we say that `T` is the equality type bound of the
 expression `e` when `T` is the equality type bound of the type of `e`.
 
-**Equality checks.** For every expression of the form `e1 == e2`, or `e1 != e2`,
-we check the compatibility of the equality bound type of `e1` and the type of
-`e2`, as defined by the 
-[RULES1 definition](https://youtrack.jetbrains.com/issue/KT-57779#rules1).
+**The two checks.** For every expression of the form `e1 == e2`, or `e1 != e2`,
+we check for two cases: the _definitely wrong_ case, and the _potentially
+wrong_ case. Their naming shows how much confidence we have in the raised
+issues. Note this is just for understanding, in compiler terms both are
+warnings.
 
-If the previous "problematic equals" diagnostic is not triggered, then an
-additional **smart cast** is introduced: if the result of the quality check is
+**Definitely wrong case.** 
+For every expression of the form `e1 == e2`, or `e1 != e2`, we check
+the compatibility (as defined in [RULES1](https://youtrack.jetbrains.com/issue/KT-57779#rules1))
+between:
+
+1. The equality bound type of `e1` and the type of `e2`,
+2. The type of `e1` and the equality bound type of `e2`.
+
+If any of those fail, a warning "This condition is always false."
+(respectively "true" for inequalities) should be reported.
+
+*Example #1.* If we check `e == p`, where `e` is of type `Either<String, Int>`,
+and `p` is an instance of a data class `Point`, we can see that the two
+types are incompatible.
+
+**The need for the other case.** The _definitely wrong_ check is too strict.
+For example, it does not cover the case in which we check `list == set`.
+The reason is that `List` and `Set` are interfaces, so you can always define a
+class implementing both:
+
+```kotlin
+class ListAndSet<out A> : List<A>, Set<A> { ... }
+```
+
+In practice, such comparisons are almost always unintended. Henceforth we
+introduce another check. This may have false positive, since the following
+function will trigger a warning, even though we could call it with 
+`ListAndSet` instances.
+
+```kotlin
+fun test(list: List<Int>, set: Set<Int>) {
+  if (list == set) { ... }  // warning
+}
+```
+
+This is fine, however, since the fix is simply a instance check away,
+
+```kotlin
+fun test(list: List<Int>, set: Set<Int>) {
+  if (set is List && list == set) { ... }  // no warning
+}
+```
+
+**Potentially wrong case.**
+For every expression of the form `e1 == e2`, or `e1 != e2`, we check:
+
+1. Whether the type of `e2` is a subtype of the equality bound type of `e1`,
+2. Whether the type of `e1` is a subtype of the equality bound type of `e2`.
+
+If _both_ are false, we report
+"This condition seems to always be false. Introducing a smart cast may clarify the intent."
+(respectively "true" for inequalities).
+
+_Example #2._ `list == set`, where `list : List<Int>` and `set : Set<Int>`.
+Both types have themselves as their equality bound type. 
+
+First of all, the types are not incompatible, so the "definitely wrong case"
+is not reported. The "potentially wrong case" checks are:
+
+1. Is `List` a subtype of `Set`?
+2. Is `Set` a subtype of `List`?
+
+Both are false, so we issue a warning.
+
+_Example #3._ `list == coll`, where `list : List<Int>` and `coll : Collection<Int>`
+The equality bound type of `Collection` is `Any`. This is a case where we would
+like to _not_ report a problem, since `Collection` is a supertype of `List`.
+
+As in the previous example, the types are not incompatible. The second check
+amounts to answering:
+
+1. Is `List` a subtype of `Any` (equality bound of `Collection`)?
+2. Is `Collection` a subtype of `List`?
+
+The first one is true, so we do not report anything.
+
+**Smart cast.** Whenever none of the diagnostics are triggered, then an
+additional smart cast is introduced: if the result of the quality check is
 true (respectively false for inequality), then `e2` is now known to be instance
 of the equality bound type of `e1`.
+
+Unfortunately, this is not a symmetric procedure, but ultimately the `equals`
+method that gets called is that from `e1`, so it makes sense to only use the
+smart cast from its equality bound type.
 
 **Contracts**. Effectively, the checks work as if the following
 contracts were present (where `A` represents the type of `e1`).
@@ -540,11 +621,6 @@ to the operator.
 1. The compiler should resolve the call following the usual rules,
 2. If the call is ultimately resolved to the `equals(Any?)` overload, the
    checks described in this section should be performed.
-
-**(Lack of) symmetry.** Unfortunately, the definition above is not symmetric:
-if `e1` defines strict equality but `e2` does not, then `e1 == e2` leads to an 
-error, but `e2 == e1` does not. This ultimately boils down to the fact that one 
-is translated as `e1.equals(e2)` and the other as `e2.equals(e1)`.
 
 ### Standard library
 
