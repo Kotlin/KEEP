@@ -5,6 +5,7 @@
 * **Status**: Experimental in 2.4.20
 * **Prototype**: Implemented
 * **Target issues**: [KT-10380](https://youtrack.jetbrains.com/issue/KT-10380), [KT-30270](https://youtrack.jetbrains.com/issue/KT-30270)
+* **Discussion**: [#495](https://github.com/Kotlin/KEEP/discussions/495)
 
 ## Summary
 
