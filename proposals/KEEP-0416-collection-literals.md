@@ -24,19 +24,19 @@ In the simplest form, if users want to create a collection, instead of writing `
   - [Collection literals in annotations](#collection-literals-in-annotations)
 - [Concerns](#concerns)
 - [Overload resolution motivation](#overload-resolution-motivation)
+  - [Ambiguity between standard collection-like shapes](#ambiguity-between-standard-collection-like-shapes)
   - [Overload resolution and type inference](#overload-resolution-and-type-inference)
   - [Operator function `of` restrictions](#operator-function-of-restrictions)
   - [Operator function `of` allowances](#operator-function-of-allowances)
-- [Fallback rule. What if `Companion.of` doesn't exist](#fallback-rule-what-if-companionof-doesnt-exist)
-- ["Contains" optimization](#contains-optimization)
-- [Similarities with `@OverloadResolutionByLambdaReturnType`](#similarities-with-overloadresolutionbylambdareturntype)
+- [Fallback rule. What if no eligible `of` exists](#fallback-rule-what-if-no-eligible-of-exists)
+  - [No fallback for mutable collections](#no-fallback-for-mutable-collections)
 - [Feature interactions](#feature-interactions)
-  - [Feature interaction with `@OverloadResolutionByLambdaReturnType` \#1](#feature-interaction-with-overloadresolutionbylambdareturntype-1)
-  - [Feature interaction with `@OverloadResolutionByLambdaReturnType` \#2](#feature-interaction-with-overloadresolutionbylambdareturntype-2)
+  - [Feature interaction with eager lambda analysis](#feature-interaction-with-eager-lambda-analysis)
   - [Feature interaction with flexible types](#feature-interaction-with-flexible-types)
   - [Feature interaction with intersection types](#feature-interaction-with-intersection-types)
 - [Similar features in other languages](#similar-features-in-other-languages)
-- [Interop with the Java ecosystem](#interop-with-the-Java-ecosystem)
+- [Interop with the Java ecosystem](#interop-with-the-java-ecosystem)
+- [Interop with Swift](#interop-with-swift)
 - [Tuples](#tuples)
 - [Performance](#performance)
   - [Performance. Companion object allocation](#performance-companion-object-allocation)
@@ -752,8 +752,8 @@ class List<T> {
 }
 ```
 
-**Allowance 4.**
-Java static `of` members are perceived as `operator fun of` if they satisfy the above restrictions.
+> [!NOTE]
+> Java static `of` members are discussed in the [Interop with the Java ecosystem](#interop-with-the-java-ecosystem) section.
 
 ## Fallback rule. What if no eligible `of` exists
 
@@ -853,118 +853,15 @@ fun main() {
 }
 ```
 
-## "Contains" optimization
-
-Collection literals bring a good use case:
-```kotlin
-if (readlnOrNull() in ["y", "Y", "yes", "Yes", null]) {
-    // ...
-}
-```
-
-Since it's quite a common use case, it'd be neat if the compiled output (bytecode, native binary, JavaScript, etc.) didn't contain unnecessary collection allocations.
-
-The proposal is to generate an output which would be equivalent to:
-```kotlin
-val tmp = readlnOrNull()
-val tmp1 = "y"
-val tmp2 = "Y"
-val tmp3 = "yes"
-val tmp4 = "Yes"
-val tmp5 = null
-if (tmp == tmp1 || tmp == tmp2 || tmp == tmp3 || tmp == tmp4 || tmp == tmp5) {
-    // ...
-}
-```
-
-For the `x in [y1, y2, y3, ...]` code pattern, the IDEs should also try to detect duplicated elements and issue a warning if there are some.
-
-## Similarities with `@OverloadResolutionByLambdaReturnType`
-
-> The section is added for the sake of mental model clarity and understanding.
-> You can skip it.
-
-The suggested algorithm of overload resolution for collection literals shares similarities with [`@OverloadResolutionByLambdaReturnType`](https://kotlinlang.org/api/core/kotlin-stdlib/kotlin/-overload-resolution-by-lambda-return-type/).
-
-Similar to how "the guts" of the lambda (the type of the return expression) are analyzed for the sake of the `outerCall` overload resolution,
-the guts of collection literal (elements of the collection literal) are analyzed for the same purpose.
-The big difference though is that analysis of the collection literal guts doesn't depend on some *input types* coming from the signature of the particular `outerCall`,
-while in the case of lambdas it's different.
-You need to know the types of the lambda parameters (the *input types*) to infer the return type of the lambda.
-
-That's why in the case of collection literals, we can jump right into the analysis of its elements, and only postpone the overload resolution of the `operator fun of` function.
-
-Another big difference is what stage the improved overload resolution by lambda return type or by collection literal element type kicks in.
-
-Improved overload resolution by collection literal element type naturally merges itself into the first stage of overload resolution (candidates filtering), where it logically belongs to.
-Contrary, `@OverloadResolutionByLambdaReturnType` is a separate stage of overload resolution that kicks in after choosing the most specific candidate.
-
-The fact that `@OverloadResolutionByLambdaReturnType` is just slapped on top of regular overload resolution algorithm can be seen in the following example:
-```kotlin
-interface Base
-object A : Base
-object B : Base
-
-@OptIn(kotlin.experimental.ExperimentalTypeInference::class)
-@OverloadResolutionByLambdaReturnType
-@JvmName("mySumOf2")
-fun mySumOf(body: () -> Base) = Unit // (1)
-
-@OptIn(kotlin.experimental.ExperimentalTypeInference::class)
-@OverloadResolutionByLambdaReturnType
-@JvmName("mySumOf3")
-fun mySumOf(body: () -> B) = Unit // (2)
-
-fun main() {
-    mySumOf({ A }) // Actual: resolve to (2). ARGUMENT_TYPE_MISMATCH. Actual type is A, but B was expected
-                   // Expected: resolve to (1). Green code
-}
-```
-
-Collection literals don't suffer from this problem.
+> Note: if we see there are important use cases which would benefit from having a mutable fallback, we could add it then.
 
 ## Feature interactions
 
-### Feature interaction with `@OverloadResolutionByLambdaReturnType` \#1
+### Feature interaction with eager lambda analysis
 
-```kotlin
-@OptIn(kotlin.experimental.ExperimentalTypeInference::class)
-@OverloadResolutionByLambdaReturnType
-@JvmName("mySumOf1")
-fun mySumOf(body: List<() -> Int>) = Unit // (1)
-
-@OptIn(kotlin.experimental.ExperimentalTypeInference::class)
-@OverloadResolutionByLambdaReturnType
-@JvmName("mySumOf2")
-fun mySumOf(body: List<() -> Long>) = Unit // (2)
-
-fun main() {
-    mySumOf([{ 1L }])
-}
-```
-
-Technically, since collection literal elements are analyzed almost like regular arguments,
-`@OverloadResolutionByLambdaReturnType` in the above case could make the `mySumOf` to resolve to (2).
-
-`@OverloadResolutionByLambdaReturnType` is an experimental feature.
-To avoid potential future stabilization complications,
-we should make sure that the example above either results in `OVERLOAD_RESOLUTION_AMBIGUITY` or is prohibited in some way
-(though it's yet unclear how to prohibit it).
-
-### Feature interaction with `@OverloadResolutionByLambdaReturnType` \#2
-
-We can combine collection literal and `@OverloadResolutionByLambdaReturnType` in reverse order.
-
-```kotlin
-@OverloadResolutionByLambdaReturnType fun foo(body: () -> List<Int>) = Unit
-@OverloadResolutionByLambdaReturnType fun foo(body: () -> Set<Int>) = Unit
-
-fun main() {
-    foo { [1, 2, 3] }
-}
-```
-
-The example is expected to fail to compile because when we analyze lambda's last expression, we don't know the lambda's return type.
+> [!NOTE]
+> The interaction between collection literals and eager lambda analysis (ELA) needs a separate design pass.
+> This section should specify whether and how lambdas inside collection literals participate in ELA, and how collection literals are handled in lambda result positions.
 
 ### Feature interaction with flexible types
 
@@ -976,28 +873,28 @@ In practice, there are only four possible cases of flexible types:
 - Mutability. `MutableList..List`
 - `dynamic` in Kotlin/JS. `Nothing..Any?`
 
-The question is what bound should we search `.Companion.of` function in?
+The question is what bound should be used to search for an eligible `of` function.
 
 **For nullability**, it doesn't matter since `T` and `T?` both have the same static scope.
 
 **For Array variance**, as for nullability, it doesn't matter since `Array<T>` and `Array<out T>?` both have the same static scope.
 
-**For mutability**, we think that it's better to choose an immutable type (upper bound).
-The arguments are:
-1. Kotlin favors immutability over mutability. If users want to pass a mutable list, they can pass it explicitly via `MutableList.of()`.
-2. Even if users were to write the code in modern Java, they would use `java.lang.List.of()`, which returns a read-only list.
+**For mutability**, the current implementation chooses the mutable lower bound.
+This is a safer runtime choice because it avoids some failures that would happen if the compiler constructed an immutable/read-only collection where mutable runtime behavior is expected.
 
-The only counterargument is that `MutableList` will crash in fewer cases at runtime.
-However, we believe that crashing in such cases is acceptable, as it's better to be explicit about mutability.
+> [!NOTE]
+> This decision is not final.
+> Earlier versions of this KEEP proposed using the immutable upper bound instead, and we should rediscuss the choice during the stabilization period.
 
 **For `dynamic`**, there are two options.
-Either fall back to `List` or resolve `.Companion.of` at runtime.
-We think that resolving `.Companion.of` is too implicit, and it might lead to accidental runtime failures because of that.
+Either use the default `kotlin.List` fallback through the upper bound `Any` or resolve an eligible `of` function at runtime.
+We think that resolving `of` at runtime is too implicit, and it might lead to accidental runtime failures because of that.
 In JavaScript, square brackets always return an `Array`.
-Following the principle of least astonishment, it's proposed to fall back to `List`.
+Following the principle of least astonishment, it's proposed to use the default `kotlin.List` fallback.
 
-All those special cases can be generalized to the common rule that flexible types are treated as if their upper bound was used instead of the flexible type.
-For the `dynamic` type, it's true, because we fall back to `Any`, and then we behave identical to `val foo: Any = [expr1, expr2]` example.
+Except for mutability, those special cases can be generalized to the common rule that flexible types are treated as if their upper bound was used instead of the flexible type.
+For mutability, the current implementation uses the lower bound as described above.
+For the `dynamic` type, the upper-bound rule also matches the proposed behavior: we use the upper bound `Any`, and then behave identically to `val foo: Any = [expr1, expr2]`, where the default `kotlin.List` fallback applies.
 
 ### Feature interaction with intersection types
 
@@ -1124,8 +1021,55 @@ Given that we don't support extension `operator fun of`, it becomes more importa
 We hope that the JVM ecosystem will follow the [convenience factory methods](https://openjdk.org/jeps/269) pattern that Java started.
 For example, one can already find convenience factory `of` methods in popular Java libraries such as Guava.
 
-We perceive Java static `of` function as an `operator fun of` function only if it follows the restrictions mentioned above.
+Java static `of` members are not considered for collection literals in the current experimental implementation.
+
+If Java static `of` support is added, the proposed starting point is to perceive a Java static `of` function as an `operator fun of` function only if it follows the restrictions mentioned above.
 All the restrictions are reasonable, and we think that all collection-builder-like `of` functions will naturally follow those restrictions.
+
+> [!NOTE]
+> This decision is not final.
+> We could change which Java `of` functions are considered for collection literal purposes.
+
+Java static members are inherited only if they come from classes.
+Kotlin respects that and behaves in the same way as Java does:
+
+```java
+// IBase.java
+public interface IBase { public static IBase of(int... x) { return null; } }
+// Base.java
+public class Base { public static Base of(int... x) { return null; } }
+// ImplementsInterface.java
+public class ImplementsInterface implements IBase {}
+// ExtendsClass.java
+public class ExtendsClass extends Base {}
+// Usage.java
+public class Usage {
+    public static void main(String[] args) {
+        ExtendsClass.of(); // green
+        ImplementsInterface.of(); // red
+    }
+}
+// usage.kt
+fun main() {
+    ExtendsClass.of() // green
+    ImplementsInterface.of() // red
+}
+```
+
+If this interaction is supported in the future, whether we follow Kotlin or Java rules for `of` factory member inheritance remains an open question.
+
+```kotlin
+fun main() {
+    val a: Base = [1, 2] // red in the current implementation
+                         // green if Java static `of` support is added
+    val b: ExtendsClass = [1, 2] // red in the current implementation
+                                 // red if Java static `of` support is added: inherited Base.of returns Base, not ExtendsClass
+                                 // or
+                                 // red if Java static `of` support is added: no `of` inherited
+    val c: ImplementsInterface = [1, 2] // red in the current implementation
+                                        // red if Java static `of` support is added: interface static members are not inherited
+}
+```
 
 ## Interop with Swift
 
@@ -1135,12 +1079,12 @@ At this stage, we are only concerned with exporting Kotlin declarations to make 
 
 In Swift language, collection literals are expressed via [ExpressibleByArrayLiteral](https://developer.apple.com/documentation/swift/expressiblebyarrayliteral) and [ExpressibleByDictionaryLiteral](https://developer.apple.com/documentation/swift/expressiblebydictionaryliteral) protocols.
 The target type should conform to these protocols.
-The `operator fun of` function that we define in this KEEP is almost\* compatible with Swift's `ExpressibleByArrayLiteral` protocol.
-That's why we can expose the majority of `operator fun of` functions as `ExpressibleByArrayLiteral`.
+The `operator fun of` function that we define in this KEEP is conceptually close to Swift's `ExpressibleByArrayLiteral` protocol.
 
-The only part which is incompatible is the possibility to express `NonEmptyList` via Kotlin's collection literals.
-Luckily, such declarations are easily detectable in Kotlin.
-When detected, we should restrain from exposing such types as `ExpressibleByArrayLiteral`.
+> [!NOTE]
+> Exporting Kotlin `operator fun of` declarations as Swift `ExpressibleByArrayLiteral` conformances is not supported yet.
+> If Swift export grows support for this interaction, eligible `of` declarations could be considered for such export.
+> Non-empty collection literals are an important mismatch because Swift array literals can be empty, so such declarations would need explicit rules.
 
 ## Tuples
 
