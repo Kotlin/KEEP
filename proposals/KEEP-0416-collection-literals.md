@@ -257,9 +257,11 @@ But in the KEEP, more positions were considered to have the expected type.
 Unfortunately, [we can't do that](#rejected-proposal-more-positions-with-the-definite-expected-type) for the collection literals proposal.
 
 **Definition.**
-`Type` *static scope* is the set that contains member callables (functions and properties) of `Type.Companion` type (`Type.Companion` is a companion object),
-or static members of the type if the type is declared in Java.
-(Extension on `Type.Companion` are excluded on purpose)
+`Type` *static scope* is the set that contains member callables (functions and properties)
+declared in companion blocks of `Type`, member callables of `Type.Companion`
+when `Type.Companion` is a companion object, or static members of the type if
+the type is declared in Java.
+(Companion extensions and extensions on `Type.Companion` are excluded on purpose.)
 
 Before the collection literal could be used at the use-site, an appropriate type needs to declare `operator fun of` function in its static scope.
 The `operator fun of` functions must adhere to [the restrictions](#operator-function-of-restrictions).
@@ -571,7 +573,8 @@ fun main() {
 
 **Restriction 1.**
 Extension `operator fun of` functions are forbidden.
-All `operator fun of` functions must be declared as member functions of the target type Companion object.
+All `operator fun of` functions must be declared as member functions of the target type companion object,
+or in a companion block of the target type.
 ```kotlin
 class Foo { companion object }
 operator fun Foo.Companion.of(vararg x: Int) = Foo() // Forbidden
@@ -608,8 +611,8 @@ class Foo {
 
 class NonEmptyList {
     companion object {
-        operator fun of(first: Int, vararg rest: Int): Foo = Foo()
-        operator fun of(first: Int): Foo = Foo()
+        operator fun of(first: Int, vararg rest: Int): NonEmptyList = NonEmptyList()
+        operator fun of(first: Int): NonEmptyList = NonEmptyList()
     }
 }
 ```
@@ -702,11 +705,17 @@ The supportive example is the same as in restriction 3.
 The nullability restriction is also important for [feature interaction with intersection types](#feature-interaction-with-intersection-types)
 
 **Restriction 9.**
-Forbid simultaneous `operator fun of` and `operator fun get`.
-See [the dedicated section for more details](#rejected-proposal-self-sufficient-collection-literals-with-defined-type).
+Forbid simultaneous eligible `operator fun of` declarations in the companion object and in companion blocks of the same target type.
+Otherwise, a `vararg` candidate from the companion block would win over any candidate from the companion object.
 
 **Restriction 10.**
 `operator fun of` are not allowed to use parameters with default values.
+
+**Restriction 11.**
+`operator fun of`s are not allowed to have different suspendabilities, they should all be `suspend` or all be not `suspend`.
+
+** Restriction 12.**
+Contracts are not allowed in `operator fun of`s.
 
 ### Operator function `of` allowances
 
@@ -719,13 +728,13 @@ Use case:
 ```kotlin
 class Array<T> {
     companion object {
-        operator fun inline <reified T> of(vararg elements: T): Array<T> /*the implementation is generated*/
+        inline operator fun <reified T> of(vararg elements: T): Array<T> /*the implementation is generated*/
     }
 }
 ```
 
 **Allowance 2.**
-The operator is allowed to be `suspend` or `tailrec`.
+The operator is allowed to be `suspend`, `tailrec`, or `infix` where regular modifier restrictions allow it.
 
 The only operators that are not allowed to be `suspend`, represent properties: `provideDelegate`, `getValue`, `setValue`,
 because properties are meant to be lightweight.
@@ -1186,10 +1195,13 @@ All the mentioned numbers can be seen in the raw benchmark data, that can be fou
 ### Performance. Companion object allocation
 
 There is one more potential performance issue: `Companion` object allocation.
-We haven't taken measurements,
-but in practice, it may well be the case that we need to release [the statics proposal](./KEEP-0427-static-member-type-extension.md) before making collection literals stable.
+We haven't taken measurements.
 
-In that case, we could ask users to declare `operator fun of` as a static function instead of `companion object` function.
+The expected stable path is to use [companion blocks](https://github.com/Kotlin/KEEP/blob/master/proposals/KEEP-0449-companions-block-extension.md) for stdlib collection `of` functions.
+Companion block members are expected to compile to static members on supported platforms, so `kotlin.collections.List.of(...)` should not require a `Companion` object allocation.
+
+Until companion blocks and stdlib `of` functions are available, user-defined collection literals can still be expressed with `companion object` `operator fun of` declarations.
+Before stabilization, we should validate whether this has any measurable performance impact for user-defined collection literals.
 
 ## IDE support
 
@@ -1257,7 +1269,8 @@ Others, not collections, but things that could be literals of their own
 
 ## Change to stdlib
 
-The following API change is proposed to stdlib:
+The final API shape depends on [companion blocks](https://github.com/Kotlin/KEEP/blob/master/proposals/KEEP-0449-companions-block-extension.md).
+Once companion blocks are stabilized, the following API change is proposed to stdlib:
 ```diff
 diff --git a/libraries/stdlib/src/kotlin/Collections.kt b/libraries/stdlib/src/kotlin/Collections.kt
 index e692a8c05ede..7509cc55b9c6 100644
@@ -1268,7 +1281,7 @@ index e692a8c05ede..7509cc55b9c6 100644
       */
      public fun subList(fromIndex: Int, toIndex: Int): List<E>
 +
-+    public companion object {
++    public companion {
 +        public operator fun <T> of(vararg elements: T): List<T>
 +        public operator fun <T> of(element: T): List<T>
 +        public operator fun <T> of(): List<T>
@@ -1279,18 +1292,17 @@ index e692a8c05ede..7509cc55b9c6 100644
 ```
 
 The analogical API changes are proposed in the following classes:
-- `kotlin.collections.ArrayList`
 - `kotlin.collections.MutableList`
 - `kotlin.collections.Set`
-- `kotlin.collections.HashSet`
-- `kotlin.collections.LinkedHashSet`
 - `kotlin.collections.MutableSet`
 - `kotlin.sequences.Sequence`
 - `kotlin.Array`, `kotlin.IntArray`, `kotlin.LongArray`, `kotlin.ShortArray`, `kotlin.UIntArray` etc.
 
+Until companion blocks are stabilized and these members are added to stdlib, collection literals can still work through the corresponding factory functions.
+
 Please note that on JVM, `kotlin.collections.List` is a mapped type.
 Which means that we cannot change the runtime `java.util.List`.
-It's suggested to do mapped `companion object` in the way similar to `Int.Companion` (which maps to `kotlin.jvm.internal.IntCompanionObject`).
+It's suggested to implement the mapped companion block in the way similar to `Int.Companion` (which maps to `kotlin.jvm.internal.IntCompanionObject`).
 
 ### Semantic differences between Kotlin and Java factory methods
 
@@ -1540,8 +1552,10 @@ The proposal was to allow writing `List [1, 2]`.
 For now, the proposal was rejected because users can anyway desugar `[1, 2]` to `listOf(1, 2)` currently, or `kotlin.collections.List.of(1, 2)` once companion blocks are available and Kotlin collections introduce `of` functions.
 
 Note that it's possible to abuse `operator fun get` (which could be an extension function) to achieve `List [1, 2]` syntax.
-We want to reserve that syntax, that's why it's proposed to forbid to simultaneously declare `operator fun get` and `operator fun of`.
-Since `operator fun of` can't be declared as an extension function, it's always possible to detect simultaneous declaration of the operators.
+This means that if we ever revisit self-sufficient collection literals, the syntax will have to coexist with already valid `get`-based code.
+We cannot reliably reserve the syntax today by forbidding simultaneous `get` and `of` declarations:
+`get` may come from another library compiled against an older version of the type that did not have `of`, and it may also be declared as a broad extension on `Any` or on a common supertype of the companion object.
+If we ever support self-sufficient collection literals, we should define dedicated ambiguity-resolution rules for such interactions.
 
 ### Rejected proposal: use improved overload resolution algorithm only to refine non-empty overload candidates set on the fixated tower level
 
