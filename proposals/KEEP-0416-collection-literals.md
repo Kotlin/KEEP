@@ -354,7 +354,7 @@ The restrictions and the overload resolution algorithm suggested further will he
 -   `List<String>` vs `Set<String>` typically emerges when one of the overloads is the *main overload*, and another one is just a convenience overload that delegates to the main overload.
     Such overloads won't be supported because it's generally not possible to know which of the overloads is the main overload,
     and because collection literal syntax doesn't make it possible to syntactically distinguish `List` vs `Set`.
-    But if we ever change our mind, [it's possible to support `List` vs `Set` kind of overloads](#theoretical-possibility-to-support-List-vs-Set-overloads-in-the-future) in the language in backwards compatible way in the future.
+    But if we ever change our mind, [it's possible to support `List` vs `Set` kind of overloads](#theoretical-possibility-to-support-list-vs-set-overloads-in-the-future) in the language in backwards compatible way in the future.
 -   `List<String>` vs `List<File>` is self-explanatory (for example, consider the `flushFiles` example above).
     Such overloads should be and will be supported.
 -   `List<String>` vs `Set<File>`. Both inner and outer types are different.
@@ -362,6 +362,45 @@ The restrictions and the overload resolution algorithm suggested further will he
     The pattern may emerge accidentally when different overloads come from different packages.
     Or when users don't know about `@JvmName`, so they use different outer types to circumvent `CONFLICTING_JVM_DECLARATIONS`.
     This pattern will be supported just because of the general approach we are taking that distinguishes inner types.
+
+### Ambiguity between standard collection-like shapes
+
+There is another important outer-type ambiguity in Kotlin standard library APIs:
+`Iterable<T>` vs `Sequence<T>` vs `Array<out T>`.
+Several stdlib APIs provide overloads for more than one of these shapes, and collection
+literal syntax does not identify which container shape is intended.
+
+For example, `plus` on collections has overloads that can add elements from an array,
+an iterable, or a sequence:
+
+```kotlin
+operator fun <T> Iterable<T>.plus(elements: Array<out T>): List<T>
+operator fun <T> Iterable<T>.plus(elements: Iterable<T>): List<T>
+operator fun <T> Iterable<T>.plus(elements: Sequence<T>): List<T>
+```
+
+Because operator calls participate in ordinary overload resolution after operator
+expansion, code like this is effectively resolved as `optInList.plus([...])`:
+
+```kotlin
+optInList + ["kotlin.ExperimentalUnsignedTypes"]
+```
+
+In the current implementation, the collection literal can be considered for several
+of those parameter shapes, and the compiler does not define a preference between
+`Array`, `Iterable`, and `Sequence`. As a result, this kind of call is ambiguous
+and does not compile.
+
+This is intentional for the first version. A hard-coded preference between these
+stdlib shapes would be observable in overload resolution and could make the feature
+harder to evolve. Possible future directions include:
+
+- defining a general priority among collection-literal target shapes;
+- extending fallback so an otherwise ambiguous collection literal is typed using the default `kotlin.List` fallback,
+  which would effectively prefer overloads accepting `Iterable`;
+- introducing syntax for explicitly typed collection literals;
+- adding targeted library or language annotations for APIs that want one overload
+  to be preferred for collection literals.
 
 ### Overload resolution and type inference
 
@@ -393,28 +432,36 @@ Given the following example: `outerCall([expr1, [expr2], expr3, { a: Int -> }, :
 similar to lambdas and callable references, collection literal expression type inference is postponed.
 Contrary, elements of the collection literal are analyzed in the way similar to how other arguments of `outerCall` are analyzed
 (in [so-called *dependent mode*](https://github.com/JetBrains/kotlin/blob/master/docs/fir/inference.md)), which means:
-1.  If collection literal elements are lambdas, or callable references, their analysis is postponed.
+1.  If collection literal elements are lambdas, their analysis is postponed.
     Only the number of lambda parameters and lambda parameter types (if specified) are considered for overload resolution of `outerCall`.
-2.  If collection literal elements are collection literals themselves, then we descend into those literals and recursively apply the same rules.
-3.  All other collection literal elements are *plain arguments/elements*, and they are analyzed in [so-called *dependent mode*](https://github.com/JetBrains/kotlin/blob/master/docs/fir/inference.md).
+2.  If collection literal elements are callable references, they are resolved eagerly enough to contribute information to the constraint system of the surrounding collection literal,
+    similarly to how callable references are handled as arguments of regular function calls
+    ([bidirectional resolution for callable calls](https://kotlinlang.org/spec/overload-resolution.html#bidirectional-resolution-for-callable-calls)).
+3.  If collection literal elements are collection literals themselves, then we descend into those literals and recursively apply the same rules.
+4.  All other collection literal elements are *plain arguments/elements*, and they are analyzed in [so-called *dependent mode*](https://github.com/JetBrains/kotlin/blob/master/docs/fir/inference.md).
 
 For every overload candidate, when a collection literal maps to its appropriate `ParameterType`:
-1.  We find `ParameterType.Companion.of(vararg)` function.
-    [operator fun of restrictions](#operator-function-of-restrictions) either guarantee us that the `of` function exists and unique,
-    or [fallback rule](#fallback-rule-what-if-companionof-doesnt-exist) kicks in.
-2.  We remember the parameter of the single `vararg` parameter.
-    We will call it *CLET* (collection literal element type).
-    We also remember the return type of that `ParameterType.of(vararg)` function.
-    We will call it *CLT* (collection literal type).
-3.  At the first stage of overload resolution of `outerCall` (when we filter out inapplicable candidates), we add the following constraints to the constraint system of `outerCall` candidate:
-    1. For each collection literal element `e`, we add `type(e) <: CLET` constraint.
-    2. We also add the following constraint: `CLT <: ParameterType`.
+1.  If `ParameterType` is a fixed top-level type, we use it to analyze the collection literal immediately.
+    1.  We expand the collection literal to a notional `ParameterType.of(...)` call.
+        If there is no `of` available, we attempt to use the [fallback](#fallback-rule-what-if-no-eligible-of-exists).
+    1.  We choose the overload for this `of(...)` call.
+        While choosing this overload, nested collection literals inside the `of(...)` call are not expanded.
+        They are expanded only after the containing `of(...)` overload has already been chosen.
+        The restrictions on `of` guarantee that nested collection-literal expansion cannot help choose the `of` overload:
+        the only relevant piece of information is the number of arguments.
+    1.  From the chosen `of` overload, we remember the parameter type of the single `vararg` parameter.
+        We will call it *CLET* (collection literal element type).
+        We also remember the return type of the chosen `of` overload.
+        We will call it *CLT* (collection literal type).
+    1.  We merge the `of(...)` call's constraint system into the constraint system of the `outerCall` candidate.
+        At the first stage of overload resolution of `outerCall` (when we filter out inapplicable candidates), this contributes constraints equivalent to:
+        1. For each collection literal element `e`, we add `type(e) <: CLET` constraint.
+        1. We also add the following constraint: `CLT <: ParameterType`.
+1.  If `ParameterType` is an unfixed type variable, we leave the collection literal postponed, do not add any further constraints to the constraint system, and do not search for `of` yet.
+    This means candidate applicability will be checked without considering the postponed collection literal.
 
 Once all plain arguments are analyzed (their types are inferred in dependent mode), and all recursive plain elements of collection literals are analyzed,
-we proceed to filtering overload candidates for `outerCall`.
-
-Please note that constraints described above are only added to the constraint system of the `outerCall` and not to constraint system of the `of` function themselves.
-(overload resolution for which will be performed later, once the overload resolution for `outerCall` is done)
+we proceed to filtering overload candidates for `outerCall` using the resulting constraint system.
 
 Example:
 ```kotlin
@@ -444,18 +491,74 @@ fun test() {
 }
 ```
 
-It's important to understand that until we pick the `outerCall` overload, we don't start the full-blown overload resolution process for the nested `of` calls.
-If we did so, it'd lead to exponential complexity of `outerCall` overload resolution.
-Consider the `outerCall([[[1, 2, 3]]])` example.
+Example of postponed collection literals:
+```kotlin
+@JvmName("directStrings")
+fun direct(value: List<String>) = Unit // (1)
+@JvmName("directInts")
+fun direct(value: List<Int>) = Unit // (2)
 
-Once the particular overload for `outerCall` is chosen, we know what definite expected type collection literal maps to.
-We desugar collection literal to `DefiniteExpectedType.of(expr1, expr2, expr3)`, and we proceed to resolve overloads of `DefiniteExpectedType.of` according to regular Kotlin overload resolution rules.
+@JvmName("genericStrings")
+fun <T : List<String>> generic(value: T) = Unit // (3)
+@JvmName("genericInts")
+fun <T : List<Int>> generic(value: T) = Unit // (4)
+
+fun <T> id(value: T): T = value
+
+fun testPostponedLiterals() {
+    direct([1])             // resolves to (2): the literal has the fixed expected type List<Int>
+                            //   the other candidate with the fixed expected type is not applicable
+    generic([1])            // overload resolution ambiguity: the literal expected type is T
+    direct(id([1]))         // overload resolution ambiguity: id postpones the literal with expected type T
+}
+```
+
+For `generic([1])`, both candidates have `T` as the literal expected type.
+The literal is postponed, so its elements do not make candidate (3) inapplicable before the most-specific-candidate step.
+In `direct(id([1]))`, the type variable of `id` has the same effect.
+Consequently, both outer candidates survive applicability checking and neither is more specific.
+
+It's important to understand that until we pick the `outerCall` overload, we don't start the full-blown overload resolution process for still postponed collection literals.
+Only once we've selected the definite candidate, we perform full call completion.
+This is how we handle postponed collection literals during this procedure.
+
+1.  Once we have selected a candidate, when we analyze the postponed collection literal, we try to select its "collection literal representative".
+1.  We collect possible representatives from the upper and lower constraints on `ParameterType`, i.e., collect types which have an `of` factory available.
+    1.  If the resulting set has a single type, we use it as the expected type and handle the call as if `ParameterType` is fixed to that type.
+    1.  If the resulting set has no types, we use the [fallback](#fallback-rule-what-if-no-eligible-of-exists).
+    1.  If the resulting set has two or more types, we cannot choose between two options, and the collection literal is considered ambiguous.
+
+> [!NOTE]
+> The described approach to handling postponed collection literals is experimental and might change in the future, leading to changes in inference and/or resolve.
+
+The following examples cover all three outcomes.
+In every call, the collection literal initially has the unfixed type variable `T` as its expected type and is therefore postponed:
+
+```kotlin
+fun <T> id(value: T): T = value
+fun <T> select(vararg values: T): T = values[0]
+
+fun examples() {
+    // Completion has the upper constraint T <: Set<Int>.
+    // Set is the only collection-literal representative, so its factory is used.
+    val set: Set<Int> = id([1, 2, 3])
+
+    // Completion has the upper constraint T <: Iterable<Int>.
+    // Iterable has no eligible `of`, so the default kotlin.List fallback is used.
+    val iterable: Iterable<Int> = id([1, 2, 3])
+
+    // Completion has Set<Int> <: T, List<Int> <: T, and T <: Collection<Int>.
+    // Both Set and List are possible representatives, so the literal is ambiguous.
+    val ambiguous: Collection<Int> =
+        select(setOf(1), listOf(2), [3]) // Error: ambiguous collection literal
+}
+```
 
 ### Operator function `of` restrictions
 
 **The overall goal of the restrictions:**
 Make it possible to extract type restrictions for the elements of the collection literal without the necessity of the full-blown real overload resolution for `operator fun of` function.
-Given only the outer type `List<Int>`/`IntArray`/`Foo`, we should be able to infer collection literal *element types*.
+Given only the outer type `List<T>`/`IntArray`/`Foo`, we should be able to infer collection literal *element types*.
 We need to know the types for the constraint system of the `outerCall` like in the following example:
 ```
 @JvmName("outerCallFiles")   fun outerCall(set: List<File>): Unit = TODO("not implemented") // (1)
@@ -492,10 +595,6 @@ One and only one overload must declare a `vararg` parameter.
 The `vararg` parameter is the latest parameter of its containing `of` function.
 All parameters that come in front of the `vararg` parameter must all have the same type as the `vararg` parameter,
 or there could be zero parameters in front of the `vararg` parameter (which will be the most popular case).
-
-The overload is considered the main overload, and it's the overload we use to extract type constraints from for the means of `outerCall` overload resolution.
-Please remember that we treat a collection literal argument as a postponed argument (similar to lambdas and callable references).
-First, We do the overload resolution for the `outerCall` and only once a single applicable candidate is found, we use its appropriate parameter type as an expected type for the collection literal argument expression.
 
 Valid examples:
 ```kotlin
