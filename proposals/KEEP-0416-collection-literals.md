@@ -9,7 +9,7 @@
   Marat Akhin,
   Mikhail Zarechenskii
 * **Issue:** [KT-43871](https://youtrack.jetbrains.com/issue/KT-43871)
-* **Status:** In progress
+* **Status:** Experimental since Kotlin 2.4.0
 * **Prototype:** https://github.com/JetBrains/kotlin/tree/bobko/collection-literals
 * **Discussion**: [KEEP-416](https://github.com/Kotlin/KEEP/issues/416)
 
@@ -134,8 +134,17 @@ all of which are hard to measure and subjective, it makes sense to see before/af
 
 // before 5
     it[AnalysisFlags.optIn] = optInList + listOf("kotlin.ExperimentalUnsignedTypes")
-// after 5
+// after 5 (does not work in the current implementation)
     it[AnalysisFlags.optIn] = optInList + ["kotlin.ExperimentalUnsignedTypes"]
+```
+
+> The fifth example does not compile in the current implementation.
+> After operator expansion, `optInList + [...]` is resolved as `optInList.plus([...])`,
+> where the RHS may match several stdlib `plus` overload shapes: element, array,
+> iterable, or sequence.
+> See the [overload resolution discussion](#overload-resolution-motivation) below.
+
+```kotlin
 
 
 // before 6
@@ -158,10 +167,19 @@ all of which are hard to measure and subjective, it makes sense to see before/af
     fun <D> MutableMap<String, MutableSet<D>>.initAndAdd(key: String, value: D) {
         this.compute(key) { _, maybeValues -> (maybeValues ?: mutableSetOf()).apply { add(value) } }
     }
-// after 8
+// after 8 (works in the current implementation, but the behavior may change)
     fun <D> MutableMap<String, MutableSet<D>>.initAndAdd(key: String, value: D) {
         this.compute(key) { _, maybeValues -> (maybeValues ?: []).apply { add(value) } }
     }
+```
+
+> The eighth example depends on collection-literal completion through the surrounding
+> Elvis expression, `apply` call and return expression of the `compute` call lambda.
+> It works in the current implementation, but this inference path is not a stable
+> part of the proposal yet.
+> See the [overload resolution discussion](#overload-resolution-motivation) below.
+
+```kotlin
 
 
 // before 9
@@ -182,6 +200,9 @@ all of which are hard to measure and subjective, it makes sense to see before/af
 **Informally**, the proposal strives to make it possible for users to use collection literals syntax to express user-defined types `val foo: MyCustomList<Int> = [1, 2, 3]`.
 And when the *expected type* (See the definition below) is unspecified, expression must fall back to the `kotlin.List` type: `val foo = [1, 2, 3] // List<Int>`.
 
+The default `kotlin.List` fallback is equivalent to `listOf(expr1, expr2, expr3)` in the current experimental implementation.
+Once [companion blocks](https://github.com/Kotlin/KEEP/blob/master/proposals/KEEP-0449-companions-block-extension.md) are available and Kotlin collections introduce `of` functions, the same fallback is expected to be expressed as `kotlin.collections.List.of(expr1, expr2, expr3)`.
+
 It's proposed to use square brackets because the syntax is already used in Kotlin for array literals inside annotation constructor arguments.
 It's the syntax a lot of programmers are already familiar with coming from other programming languages,
 and because it honors mathematical notation for matrices.
@@ -193,10 +214,11 @@ class MyCustomList<T> {
 
 fun main() {
     val list: MyCustomList<Int> = [1, 2] // is equivalent to:
-    val list: MyCustomList<Int> = MyCustomList.of(1, 2)
+    val explicitList: MyCustomList<Int> = MyCustomList.of(1, 2)
 
-    val list1 = [1, 2] // is equivalent to:
-    val list1 = List.of(1, 2)
+    val inferredList = [1, 2] // is equivalent to:
+    val currentFallback = listOf(1, 2) // currently
+    val futureFallback = kotlin.collections.List.of(1, 2) // once companion blocks are available and Kotlin collections introduce `of`
 }
 ```
 
@@ -245,16 +267,18 @@ The `operator fun of` functions must adhere to [the restrictions](#operator-func
 Once a proper `operator fun of` is declared, the collection literal can be used at the use-site.
 1.  When the collection literal is used in the position of arguments, similarly to lambdas and callable references, collection literal affects the overload resolution of the *outer call*.
     See the section dedicated to [overload resolution](#overload-resolution-motivation).
+    - Annotation array literals are covered by this case: annotation constructor arguments are resolved as ordinary function call arguments.
 2.  When the collection literal is used in the position with definite expected type, the collection literal is literally desugared to `Type.of(expr1, expr2, expr3)`,
     where `Type` is the definite expected type.
 
     The following positions are considered positions with the definite expected type:
     - Explicit `return`, single-expression functions (if type is specified), and last expression of lambdas
-      (except for [@OverloadResolutionByLambdaReturnType cases](#feature-interaction-with-overloadresolutionbylambdareturntype-2))
+      (the interaction with [eager lambda analysis](#feature-interaction-with-eager-lambda-analysis) needs a separate design pass)
     - Assignments and initializations
-    - Annotation entry constructor (e.g. `@Annot([1])`)
-3.  In all other cases, it's proposed to desugar collection literal to `List.of(expr1, expr2, expr3)`.
-    The precise fallback rule is described in a [separate section](#fallback-rule-what-if-companionof-doesnt-exist).
+    - Default values of function parameters
+    - Delegate expressions in interface delegation
+3.  In all other cases, it's proposed to use the default `kotlin.List` fallback described above.
+    The precise fallback rule is described in a [separate section](#fallback-rule-what-if-no-eligible-of-exists).
 
 Some examples:
 ```kotlin
@@ -623,64 +647,48 @@ class List<T> {
 **Allowance 4.**
 Java static `of` members are perceived as `operator fun of` if they satisfy the above restrictions.
 
-Java static members are inherited only if they come from classes.
-Kotlin respects that and behaves in the same way as Java does:
+## Fallback rule. What if no eligible `of` exists
 
-```java
-// IBase.java
-public interface IBase { public static IBase of(int... x) { return null; } }
-// Base.java
-public class Base { public static Base of(int... x) { return null; } }
-// ImplementsInterface.java
-public class ImplementsInterface implements IBase {}
-// ExtendsClass.java
-public class ExtendsClass extends Base {}
-// Usage.java
-public class Usage {
-    public static void main(String[] args) {
-        ExtendsClass.of(); // green
-        ImplementsInterface.of(); // red
-    }
-}
-// usage.kt
-fun main() {
-    ExtendsClass.of() // green
-    ImplementsInterface.of() // red
-}
-```
+The fallback rule is not applied eagerly just because the expected type is not concrete enough, for example, because it is an unfixed type variable.
+In such cases, the compiler keeps the collection literal postponed until full completion and uses the accumulated constraints and type-inference heuristics to choose the collection literal type.
+If the completed constraints determine a concrete expected type, the compiler processes the collection literal according to that type:
+it looks for the corresponding eligible `of` function and uses the fallback only if such `of` function is not available.
 
-The rules for static members inheritance should stay the same for collection literals:
-
-```kotlin
-fun main() {
-    val a: ExtendsClass = [1, 2] // green
-    val a: ImplementsInterface = [1, 2] // red
-}
-```
-
-## Fallback rule. What if `Companion.of` doesn't exist
-
-When the compiler can't find `.Companion.of`, it always falls back to `List.Companion.of`.
+If the expected type is already concrete enough and the compiler can't find an eligible `of` function for that type, it uses the default `kotlin.List` fallback described in the [proposal section](#proposal).
 If later it turns out that `List` can't be subtype of the expected type, the compiler reports type mismatch as usual.
-The fallback rule also affects CLET and CLT during [the overload resolution stage](#overload-resolution-and-type-inference).
+The fallback rule also affects CLET and CLT during [the overload resolution stage](#overload-resolution-and-type-inference), but only after the surrounding constraints allow the compiler to choose the collection literal type.
 
-Examples:
+Examples with concrete expected types:
 ```kotlin
 class Foo
 fun main() {
     val foo: Foo = [1, 2] // type mismatch error
-    val list1: Any = [1, 2] // Green because we fall back to List. The code is desugared to List.of(1, 2)
-    val list2: Iterable<Any> = [1, 2] // Green
-    val list3: Iterable<Int> = [1, 2] // Green
-    val list4: Collection<Int> = [1, 2] // Green
+    val list1: Any = [1, 2] // green because we use the default kotlin.List fallback
+    val list2: Iterable<Any> = [1, 2] // green
+    val list3: Iterable<Int> = [1, 2] // green
+    val list4: Collection<Int> = [1, 2] // green
 }
 ```
 
+This is observable when the useful expected type comes through a surrounding generic call:
+
 ```kotlin
-fun outer(a: Iterable<String>) = Unit // (1)
+fun <T> run(block: () -> T): T = block()
+
+fun main() {
+    val x: Set<Int> = run { [1, 2] } // green: completed as Set<Int>
+}
+```
+
+Similarly, a useful type could come from collection literal elements, and make an applicable fallback win over a non-applicable candidate (with an `of` function):
+
+```kotlin
+fun outer(a: Set<String>) = Unit // (1)
 fun outer(a: Iterable<Int>) = Unit // (2)
 fun main() {
-    outer([1]) // resolves to (2) thanks to fallback. Note that Iterable won't declare `Iterable.Companion.of`
+    outer([1]) // resolves to (2) thanks to the default `kotlin.List` fallback.
+               // note that Iterable does not provide an eligible `of` factory.
+               // candidate (1) has an `of` factory, but is not applicable w.r.t. collection literal elements.
 }
 ```
 
@@ -691,32 +699,16 @@ fun main() {
     // - println(Int)
     // - println(Short)
     // - etc.
-    pritln([1, 2]) // green. Resolves to `println(Any?)`. List is subtype of Any? the fallback is successful
+    println([1, 2]) // green. Resolves to `println(Any?)`; the default `kotlin.List` fallback succeeds because `List<Int>` is a subtype of `Any?`
 }
 ```
 
-```kotlin
-fun <T : List<String>> outer(a: T) = Unit // (1)
-fun <T : List<Int>> outer(a: T) = Unit // (2)
-
-fun outer2(a: List<String>) = Unit // (3)
-fun outer2(a: List<Int>) = Unit // (4)
-
-fun <T> id(t: T): T = t
-
-fun main() {
-    outer([1]) // resolved to (2)
-    outer2([1, 2, 3]) // resolves to (4)
-    outer2(id([1, 2, 3])) // overload resolution ambiguity
-}
-```
-
-**Non-issue 1.**
-Note that type parameters are not yet fixated during applicability checking of overload candidates.
-It means that unconditional fallback to `List` may prospectively dissatisfy type parameter bounds, which sometimes could be puzzling:
+The following example shows why the fallback must wait until full completion when the expected type is an unfixed type variable:
 
 ```kotlin
 class MyList { companion object { operator fun <T> of(vararg elements: T): MyList = TODO() } }
+
+fun <T> id(t: T): T = t
 
 fun <T : MyList> outer1(a: T) = Unit // (1)
 fun <T : List<Int>> outer1(a: T) = Unit // (2)
@@ -727,24 +719,23 @@ fun outer2(a: List<Int>) = Unit // (4)
 fun <T : MyList> outer3(a: T) = Unit
 fun outer4(a: MyList) = Unit
 
-fun <T> id(t: T): T = t
-
 fun main() {
-    outer1([1]) // resolves to (2)
+    outer1([1]) // overload resolution ambiguity
     outer2([1]) // overload resolution ambiguity
 
-    outer3([1]) // red. Type mismatch error
+    outer3([1]) // green
     outer4([1]) // green
-    outer4(id([1])) // red. Type mismatch error
+    outer4(id([1])) // green
 }
 ```
 
-In the example, we manage to pick the overload in the `outer1` case but not in the `outer2` case.
-We think that such examples are synthetic, and it's more important to have the simple fallback rule.
+In the example, falling back to `List` immediately for `outer3([1])` or `outer4(id([1]))` would lose the `MyList` constraint that is available later during completion.
+Keeping the literal postponed lets the compiler use the same surrounding constraints that normal type inference already collects.
 
-**Non-issue 2.**
-We don't plan to declare `.Companion.of` for `MutableCollection` and `MutableIterable`.
-The following example won't work, and we think that it's ok:
+### No fallback for mutable collections
+
+We don't plan to provide eligible `of` functions for `MutableCollection` and `MutableIterable`.
+The following example won't work, and we currently believe it is OK, as we didn't encounter many cases when this would be needed.
 
 ```kotlin
 fun outer(a: MutableCollection<String>) = Unit
@@ -1391,10 +1382,10 @@ It would be desirable to extend the list of positions with the expected type to 
 
 ```kotlin
 fun main() {
-    val foo: List<Long> = List.of(1L, 2)
-    println(foo == [1, 2]) // Fallback to List<Int> according to the current proposal
+    val foo: List<Long> = listOf(1L, 2L)
+    println(foo == [1, 2]) // The default `kotlin.List` fallback produces `List<Int>` according to the current proposal
     when (foo) {
-        [1, 2] -> println("it works!") // Fallback to List<Int> according to the current proposal
+        [1, 2] -> println("it works!") // The default `kotlin.List` fallback produces `List<Int>` according to the current proposal
         else -> error("oh no :(")
     }
 }
@@ -1410,8 +1401,8 @@ The following code prints `false`, unfortunately:
 
 ```kotlin
 fun main() {
-    val foo: List<Long> = List.of(1L, 2)
-    println(foo == List.of(1, 2)) // false
+    val foo: List<Long> = listOf(1L, 2L)
+    println(foo == listOf(1, 2)) // false
 }
 ```
 
@@ -1421,7 +1412,7 @@ Or even consider the following example:
 fun <T> id(t: T): T = t
 
 fun main() {
-    val foo: List<Long> = List.of(1L, 2)
+    val foo: List<Long> = listOf(1L, 2L)
     println(foo == [1, 2]) // "true" if we make equality a position with the expected type
     println(foo == id([1, 2])) // "false" by the current Kotlin rules in any case
 }
@@ -1447,7 +1438,7 @@ fun test() {
 ```
 
 The proposal was to allow writing `List [1, 2]`.
-For now, the proposal was rejected because users can anyway desugar `[1, 2]` to `List.of(1, 2)` or `listOf(1, 2)`.
+For now, the proposal was rejected because users can anyway desugar `[1, 2]` to `listOf(1, 2)` currently, or `kotlin.collections.List.of(1, 2)` once companion blocks are available and Kotlin collections introduce `of` functions.
 
 Note that it's possible to abuse `operator fun get` (which could be an extension function) to achieve `List [1, 2]` syntax.
 We want to reserve that syntax, that's why it's proposed to forbid to simultaneously declare `operator fun get` and `operator fun of`.
