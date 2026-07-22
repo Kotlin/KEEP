@@ -155,6 +155,10 @@ they must first shed `open` from their own declaration or from the class they in
 - **Ranges and progressions.** The progression base classes `IntProgression`, `LongProgression`, `CharProgression` (and the unsigned `UIntProgression`, `ULongProgression`) are `open`, and the ranges inherit from them (`IntRange : IntProgression`, and so on). So *neither* the progressions *nor* the ranges [`IntRange`](https://kotlinlang.org/api/core/kotlin-stdlib/kotlin.ranges/-int-range/), `LongRange`, `CharRange`, `UIntRange`, `ULongRange` can be marked — they would first have to be redesigned as a `sealed`/`abstract` value-class hierarchy, precisely the abstract/sealed support that full value classes add.
 - [`kotlin.io.encoding.Base64`](https://kotlinlang.org/api/core/kotlin-stdlib/kotlin.io.encoding/-base64/) — an immutable configuration (`isUrlSafe`, `isMimeScheme`, `mimeLineLength`, `paddingOption`), but declared `open` (its `Default` companion object extends it), so it is blocked until it is made non-`open`.
 
+- `String` — the class whose content is immutable and fully defined by value. However, identity might be, for example, useful for an equality check hot path.
+
+# Design
+
 ## Naming
 
 The annotation is named **`@WillBecomeValue`**. The name was chosen over three other candidates:
@@ -169,8 +173,6 @@ The annotation is named **`@WillBecomeValue`**. The name was chosen over three o
 - Makes the migration intent explicit: the class *will become* a `value class`, but cannot be one yet due to temporary language restrictions.
 - Explains why identity-sensitive usages produce warnings rather than errors — the class is not a value class *yet*, so the compiler warns rather than forbids.
 - Is unambiguous: it cannot be confused with `value class` itself, unlike `@ValueBased` or `@IdentityFree`.
-
-# Design
 
 ## Annotation declaration
 
