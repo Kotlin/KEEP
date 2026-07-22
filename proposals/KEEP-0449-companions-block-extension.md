@@ -71,6 +71,7 @@ together.
     * [Java Virtual Machine](#java-virtual-machine)
     * [Migration for non-JVM platforms](#migration-for-non-jvm-platforms)
 * [Acknowledgements](#acknowledgements)
+* [Appendix: companion blocks in interfaces](#appendix-companion-blocks-in-interfaces)
 
 
 ## Problems with the status quo
@@ -1431,3 +1432,86 @@ who kindly reviewed preliminary iterations of this proposal.
 We would also like to thank all the members of the community that have
 participated in our usability study, and to Natalia Mishina, who conducted
 the study and provided the findings in a digestible and actionable manner.
+
+## Appendix: companion blocks in interfaces
+
+**Background information.** According to the [JVM specification, section 4.5](https://docs.oracle.com/javase/specs/jvms/se21/html/jvms-4.html#jvms-4.5),
+
+> Fields of interfaces must have their `ACC_PUBLIC`, `ACC_STATIC`, and 
+> `ACC_FINAL` flags set; they may have their `ACC_SYNTHETIC` flag set and must 
+> not have any of the other flags in Table 4.5-A set (JLS §9.3).
+
+In particular, this means we can**not** have **private** fields in interfaces.
+In turn, that means that our compilation strategy for properties
+using backing fields or delegates does not work.
+
+**General idea.** Move the "private state" of the companion block of an
+interface to a (hidden) nested class.
+
+```kotlin
+interface Thing {
+  companion {
+    var currentId: Int = 0
+  }
+}
+```
+
+```java
+public interface Thing {
+  static class Thing$CompanionBlock {
+    private static int _currentId;
+
+    static {
+      _currentId = 0;
+    }
+  }
+
+  static int getCurrentId() {
+    return Thing$CompanionBlock._currentId;
+  }
+
+  static void setCurrentId(int id) {
+    Thing$CompanionBlock._currentId = id;
+  }
+}
+```
+
+**Binary compatibility.** Note that the static accessors still live in the
+interface itself, only the backing fields move to the nested class. 
+The nested class should not leak, ensuring that binary compatibility is respected.
+
+**Restrictions for initialization.** To avoid surprises, we introduce
+restrictions to ensure that the initialization order is not surprising.
+
+_Constants._ The following restrictions do not apply to `const val`, which are
+always part of the class itself, and are compiled in a different way.
+
+* The only exception is visibility, which must be public or internal for 
+  `const val` in interfaces (since the restrictions on fields still apply).
+
+_Companion blocks and objects._ There can be several companion blocks and objects.
+* Each of them turns into a separate nested (potentially inner, in the case of companion object) class.
+* Initialization should respect the order of declaration.
+
+These restrictions do not apply when they all use `@JvmField`, as explained below.
+In that case no nested classes are generated.
+
+_JvmField._ All companion blocks and objects should either mark all of their
+properties with the `@JvmField` annotation or none. 
+* That means that we can understand whether we need to create nested classes or not.
+* Properties marked with `@JvmField` must be public or internal to comply with 
+  the restrictions in the JVM.
+
+We could loosen some of those restrictions, but that would lead to more complicated rules.
+
+**Dropping restrictions for private and internal.** 
+Currently companion members in interfaces cannot be marked as private, 
+following the same restrictions for regular members.
+This restriction is not needed – since static methods do not take part in
+inheritance – and can be dropped altogether.
+
+Note that protected members are still prohibited.
+
+**Reflection.** The following "strange" situation could arise during reflection:
+the backing field of a companion property in an interface may be a field in a
+nested class thereof.
