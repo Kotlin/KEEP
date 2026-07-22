@@ -11,7 +11,7 @@
 * **Issue:** [KT-43871](https://youtrack.jetbrains.com/issue/KT-43871)
 * **Status:** Experimental since Kotlin 2.4.0
 * **Prototype:** https://github.com/JetBrains/kotlin/tree/bobko/collection-literals
-* **Discussion**: [KEEP-416](https://github.com/Kotlin/KEEP/issues/416)
+* **Discussion**: [KEEP-416](https://github.com/Kotlin/KEEP/discussions/496)
 
 Collection literal is a well-known feature among modern programming languages.
 It's a syntactic sugar built-in into the language that allows creating collection instances more concisely and effortlessly.
