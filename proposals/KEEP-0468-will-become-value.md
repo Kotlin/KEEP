@@ -72,7 +72,7 @@ Unlike the currently supported inline `value class`es, they lift exactly the res
 In other respects they behave like `data class`es without identity, component functions, or a `copy` function,
 but with name-based destructuring and copy vars.
 
-They also may be `abstract`/`sealed`.
+Similarly to data classes, value classes can extend interfaces; additionally, they also may be `abstract` / `sealed`.
 
 This makes full `value class`es the natural target for the value-like classes that could not be expressed before,
 and people would want to migrate their existing classes to them.
