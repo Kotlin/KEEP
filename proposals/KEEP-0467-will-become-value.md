@@ -125,12 +125,6 @@ This section lists standard-library classes that are value-like (immutable, with
 
 For contrast, some standard-library types are **already** inline `value class`es and need no migration: `UByte`, `UShort`, `UInt`, `ULong`, [`kotlin.time.Duration`](https://kotlinlang.org/api/core/kotlin-stdlib/kotlin.time/-duration/), and `Result`. Each of them wraps a single field, which is exactly the case the current inline `value class`es already cover.
 
-Not every candidate can carry `@WillBecomeValue` right away.
-Everything in the first two groups below can be annotated **today**:
-each is `final`, shallow-immutable, and has no `open` supertype, so it already passes the [applicability](#applicability) checks.
-The types in the last group are value-like too,
-but **cannot be annotated yet** because a `value class` may be neither `open` nor a subtype of an `open` class —
-they must first shed `open` from their own declaration or from the class they inherit.
 
 **Multi-field values, blocked only by the single-field restriction.** These are ordinary immutable `final` classes that cannot be inline `value class`es today solely because they hold more than one field, so they become expressible only with full (multi-field) value classes:
 
