@@ -235,11 +235,11 @@ identity-sensitive operations are applied to a type annotated with `@WillBecomeV
 The annotation can be applied to:
 - Regular (reference) final classes.
 - Abstract classes and sealed classes, intended as base types.
+- Object declarations.
 
 It **cannot** be applied to:
 - Classes already declared as `value class`.
 - Interfaces (interfaces are common for identity and value classes).
-- `object` declarations (singletons intentionally have identity).
 - Enums (enumerations cannot become value types).
 - Open classes (value classes are not going to be supported to be `open`).
 
