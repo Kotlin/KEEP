@@ -81,8 +81,8 @@ However, the process of migrating existing classes to `value class` is a breakin
 3. The `var`-based data classes cannot be migrated because of the mutability restrictions.
 
 
-The problems 2 and 3 are the valid reasons for the class not to become a `value class`.
-On the other hand, the first one can and should be mitigated.
+To avoid having an immediate breaking change on both declaration- (points 2 and 3) and use-sites (point 1) for such a migration,
+we would like to introduce a mitigation strategy via a dedicated migration process.
 
 ## The migration problem
 
@@ -122,6 +122,8 @@ Kotlin needs the same mechanism for its own migration path, and the JDK's annota
 - `@jdk.internal.ValueBased` is internal to the JDK, while Kotlin needs to support a proper ecosystem-level mechanism.
 
 ## Candidate classes in the standard library
+
+To show this "reference-to-value-based" class migration is actually relevant, let's take a look at Kotlin standard library.
 
 This section lists standard-library classes that are value-like (immutable, with no meaningful identity) and are therefore natural candidates for `@WillBecomeValue` now and for `value class` once [full value classes](https://github.com/Kotlin/KEEP/blob/main/proposals/KEEP-0454-better-immutability-value-classes-MFVC.md) are available.
 
