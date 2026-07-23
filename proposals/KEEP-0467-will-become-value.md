@@ -201,7 +201,7 @@ The only observable difference is that the compiler will issue a warning instead
 Here is a sample:
 ```kotlin
 @WillBecomeValue
-class A(
+class A( // CE: Identity-based equals and/or hashCode will change (or super<Any>.equals/hashCode call)
     var x: Int, // CE: `var`s are forbidden for value classes
     val y: A, // CE: Recursive vqlue class type
     z: Int, // CE: Non-property primary constructor parameters
@@ -214,6 +214,14 @@ a === a // Warning
 synchronized(a) // Warning
 System.identityHashCode(a) // Warning
 ```
+
+### Data classes
+
+`data class`es guarantee absence of primary constructors problems.
+If not overridden explicitly, their `equals` and `hashCode` are also structural and considered safe by the annotation.
+
+[Read more](https://github.com/Kotlin/KEEP/blob/main/proposals/KEEP-0454-better-immutability-value-classes-MFVC.md#migration-between-data-and-value-classes)
+to learn about the migration process of `data class`es.
 
 ## Compiler warnings
 
