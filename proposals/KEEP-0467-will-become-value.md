@@ -58,15 +58,6 @@ include `Pair`, `Triple`, and various result/wrapper types.
 Kotlin currently supports a very limited subset of `value class`es: inline `value class`es with a single underlying field.
 Their main purpose is to create type-safe wrappers around existing types being transparent in the runtime.
 Many libraries and frameworks (`kotlinx.serialization`, `Spring`) adopted the usage and embed the underlying field, keeping safe wrapper only on the source code level.
-```kotlin
-@JvmInline
-value class Id(val string: String) {
-    init {
-        // some checks
-    }
-}
-Json.serialize(Id("ab")) // "ab", not {"string":"ab"}
-```
 Such a behavior is not acceptable for general purpose value classes.
 
 As a result, many classes that should have been `value` cannot be marked as such and remain ordinary reference classes.
@@ -82,7 +73,7 @@ but with name-based destructuring and copy vars.
 
 They also may be `abstract`/`sealed`.
 
-This makes full `value class`es the natural target for the value-like classes that could not be expressed before, and people would want to migrate their existing classes to them. Read more about them in the dedicated KEEP.
+This makes full `value class`es the natural target for the value-like classes that could not be expressed before, and people would want to migrate their existing classes to them. Read more about them in the dedicated [KEEP](https://github.com/Kotlin/KEEP/blob/main/proposals/KEEP-0454-better-immutability-value-classes-MFVC.md#migration-between-data-and-value-classes).
 
 However, the process of migrating existing classes to `value class` is a breaking change for several reasons:
 1. The mentioned restrictions regarding identity operations might break existing code.
@@ -258,5 +249,5 @@ It **cannot** be applied to:
 - [JEP 390: Warnings for Value-Based Classes](https://openjdk.org/jeps/390)
 - [Project Valhalla: Value Types](https://openjdk.org/projects/valhalla/)
 - [KEEP: Inline (value) classes](https://github.com/Kotlin/KEEP/blob/main/proposals/KEEP-0104-inline-classes.md)
-- [KEEP-0453: Better Immutability in Kotlin ("Value Classes 2.0")](https://github.com/Kotlin/KEEP/blob/main/proposals/KEEP-0453-better-immutability-value-classes-motivation.md)
+- [KEEP-0454: Better Immutability in Kotlin ("Value Classes 2.0")](https://github.com/Kotlin/KEEP/blob/main/proposals/KEEP-0454-better-immutability-value-classes-MFVC.md#migration-between-data-and-value-classes)
 - [KT-70722: Support `@jdk.internal.ValueBased` / JEP 390 warnings in Kotlin](https://youtrack.jetbrains.com/issue/KT-70722)
