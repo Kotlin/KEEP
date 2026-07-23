@@ -73,28 +73,24 @@ but with name-based destructuring and copy vars.
 
 They also may be `abstract`/`sealed`.
 
-This makes full `value class`es the natural target for the value-like classes that could not be expressed before, and people would want to migrate their existing classes to them. Read more about them in the dedicated [KEEP](https://github.com/Kotlin/KEEP/blob/main/proposals/KEEP-0454-better-immutability-value-classes-MFVC.md#migration-between-data-and-value-classes).
-
-However, the process of migrating existing classes to `value class` is a breaking change for several reasons:
-1. The mentioned restrictions regarding identity operations might break existing code.
-2. The `open` classes cannot be migrated because of the unclear semantics of the generated `equals`/`hashCode`/`toString` methods similar to `data class`es.
-3. The `var`-based data classes cannot be migrated because of the mutability restrictions.
-
-
-To avoid having an immediate breaking change on both declaration- (points 2 and 3) and use-sites (point 1) for such a migration,
-we would like to introduce a mitigation strategy via a dedicated migration process.
+This makes full `value class`es the natural target for the value-like classes that could not be expressed before,
+and people would want to migrate their existing classes to them.
+Read more about them in the dedicated [KEEP](https://github.com/Kotlin/KEEP/blob/main/proposals/KEEP-0454-better-immutability-value-classes-MFVC.md#migration-between-data-and-value-classes).
 
 ## The migration problem
 
-Turning an existing reference class into a `value class` is a **breaking change**:
+Turning an existing reference class into a `value class` is a **breaking change** for several reasons:
 
-- Code that relies on reference equality (`===`) will silently change behavior.
-- Code that synchronizes on instances (`synchronized(pair) { }`) will break or become
-  unreliable.
-- Code that relies on identity hash codes will produce different results.
+1. The identity restrictions of value classes might break existing use-sites:
+   - Code that relies on reference equality (`===`) will silently change behavior.
+   - Code that synchronizes on instances (`synchronized(pair) { }`) will break or become unreliable.
+   - Code that relies on identity hash codes will produce different results.
+2. The `open` classes cannot be migrated because of the unclear semantics of the generated `equals`/`hashCode`/`toString` methods similar to `data class`es.
+3. The `var`-based data classes cannot be migrated because of the mutability restrictions.
 
-Without any prior warning, library authors cannot migrate widely used classes to full value classes
-without risking undetected breakage in downstream code.
+The problems 2 and 3 are valid reasons for the class not to become a `value class`.
+On the other hand, the first one can and should be mitigated.
+To avoid having an immediate breaking change on use-sites, we would like to introduce a mitigation strategy via a dedicated migration process.
 
 ## Java's solution: `@jdk.internal.ValueBased`
 
