@@ -29,6 +29,7 @@ Without this mechanism, the adoption of full value classes would be a slower and
   * [Annotation declaration](#annotation-declaration)
   * [Semantics](#semantics)
   * [Compiler warnings](#compiler-warnings)
+  * [Examples](#examples)
   * [Applicability](#applicability)
 * [References](#references)
 
@@ -222,6 +223,50 @@ identity-sensitive operations are applied to a type annotated with `@WillBecomeV
 - Reference equality: `a === b`
 - Locking: `synchronized(a) { }`
 - `System.identityHashCode(a)`
+
+## Examples
+
+For example, the standard library could mark `Uuid` as a value-like class that is expected to become a full `value class`:
+
+```kotlin
+@WillBecomeValue
+// Simplified declaration.
+class Uuid(
+    val mostSignificantBits: Long,
+    val leastSignificantBits: Long,
+)
+```
+
+After that, users get migration warnings on identity-sensitive operations:
+
+```kotlin
+fun checkUuid(first: Uuid, second: Uuid) {
+    first === second
+    // Warning: identity-sensitive operation on a class annotated with @WillBecomeValue
+
+    synchronized(first) {
+        // Warning: synchronization on a class annotated with @WillBecomeValue
+    }
+
+    System.identityHashCode(first)
+    // Warning: identity hash code on a class annotated with @WillBecomeValue
+}
+```
+
+The same applies to data classes that already have value semantics, such as `Pair`:
+
+```kotlin
+@WillBecomeValue
+data class Pair<out A, out B>(
+    val first: A,
+    val second: B,
+)
+
+fun checkPair(pair: Pair<String, String>) {
+    pair === pair
+    // Warning: identity-sensitive operation on a class annotated with @WillBecomeValue
+}
+```
 
 ## Applicability
 
