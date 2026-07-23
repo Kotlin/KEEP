@@ -58,7 +58,17 @@ include `Pair`, `Triple`, and various result/wrapper types.
 Kotlin currently supports a very limited subset of `value class`es: inline `value class`es with a single underlying field.
 Their main purpose is to create type-safe wrappers around existing types being transparent in the runtime.
 Many libraries and frameworks (`kotlinx.serialization`, `Spring`) adopted the usage and embed the underlying field, keeping safe wrapper only on the source code level.
+```kotlin
+@JvmInline
+value class Id(val string: String) {
+    init {
+        // some checks
+    }
+}
+Json.serialize(Id("ab")) // "ab", not {"string":"ab"}
+```
 Such a behavior is not acceptable for general purpose value classes.
+
 As a result, many classes that should have been `value` cannot be marked as such and remain ordinary reference classes.
 
 There are plans to support [full `value class`es](https://github.com/Kotlin/KEEP/blob/69d675e8a15f66ff6b3dace70b2d45bc3d6ad26a/proposals/KEEP-0454-better-immutability-value-classes-MFVC.md) in the future.
