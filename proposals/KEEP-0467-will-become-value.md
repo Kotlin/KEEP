@@ -198,6 +198,23 @@ A class annotated with `@WillBecomeValue`:
 All the checks eligible for full value class declaration itself ***(not usages)*** are also run on classes annotated with `@WillBecomeValue`.
 The only observable difference is that the compiler will issue a warning instead of an error for wrong class **usages**.
 
+Here is a sample:
+```kotlin
+@WillBecomeValue
+class A(
+    var x: Int, // CE: `var`s are forbidden for value classes
+    val y: A, // CE: Recursive vqlue class type
+    z: Int, // CE: Non-property primary constructor parameters
+):
+    Base(), // CE: if Base is not abstract/sealed value or ValueBased, report
+    I by (x + 1) // CE: Delegation in value class
+
+val a: A
+a === a // Warning
+synchronized(a) // Warning
+System.identityHashCode(a) // Warning
+```
+
 ## Compiler warnings
 
 The compiler should issue a warning when the following
