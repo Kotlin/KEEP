@@ -118,9 +118,7 @@ to Kotlin-defined classes.
 Kotlin needs the same mechanism for its own migration path, and the JDK's annotation cannot serve it:
 
 - `@jdk.internal.ValueBased` is JVM-only, while Kotlin is not.
-- `@jdk.internal.ValueBased` is internal to the JDK.
-- Kotlin standard library has its own value-like classes awaiting migration.
-- Kotlin libraries authors need to start the migration beforehand.
+- `@jdk.internal.ValueBased` is internal to the JDK, while Kotlin needs to support a proper ecosystem-level mechanism.
 
 ## Candidate classes in the standard library
 
