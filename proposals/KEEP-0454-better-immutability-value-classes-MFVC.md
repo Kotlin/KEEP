@@ -107,7 +107,7 @@ value class LocalConfig(val localPort: Int) {
 }
 ```
 
-Unlike data classes, MFVCs do not support positional-based destructuring by default, they should be used together with [name-based destructuring](https://github.com/Kotlin/KEEP/blob/main/proposals/KEEP-0438-name-based-destructuring.md).
+Unlike data classes, MFVCs do not support positional-based destructuring by default; they are intended to be used together with [name-based destructuring](https://github.com/Kotlin/KEEP/blob/main/proposals/KEEP-0438-name-based-destructuring.md).
 Specifically, `val (x, y) = e` is interpreted as name-based destructuring when `e` is an expression of a value class type.
 
 If one wants their value classes to support positional-based destructuring, it is done in the usual way: by providing the corresponding `componentN` functions manually.
@@ -148,7 +148,7 @@ For the same reason, open MFVCs are prohibited.
 
 abstract /* or open */ value class Base(val x: Int)
 
-value class Derived(val y: Int, val z: Int = 41) : Base(42)
+value class Derived(val y: Int) : Base(42)
 
 fun test() {
   val a: Base = Derived(43)
@@ -171,7 +171,7 @@ fun test() {
 
 > Note: while project Valhalla allows for Java abstract value classes to have fields, we believe the majority of them will not have any actual stored state.
 
-For final and abstract MFVC, they can inherit from interfaces (as current inline value classes) and from abstract value classes.
+Both final and abstract MFVCs can inherit from interfaces (as current inline value classes) and from abstract value classes.
 
 > Note: this means that value classes cannot inherit from non-value classes, but a non-value class may inherit from an abstract value class.
 > The mental model for this restriction is that a non-value superclass imposes an identity requirement which a value subclass cannot remove.
@@ -327,14 +327,14 @@ sealed interface UserResponse
 value object UserUnknown : UserResponse
 
 fun process(...): UserResponse {
-  var resp: UserResponse
+  var resp: UserResponse = ...
   // ...
   if (cannotFindUser) {
     resp = UserUnknown
     // could be compiled to
-    resp = UserUnknown.getInstance()
+    //   resp = UserUnknown.getInstance()
     // or to
-    resp = UserUnknown()
+    //   resp = UserUnknown()
   }
   // ...
   return resp
@@ -455,8 +455,8 @@ value class User(val name: String, val metadata: MutableMap<String, String>)
 fun tryToDistinguish() {
   val metadata: MutableMap<String, String> = mutableMapOf()
 
-  var a: User = User("Marat", metadata)
-  var b: User = User("Marat", metadata) // make two different boxes with the same values
+  val a: User = User("Marat", metadata)
+  val b: User = User("Marat", metadata) // make two different boxes with the same values
 
   println(a == b) // true
 
@@ -504,7 +504,7 @@ To understand if we actually need this, we need to discuss whether this migratio
 We currently believe that in most cases `@JvmInline` value classes are used for their performance optimizations first, and for their immutability second.
 This means that the migration from (0) to (1) is not a very immediate problem.
 
-> Note: one potential solution using `@JvmExposeBoxed` annotation is discussed in the [Possible Extensions](#migration-from-stage-0-to-stage-1-via-jvmexposeboxed).
+> Note: one potential solution using `@JvmExposeBoxed` annotation is discussed in [Possible extensions](#migration-from-stage-0-to-stage-1-via-jvmexposeboxed).
 
 The change from Stage 1 to Stage 2, on the other hand, should be fully seamless.
 The reason for this is as follows.
@@ -541,7 +541,7 @@ A prime example from our own standard library is `Pair` (and `Triple`), which se
 However, many such candidates are currently declared as `data class`, which creates a migration challenge: data classes automatically generate `componentN()`, `copy()`, `equals()`, `hashCode()`, and `toString()` methods, while value classes only generate the latter three.
 Simply changing `data class` to `value class` would remove `componentN()` and `copy()`, breaking source and binary compatibility of existing code.
 
-For `componentN()`, the data-to-value-class migration aligns with our move toward [name-based destructuring](https://github.com/Kotlin/KEEP/blob/main/proposals/KEEP-0438-name-based-destructuring.md), and is supported by positional- to name-based destructuring migration story.
+For `componentN()`, the data-to-value-class migration aligns with our move toward [name-based destructuring](https://github.com/Kotlin/KEEP/blob/main/proposals/KEEP-0438-name-based-destructuring.md), and is supported by the positional- to name-based destructuring migration story.
 For `copy()`, the situation is more nuanced: while we are designing ergonomic update mechanisms for value classes, `copy()` is the primary way to work with immutable data today.
 As we plan to release the experimental version of MFVC ergonomic updates in the next version after the release of experimental MFVCs, if you need `copy()` for the transition period, you would need to generate its implementation via an IDE.
 
@@ -594,7 +594,7 @@ Once the migration is performed, these types become full MFVCs, benefiting from 
 **Data class to value class migration.**
 `Pair` and `Triple` are the canonical examples discussed in the [data-to-value class migration](#migration-between-data-and-value-classes) section.
 They are semantically value types, but are currently declared as `data class`es, which means changing them to `value class` would break source and binary compatibility by removing `componentN()` and `copy()`.
-The `@GenerateDataClassMethods` annotation path (or its analogue) enables their gradual migration: first preserving all generated methods, then deprecating them (aligning `componentN()` deprecation with the move towards name-based destructuring), and eventually removing them once compatibility is no longer needed.
+The [`@GenerateDataClassMethods`](#separate-generation-of-data-class-convenience-methods) annotation path (or its analogue) enables their gradual migration: first preserving all generated methods, then deprecating them (aligning `componentN()` deprecation with the move towards name-based destructuring), and eventually removing them once compatibility is no longer needed.
 
 **Existing inline value classes.**
 The standard library already contains a number of `@JvmInline value class` types, including `Duration`, `UInt`, `ULong`, `UByte`, `UShort`, and `Result`.
@@ -797,7 +797,7 @@ By introducing `@WillBecomeValue`, we can support the same migration story, but 
 Here we outline several potential solutions to the (inconsistent) behavior of `===` for value classes.
 
 One possible option for compile-time guarantees is to restrict the use of `===` in error-prone cases (e.g., for generics).
-For example, we could say `===` is available only on types which are not `Value`, e.g., for `T : !Value`.
+For example, if we had a `Value` marker supertype of all value classes, we could say `===` is available only on types which are not `Value`, e.g., for `T : !Value`.
 That would require serious changes to the Kotlin type system and the introduction of limited negative types, or for the users to manually propagate these negative type bounds across their code.
 
 A runtime option would be to implement stricter runtime checks for `===` in debug / test mode, which log and/or panic in situations when `===` is used on value objects.
@@ -922,9 +922,10 @@ This allows library authors to migrate their value classes from Stage 0 to Stage
 MFVC release is tentatively dependent on the following features.
 
 * Introduction of `kotlin.WillBecomeValue` (final name to be decided) annotation for a better migration story of libraries.
-* Custom `equals` / `hashCode` for value classes, to unlock more potential for compiler optimizations of `==` comparisons.
-* Name-based destructuring, to support convenient deconstruction of value objects.
+* Custom [`equals`](https://github.com/Kotlin/KEEP/blob/main/proposals/KEEP-0456-equals.md) / `hashCode` for value classes, to unlock more potential for compiler optimizations of `==` comparisons.
+* Name-based destructuring, to support convenient deconstruction of value class instances.
 * Early initialization design, to be able to make the early initialization of value classes even more flexible.
+* [Version overloading](https://github.com/Kotlin/KEEP/blob/main/proposals/KEEP-0431-version-overloading.md), to support binary-compatible addition of primary properties to an existing MFVC.
 
 #### Summary
 
@@ -952,8 +953,12 @@ We are interested in your feedback on the overall design for MFVCs, but are part
 * [Valhalla Benchmarks](https://github.com/zhelenskiy/valhalla-benchmarks)
 * [JEP 401: Value Classes and Objects (Preview)](https://openjdk.org/jeps/401)
 * [JEP 513: Flexible Constructor Bodies](https://openjdk.org/jeps/513)
+* [JEP 539: Strict Field Initialization in the JVM (Preview)](https://openjdk.org/jeps/539)
 * [JEP 390: Warnings for Value-Based Classes](https://openjdk.org/jeps/390)
 * [KEEP-0104: Inline Classes](https://github.com/Kotlin/KEEP/blob/main/proposals/KEEP-0104-inline-classes.md)
 * [KEEP-0317: Data Objects](https://github.com/Kotlin/KEEP/blob/main/proposals/KEEP-0317-data-objects.md)
 * [KEEP-0394: `@JvmExposeBoxed`](https://github.com/Kotlin/KEEP/blob/main/proposals/KEEP-0394-jvm-expose-boxed.md)
+* [KEEP-0431: Version Overloading](https://github.com/Kotlin/KEEP/blob/main/proposals/KEEP-0431-version-overloading.md)
 * [KEEP-0438: Name-Based Destructuring](https://github.com/Kotlin/KEEP/blob/main/proposals/KEEP-0438-name-based-destructuring.md)
+* [KEEP-0453: Better Immutability in Kotlin — Motivation and Design Space](https://github.com/Kotlin/KEEP/blob/main/proposals/KEEP-0453-better-immutability-value-classes-motivation.md)
+* [KEEP-0456: More Specific `equals`](https://github.com/Kotlin/KEEP/blob/main/proposals/KEEP-0456-equals.md)
