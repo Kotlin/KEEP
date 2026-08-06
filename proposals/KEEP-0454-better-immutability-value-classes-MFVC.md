@@ -3,7 +3,7 @@
 * **Type**: Design proposal
 * **Author**: Marat Akhin
 * **Contributors**: Roman Elizarov, Nikita Bobko, Komi Golova, Pavel Kunyavskiy, Alejandro Serrano Mena, Evgeniy Moiseenko, Alexander Udalov, Wout Werkman, Mikhail Zarechenskiy, Evgeniy Zhelenskiy, Filipp Zhinkin
-* **Status**: Experimental in 2.5
+* **Status**: Experimental (phase I) in 2.5
 * **Discussion**: [GitHub](https://github.com/Kotlin/KEEP/discussions/473)
 * **Related YouTrack issue**: [KT-77734](https://youtrack.jetbrains.com/issue/KT-77734)
 
@@ -83,11 +83,12 @@ Continuing this line of thought, one could say that MFVCs are shallow immutable 
 As for data classes, the state of MFVCs is represented by their primary properties.
 However, as they are value-based, this primary state is the *only* thing which is actually stored.
 If an MFVC declares some additional properties, they cannot be stored properties, i.e., cannot have a backing field.
-Delegated properties are allowed only when the delegate expression is *stable*: it must be computable without requiring a separate backing field to store the delegate instance.
-Stable expressions include the MFVC's own primary properties, top-level `val`s without getters, `const val`s, object declarations and their (stable) properties, enum entries, and other expressions the compiler can rely on being stable, i.e., their getter always return the same value.
+Delegated properties are also disallowed.
 
-Normally, a delegated property `val x by expr` stores the result of `expr` in a hidden backing field so the same delegate instance is used on every access.
-When `expr` is stable, however, re-evaluating it is guaranteed to produce an equivalent result, so the compiler can simply re-evaluate the delegate expression each time `x` is accessed, eliminating the need for a backing field.
+> Note: we could in the future allow delegation when the delegate expression is *stable*: it is computable without requiring a separate backing field to store the delegate instance.
+> Examples of such expressions include the MFVC's own primary properties, top-level `val`s without getters, `const val`s, object declarations and their (stable) properties, enum entries, and other expressions the compiler can rely on being stable, i.e., their getter always returns the same value.
+> At the moment, the absence of separate backing field for stable delegate expressions is not guaranteed and differs between platforms, in other words, it is a (backend-specific) optimization.
+> Allowing such delegated properties in value classes requires making this optimization definite.
 
 ```kotlin
 object Defaults {
@@ -95,12 +96,12 @@ object Defaults {
 }
 
 value class Config(val entries: Map<String, String>) {
-    val host: String by entries // OK: delegate is a primary property
-    val port: String by entries // OK: same
+    val host: String by entries // Error: delegation is not allowed
+    val port: String by entries // Error: delegation is not allowed
 }
 
 value class LocalConfig(val localPort: Int) {
-    val host: String by Defaults.fallback // OK: delegate is a stable object property
+    val host: String by Defaults.fallback // Error: delegation is not allowed
     val port: String by lazy { "$localPort" }  // Error: `lazy` needs a backing field for the Lazy instance
 }
 ```
@@ -133,7 +134,7 @@ As a consequence, because primary properties are guaranteed to be stored fields 
 
 Another difference from data classes is that MFVCs can be abstract, in which case all the usual rules of abstract declarations apply.
 Additionally, no properties of an abstract value class can have backing fields, meaning they are either abstract or have custom getters and/or setters.
-Delegated properties are allowed when the delegate expression is stable (e.g., a top-level `val` or an object property).
+Delegated properties are also disallowed.
 
 This restriction comes from the MFVCs being value types; if a value type can be created, it should be able to fully control how its state is stored.
 As abstract value classes cannot be created, they only describe the shape of the data, but the storage is handled by their concrete inheritors.
@@ -298,7 +299,7 @@ In the same fashion, their main use is to represent unit types.
 
 Because value objects have zero primary properties, and the stored state of an MFVC consists solely of its primary properties, value objects carry *no stored state* at all.
 Like other MFVCs, any additional properties they declare must be computed via custom getters and cannot use backing fields.
-Delegated properties are allowed when the delegate expression is stable (e.g., a top-level `val` or an object property).
+Delegated properties are also disallowed.
 
 The difference between `data object` and `value object` mirrors the difference between `data class` and `value class`: data objects have identity, value objects do not.
 
