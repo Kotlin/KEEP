@@ -311,7 +311,7 @@ For value objects, this problem does not exist: since `===` is disallowed on val
 
 Like a regular `object`, a `value object` denotes a *single instance*, initialized once and referenced by its name.
 The difference is what this single-ness is anchored to.
-For a regular object, it is anchored to a stable instance with observable identity: there is exactly one instance, and that identity could be potentially observed (e.g., via `===`).
+For a regular or data object, it is anchored to a stable instance with observable identity: there is exactly one instance, and that identity could be potentially observed (e.g., via `===`).
 For a value object, it is instead anchored to the *value*: a value object has zero primary properties, so its type is a unit type with exactly one possible value, and "single instance" and "single value" coincide no matter how many boxes the runtime actually allocates.
 
 This is precisely what lets the compiler choose freely between two compilation schemes: one which stores a canonical singleton instance (as we currently do for objects), and one which "recreates" the value on the fly whenever it is needed.
@@ -554,13 +554,20 @@ A prime example from our own standard library is `Pair` (and `Triple`), which se
 However, many such candidates are currently declared as `data class`, which creates a migration challenge: data classes automatically generate `componentN()`, `copy()`, `equals()`, `hashCode()`, and `toString()` methods, while value classes only generate the latter three.
 Simply changing `data class` to `value class` would remove `componentN()` and `copy()`, breaking source and binary compatibility of existing code.
 
-The core reason for this is: `data class` currently conflates two orthogonal concerns, the "data carrier" semantics and the generation of convenience methods.
-A cleaner design would decouple these by introducing a way to control the generation independently of the class kind.
+For `componentN()`, the data-to-value-class migration aligns with our move toward [name-based destructuring](https://github.com/Kotlin/KEEP/blob/main/proposals/KEEP-0438-name-based-destructuring.md), and is supported by positional- to name-based destructuring migration story.
+For `copy()`, the situation is more nuanced: while we are designing ergonomic update mechanisms for value classes, `copy()` is the primary way to work with immutable data today.
+As we plan to release the experimental version of MFVC ergonomic updates in the next version after the release of experimental MFVCs, if you need `copy()` for the transition period, you would need to generate its implementation via an IDE.
+
+**Future extension.**
+The core reason for this friction between data and value classes is: `data class` currently conflates two orthogonal concerns, the "data carrier" semantics and the generation of convenience methods.
+A `value class` handles the "data carrier" part, but does not need convenience methods in its final form.
+
+A possible future design, if it turns out there is still a need to support convenience methods for value classes, would do this by introducing a way to control the generation independently of the class kind.
 
 > Note: this idea has multiple different tracking issues, e.g., [KT-8466](https://youtrack.jetbrains.com/issue/KT-8466) or [KT-4503](https://youtrack.jetbrains.com/issue/KT-4503).
 
-One of the potential ways to surface this in the language is a special annotation, but there could be other alternatives.
-The one presented here is back-of-napkin syntax to explain the idea.
+One of the ways to surface this in the language is a special annotation, but there could be other alternatives.
+The one presented here is back-of-napkin syntax to explain the spirit of the idea.
 
 ```kotlin
 @GenerateDataClassMethods(
@@ -604,9 +611,6 @@ value class Pair<A, B>(val first: A, val second: B)
 // Step 5: Remove annotation entirely once compatibility is no longer needed
 value class Pair<A, B>(val first: A, val second: B)
 ```
-
-For `componentN()`, deprecation aligns with our move toward [name-based destructuring](https://github.com/Kotlin/KEEP/blob/main/proposals/KEEP-0438-name-based-destructuring.md).
-For `copy()`, the situation is more nuanced: while we are designing ergonomic update mechanisms for value classes, `copy()` is the primary way to work with immutable data today, and we may need to continue supporting it (possibly with warnings) to support smoother migration.
 
 > Note: value classes already generate structural `equals()`, `hashCode()`, and `toString()` by default, so the annotation on a value class would primarily control `componentN()` and `copy()`.
 
