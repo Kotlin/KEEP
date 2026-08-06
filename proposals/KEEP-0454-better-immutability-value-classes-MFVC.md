@@ -36,7 +36,6 @@ We discuss what MFVCs represent, what their limitations are, how they interopera
     - [Standard Library](#standard-library)
     - [Other Features and Interactions](#other-features-and-interactions)
       - [MFVC and `===`](#mfvc-and-identity)
-        - [Runtime Identity Check](#runtime-identity-check)
       - [MFVC and Smart Casts](#mfvc-and-smart-casts)
       - [MFVC and Compose](#mfvc-and-compose)
         - [Strong Skipping](#strong-skipping)
@@ -44,6 +43,7 @@ We discuss what MFVCs represent, what their limitations are, how they interopera
       - [MFVC and Interop](#mfvc-and-interop)
     - [Possible Extensions](#possible-extensions)
       - [Migration from Stage 0 to Stage 1 via `@JvmExposeBoxed`](#migration-from-stage-0-to-stage-1-via-jvmexposeboxed)
+      - [Runtime Identity Check](#runtime-identity-check)
     - [Dependencies](#dependencies)
     - [Summary](#summary)
 - [Call to Action](#call-to-action)
@@ -720,22 +720,6 @@ It also aligns with the direction taken by project Valhalla, where Java's `==` o
 On non-JVM platforms, there is a non-trivial runtime cost: the implementation of `===` would need to inspect the runtime type of its arguments, detect that they are value objects, and fall back to structural comparison.
 It would be a significant implementation effort to minimize the performance impact of such change.
 
-###### Runtime Identity Check
-
-Code which receives a value as `Any?`, an interface or an erased type parameter may sometimes need to determine whether the concrete runtime value supports identity-sensitive operations.
-For this purpose, we propose the following runtime check.
-
-```kotlin
-package kotlin
-
-fun Any?.hasIdentity(): Boolean
-```
-
-The function returns `true` when its non-null receiver has stable identity and `false` for `null` and identity-less values, including value classes.
-The result is determined from the concrete runtime class rather than the static type or the presence of a temporary box: an MFVC returns `false` even when represented by a reference-based box, while an identity class returns `true` regardless of how it's viewed in the code.
-
-This function provides runtime classification only; a compile-time constraint for APIs which require identity may be introduced separately.
-
 ##### MFVC and Smart Casts
 
 Another interesting interaction of MFVC is with *smart cast mechanism*.
@@ -892,6 +876,23 @@ The migration strategy is:
 3. Eventually remove `@JvmInline` entirely, leaving only the boxed representation
 
 This allows library authors to migrate their value classes from Stage 0 to Stage 1 while giving downstream users time to adapt their code.
+
+##### Runtime Identity Check
+
+Code which receives a value as `Any?`, an interface or an erased type parameter may sometimes need to determine whether the concrete runtime value supports identity-sensitive operations.
+For this purpose, we propose the following runtime check.
+
+```kotlin
+package kotlin
+
+fun Any?.hasIdentity(): Boolean
+```
+
+The function returns `true` when its non-null receiver has stable identity and `false` for `null` and identity-less values, including value classes.
+The result is determined from the concrete runtime class rather than the static type or the presence of a temporary box: an MFVC returns `false` even when represented by a reference-based box, while an identity class returns `true` regardless of how it's viewed in the code.
+
+This function provides runtime classification only; a compile-time constraint for APIs which require identity may be introduced separately.
+
 
 #### Dependencies
 
