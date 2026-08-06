@@ -42,8 +42,12 @@ We discuss what MFVCs represent, what their limitations are, how they interopera
         - [State Storage and Change Tracking](#state-storage-and-change-tracking)
       - [MFVC and Interop](#mfvc-and-interop)
     - [Possible Extensions](#possible-extensions)
-      - [Migration from Stage 0 to Stage 1 via `@JvmExposeBoxed`](#migration-from-stage-0-to-stage-1-via-jvmexposeboxed)
+      - [Delegation to Stable Expressions](#delegation-to-stable-expressions)
+      - [`@WillBecomeValue` Migration Support Annotation](#willbecomevalue-migration-support-annotation)
+      - [MFVC and Changes to `===`](#mfvc-and-changes-to-)
       - [Runtime Identity Check](#runtime-identity-check)
+      - [Separate Generation of Data Class Convenience Methods](#separate-generation-of-data-class-convenience-methods)
+      - [Migration from Stage 0 to Stage 1 via `@JvmExposeBoxed`](#migration-from-stage-0-to-stage-1-via-jvmexposeboxed)
     - [Dependencies](#dependencies)
     - [Summary](#summary)
 - [Call to Action](#call-to-action)
@@ -85,10 +89,7 @@ However, as they are value-based, this primary state is the *only* thing which i
 If an MFVC declares some additional properties, they cannot be stored properties, i.e., cannot have a backing field.
 Delegated properties are also disallowed.
 
-> Note: we could in the future allow delegation when the delegate expression is *stable*: it is computable without requiring a separate backing field to store the delegate instance.
-> Examples of such expressions include the MFVC's own primary properties, top-level `val`s without getters, `const val`s, object declarations and their (stable) properties, enum entries, and other expressions the compiler can rely on being stable, i.e., their getter always returns the same value.
-> At the moment, the absence of separate backing field for stable delegate expressions is not guaranteed and differs between platforms, in other words, it is a (backend-specific) optimization.
-> Allowing such delegated properties in value classes requires making this optimization definite.
+> Note: potential relaxation of this restriction is discussed in [Possible extensions](#delegation-to-stable-expressions).
 
 ```kotlin
 object Defaults {
@@ -503,7 +504,7 @@ To understand if we actually need this, we need to discuss whether this migratio
 We currently believe that in most cases `@JvmInline` value classes are used for their performance optimizations first, and for their immutability second.
 This means that the migration from (0) to (1) is not a very immediate problem.
 
-> Note: one potential solution using `@JvmExposeBoxed` annotation is discussed in the [Possible Extensions](#possible-extensions) section.
+> Note: one potential solution using `@JvmExposeBoxed` annotation is discussed in the [Possible Extensions](#migration-from-stage-0-to-stage-1-via-jvmexposeboxed).
 
 The change from Stage 1 to Stage 2, on the other hand, should be fully seamless.
 The reason for this is as follows.
@@ -530,21 +531,7 @@ These operations include (but probably are not limited to):
 If your type is intended to be used with these operations, it probably should not be changed to a value class.
 
 For cases when one expects to do this migration (e.g., Kotlin standard library), one of the possibilities to smooth the migration is to introduce a Kotlin-specific version of [`@ValueBased` JDK annotation](https://openjdk.org/jeps/390).
-This annotation is a way to mark future-to-be value classes which are currently reference classes.
-This is used to warn and/or prevent using identity-sensitive operations on them.
-
-```kotlin
-package kotlin
-
-@Target(CLASS)
-@Retention(BINARY)
-@SinceKotlin("2.X")
-annotation class WillBecomeValue // Actual name to be decided later
-```
-
-Kotlin already supports [reporting warnings](https://youtrack.jetbrains.com/issue/KT-70722) for such Java classes.
-Unfortunately, `@ValueBased` is still an internal annotation not available outside the JDK.
-By introducing `@WillBecomeValue`, we can support the same migration story, but for the Kotlin (standard) libraries and all our platforms, not only JVM.
+We discuss this annotation in [Possible extensions](#willbecomevalue-migration-support-annotation).
 
 ##### Migration between Data and Value Classes
 
@@ -558,63 +545,8 @@ For `componentN()`, the data-to-value-class migration aligns with our move towar
 For `copy()`, the situation is more nuanced: while we are designing ergonomic update mechanisms for value classes, `copy()` is the primary way to work with immutable data today.
 As we plan to release the experimental version of MFVC ergonomic updates in the next version after the release of experimental MFVCs, if you need `copy()` for the transition period, you would need to generate its implementation via an IDE.
 
-**Future extension.**
-The core reason for this friction between data and value classes is: `data class` currently conflates two orthogonal concerns, the "data carrier" semantics and the generation of convenience methods.
-A `value class` handles the "data carrier" part, but does not need convenience methods in its final form.
-
-A possible future design, if it turns out there is still a need to support convenience methods for value classes, would do this by introducing a way to control the generation independently of the class kind.
-
-> Note: this idea has multiple different tracking issues, e.g., [KT-8466](https://youtrack.jetbrains.com/issue/KT-8466) or [KT-4503](https://youtrack.jetbrains.com/issue/KT-4503).
-
-One of the ways to surface this in the language is a special annotation, but there could be other alternatives.
-The one presented here is back-of-napkin syntax to explain the spirit of the idea.
-
-```kotlin
-@GenerateDataClassMethods(
-    components = GENERATE,  // or NONE, or DEPRECATED, or HIDDEN
-    copy = GENERATE,
-    equals = GENERATE,
-    hashCode = GENERATE,
-    toString = GENERATE
-)
-class Foo(val x: Int, val y: String)
-```
-
-With this approach, `data class` becomes syntactic sugar for a class with all parameters set to `GENERATE`.
-
-```kotlin
-// These two declarations are equivalent
-data class Foo(val x: Int, val y: String)
-
-@GenerateDataClassMethods(components = GENERATE, copy = GENERATE, ...)
-class Foo(val x: Int, val y: String)
-```
-
-This enables a gradual migration path for types like `Pair`.
-
-```kotlin
-// Step 1: Current state
-data class Pair<A, B>(val first: A, val second: B)
-
-// Step 2: Migrate to value class, keep generated methods
-@GenerateDataClassMethods(components = GENERATE, copy = GENERATE)
-value class Pair<A, B>(val first: A, val second: B)
-
-// Step 3: Deprecate generated methods to guide the users toward alternatives
-@GenerateDataClassMethods(components = DEPRECATED, copy = DEPRECATED)
-value class Pair<A, B>(val first: A, val second: B)
-
-// Step 4: Hide generated methods
-@GenerateDataClassMethods(components = HIDDEN, copy = HIDDEN)
-value class Pair<A, B>(val first: A, val second: B)
-
-// Step 5: Remove annotation entirely once compatibility is no longer needed
-value class Pair<A, B>(val first: A, val second: B)
-```
-
-> Note: value classes already generate structural `equals()`, `hashCode()`, and `toString()` by default, so the annotation on a value class would primarily control `componentN()` and `copy()`.
-
-This design will be refined as we gain more experience with MFVCs and as related features (ergonomic updates, name-based destructuring) mature.
+If it turns out there is still a need to support convenience methods for value classes, we could support this by introducing a way to control the generation independently of the class kind.
+We discuss this in [Possible extensions](#separate-generation-of-data-class-convenience-methods).
 
 ##### Evolving MFVC Declarations
 
@@ -695,30 +627,14 @@ infix fun <T> T.isReferenceEqualTo(t: T): Boolean = this === t
 println(a isReferenceEqualTo b)  // could be false if different boxes are compared
 ```
 
+To allow determining whether a value supports stable identity, we could introduce a runtime check discussed in [Possible extensions](#runtime-identity-check).
+
 > Note: an opposite problem will be encountered by Java users when project Valhalla releases, and `@ValueBased` classes (such as `java.lang.Integer`) become value classes.
 > Whereas now you can distinguish between two differently allocated `java.lang.Integer` instances, with project Valhalla they become indistinguishable, as Java's `==` on value objects performs a *substitutability test* (structural comparison) rather than identity comparison, even when the value is accessed through an `Object` reference or generic type parameter.
 
 At the moment, we do not believe this is something which will be often encountered by Kotlin users, and thus do not consider this as a blocker for MFVC design.
 
-If this changes at some point, we could devise a solution, but all the approaches we have considered so far carry a heavy cost.
-
-One possible option for compile-time guarantees is to restrict the use of `===` in error-prone cases (e.g., for generics).
-For example, we could say `===` is available only on types which are not `Value`, e.g., for `T : !Value`.
-That would require serious changes to the Kotlin type system and the introduction of limited negative types, or for the users to manually propagate these negative type bounds across their code.
-
-A runtime option would be to implement stricter runtime checks for `===` in debug / test mode, which log and/or panic in situations when `===` is used on value objects.
-As such checks would have a severe performance penalty, doing it always would be undesirable.
-This is less intrusive than previous option, as it does not require one to change their code, but is somewhat foreign to the Kotlin ecosystem, which usually does not distinguish between release and debug configurations that much.
-
-> Note: at the same time, there are plans to allow more runtime checks for debug builds on Kotlin/Native ([KT-71000](https://youtrack.jetbrains.com/issue/KT-71000)).
-> This means that the runtime option, while unusual, is potentially also a possible solution.
-
-Another runtime option is to consistently change the semantics of `===` itself for value objects on *all* platforms: instead of performing identity (reference) comparison, `===` on value objects would perform a *substitutability test*.
-This approach directly eliminates the box-identity problem: two boxes holding the same value would always be `===`, making the behavior predictable and consistent.
-It also aligns with the direction taken by project Valhalla, where Java's `==` on value objects performs a substitutability test even through an `Object` reference or generic type parameter.
-
-On non-JVM platforms, there is a non-trivial runtime cost: the implementation of `===` would need to inspect the runtime type of its arguments, detect that they are value objects, and fall back to structural comparison.
-It would be a significant implementation effort to minimize the performance impact of such change.
+If this changes, possible ways forward are discussed in [Possible extensions](#mfvc-and-changes-to-).
 
 ##### MFVC and Smart Casts
 
@@ -848,6 +764,130 @@ A more in-depth design for advanced interop on these platforms will follow.
 
 #### Possible Extensions
 
+In this section we lay out potential extensions to the core MFVC design, which we could introduce during or after stabilization.
+
+##### Delegation to Stable Expressions
+
+We could in the future allow delegation when the delegate expression is *stable*: it is computable without requiring a separate backing field to store the delegate instance.
+Examples of such expressions include the MFVC's own primary properties, top-level `val`s without getters, `const val`s, object declarations and their (stable) properties, enum entries, and other expressions the compiler can rely on being stable, i.e., their getter always returns the same value.
+
+At the moment, the absence of separate backing field for stable delegate expressions is not guaranteed and differs between platforms, in other words, it is a (backend-specific) optimization.
+Allowing such delegated properties in value classes requires making this optimization definite.
+
+##### `@WillBecomeValue` Migration Support Annotation
+
+This annotation is a Kotlin-specific way to mark future-to-be value classes which are currently reference classes.
+It is used to warn and/or prevent using identity-sensitive operations on them.
+
+```kotlin
+package kotlin
+
+@Target(CLASS)
+@Retention(BINARY)
+@SinceKotlin("2.X")
+annotation class WillBecomeValue // Actual name to be decided later
+```
+
+Kotlin already supports [reporting warnings](https://youtrack.jetbrains.com/issue/KT-70722) for such Java classes.
+Unfortunately, `@ValueBased` is still an internal annotation not available outside the JDK.
+By introducing `@WillBecomeValue`, we can support the same migration story, but for the Kotlin (standard) libraries and all our platforms, not only JVM.
+
+##### MFVC and Changes to `===`
+
+Here we outline several potential solutions to the (inconsistent) behavior of `===` for value classes.
+
+One possible option for compile-time guarantees is to restrict the use of `===` in error-prone cases (e.g., for generics).
+For example, we could say `===` is available only on types which are not `Value`, e.g., for `T : !Value`.
+That would require serious changes to the Kotlin type system and the introduction of limited negative types, or for the users to manually propagate these negative type bounds across their code.
+
+A runtime option would be to implement stricter runtime checks for `===` in debug / test mode, which log and/or panic in situations when `===` is used on value objects.
+As such checks would have a severe performance penalty, doing it always would be undesirable.
+This is less intrusive than previous option, as it does not require one to change their code, but is somewhat foreign to the Kotlin ecosystem, which usually does not distinguish between release and debug configurations that much.
+
+> Note: at the same time, there are plans to allow more runtime checks for debug builds on Kotlin/Native ([KT-71000](https://youtrack.jetbrains.com/issue/KT-71000)).
+> This means that the runtime option, while unusual, is potentially also a possible solution.
+
+Another runtime option is to consistently change the semantics of `===` itself for value objects on *all* platforms: instead of performing identity (reference) comparison, `===` on value objects would perform a *substitutability test*.
+This approach directly eliminates the box-identity problem: two boxes holding the same value would always be `===`, making the behavior predictable and consistent.
+It also aligns with the direction taken by project Valhalla, where Java's `==` on value objects performs a substitutability test even through an `Object` reference or generic type parameter.
+
+On non-JVM platforms, there is a non-trivial runtime cost: the implementation of `===` would need to inspect the runtime type of its arguments, detect that they are value objects, and fall back to structural comparison.
+It would be a significant implementation effort to minimize the performance impact of such change.
+
+##### Runtime Identity Check
+
+Code which receives a value as `Any?`, an interface or an erased type parameter may sometimes need to determine whether the concrete runtime value supports identity-sensitive operations.
+For this purpose, we propose the following runtime check.
+
+```kotlin
+package kotlin
+
+fun Any?.hasIdentity(): Boolean
+```
+
+The function returns `true` when its non-null receiver has stable identity and `false` for `null` and identity-less values, including value classes.
+The result is determined from the concrete runtime class rather than the static type or the presence of a temporary box: an MFVC returns `false` even when represented by a reference-based box, while an identity class returns `true` regardless of how it's viewed in the code.
+
+This function provides runtime classification only; a compile-time constraint for APIs which require identity may be introduced separately.
+
+##### Separate Generation of Data Class Convenience Methods
+
+The core reason for the friction between data and value classes is: `data class` currently conflates two orthogonal concerns, the "data carrier" semantics and the generation of convenience methods.
+A `value class` handles the "data carrier" part, but does not need convenience methods in its final form.
+
+> Note: the data class conflation problem has multiple different tracking issues, e.g., [KT-8466](https://youtrack.jetbrains.com/issue/KT-8466) or [KT-4503](https://youtrack.jetbrains.com/issue/KT-4503).
+
+One of the ways to solve this is to decouple the generation of the convenience methods in the language.
+The most immediate way is via a special annotation, but there could be other alternatives.
+The one alternative presented here is back-of-napkin syntax to explain the spirit of the idea.
+
+```kotlin
+@GenerateDataClassMethods(
+    components = GENERATE,  // or NONE, or DEPRECATED, or HIDDEN
+    copy = GENERATE,
+    equals = GENERATE,
+    hashCode = GENERATE,
+    toString = GENERATE
+)
+class Foo(val x: Int, val y: String)
+```
+
+With this approach, `data class` becomes syntactic sugar for a class with all parameters set to `GENERATE`.
+
+```kotlin
+// These two declarations are equivalent
+data class Foo(val x: Int, val y: String)
+
+@GenerateDataClassMethods(components = GENERATE, copy = GENERATE, ...)
+class Foo(val x: Int, val y: String)
+```
+
+This enables a gradual migration path for types like `Pair`.
+
+```kotlin
+// Step 1: Current state
+data class Pair<A, B>(val first: A, val second: B)
+
+// Step 2: Migrate to value class, keep generated methods
+@GenerateDataClassMethods(components = GENERATE, copy = GENERATE)
+value class Pair<A, B>(val first: A, val second: B)
+
+// Step 3: Deprecate generated methods to guide the users toward alternatives
+@GenerateDataClassMethods(components = DEPRECATED, copy = DEPRECATED)
+value class Pair<A, B>(val first: A, val second: B)
+
+// Step 4: Hide generated methods
+@GenerateDataClassMethods(components = HIDDEN, copy = HIDDEN)
+value class Pair<A, B>(val first: A, val second: B)
+
+// Step 5: Remove annotation entirely once compatibility is no longer needed
+value class Pair<A, B>(val first: A, val second: B)
+```
+
+> Note: value classes already generate structural `equals()`, `hashCode()`, and `toString()` by default, so the annotation on a value class would primarily control `componentN()` and `copy()`.
+
+This design will be refined as we gain more experience with MFVCs and as related features (ergonomic updates, name-based destructuring) mature.
+
 ##### Migration from Stage 0 to Stage 1 via `@JvmExposeBoxed`
 
 For cases where migration from `@JvmInline` value classes (Stage 0) to MFVC (Stage 1) is needed, the [`@JvmExposeBoxed`](https://github.com/Kotlin/KEEP/blob/main/proposals/KEEP-0394-jvm-expose-boxed.md) annotation provides a gradual migration path.
@@ -876,23 +916,6 @@ The migration strategy is:
 3. Eventually remove `@JvmInline` entirely, leaving only the boxed representation
 
 This allows library authors to migrate their value classes from Stage 0 to Stage 1 while giving downstream users time to adapt their code.
-
-##### Runtime Identity Check
-
-Code which receives a value as `Any?`, an interface or an erased type parameter may sometimes need to determine whether the concrete runtime value supports identity-sensitive operations.
-For this purpose, we propose the following runtime check.
-
-```kotlin
-package kotlin
-
-fun Any?.hasIdentity(): Boolean
-```
-
-The function returns `true` when its non-null receiver has stable identity and `false` for `null` and identity-less values, including value classes.
-The result is determined from the concrete runtime class rather than the static type or the presence of a temporary box: an MFVC returns `false` even when represented by a reference-based box, while an identity class returns `true` regardless of how it's viewed in the code.
-
-This function provides runtime classification only; a compile-time constraint for APIs which require identity may be introduced separately.
-
 
 #### Dependencies
 
