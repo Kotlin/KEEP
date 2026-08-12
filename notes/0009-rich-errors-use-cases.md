@@ -238,8 +238,15 @@ Every caller of `submitCaptchaInformation` must either write a dead `is SolveCap
 With Rich Errors, the errors are declared once, and each function states its precise contract:
 
 ```kotlin
-error class CaptchaFailure(val code: Int, val kind: Kind, val message: String) {
-    enum class Kind { SolutionNotReady, UnableToSolveCaptcha, CriticalFailure, InvalidRequest, TransientFailure, ClientFailure }
+error class CaptchaFailure(val code: Int, val error: CaptchaResolverError, val message: String) { 
+    sealed class CaptchaResolverError {
+        data object SolutionNotReady : CaptchaResolverError()
+        data object UnableToSolveCaptcha : CaptchaResolverError()
+        data object CriticalFailure : CaptchaResolverError()
+        data object InvalidRequest : CaptchaResolverError()
+        data object TransientFailure : CaptchaResolverError()
+        data object ClientFailure : CaptchaResolverError()
+    }
 }
 
 interface CaptchaResolver {
@@ -248,7 +255,7 @@ interface CaptchaResolver {
 }
 ```
 
-Two sealed hierarchies (9 declarations) collapse into one error class, impossible states become unrepresentable, callers benefit from exhaustiveness.
+Now impossible states become unrepresentable, callers benefit from exhaustiveness.
 
 ### Example 6: the "exception in a data class" wrapper
 
