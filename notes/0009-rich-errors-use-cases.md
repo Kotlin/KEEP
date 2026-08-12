@@ -1,7 +1,7 @@
 # Design Notes: Evaluating Rich Errors in the Wild 
 
 * **Authors**: Roman Venediktov, Michail Zarečenskij
-* **Discussion**: TBD
+* **Discussion**: [#498](https://github.com/Kotlin/KEEP/discussions/498)
 
 ## Summary
 
