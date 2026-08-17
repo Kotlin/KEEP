@@ -41,10 +41,10 @@ val error: List<String> = list.castAll() // error: type argument required
 Kotlin has type erasure runtime semantics for non-reified type parameters,
 and for most Kotlin code, types are only used as a safety check:
 they statically reject unsafe code but do not affect runtime behavior.
-Therefore, complex, based on heuristics, and ever evolving type inference is acceptable:
+Therefore, the complex, heuristics-based, and ever-evolving type inference system is acceptable:
 what concrete types are inferred does not affect execution.
 Ensuring types safely approximate the runtime behavior is a separate concern.
-This is why it is okay for a same expression `emptyList()` to have
+This is why it is okay for the same expression `emptyList()` to have
 different types depending on the context:
 
 ```kotlin
@@ -125,20 +125,21 @@ See related issues: [KT-54642](https://youtrack.jetbrains.com/issue/KT-54642/Exp
 ## Design
 
 We propose to introduce a new soft-keyword `explicit` type parameter modifier,
-which disables type inference for the type parameter and forces callers to always specify it explicitly:
+which disables type inference for the type parameter 
+and forces callers to always specify the corresponding type argument explicitly:
 
 ```kotlin
 inline fun <explicit reified T> List<*>.castAll(): List<T>
 
 val l: List<CharSequence> = listOf("a", "b", "c")
 val ok = l.castAll<String>() // ok
-val error: List<String> = l.castAll() // error, explicit type argument is required
+val error: List<String> = l.castAll() // error: explicit type argument is required
 ```
 
-It is also prohibited to pass underscore `_` for explicit type parameters in type arguments list:
+Passing underscore `_` for explicit type parameters in the type argument list is also prohibited:
 
 ```kotlin
-val error: List<String> = l.castAll<_>() // error, explicit type argument is required
+val error: List<String> = l.castAll<_>() // error: explicit type argument is required
 ```
 
 In Kotlin, once a type-argument list is written at the call site,
@@ -174,9 +175,9 @@ Standard library functions like `Iterable<*>.filterIsInstance` or `List<*>.castA
 However, `contextOf` does not.
 
 We considered an idea to deduce explicitness of a type parameter from function signature
-and make compiler or IDE warn callers if type argument is not provided explictly.
+and make the compiler or IDE warn callers if the type argument is not provided explicitly.
 We decided against it because:
-- This might be unexpected for function author, as it is a property of a type parameter,
+- This might be unexpected for function author, as it would be a property of a type parameter
   implicitly deduced based on a combination of unobvious factors.
 - An explicit opt-out would have to be provided anyway, as there are APIs that are intentionally
   designed to use type inference even for type parameters that might affect runtime execution.
@@ -206,7 +207,7 @@ class UserRepository(val db: Database)
 
 val appModule = module {
     single { Database() }
-    single { UserRepository(get())
+    single { UserRepository(get()) }
 }
 ```
 
@@ -224,7 +225,7 @@ and due to its narrow applicability is unlikely to interfere with any features a
 
 # Migration
 
-As mentioned above, `@kotlin.internal.NoInfer` is used at the moment in the standard library
+As mentioned above, `@kotlin.internal.NoInfer` is currently used in the standard library
 to express the semantics of proposed `explicit` type parameters.
 Such usages of `@NoInfer` can be migrated to `explicit` type parameters:
 
@@ -262,5 +263,3 @@ internal fun <T> KProperty<@kotlin.internal.Exact T>.modify(
   newValue: T
 ): PreferenceModification<T>
 ```
-
-
