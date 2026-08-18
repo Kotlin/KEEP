@@ -20,14 +20,14 @@
 >
 > - Drop the delegate-based approach to assign-once property declaration.
 > - Introduce `lateinit val` declaration to Kotlin.
-> - Treat `lateinit val` as stable and support smartcasts for it.
-> - Compile `lateinit val` to a backing field with thread-safe access.
+> - Do not support smartcasts of `lateinit val` properties for now.
+> - Do not guarantee thread-safety for `lateinit val` properties for now.
+> - Compile `lateinit val` to a backing field.
 >
 > ### New in This Proposal
 >
 > - [Inheritance](#inheritance): override matching rules for `lateinit val`.
 > - [Reflection](#reflection): behavior of `lateinit val` in the reflection API.
-
 
 # Abstract
 
@@ -36,11 +36,10 @@ to provide first-class support for properties
 with delayed initialization and assign-once semantics.
 
 `lateinit val` bridges the gap between `lateinit var` and `val`:
-it allows late initialization while preventing reassignment 
-and enabling smartcasts.
+it allows late initialization while preventing reassignment.
 
 It is compiled to a private backing field.
-Thread-safe getter and setter enforce the assign-once semantics.
+Generated getter and setter enforce the assign-once semantics.
 
 # Table of Contents
 
@@ -51,6 +50,8 @@ Thread-safe getter and setter enforce the assign-once semantics.
 * [Intended Semantics](#intended-semantics)
 * [Design](#design)
   * [Compilation Strategy](#compilation-strategy)
+  * [Thread-Safety](#thread-safety)
+  * [Smartcasts](#smartcasts)
 * [Interaction with Other Features](#interaction-with-other-features)
   * [Inheritance](#inheritance)
   * [`expect`/`actual`](#expectactual)
@@ -94,9 +95,8 @@ These two use cases account for up to 80% of `lateinit var` usage
 according to our open-source code survey.
 They share a common trait: the property is stable after the first assignment.
 
-However, `lateinit var` does not express this assign-once intent:
-* It allows accidental reassignment, which can lead to bugs.
-* Smartcasts are not supported, even though the value is effectively stable after initialization.
+However, `lateinit var` does not express this assign-once intent
+and allows accidental reassignment, which can lead to bugs.
 
 Due to the compilation scheme, `lateinit var` is also limited to non-nullable reference types only.
 
@@ -105,10 +105,8 @@ Due to the compilation scheme, `lateinit var` is also limited to non-nullable re
 This proposal aims to introduce first-class support for assign-once properties in Kotlin:
 * Express assign-once semantics directly in code, rather than relying on convention.
 * Offer runtime support to prevent accidental semantic violations.
-* Enable smartcasts for assign-once properties, similarly to stable `val` properties.
 
 In addition, the following secondary goals guided the design:
-* Assign-once properties should be safe to use in concurrent contexts by default.
 * Annotations, especially DI-related ones like `@Inject`, should work with assign-once properties.
 * Assign-once properties should be type-agnostic, including support for nullable types.
 
@@ -131,10 +129,13 @@ Adherence to assign-once semantics is enforced at runtime.
 There is no requirement for the compiler to ensure at compile time
 that the property is initialized before the first read and never reassigned.
 
-A thread-safe implementation additionally guarantees:
+A thread-safe implementation would additionally guarantee:
 * For any number of potentially concurrent assignments,
   exactly one succeeds and all others throw an exception.
 * All reads after a successful assignment observe the same value.
+
+Note that the implementation proposed by this document is not thread-safe,
+see reasoning in [Thread-Safety](#thread-safety).
 
 # Design
 
@@ -150,28 +151,20 @@ class Example {
     }
 
     fun use() {
-        if (service is SpecificService) {
-            // smartcast works
-            service.specificMethod()
-        }
+        service.doWork()
     }
 }
 ```
 
 `lateinit val` compares to related declarations in the following ways:
 * It can be late initialized in any scope, unlike `val` class properties which restrict deferred initialization to `init` blocks.
-* It supports **smartcasts**: since the value is stable after initialization, the compiler treats it similarly to `val` properties.
 * It has no restrictions on the property type: nullable and primitive types are allowed, in contrast with `lateinit var`.
 * It permits no custom setter or getter, similar to `lateinit var`.
 * It exposes no backing field on the source level. In particular, `@field:` annotation target is invalid for `lateinit val`.
-* It is thread-safe, meaning semantics are preserved in a multithreaded environment.
+* It is **not** thread-safe, so assign-once semantics are not guaranteed in presence of data-races on the property.
 
 The backing field is hidden in this design because interacting with it through annotations
 could bypass generated setter and violate assign-once semantics.
-
-Thread-safety is required by design because without it, 
-concurrent access could silently violate the stability contract that smartcasts rely on,
-leading to subtle, hard-to-debug issues.
 
 Together with existing declarations, `lateinit val` contributes to a consistent property model
 where the `lateinit` modifier moves compile-time read-write invariants to runtime:
@@ -185,10 +178,10 @@ Note that we **do not** propose deprecation of `lateinit var`.
 It covers use cases beyond assign-once semantics, such as the builder pattern,
 and may be preferred in performance-sensitive contexts.
 
-### Compilation Strategy
+## Compilation Strategy
 
 We propose to compile `lateinit val` declarations to private backing fields
-with thread-safe setters and getters that enforce assign-once semantics.
+with setters and getters that enforce assign-once semantics.
 For example, on the JVM, the following code:
 
 ```kotlin
@@ -203,10 +196,60 @@ could be compiled to (expressed in Java):
 public final class Example {
     private static final Object UNINITIALIZED = new Object();
 
-    private static final AtomicReferenceFieldUpdater<Example, Object> propUpdater =
-            AtomicReferenceFieldUpdater.newUpdater(Example.class, Object.class, "_property");
+    private Object _property = UNINITIALIZED;
+
+    @NotNull public String getProperty() {
+        if (_property == UNINITIALIZED) {
+            throw new IllegalStateException("Property is uninitialized");
+        }
+        return (String) _property;
+    }
+
+    public void setProperty(@NotNull String v) {
+        if (_property != UNINITIALIZED) {
+            throw new IllegalStateException("Property already set");
+        }
+        _property = v;
+    }
+}
+```
+
+The `UNINITIALIZED` sentinel object is a static field,
+it can even be reused for all `lateinit val` properties of the class.
+Another option would be to provide it in the standard library,
+but then it would have to be public.
+If the sentinel is made `protected` instead of `private`,
+inheritors can reuse it rather than generating their own.
+
+An alternative would be a public backing field scheme similar to `lateinit var`,
+where `null` or a sentinel object marks the uninitialized state.
+The proposed scheme is chosen for the following reasons:
+* It supports both nullable types and dependency injection at the same time:
+  * A sentinel object is used to represent the uninitialized state instead of `null`.
+  * Dependency injection frameworks can target the property setter,
+    resolving the right type through reflection.
+* It prevents Java code from modifying the stored value directly,
+  as the backing field is private.
+
+The trade-off compared to `lateinit var` is
+no exposed backing field, which may create confusion
+given that `lateinit val` looks similar to `lateinit var`.
+
+## Thread-Safety
+
+We considered making `lateinit val` thread-safe, i.e. preserving assign-once semantics
+in multithreaded context without additional synchronization written by users.
+For example, on JVM this could be achieved by making the backing field `volatile`
+and using `AtomicReferenceFieldUpdater` to update it:
+
+```java
+public final class Example {
+    private static final Object UNINITIALIZED = new Object();
 
     private volatile Object _property = UNINITIALIZED;
+    
+    private static final AtomicReferenceFieldUpdater<Example, Object> propUpdater =
+          AtomicReferenceFieldUpdater.newUpdater(Example.class, Object.class, "_property");
 
     @NotNull public String getProperty() {
         Object p = _property;
@@ -225,34 +268,37 @@ public final class Example {
 }
 ```
 
-On other platforms, native atomic primitives may be used instead of `AtomicReferenceFieldUpdater`.
+However, we decided against it for the following reasons:
+- It complicates code generation and degrades performance.
+  Even though access pattern for `lateinit val` backing field is one-write-many-reads,
+  and the performance cost after initialization might be small compared to a non-`volatile` field,
+  making it `volatile` prevents many other optimizations.
+- Write-write data races on `lateinit val` would manifest 
+  during testing with high probability in practice even without synchronization.
+- As other property declarations are non-thread-safe by default in Kotlin,
+  the synchronization point that a thread-safe `lateinit val` would create
+  might be unexpected for the user.
+  This implicit synchronization might mask missing synchronization elsewhere in code,
+  which would ultimately disserve the user.
 
-Note that the `AtomicReferenceFieldUpdater` is a static class field, so
-it does not impose memory overhead on the class.
-The `UNINITIALIZED` sentinel object is also a static field,
-it can even be reused for all `lateinit val` properties of the class.
-Another option would be to provide it in the standard library,
-but then it would have to be public.
-If the sentinel and updater are made `protected` instead of `private`,
-inheritors can reuse them rather than generating their own.
+This decision might be changed in the future based on feedback from experimental release of `lateinit val`.
+If thread-safety proves necessary in many use-cases, we may consider
+providing users with an ability to explicitly choose thread-safety guarantees for a `lateinit val` declaration.
 
-Thread-safety imposes a synchronization overhead on every access.
-In practice, we expect this overhead to be small:
-the intended use cases involve single write with little or no contention.
+## Smartcasts
 
-An alternative would be a public backing field scheme similar to `lateinit var`,
-where `null` or a sentinel object marks the uninitialized state.
-The proposed scheme is chosen for the following reasons:
-* It supports both nullable types and dependency injection at the same time:
-  * A sentinel object is used to represent the uninitialized state instead of `null`.
-  * Dependency injection frameworks can target the property setter,
-    resolving the right type through reflection.
-* It prevents Java code from modifying the stored value directly,
-  as the backing field is private.
+The stable semantics of `lateinit val` properties - once initialized, their values never change - 
+make them ideal candidates for Kotlin smartcasts.
+Smartcasts support for `lateinit val`s might also be a valuable improvement compared to
+`lateinit var`s where latter are currently used with assign-once semantics.
 
-The trade-off compared to `lateinit var` is
-no exposed backing field, which may create confusion
-given that `lateinit val` looks similar to `lateinit var`.
+However, we decided to postpone smartcast support for `lateinit val`s,
+because without thread-safety, see [Thread-Safety](#thread-safety), 
+stability of a `lateinit val` property is not guaranteed and thus smartcasts on it are theoretically unsound.
+Supporting them would unprecedentedly weaken Kotlin smartcasts safety contract.
+
+This decision might be changed in the future based on feedback from experimental release of `lateinit val`.
+In particular, if a thread-safe variant is introduced, there would be no obstacles to supporting smartcasts on it.
 
 # Interaction with Other Features
 
@@ -395,8 +441,8 @@ class Item {
 }
 ```
 
-But more importantly, Hibernate reads possibly-not-yet-initialized properties
-on `persist` calls to determine whether entity is new or detached.
+But more importantly, Hibernate reads possibly-uninitialized properties
+on `persist` calls to determine whether the entity is new or detached.
 If a property contains a default value (`null` or `0`), 
 Hibernate considers the entity transient (new); otherwise it is detached:
 
