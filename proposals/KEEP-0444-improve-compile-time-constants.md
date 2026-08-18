@@ -121,11 +121,13 @@ const val name2 = func.name
 
 This initial set will provide us with useful information of how feasible and useful more complex compile-time reflection will be to implement.
 
+Please note that evaluation of `Enum.ordinal` is not supported by design. Unlike `Enum.name`, `Enum.ordinal` is an invisible change to the user of a given enum. If two enum entries change their order, the ordinal values will change undetected by the user. This could easily lead to undesirable changes in runtime.
+
 ### Improved Error Messages
 
 ```kotlin
-const val tag = (if (true) "A" else "B") + C
-//              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+const val tag = (if (true) "A" else "B") + "C"
+//              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 //				Error: Const 'val' initializer must be a constant value.
 ```
 
@@ -134,7 +136,7 @@ From the provided error message, it's not clear which part of the expression isn
 To improve upon this design, error messages will track the source location of the violating expression instead of highlighting the whole expression and provide a more detailed description to explain themself.
 
 ```kotlin
-const val tag = (if (true) "A" else "B") + C
+const val tag = (if (true) "A" else "B") + "C"
 //               ^^^^^^^^^^^^^^^^^^^^^^
 //				Error: Const 'val' initializer cannot contain controlflow.
 ```
