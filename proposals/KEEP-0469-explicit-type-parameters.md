@@ -243,8 +243,11 @@ context(context: A)
 inline fun <explicit A> contextOf(): A
 ```
 
-However, Kotlin compiler would still have to support `@NoInfer` for some time,
-as it has to support older versions of the standard library.
+However, the Kotlin compiler must remain compatible with standard library 
+versions one release backward and one release forward. 
+Therefore, to ensure a smooth migration, there should be at least one release during which:
+- The standard library uses both `explicit` and `@NoInfer`.
+- The compiler supports both `explicit` and `@NoInfer`.
 
 Once support for `@NoInfer` is dropped, its other usages would have to either
 drop it, which would be a red-to-green change, or use other features.
