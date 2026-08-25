@@ -4,7 +4,7 @@
 * **Author**: Marat Akhin
 * **Contributors**: Pavel Kunyavskiy, Alejandro Serrano Mena, Alexander Udalov, Mikhail Zarechenskiy, Evgeniy Zhelenskiy
 * **Status**: Public discussion
-* **Discussion**: TBD
+* **Discussion**: [GitHub](https://github.com/Kotlin/KEEP/discussions/501)
 * **Related proposals**:
   * [KEEP-0104: Inline Classes](./KEEP-0104-inline-classes.md)
   * [KEEP-0454: Full Value Classes (aka Multi-Field Value Classes)](./KEEP-0454-better-immutability-value-classes-MFVC.md)
