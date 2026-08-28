@@ -1260,6 +1260,14 @@ extension Vector {
 }
 ```
 
+> [!WARNING]
+> As result of the compilation strategy outlined in this section,
+> turning a companion block members into a companion extension, or vice versa, 
+> may not be fully binary compatible in all platforms. In particular, it is not
+> in the JVM, as companion block members become static members of the
+> surrounding class, whereas companion extensions become static methods of
+> the `FileKt` class.
+
 ### Reflection
 
 _The updates in this section concern the JVM-only side of reflection_.
