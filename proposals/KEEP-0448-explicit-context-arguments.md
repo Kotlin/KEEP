@@ -166,6 +166,10 @@ eagerly resolved as explained in the
 [callable references](./KEEP-0367-context-parameters.md#callable-references)
 section of the original proposal.
 
+**Mixing named and positional arguments.** It is not possible to use positional
+arguments after an explicit context argument. As opposed to regular optional
+arguments, there's no "position" for a context parameter.
+
 **DSL marker.** Explicit context arguments are _not_ affected by the
 applicability restrictions of the `DslMarker` annotation. This aligns with
 the behavior for receivers, which also may overcome the restrictions by

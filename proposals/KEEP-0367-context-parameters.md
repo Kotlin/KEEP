@@ -43,6 +43,7 @@ This is an updated proposal for [KEEP-259](https://github.com/Kotlin/KEEP/issues
   * [Extended type inference algorithm](#extended-type-inference-algorithm)
   * [Extended scoping rules](#extended-scoping-rules)
   * [ABI compatibility](#abi-compatibility)
+  * [Inheritance](#inheritance)
 * [Q\&A about design decisions](#qa-about-design-decisions)
 * [Acknowledgments](#acknowledgments)
 
@@ -702,6 +703,46 @@ Note that parameter names do not impact JVM ABI compatibility, but we use the na
 **§7.12** *(JVM and Java compatibility, properties)*: In the JVM a property with context parameters is represented by its corresponding getter and/or setter. This representation follows the same argument order described in §7.10.
 
 **§7.13** *(other targets)*: Targets may not follow the same ABI compatibility guarantees as those described for the JVM.
+
+### Inheritance
+
+**§7.14** *(context parameter name)*: the name of a context parameter (or the absence thereof) is taken to be that of the most specific overload, as with any a regular value parameter. This has implications when using [explicit context arguments](./KEEP-0448-explicit-context-arguments.md).
+
+As a result, the compiler should warn whenever the parameter name changes, including the case in which a named context parameter to `_`, and vice versa.
+
+```kotlin
+open class A() {
+  context(a: Int)
+  open fun foo() = a
+}
+
+class B(): A() {
+  context(_: Int) // warning: parameter name change
+  override fun foo() = 2  
+}
+```
+
+**§7.15** *(conflicting context parameter names)*: if the names of a context parameter coming from different supertypes conflict, it should be treated as _ambiguous_, and receive a warning.
+
+```kotlin
+interface I1 {
+  context(_: String) fun foo()
+}
+
+interface I2 {
+  context(s: String) fun foo()
+}
+
+abstract class C : I1, I2 // warning: different names for the same parameter in supertypes
+```
+
+[Explicit context arguments](./KEEP-0448-explicit-context-arguments.md) may not be used with such ambiguous context parameter names.
+
+```kotlin
+fun test(c: C) {
+  c.foo(s = "")  // error: ambiguous parameter name
+}
+```
 
 ## Q&A about design decisions
 
