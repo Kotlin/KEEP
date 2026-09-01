@@ -243,14 +243,15 @@ context(context: A)
 inline fun <explicit A> contextOf(): A
 ```
 
-However, the Kotlin compiler must remain compatible with standard library 
-versions one release backward and one release forward. 
-Therefore, to ensure a smooth migration, there should be at least one release during which:
-- The standard library uses both `explicit` and `@NoInfer`.
-- The compiler supports both `explicit` and `@NoInfer`.
+However, the Kotlin compiler must remain backwards-compatible with the standard library
+and forward-compatible with it by at least one release. 
+Therefore, to ensure a smooth migration, there should be at least one release 
+of the standard library using both `explicit` and `@NoInfer`, with
+the compiler supporting both throughout the migration period.
 
-Once support for `@NoInfer` is dropped, its other usages would have to either
-drop it, which would be a red-to-green change, or use other features.
+If support for `@NoInfer` is eventually dropped, 
+any remaining usages would need either to omit the annotation, 
+which would be a red-to-green change, or rely on other features.
 For example, this code in IntelliJ Platform can use `@kotlin.internal.Exact` instead:
 
 ```kotlin
