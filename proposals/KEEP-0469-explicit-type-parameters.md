@@ -3,7 +3,7 @@
 * **Type**: Design Proposal
 * **Author**: Mikhail Vorobev
 * **Contributors**: Marat Akhin, Alejandro Serrano Mena
-* **Status**: Draft
+* **Status**: Public Discussion
 * **Discussion**: TODO
 
 # Abstract
