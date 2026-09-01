@@ -4,7 +4,7 @@
 * **Author**: Mikhail Vorobev
 * **Contributors**: Marat Akhin, Alejandro Serrano Mena
 * **Status**: Public Discussion
-* **Discussion**: TODO
+* **Discussion**: [GitHub](https://github.com/Kotlin/KEEP/discussions/502)
 
 # Abstract
 
