@@ -11,7 +11,7 @@
 * **Issue:**
   [KT-15555 Support suspend get/set properties](https://youtrack.jetbrains.com/issue/KT-15555)
 * **Discussion**: [#452](https://github.com/Kotlin/KEEP/discussions/452)
-* **Status**: Public discussion
+* **Status**: Rejected
 
 ## Abstract
 
@@ -77,28 +77,30 @@ A lot of existing Kotlin code that relies on coroutines already uses `suspend` f
 
 ## Table of contents
 
-- [The proposal](#the-proposal)
-  - [`coroutineContext` stdlib property](#coroutinecontext-stdlib-property)
-  - [Use case. CPU intensive cooperative cancellation](#use-case-cpu-intensive-cooperative-cancellation)
-  - [Other kotlinx.coroutines functions that could be made non-suspend](#other-kotlinxcoroutines-functions-that-could-be-made-non-suspend)
-- [Technical details](#technical-details)
-  - [`suspend` function with explicit `CoroutineContext` context parameter](#suspend-function-with-explicit-coroutinecontext-context-parameter)
-  - [Declaration-site `CONFLICTING_OVERLOADS` and overridability](#declaration-site-conflicting_overloads-and-overridability)
-  - [Overload resolution](#overload-resolution)
-  - [Feature interaction with callable references](#feature-interaction-with-callable-references)
-  - [`kotlin.synchronized` stdlib function](#kotlinsynchronized-stdlib-function)
-- [Concerns](#concerns)
-  - [Discoverability](#discoverability)
-  - [`CoroutineContext` becomes even more magical](#coroutinecontext-becomes-even-more-magical)
-- [Discarded idea. Interop with Compose](#discarded-idea-interop-with-compose)
-- [Dependencies](#dependencies)
-- [Illustrative example. `ScopedValues`-like API for `CoroutineContext`](#illustrative-example-scopedvalues-like-api-for-coroutinecontext)
-- [IDE integration](#ide-integration)
-- [Related features in other languages](#related-features-in-other-languages)
-- [Alternatives](#alternatives)
-  - [Discarded alternative. Treat all `suspend` functions as if they had an implicit `CoroutineContext` context parameter](#discarded-alternative-treat-all-suspend-functions-as-if-they-had-an-implicit-coroutinecontext-context-parameter)
-  - [Discarded alternative. Instead of `CoroutineContext` expose `Continuation`](#discarded-alternative-instead-of-coroutinecontext-expose-continuation)
-  - [Alternative. Just allow `suspend` properties](#alternative-just-allow-suspend-properties)
+* [Abstract](#abstract)
+* [Table of contents](#table-of-contents)
+* [The proposal](#the-proposal)
+    * [`coroutineContext` stdlib property](#coroutinecontext-stdlib-property)
+    * [Use case. CPU intensive cooperative cancellation](#use-case-cpu-intensive-cooperative-cancellation)
+    * [Other kotlinx.coroutines functions that could be made non-suspend](#other-kotlinxcoroutines-functions-that-could-be-made-non-suspend)
+* [Technical details](#technical-details)
+    * [`suspend` function with explicit `CoroutineContext` context parameter](#suspend-function-with-explicit-coroutinecontext-context-parameter)
+    * [Declaration-site `CONFLICTING_OVERLOADS` and overridability](#declaration-site-conflicting_overloads-and-overridability)
+    * [Overload resolution](#overload-resolution)
+    * [Feature interaction with callable references](#feature-interaction-with-callable-references)
+    * [`kotlin.synchronized` stdlib function](#kotlinsynchronized-stdlib-function)
+* [Concerns](#concerns)
+    * [Discoverability](#discoverability)
+    * [`CoroutineContext` becomes even more magical](#coroutinecontext-becomes-even-more-magical)
+* [Discarded idea. Interop with Compose](#discarded-idea-interop-with-compose)
+* [Dependencies](#dependencies)
+* [Illustrative example. `ScopedValues`-like API for `CoroutineContext`](#illustrative-example-scopedvalues-like-api-for-coroutinecontext)
+* [IDE integration](#ide-integration)
+* [Related features in other languages](#related-features-in-other-languages)
+* [Alternatives](#alternatives)
+    * [Discarded alternative. Treat all `suspend` functions as if they had an implicit `CoroutineContext` context parameter](#discarded-alternative-treat-all-suspend-functions-as-if-they-had-an-implicit-coroutinecontext-context-parameter)
+    * [Discarded alternative. Instead of `CoroutineContext` expose `Continuation`](#discarded-alternative-instead-of-coroutinecontext-expose-continuation)
+    * [Alternative. Just allow `suspend` properties](#alternative-just-allow-suspend-properties)
 
 ## The proposal
 
