@@ -57,6 +57,7 @@ The existing `@ObjCSignatureOverride` annotation is retained as source-compatibl
   * [Callable features](#callable-features)
   * [Platform names on open members](#platform-names-on-open-members)
   * [Platform names and inheritance](#platform-names-and-inheritance)
+    * [Why not inheriting platform names?](#why-not-inheriting-platform-names)
   * [Multiple inherited platform names](#multiple-inherited-platform-names)
   * [Platform clashes](#platform-clashes)
   * [Platform-specific behavior](#platform-specific-behavior)
@@ -68,19 +69,12 @@ The existing `@ObjCSignatureOverride` annotation is retained as source-compatibl
   * [Synthesized discriminators](#synthesized-discriminators)
   * [Objective-C import](#objective-c-import)
   * [Overriding imported Objective-C members](#overriding-imported-objective-c-members)
-  * [Commonization and klib representation](#commonization-and-klib-representation)
 * [Compatibility and migration](#compatibility-and-migration)
-  * [Existing Kotlin declarations](#existing-kotlin-declarations)
   * [`@ObjCSignatureOverride`](#objcsignatureoverride)
-  * [Export-name inheritance](#export-name-inheritance)
+  * [Platform round trips](#platform-round-trips)
 * [Alternatives](#alternatives)
-  * [Use the discriminator value as the default export name](#use-the-discriminator-value-as-the-default-export-name)
-  * [Add a bare `@SignatureDiscriminator`](#add-a-bare-signaturediscriminator)
-  * [Repeat platform names on every override](#repeat-platform-names-on-every-override)
-  * [Reject multiple inherited platform names](#reject-multiple-inherited-platform-names)
-  * [Immediately replace `@ObjCSignatureOverride`](#immediately-replace-objcsignatureoverride)
+  * [Use the discriminator value as the export name by default](#use-the-discriminator-value-as-the-export-name-by-default)
   * [One combined signature and interop proposal](#one-combined-signature-and-interop-proposal)
-* [Open issues](#open-issues)
 
 ## Motivation
 
@@ -102,7 +96,7 @@ interface API {
 }
 ```
 
-To be usable, Java callers need a valid Java name such as `stringValue()`.
+To be usable from Java, the callable needs a valid Java name such as `stringValue()`.
 Today `@JvmName` is rejected on open and abstract members because it is unclear how it should work with conflicting Kotlin overrides.
 
 For example, the following hierarchy has one Kotlin override signature but two JVM names:
@@ -301,6 +295,18 @@ class APIImpl : API {
 ```
 
 Where the target supports final methods, bridges should be final to discourage platform subtypes from overriding only one view of the Kotlin member.
+
+#### Why not inheriting platform names?
+
+The primary platform name of a declaration is an ABI choice and should be visible on that declaration.
+If an override implicitly inherited its primary platform name, that name would depend on non-local information from its supertypes.
+Adding a supertype or changing a platform name in a dependency could then silently change the override's primary platform symbol.
+
+Instead, the primary platform name is selected locally from the overriding declaration.
+Distinct inherited platform names are preserved by secondary bridges, so all inherited platform contracts remain implemented without changing that local choice.
+An author who wants an inherited name to be primary repeats it explicitly with `@ExportName`; doing so also avoids the corresponding bridge.
+
+The same applies for inheriting `useAsExportName = true` flag.
 
 ### Multiple inherited platform names
 
@@ -516,7 +522,6 @@ This would make `@SignatureDiscriminator("string-result")` automatically behave 
 It is rejected because:
 
 * a string that is good opaque identity is not necessarily a good or legal Java, JavaScript, Objective-C, Swift, or WebAssembly name;
-* changing a foreign-language name should not change Kotlin-to-Kotlin linkage;
 * one value cannot express Objective-C selector and Swift source-name distinctions cleanly; and
 * the behavior would re-couple the two layers separated by the core proposal, even when this is not needed by the end user.
 

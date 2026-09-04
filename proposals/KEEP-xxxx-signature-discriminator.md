@@ -11,7 +11,7 @@
 ## Abstract
 
 This proposal introduces `@SignatureDiscriminator`, a multiplatform mechanism for assigning an additional identity component to a Kotlin callable.
-It is intended for API evolution when a library must retain an old declaration alongside a new declaration that would otherwise be a conflicting overload or produce a declaration clash.
+It is intended for API evolution when a library must retain an old declaration alongside a new declaration that would otherwise be a conflicting overload or produce a platform declaration clash.
 
 A signature discriminator participates in declaration-conflict checking, override matching, expect/actual matching, and binary linkage.
 It does not participate in call resolution, so a call site cannot select an overload by its signature discriminator.
@@ -69,7 +69,7 @@ class APIImpl : API {
 ```
 
 Replacing the old declaration is binary incompatible: previously compiled consumers still link against the old binary signature.
-The usual migration recipe is to keep the old declaration hidden and add the new one:
+The usual migration recipe is to keep the old declaration hidden and add the new one, which usually works until it does not:
 
 ```kotlin
 interface API {
@@ -81,9 +81,13 @@ interface API {
 ```
 
 This does not compile because Kotlin does not allow overloads that differ only in return type.
-Similar problems arise when changing suspendness or other features of a Kotlin callable.
+Similar problems arise also for the following cases:
 
-`@SignatureDiscriminator` makes the new declaration a distinct callable for override matching and binary linkage while keeping its Kotlin source name unchanged:
+* changing a property type;
+* changing type parameters and arguments when they are erased on the platform;
+* changing suspendness of a Kotlin callable.
+
+`@SignatureDiscriminator` makes the new declaration a distinct callable for conflicting overloads, override matching and binary linkage while keeping its Kotlin source name unchanged:
 
 ```kotlin
 interface API {
@@ -106,8 +110,8 @@ Suppressing `CONFLICTING_OVERLOADS` or a platform-declaration-clash diagnostic d
 
 ## Non-goals
 
-This proposal specifically defines `@SignatureDiscriminator` as a solution to the problem of making two declarations distinct.
-It does not change call resolution and does not define platform import or export naming.
+This proposal specifically defines `@SignatureDiscriminator` as a solution to the problem of making two callables distinct on their declaration sites.
+It does not change call resolution on their use sites and does not define platform import or export naming.
 
 The companion interop proposal covers the story about feature interaction between `@SignatureDiscriminator` annotation and different Kotlin export/import mechanisms.
 
@@ -135,7 +139,6 @@ The following rules apply:
 * The annotation cannot be applied to a local declaration or a constructor.
 * Two equal string values denote the same discriminator.
   The value has no additional structure and is compared exactly.
-* Changing, adding, or removing the discriminator of a published declaration is a binary-incompatible change, unless the old declaration is retained under its old identity.
 
 ### The signatures of a Kotlin callable
 
@@ -144,15 +147,24 @@ The proposal changes some of them and intentionally leaves others unchanged.
 
 **Call-resolution signature.**
 This is used to decide which declaration a source call resolves to.
-It includes the Kotlin source name and Kotlin types, and may use parameter names for named calls.
+It includes the Kotlin source name, value parameter types and type parameters, and may use value parameter names for calls with named arguments.
 It excludes the return type.
 
 `@SignatureDiscriminator` does not participate in call resolution.
 There is no syntax for supplying a discriminator at a call site.
 Call sites must therefore be disambiguated by ordinary Kotlin mechanisms, such as hiding the compatibility overload with `@Deprecated(level = HIDDEN)` or using named arguments when parameter names distinguish the overloads.
 
+**Overload signature.**
+This is used for the conflicting overloads checking.
+It includes the Kotlin source name, value parameter types and type parameters.
+It excludes the return type and the value parameter names.
+The proposal adds the presence and exact value of `@SignatureDiscriminator` to this signature.
+
 **Override-matching signature.**
 This is used to match an `override` with inherited members.
+It includes the Kotlin source name, value parameter types and type parameters.
+It excludes the return type and the value parameter names.
+Return-type covariance, property mutability, suspendness, and other overridability conditions are checked separately after a signature match.
 The proposal adds the presence and exact value of `@SignatureDiscriminator` to this signature.
 
 **Expect/actual-matching signature.**
@@ -215,7 +227,7 @@ As this annotation is an important part of the declaration signature, it does no
 This is intentionally verbose:
 
 * it keeps declaration identity visible at every source declaration;
-* it avoids deriving the effective signature of an override from non-local supertypes;
+* it avoids deriving the effective signature of an override from the supertypes (which could potentially come from other modules or dependencies);
 * it makes conflicts in multiple inheritance explicit.
 
 If two inherited declarations have the same "source" override signature but different discriminators, they remain distinct members and require distinct overrides.
