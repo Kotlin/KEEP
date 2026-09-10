@@ -38,10 +38,10 @@ For example, these Objective-C selectors could be imported with distinct synthes
 
 ```kotlin
 @SignatureDiscriminator("objc:tableView:titleForHeaderInSection:") // synthesized
-fun tableView(tableView: UITableView, titleForHeaderInSection: NSInteger): String?
+fun tableView(of: UITableView, titleForHeaderInSection: NSInteger): String?
 
 @SignatureDiscriminator("objc:tableView:titleForFooterInSection:") // synthesized
-fun tableView(tableView: UITableView, titleForFooterInSection: NSInteger): String?
+fun tableView(of: UITableView, titleForFooterInSection: NSInteger): String?
 ```
 
 The existing `@ObjCSignatureOverride` annotation is retained as source-compatible syntax for adopting an inherited selector-derived discriminator.
@@ -57,7 +57,7 @@ The existing `@ObjCSignatureOverride` annotation is retained as source-compatibl
   * [Callable features](#callable-features)
   * [Platform names on open members](#platform-names-on-open-members)
   * [Platform names and inheritance](#platform-names-and-inheritance)
-    * [Why not inheriting platform names?](#why-not-inheriting-platform-names)
+    * [Why not implicitly inherit the platform name?](#why-not-implicitly-inherit-the-platform-name)
   * [Multiple inherited platform names](#multiple-inherited-platform-names)
   * [Platform clashes](#platform-clashes)
   * [Platform-specific behavior](#platform-specific-behavior)
@@ -69,6 +69,7 @@ The existing `@ObjCSignatureOverride` annotation is retained as source-compatibl
   * [Synthesized discriminators](#synthesized-discriminators)
   * [Objective-C import](#objective-c-import)
   * [Overriding imported Objective-C members](#overriding-imported-objective-c-members)
+  * [Why a selector-derived discriminator is actually not enough](#why-a-selector-derived-discriminator-is-actually-not-enough)
 * [Compatibility and migration](#compatibility-and-migration)
   * [`@ObjCSignatureOverride`](#objcsignatureoverride)
   * [Platform round trips](#platform-round-trips)
@@ -84,7 +85,7 @@ The core `@SignatureDiscriminator` proposal deliberately treats the discriminato
 Where an executable format needs a distinct binary symbol, the backend uses a stable Kotlin encoding.
 That is sufficient for Kotlin callers but does not necessarily produce a readable or even source-callable name for another language.
 
-On the JVM, for example, the new declaration in a migration may be emitted under a Kotlin-mangled method name:
+On the JVM, for example, the new declaration in a migration may be emitted under a Kotlin-mangled name:
 
 ```kotlin
 interface API {
@@ -117,8 +118,8 @@ class C : A, B {
 }
 ```
 
-Without additional rules, it is unclear whether `C::value` should be emitted as `value`, `foo`, or `bar`, which methods should implement `A` and `B`, and what should happen when a Java subclass overrides only one of those names.
-The model below answers these questions by distinguishing a primary platform method from bridges for inherited platform names.
+Without additional rules, it is unclear whether `C::value` should be emitted as `value`, `foo`, or `bar`, which declarations from `A` and `B` it should implement, and what should happen when a Java subclass overrides only one of those names.
+The model below answers these questions by distinguishing a primary platform callable from bridges for inherited platform names.
 
 Once Kotlin override matching is enhanced with signature discriminators, a platform name can be allowed on open and abstract members.
 It becomes safe to write:
@@ -149,20 +150,20 @@ The same separation works for other export-related annotations.
 
 In the other direction, some platform declaration signatures contain information that an ordinary Kotlin signature does not preserve.
 
-The main example is Objective-C, which dispatches methods by selector, including argument labels:
+The main example is Objective-C, which identifies callable members by selector, including argument labels:
 
 ```objective-c
-- (NSString *)tableView:(UITableView *)tableView
+- (NSString *)tableView:(UITableView *)of
     titleForHeaderInSection:(NSInteger)section;
-- (NSString *)tableView:(UITableView *)tableView
+- (NSString *)tableView:(UITableView *)of
     titleForFooterInSection:(NSInteger)section;
 ```
 
 The imported Kotlin declarations have the same callable name and parameter types and differ only in parameter names:
 
 ```kotlin
-fun tableView(tableView: UITableView, titleForHeaderInSection: NSInteger): String?
-fun tableView(tableView: UITableView, titleForFooterInSection: NSInteger): String?
+fun tableView(of: UITableView, titleForHeaderInSection: NSInteger): String?
+fun tableView(of: UITableView, titleForFooterInSection: NSInteger): String?
 ```
 
 Kotlin/Native currently carries Objective-C-specific conflict and override rules, with `@ObjCSignatureOverride` as an opt-in workaround for these cases.
@@ -264,8 +265,9 @@ interface API {
 
 ### Platform names and inheritance
 
-When a callable `C` with platform name `N_C` overrides another callable `Q` with platform name `N_Q`, it creates *two* platform entities: the `N_C`-named primary callable and the `N_Q`-named secondary bridge.
-To avoid this, one should prefer to also set the platform name via `@ExportName` to `N_Q` when inheriting from such callables.
+If an override unambiguously inherits exactly one platform name, it must repeat that name with `@ExportName`.
+This keeps the override under the same platform name as the inherited callable.
+Using a different name would instead create two platform entities: a primary callable under the new name and a bridge under the inherited name.
 
 ```kotlin
 interface API {
@@ -276,36 +278,18 @@ interface API {
 
 class APIImpl : API {
     @SignatureDiscriminator("string-result")
-    override fun value(): String = "new" // generates both a Kotlin-mangled `value-<...>` and a `stringValue` bridge on the JVM
-}
-
-// or
-
-interface API {
-    @SignatureDiscriminator("string-result")
     @JvmName("stringValue")
-    fun value(): String
-}
-
-class APIImpl : API {
-    @SignatureDiscriminator("string-result")
-    @JvmName("stringValue")
-    override fun value(): String = "new" // generates only the `stringValue` function on the JVM
+    override fun value(): String = "new" // repeats the inherited platform name and generates only `stringValue` on the JVM
 }
 ```
 
-Where the target supports final methods, bridges should be final to discourage platform subtypes from overriding only one view of the Kotlin member.
-
-#### Why not inheriting platform names?
+#### Why not implicitly inherit the platform name?
 
 The primary platform name of a declaration is an ABI choice and should be visible on that declaration.
 If an override implicitly inherited its primary platform name, that name would depend on non-local information from its supertypes.
 Adding a supertype or changing a platform name in a dependency could then silently change the override's primary platform symbol.
 
 Instead, the primary platform name is selected locally from the overriding declaration.
-Distinct inherited platform names are preserved by secondary bridges, so all inherited platform contracts remain implemented without changing that local choice.
-An author who wants an inherited name to be primary repeats it explicitly with `@ExportName`; doing so also avoids the corresponding bridge.
-
 The same applies for inheriting `useAsExportName = true` flag.
 
 ### Multiple inherited platform names
@@ -363,7 +347,7 @@ Once one uses `@ExportName`, they are responsible for platform clashes.
 
 #### Kotlin/JVM
 
-For a function with `useAsExportName = true`, the discriminator value is used verbatim as its JVM method name, as if `@JvmName(value)` were present.
+For a function with `useAsExportName = true`, the discriminator value is used verbatim as its JVM name, as if `@JvmName(value)` were present.
 The value must satisfy the existing `@JvmName` validity rules.
 
 ```kotlin
@@ -372,7 +356,7 @@ fun value(): String = "value" // JVM: stringValue()Ljava/lang/String;
 ```
 
 With `useAsExportName = false`, no implicit `@JvmName` is applied.
-The JVM backend instead uses the core proposal's ABI-stable Kotlin encoding of the source name and discriminator for the binary method name, analogous to value-class or internal-name mangling:
+The JVM backend instead uses the core proposal's ABI-stable Kotlin encoding of the source name and discriminator for the binary name, analogous to value-class or internal-name mangling:
 
 ```kotlin
 @SignatureDiscriminator("string-result")
@@ -444,15 +428,19 @@ However, if a platform import decides to also generate a discriminator for such 
 ### Objective-C import
 
 This is most useful for Objective-C import, where parameter names (selector) are an important part of a callable signature.
-The importer records a selector-derived discriminator for methods whose signature requires it:
+The importer records a selector-derived discriminator for imported functions that require one.
+
+An Objective-C selector is split into pieces.
+The first piece becomes the Kotlin function name, while each later piece becomes the name of the corresponding Kotlin parameter.
+Because the first selector piece names the function rather than the first argument, the first Kotlin parameter instead takes the local parameter name from the Objective-C declaration.
 
 ```kotlin
 // Imported declarations
 @SignatureDiscriminator("objc:tableView:titleForHeaderInSection:")
-fun tableView(tableView: UITableView, titleForHeaderInSection: NSInteger): String?
+fun tableView(of: UITableView, titleForHeaderInSection: NSInteger): String?
 
 @SignatureDiscriminator("objc:tableView:titleForFooterInSection:")
-fun tableView(tableView: UITableView, titleForFooterInSection: NSInteger): String?
+fun tableView(of: UITableView, titleForFooterInSection: NSInteger): String?
 ```
 
 These declarations are handled under the general discriminator-aware rules.
@@ -470,13 +458,13 @@ When a class implements multiple imported members that collapse to a conflicting
 class DataSource : NSObject(), UITableViewDataSourceProtocol {
     @ObjCSignatureOverride
     override fun tableView(
-        tableView: UITableView,
+        of: UITableView,
         titleForHeaderInSection: NSInteger,
     ): String? = "Header"
 
     @ObjCSignatureOverride
     override fun tableView(
-        tableView: UITableView,
+        of: UITableView,
         titleForFooterInSection: NSInteger,
     ): String? = "Footer"
 }
@@ -490,10 +478,48 @@ One could use an explicit form if needed:
 ```kotlin
 @SignatureDiscriminator("objc:tableView:titleForFooterInSection:")
 override fun tableView(
-    tableView: UITableView,
+    of: UITableView,
     titleForFooterInSection: NSInteger,
 ): String? = "Footer"
 ```
+
+### Why a selector-derived discriminator is actually not enough
+
+The important difference is that Objective-C selectors replace the type-based part of callable identity, while a signature discriminator only supplements it.
+
+For a regular Kotlin override, the compiler first matches the Kotlin name and parameter types.
+The signature discriminator adds one more component to that matching key:
+
+```text
+Kotlin override identity = name + parameter types + discriminator
+```
+
+Two declarations with different parameter types therefore remain different declarations even when they have the same discriminator.
+
+Objective-C uses a different rule.
+The selector is the callable identity; parameter and return types are not part of it:
+
+```text
+Objective-C callable identity = selector
+```
+
+Kotlin/Native preserves this rule for imported Objective-C members.
+When two imported members have the same selector, the override checker treats them as members of the same override chain without requiring their mapped Kotlin signatures to be compatible.
+This matters when an Objective-C declaration redeclares a member with more specific parameter or return types and cinterop maps the declarations to different Kotlin types.
+
+Native linkage follows the same model.
+For an imported Objective-C member, or a Kotlin member function overriding one, we use `objc:<selector>` as the callable identity and do not add the ordinary Kotlin parameter and return types.
+Two declarations with the same selector therefore receive the same linkage identity even when their mapped Kotlin signatures differ.
+
+This produces two opposite cases:
+
+| Imported declarations                  | Objective-C behavior                                       | Selector-derived discriminator                           |
+|----------------------------------------|------------------------------------------------------------|----------------------------------------------------------|
+| Same Kotlin types, different selectors | Different callables                                        | Works: different discriminators keep them separate       |
+| Different Kotlin types, same selector  | One override chain and one selector-based linkage identity | Does not work: the Kotlin types still keep them separate |
+
+In other words, signature discriminators can model the distinction between different Objective-C selectors.
+They cannot, under the core rules, model the fact that Objective-C function identity ignores types.
 
 ## Compatibility and migration
 
@@ -503,7 +529,7 @@ override fun tableView(
 This proposal does not deprecate it.
 Existing annotated overrides continue to compile and acquire the selector-derived identity described above.
 
-The compiler may offer a quick-fix to replace it with an explicit inherited discriminator only in rare ambiguity cases; the `@ObjCSignatureOverride` marker annotation remains the preferred spelling otherwise.
+The IDE may offer a quick-fix to replace it with an explicit inherited discriminator only in rare ambiguity cases; the `@ObjCSignatureOverride` marker annotation remains the preferred spelling otherwise.
 
 ### Platform round trips
 
