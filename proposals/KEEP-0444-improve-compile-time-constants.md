@@ -405,7 +405,6 @@ This also includes some extension functions for other Types:
 - fun div(UByte | UInt | ULong | UShort): UInt | UInt | ULong | UInt
 - fun equals(Any?): Boolean
 - fun floorDiv(UByte | UInt | ULong | UShort): UInt | UInt | ULong | UInt
-- fun hashCode(): Int
 - fun inc(): UByte
 - fun inv(): UByte
 - fun minus(UByte | UInt | ULong | UShort): UInt | UInt | ULong | UInt
@@ -435,7 +434,6 @@ This also includes some extension functions for other Types:
 - fun div(UByte | UInt | ULong | UShort): UInt | UInt | ULong | UInt
 - fun equals(Any?): Boolean
 - fun floorDiv(UByte | UInt | ULong | UShort): UInt | UInt | ULong | UInt
-- fun hashCode(): Int
 - fun inc(): UShort
 - fun inv(): UShort
 - fun minus(UByte | UInt | ULong | UShort): UInt | UInt | ULong | UInt
@@ -465,7 +463,6 @@ This also includes some extension functions for other Types:
 - fun div(UByte | UInt | ULong | UShort): UInt | UInt | ULong | UInt
 - fun equals(Any?): Boolean
 - fun floorDiv(UByte | UInt | ULong | UShort): UInt | UInt | ULong | UInt
-- fun hashCode(): Int
 - fun inc(): UInt
 - fun inv(): UInt
 - fun minus(UByte | UInt | ULong | UShort): UInt | UInt | ULong | UInt
@@ -497,7 +494,6 @@ This also includes some extension functions for other Types:
 - fun div(UByte | UInt | ULong | UShort): ULong | ULong | ULong | ULong
 - fun equals(Any?): Boolean
 - fun floorDiv(UByte | UInt | ULong | UShort): ULong | ULong | ULong | ULong
-- fun hashCode(): Int
 - fun inc(): ULong
 - fun inv(): ULong
 - fun minus(UByte | UInt | ULong | UShort): ULong | ULong | ULong | ULong
