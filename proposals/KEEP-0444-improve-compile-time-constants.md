@@ -205,7 +205,7 @@ This KEEP is necessary groundwork for further extending the language and adding 
 - fun toString(): String
 - fun and(other: Boolean): Boolean
 - fun compareTo(Boolean): Int
-- fun equals(Any?): Boolean (Only as infix equality operator)
+- fun equals(Any?): Boolean
 - fun or(Boolean): Boolean
 - fun xor(Boolean): Boolean
 
@@ -223,7 +223,7 @@ This KEEP is necessary groundwork for further extending the language and adding 
 - fun unaryPlus(): Int
 - fun compareTo(Byte | Double | Float | Int | Long | Short): Int | Int | Int | Int | Int | Int
 - fun div(Byte | Double | Float | Int | Long | Short): Int | Double | Float | Int | Long | Int
-- fun equals(Any?): Boolean (Only as infix equality operator)
+- fun equals(Any?): Boolean
 - fun minus(Byte | Double | Float | Int | Long | Short): Int | Double | Float | Int | Long | Int
 - fun plus(Byte | Double | Float | Int | Long | Short): Int | Double | Float | Int | Long | Int
 - fun rem(Byte | Double | Float | Int | Long | Short): Int | Double | Float | Int | Long | Int
@@ -246,7 +246,7 @@ This KEEP is necessary groundwork for further extending the language and adding 
 - fun toShort(): Short
 - fun toString(): String
 - fun compareTo(Char): Int
-- fun equals(Any?): Boolean (Only as infix equality operator)
+- fun equals(Any?): Boolean
 - fun minus(Char | Int): Int | Char
 - fun plus(Int): Char
 
@@ -264,7 +264,7 @@ This KEEP is necessary groundwork for further extending the language and adding 
 - fun unaryPlus(): Double
 - fun compareTo(Byte | Double | Float | Int | Long | Short): Int | Int | Int | Int | Int | Int
 - fun div(Byte | Double | Float | Int | Long | Short): Double | Double | Double | Double | Double | Double
-- fun equals(Any?): Boolean (Only as infix equality operator)
+- fun equals(Any?): Boolean
 - fun minus(Byte | Double | Float | Int | Long | Short): Double | Double | Double | Double | Double | Double
 - fun mod(Float | Double): Double | Double
 - fun plus(Byte | Double | Float | Int | Long | Short): Double | Double | Double | Double | Double | Double
@@ -285,7 +285,7 @@ This KEEP is necessary groundwork for further extending the language and adding 
 - fun unaryPlus(): Float
 - fun compareTo(Byte | Double | Float | Int | Long | Short): Int | Int | Int | Int | Int | Int
 - fun div(Byte | Float | Int | Long | Short | Double): Float | Float | Float | Float | Float | Double
-- fun equals(Any?): Boolean (Only as infix equality operator)
+- fun equals(Any?): Boolean
 - fun minus(Byte | Float | Int | Long | Short | Double): Float | Float | Float | Float | Float | Double
 - fun mod(Float): Float
 - fun mod(Double): Double
@@ -309,7 +309,7 @@ This KEEP is necessary groundwork for further extending the language and adding 
 - fun and(Int): Int
 - fun compareTo(Byte | Double | Float | Int | Long | Short): Int | Int | Int | Int | Int | Int
 - fun div(Byte | Int | Short | Double | Float | Long): Int | Int | Int | Double | Float | Long
-- fun equals(Any?): Boolean (Only as infix equality operator)
+- fun equals(Any?): Boolean
 - fun minus(Byte | Int | Short | Double | Float | Long): Int | Int | Int | Double | Float | Long
 - fun or(Int): Int
 - fun plus(Byte | Int | Short | Double | Float | Long): Int | Int | Int | Double | Float | Long
@@ -341,7 +341,7 @@ This KEEP is necessary groundwork for further extending the language and adding 
 - fun and(Long): Long
 - fun compareTo(Byte | Double | Float | Int | Long | Short): Int | Int | Int | Int | Int | Int
 - fun div(Byte | Int | Long | Short | Double | Float): Long | Long | Long | Long | Double | Float
-- fun equals(Any?): Boolean (Only as infix equality operator)
+- fun equals(Any?): Boolean
 - fun minus(Byte | Int | Long | Short | Double | Float): Long | Long | Long | Long | Double | Float
 - fun or(Long): Long
 - fun plus(Byte | Int | Long | Short | Double | Float): Long | Long | Long | Long | Double | Float
@@ -371,7 +371,7 @@ This KEEP is necessary groundwork for further extending the language and adding 
 - fun unaryPlus(): Int
 - fun compareTo(Byte | Double | Float | Int | Long | Short): Int | Int | Int | Int | Int | Int
 - fun div(Byte | Int | Short | Double | Float | Long): Int | Int | Int | Double | Float | Long
-- fun equals(Any?): Boolean (Only as infix equality operator)
+- fun equals(Any?): Boolean
 - fun minus(Byte | Int | Short | Double | Float | Long): Int | Int | Int | Double | Float | Long
 - fun plus(Byte | Int | Short | Double | Float | Long): Int | Int | Int | Double | Float | Long
 - fun rem(Byte | Int | Short | Double | Float | Long): Int | Int | Int | Double | Float | Long
@@ -389,7 +389,7 @@ This KEEP is necessary groundwork for further extending the language and adding 
 - val length: Int
 - fun toString(): String
 - fun compareTo(String): Int
-- fun equals(Any?) (Only as infix equality operator)
+- fun equals(Any?)
 - fun get(Int): Char
 - fun plus(Any?): String
 
