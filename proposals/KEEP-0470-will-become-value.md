@@ -3,7 +3,7 @@
 * **Type**: Design proposal
 * **Author**: Evgeniy Zhelenskiy
 * **Status**: Proposed
-* **Discussion and feedback**: TODO
+* **Discussion and feedback**: [GitHub](https://github.com/Kotlin/KEEP/discussions/504)
 
 # Abstract
 
