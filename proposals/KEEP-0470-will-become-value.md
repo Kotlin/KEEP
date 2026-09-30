@@ -14,6 +14,8 @@ to [full value classes](https://github.com/Kotlin/KEEP/blob/main/proposals/KEEP-
 In particular, by using this annotation a developer helps their downstream users to not break their code when the class is changed to a value class, as those users will get migration warnings about usages which will stop being valid.
 Without this mechanism, the adoption of full value classes would be a slower and harder process.
 
+The annotation is initially experimental and requires an opt-in to `ExperimentalValueClassApi` (tentative name).
+
 # Table of contents
 
 * [Abstract](#abstract)
@@ -27,6 +29,7 @@ Without this mechanism, the adoption of full value classes would be a slower and
   * [Naming](#naming)
 * [Design](#design)
   * [Annotation declaration](#annotation-declaration)
+  * [Experimental status and opt-in](#experimental-status-and-opt-in)
   * [Semantics](#semantics)
   * [Compiler warnings](#compiler-warnings)
   * [Examples](#examples)
@@ -170,11 +173,31 @@ The annotation is named **`@WillBecomeValue`**. The name was chosen over three o
 ## Annotation declaration
 
 ```kotlin
+package kotlin
+
+@RequiresOptIn(level = RequiresOptIn.Level.ERROR)
+@Retention(AnnotationRetention.BINARY)
+@MustBeDocumented
+annotation class ExperimentalValueClassApi // Tentative name
+
 @Target(AnnotationTarget.CLASS)
 @Retention(AnnotationRetention.BINARY)
 @MustBeDocumented
+@ExperimentalValueClassApi
 annotation class WillBecomeValue
 ```
+
+## Experimental status and opt-in
+
+`@WillBecomeValue` will be introduced as an experimental API under an opt-in marker tentatively named `kotlin.ExperimentalValueClassApi`.
+
+Authors applying `@WillBecomeValue` must opt in with `@OptIn(ExperimentalValueClassApi::class)`, at the declaration or file level, or with the module-wide compiler option `-opt-in=kotlin.ExperimentalValueClassApi`.
+Using the annotation without an opt-in is a compilation error.
+
+The opt-in requirement applies to using the experimental annotation.
+A class does not itself become experimental solely because it carries `@WillBecomeValue`, so downstream users do not need this opt-in to use the class.
+
+The experimental phase is used to stabilize and finalize the behavior of the related `@WillBecomeValue` diagnostics.
 
 ## Semantics
 
