@@ -1,4 +1,4 @@
-# Explicit Annotations for Inline Single-Field Value Classes on All Platforms
+# Explicit Inline Single-Field Value Classes on All Platforms
 
 * **Type**: Design proposal
 * **Author**: Marat Akhin
@@ -15,8 +15,8 @@ Kotlin is moving toward two source-visible kinds of value classes.
 **Inline value classes** are the existing single-field value classes whose inline behavior is externally observable.
 **Full value classes** are the new value classes whose inlining (if done) is not observable for users.
 
-This proposal introduces `@PlatformInline` as the marker annotation on non-JVM for the first kind.
-The `value` modifier describes identity-less value semantics, while `@PlatformInline` selects the inline single-field value class kind.
+This proposal introduces `inline value class` as the explicit spelling for the first kind on all platforms.
+The `value` modifier describes identity-less value semantics, while the `inline` modifier selects the inline single-field value class kind.
 The existing `@JvmInline` annotation remains a supported spelling for the same kind, including when it is already used in common source.
 
 ```kotlin
@@ -30,14 +30,12 @@ value class RgbColor(val rgb: Int)
 value class HsvColor(val hsv: Int)
 
 // New explicit spelling
-@PlatformInline
-value class Color(val rgb: Int)
+inline value class Color(val rgb: Int)
 
 //// After full value classes are enabled
 
-// `@PlatformInline value class` means "inline"
-@PlatformInline
-value class Color(val rgb: Int)
+// `inline value class` means "inline"
+inline value class Color(val rgb: Int)
 
 // Existing `@JvmInline value class` remains valid and also means "inline"
 @JvmInline
@@ -51,10 +49,10 @@ value class Complex(val re: Double, val im: Double)
 Migration is staged.
 
 * Existing JVM and common code written with `@JvmInline value class` remains valid without a mandatory source migration.
-* Existing non-JVM code that currently implicitly uses the inline kind and **would like to keep it** receives diagnostics and quick fixes to add `@PlatformInline`.
+* Existing non-JVM code that currently implicitly uses the inline kind and **would like to keep it** receives diagnostics and quick fixes to add the `inline` modifier.
 * Existing non-JVM and common code that does not rely on being inline and would like to get the new full value class behavior when they are released can silence the migration diagnostics via [compiler options](#compiler-options).
 
-After the migration period is over, plain single-field `value class` declarations switch their meaning and use the full value class kind; code that wants the old inline kind must use `@PlatformInline` or `@JvmInline` spelling.
+After the migration period is over, plain single-field `value class` declarations switch their meaning and use the full value class kind; code that wants the old inline kind must use `inline value class` or `@JvmInline value class` spelling.
 
 ## Table of Contents
 
@@ -66,9 +64,9 @@ After the migration period is over, plain single-field `value class` declaration
   - [`@JvmInline` Was Too Optimistic](#jvminline-was-too-optimistic)
   - [When Ambiguity Creates Problems](#when-ambiguity-creates-problems)
 - [Proposal](#proposal)
-  - [New `@PlatformInline`](#new-platforminline)
+  - [New `inline value class`](#new-inline-value-class)
   - [Existing `@JvmInline`](#existing-jvminline)
-    - [`@PlatformInline` or `@JvmInline`?](#platforminline-or-jvminline)
+    - [`inline value class` or `@JvmInline`?](#inline-value-class-or-jvminline)
     - [`@JvmInline` in Common Source](#jvminline-in-common-source)
     - [`@JvmExposeBoxed`](#jvmexposeboxed)
   - [Historical `inline class`](#historical-inline-class)
@@ -82,7 +80,7 @@ After the migration period is over, plain single-field `value class` declaration
 - [Reflection Support](#reflection-support)
 - [Interaction with Serialization and Exports](#interaction-with-serialization-and-exports)
 - [Alternatives](#alternatives)
-  - [Use an `inline` Modifier](#use-an-inline-modifier)
+  - [Use a `@PlatformInline` Annotation](#use-a-platforminline-annotation)
   - [Use a Negative Marker](#use-a-negative-marker)
   - [Add a Non-JVM Annotation](#add-a-non-jvm-annotation)
   - [Use `@JvmInline` as the Universal Spelling](#use-jvminline-as-the-universal-spelling)
@@ -156,7 +154,7 @@ To name a few concrete examples:
 In other words, "single-field value class" has become a cross-tool convention for the inline value class kind.
 With full value classes this is no longer automatically the case, and whether a value class is inline should not be inferred solely from the number of primary properties.
 
-By giving this kind an annotation for every platform, we make it an explicit source code declaration rather than an implicit controlled-by-convention behavior.
+By giving this kind an explicit spelling for every platform, we make it an explicit source code declaration rather than an implicit controlled-by-convention behavior.
 All consumers which care about a single-field value class being inline can rely on the same source-level fact: this declaration belongs to the inline single-field value class kind.
 Without a marker, every boundary where this difference is important and potentially observable needs its own way of distinguishing inline and full single-field value classes.
 
@@ -196,56 +194,35 @@ With the proposed spelling, the old declaration is explicit:
 
 ```kotlin
 @Serializable
-@PlatformInline
-value class UserId(val raw: String)
+inline value class UserId(val raw: String)
 ```
 
-Adding another stored property then necessarily requires removing `@PlatformInline`, making the declaration-kind change visible during code review and in tooling.
+Adding another stored property then necessarily requires removing the `inline` modifier, making the declaration-kind change visible during code review and in tooling.
 
 ## Proposal
 
-### New `@PlatformInline`
+### New `inline value class`
 
-Introduce `@PlatformInline` as a dual-to-`@JvmInline` annotation recognized intrinsically by the compiler.
-Its declaration is equivalent to the following:
+Allow the `inline` modifier on a `value class` on all platforms, including common source.
+It explicitly selects the existing inline single-field value class kind and does not require an annotation in source.
 
-```kotlin
-@Target(AnnotationTarget.CLASS)
-@MustBeDocumented
-@SinceKotlin("2.5")
-public expect annotation class PlatformInline
-
-// JVM
-actual typealias PlatformInline = JvmInline
-
-// non-JVM
-@Target(AnnotationTarget.CLASS)
-@Retention(AnnotationRetention.RUNTIME)
-@MustBeDocumented
-@SinceKotlin("2.5")
-public actual annotation class PlatformInline
-```
-
-This way, on JVM compiling a `@PlatformInline value class` emits the `@JvmInline` compatibility annotation.
+On JVM, compiling an `inline value class` emits the `@JvmInline` compatibility annotation.
 This keeps consumers which currently use its presence to detect inline value classes (e.g. Spring) working without any migration.
 
-`@PlatformInline` may be applied only to a `value class` with one primary property.
-Using it on another declaration, or on a value class whose shape cannot use the inline single-field representation, is a compile-time error.
+The `inline value class` spelling requires one primary property.
+Applying `inline` to another class declaration, apart from the [historical `inline class` spelling](#historical-inline-class), or to a value class whose shape cannot use the inline single-field representation, is a compile-time error.
 
 ```kotlin
-@PlatformInline
-value class Color(val rgb: Int)
+inline value class Color(val rgb: Int)
 
-@PlatformInline
-data class RegularClass(val rgb: Int) // Error: `@PlatformInline` requires a value class
+inline data class RegularClass(val rgb: Int) // Error: `inline` requires a value class
 
-@PlatformInline
-value class Complex(val re: Double, val im: Double) // Error: `@PlatformInline` value class requires one primary property
+inline value class Complex(val re: Double, val im: Double) // Error: inline value class requires one primary property
 ```
 
-A `@PlatformInline value class` uses the same inline single-field value class kind and follows the same rules as current inline value classes described in [KEEP-0104](./KEEP-0104-inline-classes.md).
+An `inline value class` uses the same inline single-field value class kind and follows the same rules as current inline value classes described in [KEEP-0104](./KEEP-0104-inline-classes.md).
 
-Once [full value classes](./KEEP-0454-better-immutability-value-classes-MFVC.md) are released, a value class without `@PlatformInline` or `@JvmInline` spelling uses the full value class kind by default.
+Once [full value classes](./KEEP-0454-better-immutability-value-classes-MFVC.md) are released, a value class without the `inline` modifier or `@JvmInline` annotation uses the full value class kind by default.
 This includes value classes with one primary property.
 
 ```kotlin
@@ -255,77 +232,61 @@ value class UserId(val raw: String)
 ### Existing `@JvmInline`
 
 The existing `@JvmInline` annotation remains a supported spelling for source compatibility.
-It is normalized to the same inline value class kind as `@PlatformInline`; it is not scheduled for deprecation and existing valid code does not receive a mandatory migration diagnostic.
+It is normalized to the same inline value class kind as `inline value class`; it is not scheduled for deprecation and existing valid code does not receive a mandatory migration diagnostic.
 
-This is achieved by adding actualizations of `@JvmInline` to `@PlatformInline` on non-JVM platforms.
+To give this spelling the same meaning on all platforms, `@JvmInline` from common sources is handled as if it were an `inline value class` by the Kotlin compiler.
 
-```kotlin
-// non-JVM
-actual typealias JvmInline = PlatformInline
-```
+#### `inline value class` or `@JvmInline`?
 
-#### `@PlatformInline` or `@JvmInline`?
-
-One can choose between both `@PlatformInline` and `@JvmInline` spellings, as they are equivalent.
-Thanks to how they are declared, the end result is the same: `@JvmInline` annotation is materialized on the JVM platform, `@PlatformInline` annotation is materialized on non-JVM platforms.
+Both `inline value class` and `@JvmInline value class` select the same inline value class kind.
+On the JVM, both spellings materialize the `@JvmInline` annotation and use the same representation and ABI.
 
 ```kotlin
 // Both declarations are inline value classes
 
-@PlatformInline
-value class Color(val rgb: Int)
+inline value class Color(val rgb: Int)
 
 @JvmInline
 value class RgbColor(val rgb: Int)
 ```
 
-The suggested rule to which one should be used in the source code is as follows:
-
-* If the source set includes the JVM platform, one should prefer `@JvmInline` spelling.
-* In other cases, one should prefer `@PlatformInline` spelling.
-
-Trying to combine both spellings on the same declaration is a compile-time error.
+New declarations should prefer `inline value class` on every platform, including common source.
+Existing declarations carrying `@JvmInline` may keep that spelling.
+Combining the modifier and annotation is redundant and disallowed.
 
 ```kotlin
-@PlatformInline
 @JvmInline
-value class RgbColor(val rgb: Int) // Error: repeated annotation
+inline value class RgbColor(val rgb: Int) // Error: `@JvmInline` is redundant
 ```
 
 #### `@JvmInline` in Common Source
 
 `@JvmInline` remains legal in both JVM source and common source.
 In common source, it stops meaning "inline only on the JVM" and begins meaning "inline on all platforms."
-This allows existing common declarations to remain unchanged, and existing expect declarations to automatically require adding `@PlatformInline` on non-JVM platforms.
+This allows existing common declarations to remain unchanged, and existing expect declarations to automatically require adding the `inline` modifier on non-JVM platforms.
 
 ```kotlin
 // Existing common source: no migration required
 @JvmInline
 value class Color(val rgb: Int)
 
-// Requires matching @PlatformInline annotation on non-JVM platforms
+// Requires a matching inline kind on non-JVM platforms
 @JvmInline
 expect value class Color(val rgb: Int)
 
 // New spelling on non-JVM
-@PlatformInline
-actual value class Color(val rgb: Int)
+actual inline value class Color(val rgb: Int)
 ```
 
 #### `@JvmExposeBoxed`
 
 [`@JvmExposeBoxed`](./KEEP-0394-jvm-expose-boxed.md) remains compatible with inline value classes on the JVM.
-The compiler applies it after normalizing the source spelling to materialized `@JvmInline` annotation, so both `@PlatformInline value class` and `@JvmInline value class` participate in the same JVM boxed-exposure rules.
+The compiler applies it after normalizing the source spelling to materialized `@JvmInline` annotation, so both `inline value class` and `@JvmInline value class` participate in the same JVM boxed-exposure rules.
 
 ```kotlin
 @JvmExposeBoxed
-@PlatformInline // Supported but not suggested spelling
-value class Color(val rgb: Int)
+inline value class Color(val rgb: Int)
 ```
-
-> Note: this proposal does not introduce a common `PlatformExposeBoxed` facility.
-> `@JvmExposeBoxed` addresses a JVM-specific problem: exposing boxed JVM entry points for declarations whose primary JVM ABI uses the inline representation, for interoperability purposes.
-> If other platforms need analogous control for their exports, it should be designed separately based on the inline/full value class kind separation.
 
 ### Historical `inline class`
 
@@ -333,35 +294,32 @@ The older `inline class` syntax is a historical spelling for inline value classe
 This proposal **does not** revive `inline class` as a recommended syntax.
 
 For migration purposes, `inline class` does not need a separate trajectory.
-On the JVM and in common source, it is treated as a synonym for the `@JvmInline value class` spelling.
-On non-JVM platforms, it is treated as a synonym for the `@PlatformInline value class` spelling.
-In all cases diagnostics and quick fixes should migrate it to the new annotation-based spellings.
+On all platforms, it is treated as a synonym for the `inline value class` spelling.
+Diagnostics and quick fixes should migrate it by adding the `value` modifier.
 
 After the migration period, a future language version may deprecate or reject `inline class` as a source spelling.
 This does not affect the continued support for `@JvmInline value class`.
 
 ### Expect/Actual Matching
 
-For multiplatform declarations, the inline kind is part of the expect/actual contract; the exact annotation spelling is not.
+For multiplatform declarations, the inline kind is part of the expect/actual contract; whether it is spelled with a modifier or an annotation is not.
 
 ```kotlin
-@PlatformInline
-expect value class Color(val rgb: Int)
+expect inline value class Color(val rgb: Int)
 ```
 
 All actual declarations for such an expect class must use the inline value class kind.
-They may spell this with `@PlatformInline`, or with `@JvmInline`.
+They may spell this with the `inline` modifier, or with `@JvmInline`.
 
 ```kotlin
-@PlatformInline
-actual value class Color(val rgb: Int)
+actual inline value class Color(val rgb: Int)
 
 @JvmInline
 actual value class Color(val rgb: Int)
 ```
 
 An existing common expect carrying `@JvmInline` establishes the same contract and does not need to migrate.
-It only requires adding `@PlatformInline` on currently unmarked non-JVM platforms.
+It only requires adding the `inline` modifier on currently unmarked non-JVM platforms.
 
 ```kotlin
 @JvmInline
@@ -372,8 +330,7 @@ actual value class LegacyColor(val rgb: Int) // JVM
 
 actual value class LegacyColor(val rgb: Int) // non-JVM before
 // =>
-@PlatformInline
-actual value class LegacyColor(val rgb: Int) // non-JVM after
+actual inline value class LegacyColor(val rgb: Int) // non-JVM after
 ```
 
 If the expected declaration uses the full value class kind, an inline actual is not allowed.
@@ -382,47 +339,46 @@ If the expected declaration uses the full value class kind, an inline actual is 
 // When full value classes are enabled, this is a full value class
 expect value class UserId(val raw: String)
 
-@PlatformInline
-actual value class UserId(val raw: String) // Error: full / inline kind mismatch
+actual inline value class UserId(val raw: String) // Error: full / inline kind mismatch
 ```
 
 This prevents the same common API from using the inline value class kind on one target and the full value class kind on another target, which would lead to different externally observed behavior between platforms.
 
 ### Compiler Options
 
-For migration, the Kotlin compiler will provide a `-Xplatform-inline-value-class-migration` option with the following modes:
+For migration, the Kotlin compiler will provide a `-Xinline-value-class-migration` option with the following modes:
 
 ```text
--Xplatform-inline-value-class-migration=warning
--Xplatform-inline-value-class-migration=strict
+-Xinline-value-class-migration=warning
+-Xinline-value-class-migration=strict
 ```
 
 `warning` is the soft migration mode.
-Unmarked single-field value classes keep their legacy inline behavior, and the compiler reports diagnostics with quick fixes to add `@PlatformInline`.
-Declarations already carrying `@JvmInline` are explicitly inline and require no change.
+Unmarked single-field value classes keep their legacy inline behavior, and the compiler reports diagnostics with quick fixes to add the `inline` modifier.
+Declarations already carrying the `inline` modifier or `@JvmInline` are explicitly inline and require no change.
 
 `strict` is the hard validation mode.
 Unmarked single-field value classes become errors.
-One needs to annotate those value classes which rely on inline behavior with `@PlatformInline`.
+One needs to mark those value classes which rely on inline behavior with the `inline` modifier.
 This mode is useful to guarantee that the code no longer depends on implicit inlining.
 
 When full value classes are enabled (either by default or with an explicit compiler flag), this serves as an opt-in to "migration is done, all inline value classes are marked, it is OK to change unmarked single-field value classes to full value classes."
 
 Through the migration period, one would go through some or all of the following combinations of flags.
 
-* `-Xplatform-inline-value-class-migration=warning` + `-Xfull-value-classes=off` to get migration warnings for all implicitly inline value classes, and keep the inline behavior for some or all of them by adding `@PlatformInline`.
-  * This will be the default in Kotlin 2.5.
-* `-Xplatform-inline-value-class-migration=strict` + `-Xfull-value-classes=off` to get errors for all implicitly inline value classes, and keep the inline behavior for some or all of them by adding `@PlatformInline`.
+* `-Xinline-value-class-migration=warning` + `-Xfull-value-classes=off` to get migration warnings for all implicitly inline value classes, and keep the inline behavior for some or all of them by adding the `inline` modifier.
+  * This will be the default in Kotlin 2.5.20.
+* `-Xinline-value-class-migration=strict` + `-Xfull-value-classes=off` to get errors for all implicitly inline value classes, and keep the inline behavior for some or all of them by adding the `inline` modifier.
   * This will be the default in Kotlin 2.6.
 * `-Xfull-value-classes=on` to switch the behavior to full value classes and stop reporting migration diagnostics for unmarked single-field value classes.
   * This will be the default in Kotlin 2.7+.
 
-The `-Xplatform-inline-value-class-migration` and `-Xfull-value-classes` flags are dependent; only the following combinations are allowed.
+The `-Xinline-value-class-migration` and `-Xfull-value-classes` flags are dependent; only the following combinations are allowed.
 
-| `-Xfull-value-classes` / `-Xplatform-inline-value-class-migration` | `warning` | `strict` |
-|--------------------------------------------------------------------|-----------|----------|
-| `off`                                                              | OK        | OK       |
-| `on`                                                               | not OK    | not OK   |
+| `-Xfull-value-classes` / `-Xinline-value-class-migration` | `warning` | `strict` |
+|-------------------------------------------------------|-----------|----------|
+| `off`                                                 | OK        | OK       |
+| `on`                                                  | not OK    | not OK   |
 
 This means that, if one sets `-Xfull-value-classes=on`, it effectively disables the migration diagnostics (as it must have been completed before).
 
@@ -433,7 +389,7 @@ The intended end state is a language where Kotlin supports full value classes an
 
 During the transition, users must be able to make either of the following decisions for each existing single-field value class.
 
-* Preserve the current inline value class kind by adding `@PlatformInline`, or by keeping an existing `@JvmInline` marker.
+* Preserve the current inline value class kind by adding the `inline` modifier, or by keeping an existing `@JvmInline` marker.
 * Accept the behavior change and let the declaration become a full single-field value class.
 
 ### Existing JVM Code
@@ -458,11 +414,10 @@ value class Color(val rgb: Int)
 A single-field value class without an explicit inline marker is interpreted as inline until full value classes are enabled.
 For this code, there are two possible migration trajectories.
 
-The first trajectory is to preserve the inline kind by adding the `@PlatformInline` annotation:
+The first trajectory is to preserve the inline kind by adding the `inline` modifier:
 
 ```kotlin
-@PlatformInline
-value class Color(val rgb: Int)
+inline value class Color(val rgb: Int)
 ```
 
 This keeps the existing inline intent for externally observable consumers of value classes.
@@ -478,7 +433,7 @@ This is a behavior change for an existing declaration.
 To opt in to accepting it, a source set can use one of the following options.
 
 * Enable `-Xfull-value-classes=on` to do the behavior switch.
-* Enable `-Xplatform-inline-value-class-migration=warning` and do `-Xwarning-level=IMPLICIT_INLINE_VALUE_CLASS:disabled` to disable the warning module-wide.
+* Enable `-Xinline-value-class-migration=warning` and do `-Xwarning-level=<IMPLICIT_INLINE_VALUE_CLASS>:disabled` to disable the warning module-wide.
 * (Not recommended but possible) Use `@Suppress`.
 
 ### Existing Multiplatform Code
@@ -497,37 +452,32 @@ value class UserId(val id: String)
 expect value class Color(val rgb: Int)
 ```
 
-New common declarations should use [either of the new spellings](#platforminline-or-jvminline):
+New common declarations should prefer [`inline value class`](#inline-value-class-or-jvminline):
 
 ```kotlin
-@PlatformInline
-value class NewUserId(val id: String)
+inline value class NewUserId(val id: String)
 
-@JvmInline
-expect value class NewColor(val rgb: Int)
+expect inline value class NewColor(val rgb: Int)
 ```
 
-An expect declaration marked by either annotation establishes a common inline-kind contract.
+An expect declaration marked by the `inline` modifier or `@JvmInline` establishes a common inline-kind contract.
 Actual declarations must match that kind:
 
 ```kotlin
 // common
-@PlatformInline
-expect value class Color(val rgb: Int)
+expect inline value class Color(val rgb: Int)
 
-// JVM: either supported spelling is valid, @JvmInline is suggested
-@JvmInline
-actual value class Color(val rgb: Int)
+// JVM
+actual inline value class Color(val rgb: Int)
 
-// non-JVM: either supported spelling is valid, @PlatformInline is suggested
-@PlatformInline
-actual value class Color(val rgb: Int)
+// non-JVM
+actual inline value class Color(val rgb: Int)
 ```
 
 The IDE should update unmarked non-JVM actual declarations when migration diagnostics require the kind to become explicit.
 
 If the author chooses the future full value class behavior, the expect declaration remains a plain `expect value class`.
-Once full value classes are enabled, one would need to **remove** `@JvmInline` from an inline JVM actual, changing the ABI in a backwards-incompatible manner.
+Once full value classes are enabled, one would need to **remove** the `inline` modifier or `@JvmInline` annotation from an inline actual, changing the JVM ABI and other externally observable behavior in a backwards-incompatible manner.
 
 > Note: this is an instance of the general problem of migrating from inline to full value classes.
 > [`@JvmExposeBoxed`](./KEEP-0394-jvm-expose-boxed.md) could provide a better migration path by generating boxed entry points in addition to inline entry points, and then also [changing](https://github.com/Kotlin/KEEP/blob/main/proposals/KEEP-0454-better-immutability-value-classes-MFVC.md#migration-from-stage-0-to-stage-1-via-jvmexposeboxed) the compiler code generation strategy.
@@ -537,12 +487,12 @@ Once full value classes are enabled, one would need to **remove** `@JvmInline` f
 
 IDE support is essential because much of the migration is mechanical but must be applied carefully.
 
-The IDE should provide the following quick fixes when `-Xplatform-inline-value-class-migration` is set to `warning` or `strict`.
+The IDE should provide the following quick fixes when `-Xinline-value-class-migration` is set to `warning` or `strict`.
 
 **Implicit inline kind.**
 Detect a single-field value class without an explicit inline marker.
 
-Offer "Add `@PlatformInline`" for source sets not targeting the JVM.
+Offer "Add `inline` modifier" on all platforms, including common source.
 
 ```kotlin
 value class Color(val rgb: Int)
@@ -551,32 +501,18 @@ value class Color(val rgb: Int)
 becomes:
 
 ```kotlin
-@PlatformInline
-value class Color(val rgb: Int)
-```
-
-Offer "Add `@JvmInline`" for source sets targeting the JVM.
-
-```kotlin
-value class Color(val rgb: Int)
-```
-
-becomes:
-
-```kotlin
-@JvmInline
-value class Color(val rgb: Int)
+inline value class Color(val rgb: Int)
 ```
 
 **Existing `@JvmInline` spelling.**
 Do not issue a migration diagnostic for an existing valid `@JvmInline value class`; it already selects the inline kind explicitly.
 
-**Switching between `@PlatformInline` and `@JvmInline`.**
+**Switching from `@JvmInline` to `inline value class`.**
 
-An intention should offer "Replace with `@PlatformInline`" / "Replace with `@JvmInline`" for cases when the annotation used is not the annotation [suggested for the source set](#platforminline-or-jvminline).
+An optional intention should offer "Replace `@JvmInline` with `inline` modifier" to use the [preferred spelling](#inline-value-class-or-jvminline).
+This preserves the declaration kind and JVM ABI.
 
 ```kotlin
-// non-JVM
 @JvmInline
 value class Color(val rgb: Int)
 ```
@@ -584,20 +520,20 @@ value class Color(val rgb: Int)
 becomes:
 
 ```kotlin
-// non-JVM
-@PlatformInline
-value class Color(val rgb: Int)
+inline value class Color(val rgb: Int)
 ```
 
-and vice versa.
+**Historical `inline class` spelling.**
+
+Offer "Add `value` modifier" to migrate `inline class` to `inline value class`.
 
 **Expect/actual inline mismatch.**
 
 Detect mismatches between expected and actual inline kinds and offer fixes on the actual side.
 The expect declaration is the source of truth for the common API declaration kind.
-If the expect declaration is inline, add `@PlatformInline` / `@JvmInline` to unmarked actual declarations.
+If the expect declaration is inline, add the `inline` modifier to unmarked actual declarations.
 
-For compatibility purposes, when a JVM actual is already marked with `@JvmInline` but its expect declaration is unmarked, the suggested fix is to add `@JvmInline` to the expect declaration.
+For compatibility purposes, when a JVM actual is already marked with `@JvmInline` but its expect declaration is unmarked, the suggested fix is to add the `inline` modifier to the expect declaration.
 
 **Bulk migration.**
 The IDE should provide a module- and project-level migration action for declarations that still depend on implicit shape-based inlining.
@@ -612,7 +548,7 @@ We plan to add the following property to `KClass`:
 ```kotlin
 public val isInline: Boolean
 // returns true if the class is of inline kind
-// * it is explicitly inline, i.e. it was compiled with `@PlatformInline` or `@JvmInline`
+// * it is explicitly inline, i.e. it was compiled with the `inline` modifier or `@JvmInline`
 // * it is implicitly inline, i.e. it was compiled without either marker and without full value classes enabled
 ```
 
@@ -626,18 +562,17 @@ public val KClass<*>.isInlineValue: Boolean
     get() = isValue && isInline
 ```
 
-Tools are advised to use this normalized kind rather than make behavior depend on which equivalent source annotation was used.
+Tools are advised to use this normalized kind rather than make behavior depend on which equivalent source spelling was used.
 
 ## Interaction with Serialization and Exports
 
-Serialization and export tools should prefer to use the inline-kind information recorded by the compiler instead of inferring it from the number of primary properties or from one particular annotation spelling.
+Serialization and export tools should prefer to use the inline-kind information recorded by the compiler instead of inferring it from the number of primary properties or from one particular source spelling.
 
 For inline value classes, existing inline-specific behavior is preserved unless the tool has an explicit customization mechanism.
 
 ```kotlin
 @Serializable
-@PlatformInline
-value class Color(val rgb: Int) // inline kind
+inline value class Color(val rgb: Int) // inline kind
 
 @Serializable
 @JvmInline
@@ -651,24 +586,26 @@ Before full value classes are enabled in a source set, this distinction is mostl
 Once full value classes are enabled, and especially once they are stable by default, tools must stop inferring inline behavior from arity alone.
 They should handle three cases:
 
-* `@PlatformInline value class` or `@JvmInline value class`: use inline value class behavior.
+* `inline value class` or `@JvmInline value class`: use inline value class behavior.
 * Full single-field `value class`: use full value class behavior.
 * Legacy unmarked single-field value class compiled before full value classes are enabled: preserve inline value class behavior and potentially report migration diagnostics specific to the current tooling.
 
 ## Alternatives
 
-### Use an `inline` Modifier
+### Use a `@PlatformInline` Annotation
 
-We could introduce `inline value class` as the common spelling.
+We could introduce `@PlatformInline` as a platform-independent annotation selecting the inline value class kind.
 
 ```kotlin
-inline value class Color(val rgb: Int)
+@PlatformInline
+value class Color(val rgb: Int)
 ```
 
-This makes the declaration read as one coherent class kind, but it requires a boilerplate-y migration: most existing JVM and common declarations are already marked with `@JvmInline`, and they must eventually be rewritten even though its semantic kind does not change.
-It also marks `inline value class` as a full part of the Kotlin language, whereas we hope to reduce or even eliminate the need to think about inline value class kind once project Valhalla and other activities around value classes are complete.
+This follows the existing annotation-based model and allows the new annotation to be a direct analogue of `@JvmInline`.
+It also avoids making the inline kind a modifier combination in the language, which could be useful if project Valhalla and other activities around value classes reduce the need for this kind in the future.
 
-The `@PlatformInline` annotation we propose instead follows the existing annotation-based model and allows `@JvmInline` to remain a direct fully backwards-compatible analogue.
+However, it introduces another annotation to express a platform-independent class kind.
+The proposed `inline value class` spelling makes the declaration read as one coherent class kind and keeps `value` semantics separate from the explicit inline representation.
 
 ### Use a Negative Marker
 
@@ -694,15 +631,15 @@ value class Color(val rgb: Int)
 
 This follows the current implementation split, but it is not the right user-facing abstraction.
 The user intent is not "also inline on non-JVM"; the user intent is "this value class uses the inline single-field kind."
-Common code should express that once in common terms with one annotation, and not twice with two.
+Common code should express that once with the `inline` modifier rather than with separate annotations for different platforms.
 
 ### Use `@JvmInline` as the Universal Spelling
 
 We could make `@JvmInline` the recommended explicit marker on every platform.
-This would avoid introducing a second annotation, but its name would incorrectly present a platform-independent class kind as JVM-specific.
+This would avoid introducing a new spelling, but its name would incorrectly present a platform-independent class kind as JVM-specific.
 It could also wrongly imply that non-JVM backends may ignore the annotation.
 
-The proposed model keeps `@JvmInline` as a valid spelling, recommended to use in JVM source sets (where Kotlin already accepts it) and adds `@PlatformInline` as the new spelling for non-JVM source.
+The proposed model keeps `@JvmInline` as a valid compatibility spelling and recommends `inline value class` for new declarations on all platforms.
 
 ### Reuse `inline class`
 
@@ -714,7 +651,7 @@ inline class Color(val rgb: Int)
 
 This is short, but it obscures that the declaration is still a value class.
 It also reopens the historical migration from `inline class` to `value class`.
-The proposed `@PlatformInline value class` spelling keeps continuity with current value classes while making the inline kind explicit.
+The proposed `inline value class` spelling keeps continuity with current value classes while making the inline kind explicit.
 
 ### Keep Shape-Based Inlining Forever
 
