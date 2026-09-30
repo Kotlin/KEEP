@@ -2,26 +2,33 @@
 
 * **Type**: Design proposal
 * **Author**: Alejandro Serrano
-* **Contributors**: Marat Akhin, Dmitry Khalanskiy, Pavel Kunyavskiy, Nikolay Lunyak, Grigorii Solnyshkin, Oleg Yukhnevich, Deniz Zharkov
+* **Contributors**: Marat Akhin, Dmitry Khalanskiy, Pavel Kunyavskiy, Nikolay Lunyak, Grigorii Solnyshkin, Oleg Yukhnevich, Denis Zharkov
 * **Discussion**: [KEEP-476](https://github.com/Kotlin/KEEP/discussions/476)
-* **Status**: In progress
+* **Status**: 
+  * Phase 1: experimental in 2.5.0, under `-Xstrict-equality-for-structural-classes`
+  * Phase 2: in progress
 * **Related YouTrack issues**: [KT-83683](https://youtrack.jetbrains.com/issue/KT-83683)
 
 ## Abstract
 
 We propose a way to declare that equality checks only make sense for a restricted
-subset of values, by stating an _equality bound_ on the `equals` function
+subset of values, by stating or assuming an _equality bound_ on the `equals` function
 inherited from `Any`. This in turns unlocks additional use site diagnostics.
 
 ### TL;DR
 
-* You may define a single `equals` operator per classifier with a more
-  restricted equality bound. Classifiers may _refine_ this equality bound
-  to a more specific type.
-* The operator is still an `equals(other: Any?)` method, with additional checks
+* The feature is going to be implemented in two phases.
+  In the first one equality bounds are assumed for _structural_ classes
+  (data, value, and enumeration classes),
+  whereas in the second one developers may state custom equality bounds.
+* The _equality bound_ defines those types for which the `equals` operator
+  does produce a meaningful result (as opposed to immediate `false`).
+* On (un)equality comparisons, the type of the right-hand side is checked
+  for compatibility with the equality bound of the left-hand side.
+* In the second phase, you may define a single `equals` operator per classifier
+  with a more.
+  The operator is still an `equals(other: Any?)` method, with additional checks
   (and contracts).
-* The type of the right-hand side of an (un)equality expression is checked
-  for compatibility with this more restricted type.
 
 ## Table of contents
 
@@ -31,11 +38,14 @@ inherited from `Any`. This in turns unlocks additional use site diagnostics.
 * [Motivation](#motivation)
   * [Equality bound](#equality-bound)
   * [Reusing `equals(other: Any?)`](#reusing-equalsother-any)
+  * [Phased development](#phased-development)
   * [Other design decisions](#other-design-decisions)
-* [Proposal](#proposal)
+* [Phase 1: strict equality for structural classes](#phase-1-strict-equality-for-structural-classes)
+  * [Use site warnings](#use-site-warnings)
+* [Phase 2: custom equality bounds](#phase-2-custom-equality-bounds)
   * [Declaration site](#declaration-site)
   * [Multiplatform](#multiplatform)
-  * [Use site warnings](#use-site-warnings)
+  * [Use site warnings](#use-site-warnings-1)
   * [Standard library](#standard-library)
   * [IDE support](#ide-support)
   * [In the future: nicer syntax](#in-the-future-nicer-syntax)
@@ -141,6 +151,14 @@ multiplatform code that is actualized to Java classes, and in terms of binary
 interface of existing classes. In particular, you can add equality bounds to
 existing classes without breaking binary compatibility.
 
+### Phased development
+
+Instead of releasing this feature in its full form, we introduce two _phases_.
+The difference is that only in the second phase developers may state custom
+equality bounds for their types. In the first phase the bound is assumed for
+_structural_ classes — roughly, all those for which the compiler generates
+the implementation of `equals`.
+
 ### Other design decisions
 
 **No multiversal equality.** One important design choice in this proposal is to
@@ -205,7 +223,112 @@ data class WrongEquals(val x: Int) {
 }
 ```
 
-## Proposal
+## Phase 1: strict equality for structural classes
+
+**Structural class.** The following kinds of classifiers are considered
+_structural_.
+- Data classes and data objects,
+- Final value classes,
+- Enumeration classes.
+
+Structural classes roughly contains those classes for which the compiler
+either generates an `equals` implementation, or it is given by the underlying
+platform.
+
+**Assumed equality bound.** For structural class the compiler should
+assume that the equality bound is the (raw) class itself.
+
+Note that we assume that the equality bound is the class itself, even if
+`equals` has been overridden in the class. Although in principle this may lead
+to false positives for the use site warnings, our preliminary investigation
+shows that custom `equals` almost always fulfill the equality bounds.
+
+### Use site warnings
+
+Implementation-wise, these warnings are an extension of the 
+[current diagnostics](https://youtrack.jetbrains.com/issue/KT-57779).
+
+**Nullability.** Note that strictly nullable types can never define a strict 
+equality, since any two nullable types always share `null` as value. However, 
+if we are sure that the other value is not `null`, we can still report the 
+same diagnostics.
+
+- Implementations are free to also report cases in which both sides are nullable,
+  but would trigger an error if this was not the case. This discourages people 
+  from writing code that replies on implicit `null`, in favor of explicit `null`
+  checking.
+
+**Equality type bound.** For each type we compute an upper bound for the types
+it can be compared against, which we call the _equality bound type_.
+We write `ebt(A)` for the equality type bound of `A`.
+
+- For classifiers, the equality bound type is the star-projected version of
+  the equality bound (assumed, declared or inherited, see below) of the classifier.
+  - For the case of undeclared equality bounds, check the _Multiplatform_
+    section above.
+  - If there's no definition of the `equals` operator, `Any` Is the declared 
+    equality bound.
+- If the type is nullable `T?`, we take the nullable version of the equality 
+  bound type of `T`.
+- For intersection types, we take the intersection of the equality bound types.
+- For flexible types, we take the equality bound type of the upper bound.
+- For captured types and type parameters, we take the intersection of the
+  equality bound types of their upper bounds.
+- Otherwise, we take `Any?` as the equality bound.
+
+By abuse of language, we say that `T` is the equality type bound of the
+expression `e` when `T` is the equality type bound of the type of `e`.
+
+**Definitely wrong case.** 
+For every expression of the form `e1 == e2`, or `e1 != e2`, we check
+the compatibility (as defined in [RULES1](https://youtrack.jetbrains.com/issue/KT-57779#rules1))
+between:
+
+1. The equality bound type of `e1` and the type of `e2`,
+2. The type of `e1` and the equality bound type of `e2`.
+
+If any of those fail, a warning "This condition is always false."
+(respectively "true" for inequalities) should be reported.
+
+*Example #1.* If we check `e == p`, where `e` is of type `Either<String, Int>`,
+and `p` is an instance of a data class `Point`, we can see that the two
+types are incompatible.
+
+**Smart cast.** Whenever none of the diagnostics are triggered, then an
+additional smart cast is introduced: if the result of the quality check is
+true (respectively false for inequality), then `e2` is now known to be instance
+of the equality bound type of `e1`.
+
+Unfortunately, this is not a symmetric procedure, but ultimately the `equals`
+method that gets called is that from `e1`, so it makes sense to only use the
+smart cast from its equality bound type.
+
+**Contracts**. Effectively, the checks work as if the following
+contracts were present (where `A` represents the type of `e1`).
+
+```kotlin
+// For e1 == e2
+returns(true) implies (e2 is ebt(A))
+(e2 !is ebt(A)) implies returns(false)
+
+// For e1 != e2
+returns(false) implies (e2 is ebt(A))
+(e2 !is ebt(A)) implies returns(true)
+```
+
+Note that the second contract is not currently expressible in Kotlin
+(since `returns` may only appear as antecedent of `implies`).
+
+**Behavior on explicit `equals` calls.** Note that the diagnostics are described
+only for expressions of the form `e1 == e2` and `e1 != e2`. It bears the
+question of what happens if you write `e1.equals(e2)` instead, and we resolve
+to the operator.
+
+1. The compiler should resolve the call following the usual rules,
+2. If the call is ultimately resolved to the `equals(Any?)` overload, the
+   checks described in this section should be performed.
+
+## Phase 2: custom equality bounds
 
 ### Declaration site
 
@@ -472,61 +595,6 @@ specific `equals` operator in Kotlin without breaking usages in the JVM platform
 
 ### Use site warnings
 
-Implementation-wise, these warnings are an extension of the 
-[current diagnostics](https://youtrack.jetbrains.com/issue/KT-57779).
-
-**Nullability.** Note that strictly nullable types can never define a strict 
-equality, since any two nullable types always share `null` as value. However, 
-if we are sure that the other value is not `null`, we can still report the 
-same diagnostics.
-
-- Implementations are free to also report cases in which both sides are nullable,
-  but would trigger an error if this was not the case. This discourages people 
-  from writing code that replies on implicit `null`, in favor of explicit `null`
-  checking.
-
-**Equality type bound.** For each type we compute an upper bound for the types
-it can be compared against, which we call the _equality bound type_.
-We write `ebt(A)` for the equality type bound of `A`.
-
-- For classifiers, the equality bound type is the star-projected version of
-  the equality bound (declared or inherited) of the classifier.
-  - For the case of undeclared equality bounds, check the _Multiplarform_
-    section above.
-  - If there's no definition of the `equals` operator, `Any` Is the declared 
-    equality bound.
-- If the type is nullable `T?`, we take the nullable version of the equality 
-  bound type of `T`.
-- For intersection types, we take the intersection of the equality bound types.
-- For flexible types, we take the equality bound type of the upper bound.
-- For captured types and type parameters, we take the intersection of the
-  equality bound types of their upper bounds.
-- Otherwise, we take `Any?` as the equality bound.
-
-By abuse of language, we say that `T` is the equality type bound of the
-expression `e` when `T` is the equality type bound of the type of `e`.
-
-**The two checks.** For every expression of the form `e1 == e2`, or `e1 != e2`,
-we check for two cases: the _definitely wrong_ case, and the _potentially
-wrong_ case. Their naming shows how much confidence we have in the raised
-issues. Note this is just for understanding, in compiler terms both are
-warnings.
-
-**Definitely wrong case.** 
-For every expression of the form `e1 == e2`, or `e1 != e2`, we check
-the compatibility (as defined in [RULES1](https://youtrack.jetbrains.com/issue/KT-57779#rules1))
-between:
-
-1. The equality bound type of `e1` and the type of `e2`,
-2. The type of `e1` and the equality bound type of `e2`.
-
-If any of those fail, a warning "This condition is always false."
-(respectively "true" for inequalities) should be reported.
-
-*Example #1.* If we check `e == p`, where `e` is of type `Either<String, Int>`,
-and `p` is an instance of a data class `Point`, we can see that the two
-types are incompatible.
-
 **The need for the other case.** The _definitely wrong_ check is too strict.
 For example, it does not cover the case in which we check `list == set`.
 The reason is that `List` and `Set` are interfaces, so you can always define a
@@ -554,6 +622,12 @@ fun test(list: List<Int>, set: Set<Int>) {
   if (set is List && list == set) { ... }  // no warning
 }
 ```
+
+**The two checks.** For every expression of the form `e1 == e2`, or `e1 != e2`,
+we check for two cases: the _definitely wrong_ case, and the _potentially
+wrong_ case. Their naming shows how much confidence we have in the raised
+issues. Note this is just for understanding, in compiler terms both are
+warnings.
 
 **Potentially wrong case.**
 For every expression of the form `e1 == e2`, or `e1 != e2`, we check:
@@ -587,40 +661,6 @@ amounts to answering:
 2. Is `Collection` a subtype of `List`?
 
 The first one is true, so we do not report anything.
-
-**Smart cast.** Whenever none of the diagnostics are triggered, then an
-additional smart cast is introduced: if the result of the quality check is
-true (respectively false for inequality), then `e2` is now known to be instance
-of the equality bound type of `e1`.
-
-Unfortunately, this is not a symmetric procedure, but ultimately the `equals`
-method that gets called is that from `e1`, so it makes sense to only use the
-smart cast from its equality bound type.
-
-**Contracts**. Effectively, the checks work as if the following
-contracts were present (where `A` represents the type of `e1`).
-
-```kotlin
-// For e1 == e2
-returns(true) implies (e2 is ebt(A))
-(e2 !is ebt(A)) implies returns(false)
-
-// For e1 != e2
-returns(false) implies (e2 is ebt(A))
-(e2 !is ebt(A)) implies returns(true)
-```
-
-Note that the second contract is not currently expressible in Kotlin
-(since `returns` may only appear as antecedent of `implies`).
-
-**Behavior on explicit `equals` calls.** Note that the diagnostics are described
-only for expressions of the form `e1 == e2` and `e1 != e2`. It bears the
-question of what happens if you write `e1.equals(e2)` instead, and we resolve
-to the operator.
-
-1. The compiler should resolve the call following the usual rules,
-2. If the call is ultimately resolved to the `equals(Any?)` overload, the
-   checks described in this section should be performed.
 
 ### Standard library
 
