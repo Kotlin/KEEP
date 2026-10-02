@@ -36,12 +36,12 @@ We discuss what MFVCs represent, what their limitations are, how they interopera
     - [Standard Library](#standard-library)
     - [Other Features and Interactions](#other-features-and-interactions)
       - [MFVC and `===`](#mfvc-and-identity)
-      - [MFVC and Smart Casts](#mfvc-and-smart-casts)
       - [MFVC and Compose](#mfvc-and-compose)
         - [Strong Skipping](#strong-skipping)
         - [State Storage and Change Tracking](#state-storage-and-change-tracking)
       - [MFVC and Interop](#mfvc-and-interop)
     - [Possible Extensions](#possible-extensions)
+      - [MFVC and Smart Casts](#mfvc-and-smart-casts)
       - [Delegation to Stable Expressions](#delegation-to-stable-expressions)
       - [`@WillBecomeValue` Migration Support Annotation](#willbecomevalue-migration-support-annotation)
       - [MFVC and Changes to `===`](#mfvc-and-changes-to-)
@@ -129,7 +129,7 @@ For regular classes, primary properties are mainly a convenience: if you want to
 However, the same is not true for MFVCs, for which primary properties *are* the value: they completely define stored state, structural equality, and copying behavior; and the compiler should be free to use all of these for better performance and memory optimizations of value objects.
 This means that moving a property from or to primary properties is a breaking change, and there is no intended way to preserve compatibility.
 
-As a consequence, because primary properties are guaranteed to be stored fields without custom getters, the compiler can rely on their stability for smart casts across module boundaries (see [MFVC and Smart Casts](#mfvc-and-smart-casts)).
+As a possible extension, because primary properties are guaranteed to be stored fields without custom getters, the compiler could rely on their stability for smart casts across module boundaries (see [MFVC and Smart Casts](#mfvc-and-smart-casts)).
 
 #### MFVC and Inheritance
 
@@ -479,29 +479,32 @@ fun tryToDistinguish() {
 Our approach to MFVCs and their runtime representations creates some complications w.r.t. migrations.
 In essence, it means we have three stages of how one can declare a value class.
 
-1. (Migration Stage 0) `@JvmInline` inline value class / single-property inline value class on other platforms
+1. (Migration Stage 0) `inline value class` / `@JvmInline value class` inline single-field value class
 2. (Migration Stage 1) Multi-field value class before any optimizations (aka represented as regular class)
 3. (Migration Stage 2) Multi-field value class with optimizations (aka represented as Valhalla value class or optimized by the Kotlin compiler)
 
+> Note: today, Stage 0 is explicit on the JVM via `@JvmInline`, but implicit on non-JVM platforms, where an unmarked single-field `value class` uses the inline value class kind.
+> The [`inline value class`](./KEEP-0468-inline-value-classes.md) migration makes this choice explicit before full value classes are enabled.
+
 The change from Stage 0 to Stage 1 is the one which is unfortunately a breaking change.
-`@JvmInline` value classes are inlined, and that is visible in the ABI.
+Single-field value classes spelled with the `inline` modifier or `@JvmInline` annotation are inlined, and that is visible in the ABI.
 If one wants to migrate as follows:
 
 ```kotlin
 // Inline value class
-@JvmInline
-value class Color(val code: Int) // (0)
+inline value class Color(val code: Int) // (0)
 
 // MFVC with a single property
 value class Color(val code: Int) // (1)
 ```
 
 they cannot do this, as the (0) version is used in its inlined form in the compiled code, whereas (1) version works via the boxed representation.
+Removing the `inline` modifier or `@JvmInline` annotation changes an externally observable representation, including the JVM ABI and boundaries such as serialization and platform exports.
 
 If we were to support this migration, we would need to have a mechanism to compile value classes in both representations, so that already compiled code can use the (0) version and the new code can target the (1) version.
 
 To understand if we actually need this, we need to discuss whether this migration has important use-cases.
-We currently believe that in most cases `@JvmInline` value classes are used for their performance optimizations first, and for their immutability second.
+We currently believe that in most cases inline value classes are used for their performance optimizations first, and for their immutability second.
 This means that the migration from (0) to (1) is not a very immediate problem.
 
 > Note: one potential solution using `@JvmExposeBoxed` annotation is discussed in [Possible extensions](#migration-from-stage-0-to-stage-1-via-jvmexposeboxed).
@@ -636,6 +639,71 @@ At the moment, we do not believe this is something which will be often encounter
 
 If this changes, possible ways forward are discussed in [Possible extensions](#mfvc-and-changes-to-).
 
+##### MFVC and Compose
+
+Compose uses a stability system to decide whether composable functions can be skipped during recomposition: a type is *stable* if Compose can determine whether a value has changed between recompositions.
+The Compose compiler plugin infers stability by examining class structure: all-`val` properties with stable types make a class stable; any `var` property, or a property whose type comes from an external module without Compose compiler support, makes it unstable.
+
+MFVCs satisfy these requirements structurally.
+Their primary properties are `val` and they are guaranteed stored fields.
+As a result, an MFVC whose primary property types are themselves stable could be automatically inferred as stable by the Compose compiler, with no annotation needed.
+
+This is the same mechanism that makes value-like data classes stable, but there is an important difference.
+The Compose compiler currently treats any class from an external module that was not itself compiled with the Compose compiler as unstable, regardless of its properties.
+For MFVCs, thanks to their restrictions, it should be safe for the Compose compiler to do cross-module stability inference on them.
+
+If an MFVC has a primary property of an unstable type (e.g., `List<T>` from the standard library, which could be a `MutableList` at runtime), the Compose compiler infers the MFVC as unstable.
+Current fix would be the same as for data classes: using `kotlinx.collections.immutable` types, or applying `@Stable` / `@Immutable` explicitly.
+In the future, once we have deep immutability for MFVC, they would represent the compile-time checked stable types for Compose.
+
+###### Strong Skipping
+
+Starting with Kotlin 2.0.20, *strong skipping mode* is enabled by default.
+Without strong skipping, a composable function with any unstable parameter is always recomposed: it cannot be skipped at all.
+With strong skipping, such a composable becomes skippable, but the runtime uses instance equality (`===`) rather than `equals()` to decide whether an unstable argument has "changed".
+In other words, strong skipping is an optimistic performance heuristic which trusts that in most cases for unstable types their updates create a new instance.
+
+Because MFVCs are shallow immutable, this assumption often holds: state updates produce new instances rather than mutating existing ones.
+This means that it is significantly harder to erroneously skip recomposition over MFVCs.
+At the same time, as we do not provide a stable identity for value objects, `===` could return `false` if we decided to re-create the box of an object, causing an unneeded recomposition.
+
+Dealing with this is dependent on how we implement the [`===` for MFVC](#mfvc-and-identity).
+An option which is always available to us would be to update strong skipping in Compose to use `equals` for unstable MFVCs.
+
+###### State Storage and Change Tracking
+
+Guaranteed stored [primary properties](#mfvc-primary-constructor) of MFVCs could facilitate future Compose optimizations, such as comparing only the properties used by a composable function.
+This would require compiler support and conservative handling of uses of the whole value.
+
+Finer-grained observation of state properties is a separate possibility that would require integration with Compose's snapshot system.
+Neither optimization is guaranteed by MFVC support, and their feasibility and performance benefits need further investigation.
+
+##### MFVC and Interop
+
+For interop, there are two different stories, for [migration stage 1 and 2](#migration-between-different-kinds-of-value-classes).
+
+For migration stage 1, when we are still compiling MFVCs as their boxed representation, interop is relatively easy, as it is basically interop with regular Kotlin classes.
+
+Developers can start using MFVCs immediately even in their multiplatform code, which is good, but their uses will not be 100% idiomatic on their respective platforms.
+Also, as they would change their representation in the future, it would be beneficial to support warnings similar to the ones we discussed for [Non-Value to Value class migration](#migration-between-non-value-and-value-classes) on each specific platform.
+
+For migration stage 2, the interop story depends on whether we are working with reference-based platforms (JVM / JS) or platforms with proper value type support (Native / Wasm).
+
+For reference-based platforms, we (for the most part) continue compiling to and interoperating via boxed representations.
+On the project Valhalla JVM, these boxes will be value classes, but most of the "valueness" is done by the JVM, invisible to us.
+So the API / ABI and the interop layer remain the same as for stage 1.
+
+For platforms with value types, the story is more interesting.
+The easier default is to say nothing changes, and MFVCs are exposed as their boxed versions, same as for migration stage 1.
+
+Alternatively, Native and Wasm could expose MFVCs as structures.
+If so, we would need to make sure they are never subject to arbitrary in-place mutation aka never exposed via pointers.
+A more in-depth design for advanced interop on these platforms will follow.
+
+#### Possible Extensions
+
+In this section we lay out potential extensions to the core MFVC design, which we could introduce during or after stabilization.
+
 ##### MFVC and Smart Casts
 
 Another interesting interaction of MFVC is with *smart cast mechanism*.
@@ -674,98 +742,6 @@ As we already [discussed](#mfvc-primary-constructor), their primary constructor 
 
 This allows us to say that primary properties of an MFVC are stable parts of its API / ABI, which means that we can rely on their stability for smart casts.
 
-##### MFVC and Compose
-
-Compose uses a stability system to decide whether composable functions can be skipped during recomposition: a type is *stable* if Compose can determine whether a value has changed between recompositions.
-The Compose compiler plugin infers stability by examining class structure: all-`val` properties with stable types make a class stable; any `var` property, or a property whose type comes from an external module without Compose compiler support, makes it unstable.
-
-MFVCs satisfy these requirements structurally.
-Their primary properties are `val` and they are guaranteed stored fields.
-As a result, an MFVC whose primary property types are themselves stable could be automatically inferred as stable by the Compose compiler, with no annotation needed.
-
-This is the same mechanism that makes value-like data classes stable, but there is an important difference.
-The Compose compiler currently treats any class from an external module that was not itself compiled with the Compose compiler as unstable, regardless of its properties.
-For MFVCs, thanks to their restrictions, it should be safe for the Compose compiler to do cross-module stability inference on them.
-
-If an MFVC has a primary property of an unstable type (e.g., `List<T>` from the standard library, which could be a `MutableList` at runtime), the Compose compiler infers the MFVC as unstable.
-Current fix would be the same as for data classes: using `kotlinx.collections.immutable` types, or applying `@Stable` / `@Immutable` explicitly.
-In the future, once we have deep immutability for MFVC, they would represent the compile-time checked stable types for Compose.
-
-###### Strong Skipping
-
-Starting with Kotlin 2.0.20, *strong skipping mode* is enabled by default.
-Without strong skipping, a composable function with any unstable parameter is always recomposed: it cannot be skipped at all.
-With strong skipping, such a composable becomes skippable, but the runtime uses instance equality (`===`) rather than `equals()` to decide whether an unstable argument has "changed".
-In other words, strong skipping is an optimistic performance heuristic which trusts that in most cases for unstable types their updates create a new instance.
-
-Because MFVCs are shallow immutable, this assumption often holds: state updates produce new instances rather than mutating existing ones.
-This means that it is significantly harder to erroneously skip recomposition over MFVCs.
-At the same time, as we do not provide a stable identity for value objects, `===` could return `false` if we decided to re-create the box of an object, causing an unneeded recomposition.
-
-Dealing with this is dependent on how we implement the [`===` for MFVC](#mfvc-and-identity).
-An option which is always available to us would be to update strong skipping in Compose to use `equals` for unstable MFVCs.
-
-###### State Storage and Change Tracking
-
-Compose's `MutableState<T>` stores its value in a `StateStateRecord<T>` whose field is typed `var value: T`.
-This allows only for "all-or-nothing" change tracking for the complete state, but not for its individual parts.
-
-MFVCs open a natural path to support tracking of composite data, thanks to the properties of their [primary constructor](#mfvc-primary-constructor) and them being value types.
-Compose compiler could track individual properties of an MFVC state, their reads and their updates, and fine-tune its recomposition engine to consider partial state dependencies.
-
-```kotlin
-@Composable
-fun UserView(user: User) {
-  Row {
-    Text("${user.name}")
-    Separator()
-    Text("(${user.nickname})")
-  }
-}
-```
-
-Given the properties of MFVCs, Compose can analyze `fun UserView` and record that it needs restarting only when either `user.name` or `user.nickname` are updated.
-This fundamentally means that we get more fine-grained state change tracking for MFVC parameters of composable functions, without the need for manual boilerplate.
-
-```kotlin
-@Composable
-fun UserView(name: String, nick: String) {
-  Row {
-    Text("$name")
-    Separator()
-    Text("($nick)")
-  }
-}
-```
-
-Further improvements are possible, once we get ergonomic updates, as they could be made trackable by Compose also.
-
-##### MFVC and Interop
-
-For interop, there are two different stories, for [migration stage 1 and 2](#migration-between-different-kinds-of-value-classes).
-
-For migration stage 1, when we are still compiling MFVCs as their boxed representation, interop is relatively easy, as it is basically interop with regular Kotlin classes.
-
-Developers can start using MFVCs immediately even in their multiplatform code, which is good, but their uses will not be 100% idiomatic on their respective platforms.
-Also, as they would change their representation in the future, it would be beneficial to support warnings similar to the ones we discussed for [Non-Value to Value class migration](#migration-between-non-value-and-value-classes) on each specific platform.
-
-For migration stage 2, the interop story depends on whether we are working with reference-based platforms (JVM / JS) or platforms with proper value type support (Native / Wasm).
-
-For reference-based platforms, we (for the most part) continue compiling to and interoperating via boxed representations.
-On the project Valhalla JVM, these boxes will be value classes, but most of the "valueness" is done by the JVM, invisible to us.
-So the API / ABI and the interop layer remain the same as for stage 1.
-
-For platforms with value types, the story is more interesting.
-The easier default is to say nothing changes, and MFVCs are exposed as their boxed versions, same as for migration stage 1.
-
-Alternatively, Native and Wasm could expose MFVCs as structures.
-If so, we would need to make sure they are never subject to arbitrary in-place mutation aka never exposed via pointers.
-A more in-depth design for advanced interop on these platforms will follow.
-
-#### Possible Extensions
-
-In this section we lay out potential extensions to the core MFVC design, which we could introduce during or after stabilization.
-
 ##### Delegation to Stable Expressions
 
 We could in the future allow delegation when the delegate expression is *stable*: it is computable without requiring a separate backing field to store the delegate instance.
@@ -778,14 +754,16 @@ Allowing such delegated properties in value classes requires making this optimiz
 
 This annotation is a Kotlin-specific way to mark future-to-be value classes which are currently reference classes.
 It is used to warn and/or prevent using identity-sensitive operations on them.
+It is initially experimental and requires an opt-in to `ExperimentalValueClassApi` (tentative name), as described in [KEEP-0470](./KEEP-0470-will-become-value.md#experimental-status-and-opt-in).
 
 ```kotlin
 package kotlin
 
 @Target(CLASS)
 @Retention(BINARY)
-@SinceKotlin("2.X")
-annotation class WillBecomeValue // Actual name to be decided later
+@SinceKotlin("2.5")
+@ExperimentalValueClassApi
+annotation class WillBecomeValue
 ```
 
 Kotlin already supports [reporting warnings](https://youtrack.jetbrains.com/issue/KT-70722) for such Java classes.
@@ -929,7 +907,7 @@ MFVC release is tentatively dependent on the following features.
 
 #### Summary
 
-With MFVCs, one gets the ability to model more complicated immutable data than is possible now (aka with multiple properties), while also getting DX improvements in other areas (such as smart casts).
+With MFVCs, one gets the ability to model more complicated immutable data than is possible now (aka with multiple properties), while also potentially enabling future DX improvements in other areas (such as smart casts).
 The current design focuses on their value and shallow immutable nature, and the future introduction of project Valhalla on the JVM and Kotlin-specific optimizations on other platforms would allow us to get additional performance benefits.
 
 However, mutating MFVCs is painful, as you need to create a new instance via a constructor call.
@@ -962,3 +940,5 @@ We are interested in your feedback on the overall design for MFVCs, but are part
 * [KEEP-0438: Name-Based Destructuring](https://github.com/Kotlin/KEEP/blob/main/proposals/KEEP-0438-name-based-destructuring.md)
 * [KEEP-0453: Better Immutability in Kotlin — Motivation and Design Space](https://github.com/Kotlin/KEEP/blob/main/proposals/KEEP-0453-better-immutability-value-classes-motivation.md)
 * [KEEP-0456: More Specific `equals`](https://github.com/Kotlin/KEEP/blob/main/proposals/KEEP-0456-equals.md)
+* [KEEP-0468: Explicit Inline Single-Field Value Classes on All Platforms](https://github.com/Kotlin/KEEP/blob/main/proposals/KEEP-0468-inline-value-classes.md)
+* [KEEP-0470: `@WillBecomeValue` annotation](https://github.com/Kotlin/KEEP/blob/main/proposals/KEEP-0470-will-become-value.md)
