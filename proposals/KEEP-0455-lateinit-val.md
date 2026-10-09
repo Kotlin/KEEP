@@ -63,6 +63,8 @@ Generated getter and setter enforce the assign-once semantics.
   * [Augmented Assignments](#augmented-assignments)
 * [Frameworks](#frameworks)
   * [Serialization Frameworks](#serialization-frameworks)
+    * [`kotlinx.serialization`](#kotlinxserialization)
+    * [Java `Serializable`](#java-serializable)
   * [Persistence Frameworks](#persistence-frameworks)
 <!-- TOC -->
 
@@ -486,14 +488,50 @@ relevant frameworks and libraries in the Kotlin ecosystem.
 
 ## Serialization Frameworks
 
-The backing field of a `lateinit val` effectively has `Any?` type,
-so serialization frameworks that rely on it cannot determine the actual property type.
-Also, the sentinel object is not serializable.
-Thus, serialization frameworks would need to provide special support for `lateinit val` properties.
+Serialization frameworks that rely on runtime type information
+might work with `lateinit val` properties without additional support,
+if it is only required to serialize an initialized `lateinit val`.
+Frameworks that use code generation would probably require
+special handling for `lateinit val` properties.
+In both cases, serializing uninitialized property state poses a challenge,
+as the sentinel object is an implementation detail and is not easily accessible.
 
-However, in most intended use cases, assign-once properties hold non-serializable values
-such as service instances or Android views, so it might be acceptable to ignore
-`lateinit val`s in serialization by default.
+### `kotlinx.serialization`
+
+Kotlin serialization framework generates serializers using a compiler plugin,
+so it would be able to retrieve all the necessary information to support `lateinit val` properties.
+
+We propose to handle `lateinit val`s similar to `lateinit var`s and make them non-optional,
+i.e. serialization would throw if the property is not initialized and
+deserialization would throw if there is no data corresponding to the property.
+
+### Java `Serializable`
+
+We propose to support `lateinit val` properties inside classes that implement Java `Serializable`.
+For this, the sentinel object also has to implement the `Serializable` interface.
+So the compiler should generate `readResolve` method (expressed in Kotlin):
+
+```kotlin
+object UNINITIALIZED : Serializable {
+    private fun readResolve(): Any = UNINITIALIZED // return the same object
+}
+```
+
+With a serializable sentinel, Java serialization can preserve an uninitialized `lateinit val`.
+An initialized property can be serialized when its stored value is serializable. For example:
+
+```kotlin
+class Nested : Serializable {
+    val s: String = "nested"
+}
+
+class Entity : Serializable {
+    lateinit val nested: Nested
+}
+```
+
+Note that this differs from the proposed `kotlinx.serialization` behavior:
+an uninitialized `lateinit val` can be serialized and deserialized.
 
 ## Persistence Frameworks
 
