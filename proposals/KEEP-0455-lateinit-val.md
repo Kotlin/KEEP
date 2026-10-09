@@ -475,8 +475,12 @@ Although `lateinit val` has a generated setter,
 exposing it as `KMutableProperty` would contradict the assign-once semantics.
 This may be optionally relaxed in the future
 if reflective writes prove necessary in practice.
+
 Note that the generated setter remains accessible through Java reflection, 
 which is sufficient for dependency injection use cases.
+The backing field is also discoverable through reflection:
+on the JVM, `KProperty<*>.javaField` returns its private `Field`,
+even though the field is hidden at the Kotlin source level.
 
 ## Augmented Assignments
 
