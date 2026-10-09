@@ -50,6 +50,8 @@ Generated getter and setter enforce the assign-once semantics.
 * [Intended Semantics](#intended-semantics)
 * [Design](#design)
   * [Compilation Strategy](#compilation-strategy)
+    * [Early Initialization](#early-initialization)
+    * [Kotlin/JS](#kotlinjs)
   * [Thread-Safety](#thread-safety)
   * [Smartcasts](#smartcasts)
 * [Interaction with Other Features](#interaction-with-other-features)
@@ -234,6 +236,81 @@ The proposed scheme is chosen for the following reasons:
 The trade-off compared to `lateinit var` is
 no exposed backing field, which may create confusion
 given that `lateinit val` looks similar to `lateinit var`.
+
+### Early Initialization
+
+Note that the proposed compilation scheme, implemented verbatim, is unsound
+in the context of accessing a property of an inheritor during construction of a base class:
+
+```kotlin
+abstract class Base {
+    init { initialize() }
+
+    abstract fun initialize()
+}
+
+class Derived : Base() {
+    lateinit val property: String
+
+    override fun initialize() {
+        println(property) // prints "null"
+        property = "throw" // throws "property is already initialized"
+    }
+}
+
+val d = Derived()
+```
+
+The problem is that until the base class is constructed,
+fields of the derived class are not yet initialized.
+On the JVM, accessing the backing field of a `lateinit val` thus returns `null`
+which the generated code treats as a valid value, not as an indicator of uninitialized state.
+The problem did not exist for `lateinit var`
+because `null` is used as a sentinel value in its compilation scheme.
+
+To solve the issue, we propose to early-initialize the backing field of a `lateinit val`,
+i.e. set it to `UNINITIALIZED` **before** the base class constructor is called.
+On the JVM, this can be achieved by generating `putfield` bytecode instruction
+before the call to the super constructor.
+
+### Kotlin/JS
+
+On JS platform, `undefined` is a natural value for an uninitialized property,
+so compilation scheme for a `lateinit val property` can be simplified to the following:
+
+```js
+var property;
+function get_property() {
+  if (!(property === undefined)) {
+    return property;
+  } else {
+    throw ...;
+  }
+}
+function set_property(value) {
+  if (property === undefined) {
+    property = value;
+  } else {
+    throw ...;
+  }
+}
+```
+
+Note that `null === undefined` is `false` in JavaScript,
+so `null` remains a valid value for a `lateinit val`.
+
+This compilation scheme also solves the [Early Initialization](#early-initialization) problem,
+because reading an uninitialized backing variable yields `undefined` in JavaScript.
+
+However, assigning `undefined` to a `lateinit val` becomes a "no-op":
+
+```kotlin
+lateinit val property: String?
+property = kotlin.js.undefined // or kotlin.js.js("undefined")
+println(property) // throws "property is not initialized"
+```
+
+So `undefined` is not a valid value for a `lateinit val`.
 
 ## Thread-Safety
 
