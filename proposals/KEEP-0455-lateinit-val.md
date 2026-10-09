@@ -58,6 +58,7 @@ Generated getter and setter enforce the assign-once semantics.
   * [Inheritance](#inheritance)
   * [`expect`/`actual`](#expectactual)
   * [Annotations](#annotations)
+    * [JVM Annotations](#jvm-annotations)
   * [`isInitialized`](#isinitialized)
   * [Reflection](#reflection)
   * [Augmented Assignments](#augmented-assignments)
@@ -433,6 +434,24 @@ that suggests adding the appropriate use-site target
 for known annotations (e.g., `@set:` for `@Inject`)
 when used on `lateinit val` properties.
 
+### JVM Annotations
+
+A summary of `lateinit val` interaction with Kotlin-provided JVM annotations:
+- `@JvmField` - inapplicable, as `FIELD` annotation target is not available for `lateinit val` properties.
+  Conceptually, it does not make sense to expose `lateinit val` properties as fields,
+  because their semantics are enforced by generated getters and setters.
+- `@JvmStatic` - applicable according to its applicability rules.
+  It allows to create static `lateinit val` properties.
+- `@Volatile` - inapplicable, as `FIELD` annotation target is not available for `lateinit val` properties.
+  In any case, making the backing field volatile would not make the whole property thread-safe.
+- `@Synchronized` - applicable to setter and getter, allows to make access to the property synchronized.
+- `@Transient` - inapplicable, as `FIELD` annotation target is not available for `lateinit val` properties.
+
+Because `kotlin.jvm.Transient` cannot be applied,
+the backing field cannot be marked transient for Java serialization.
+This issue might be addressed in the future.
+See also [Serialization Frameworks](#serialization-frameworks).
+
 ## `isInitialized`
 
 Kotlin `lateinit var` properties provide an `isInitialized` check
@@ -532,6 +551,11 @@ class Entity : Serializable {
 
 Note that this differs from the proposed `kotlinx.serialization` behavior:
 an uninitialized `lateinit val` can be serialized and deserialized.
+
+Because `kotlin.jvm.Transient` cannot be applied,
+Java's default serialization includes the `lateinit val` backing field.
+This issue might be addressed in the future.
+See also [JVM Annotations](#jvm-annotations).
 
 ## Persistence Frameworks
 
