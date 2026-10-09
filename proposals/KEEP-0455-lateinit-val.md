@@ -5,6 +5,7 @@
 * **Contributors**: Marat Akhin, Faiz Ilham Muhammad
 * **Status**: Public Discussion
 * **Discussion**: [KEEP-0455](https://github.com/Kotlin/KEEP/discussions/475)
+* **Related YouTrack Issues**: [KT-28413](https://youtrack.jetbrains.com/issue/KT-28413/Support-lateinit-val-properties)
 * **Supersedes**: [KEEP-0452](https://github.com/Kotlin/KEEP/blob/main/proposals/KEEP-0452-assign-once.md)
   ([Public Discussion](https://github.com/Kotlin/KEEP/discussions/471))
 
