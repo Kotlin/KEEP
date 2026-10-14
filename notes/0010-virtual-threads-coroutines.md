@@ -104,7 +104,7 @@ Kotlin coroutines may be executed on Virtual Threads in different ways.
 
 ## VT-per-task
 
-The most simple approach is to spawn a Virtual Thread for each `dispatch`,
+The most simple approach is to spawn a Virtual Thread for each `dispatch` call,
 it can be achieved like this:
 
 ```kotlin
@@ -118,3 +118,300 @@ withContext(virtualThreadDispatcher) {
 Note that people already use such integration, mainly as an alternative to `Dispatchers.IO`:
 [termora](https://github.com/TermoraDev/termora/blob/f0acbb40845c4ab2ddeb588951204ee9a9f727a9/plugins/vnc/src/main/kotlin/app/termora/plugins/vnc/VNCViewer.kt#L45),
 [ort-server](https://github.com/eclipse-apoapsis/ort-server/blob/ea2335c03d86a8b726a73ee53089b45308606afa/shared/coroutines/src/main/kotlin/Dispatchers.kt#L48).
+
+## Reusing VTs
+
+Even though in the Virtual Threads JEP it is explicitly written that one should not pool Virtual Threads,
+creating VT on each `dispatch`, i.e. on each dispatched resumption, might be too expensive,
+as there is still some cost of creating a new virtual thread.
+
+### Batching Tasks
+
+One idea is to let already running Virtual Thread workers to execute multiple tasks submitted to the dispatcher.
+VT worker exits normally when there are no more tasks to execute at the moment (it **does not park** to wait for more tasks).
+Interestingly, this behavior can be easily approximated by available `kotlinx.coroutines` tools:
+
+```kotlin
+val batchedVirtualThreadDispatcher = 
+    Executors.newVirtualThreadPerTaskExecutor()
+        .asCoroutineDispatcher()
+        .limitedParallelism(64)
+```
+
+The thing is that `LimitedDispatcher` internally submits `Worker` instances to the underlying dispatcher.
+Those workers poll tasks from a shared queue, exiting normally if no tasks are available.
+Workers also redispatch themselves after 16 tasks if more work remains, causing a new VT to be created.
+However, the downsides of this approach are:
+* The number of concurrent workers is capped.
+* Dispatcher prefers to spawn new workers if parallelism is not fully utilized.
+
+So in our test below we also utilized a custom dispatcher with a similar idea, but:
+* With an ability to spawn unlimited number of workers.
+* With a heuristic to avoid spawning new workers if existing ones can handle the load 
+  (under assumption that workers make progress, i.e. they do not block).
+* With a configurable maximum number of tasks executed per VT.
+
+Relevant part of the implementation:
+
+```kotlin
+override fun dispatch(context: CoroutineContext, block: Runnable) {
+    queuedTasks.incrementAndGet()
+    queue.add(block)
+    startWorker()
+}
+
+private fun needsWorker(): Boolean {
+    if (queue.isEmpty()) return false
+    val workers = activeWorkers.get()
+    return workers == 0L || queuedTasks.get() > workers * expandThreshold
+}
+
+private fun startWorker() {
+    while (needsWorker()) {
+        if (!expandingWorkers.compareAndSet(false, true)) return
+        try {
+            while (needsWorker()) {
+                activeWorkers.incrementAndGet()
+                underlying.dispatch(EmptyCoroutineContext) { runBatch() }
+            }
+        } finally {
+            expandingWorkers.set(false)
+        }
+    }
+}
+
+private fun runBatch() {
+    try {
+        repeat(batchSize) {
+            val task = queue.poll() ?: return
+            queuedTasks.decrementAndGet()
+            try {
+                task.run()
+            } catch (e: Throwable) {
+                val thread = Thread.currentThread()
+                thread.uncaughtExceptionHandler.uncaughtException(thread, e)
+            }
+        }
+    } finally {
+        activeWorkers.decrementAndGet()
+        startWorker()
+    }
+}
+```
+
+Full code is available [here](https://github.com/InversionSpaces/rsocket-kotlin/blob/loom-dispatcher-benchmark/rsocket-transport-benchmarks/rsocket-kotlin/src/jvmMain/kotlin/BatchedVirtualThreadDispatcher.kt).
+
+### VT-per-coroutine
+
+Another idea is to establish a correspondence between a unit of work, `Job` in `kotlinx.coroutines`, and a Virtual Thread.
+In other words, a VT is live until a `Job` completes, parking when there is no work to execute at the moment.
+The idea is similar to the one proposed in Nikita Bobko's research, see [Previous Work](#previous-work).
+Relevant part of the implementation:
+
+```kotlin
+override fun dispatch(context: CoroutineContext, block: Runnable) {
+    val job = context[Job]
+    if (job == null) {
+        executorService.execute(block)
+        return
+    }
+
+    val task = Task(context, block)
+    while (true) {
+        var created = false
+        val worker = workers.computeIfAbsent(job) {
+            created = true
+            CoroutineWorker(job)
+        }
+        if (worker.enqueue(task)) {
+            if (created) worker.start()
+            return
+        }
+        workers.remove(job, worker)
+    }
+}
+
+private class CoroutineWorker(private val job: Job) : Runnable {
+  private val queue = ConcurrentLinkedQueue<Task>()
+
+  private val pendingTasks = AtomicInteger(0)
+
+  @Volatile
+  private var completed = false
+
+  @Volatile
+  private var thread: Thread? = null
+
+  fun start() {
+    job.invokeOnCompletion {
+      completed = true
+      signal()
+    }
+    executorService.execute(this)
+  }
+
+  fun enqueue(task: Task): Boolean {
+    while (true) {
+      val pending = pendingTasks.get()
+      if (pending == CLOSED) return false
+      if (pendingTasks.compareAndSet(pending, pending + 1)) break
+    }
+    queue.offer(task)
+    signal()
+    return true
+  }
+
+  override fun run() {
+    thread = Thread.currentThread()
+    while (true) {
+      val task = queue.poll()
+      if (task != null) {
+        try {
+          task.block.run()
+        } catch (failure: Throwable) {
+          handleCoroutineException(task.context, failure)
+        } finally {
+          pendingTasks.decrementAndGet()
+        }
+        continue
+      }
+
+      if (completed && pendingTasks.compareAndSet(0, CLOSED)) {
+        workers.remove(job, this)
+        return
+      }
+
+      LockSupport.park(this)
+    }
+  }
+
+  private fun signal() {
+    thread?.let(LockSupport::unpark)
+  }
+
+  private companion object {
+    const val CLOSED = -1
+  }
+}
+```
+
+The full code is available [here](https://github.com/InversionSpaces/kotlinx.coroutines/blob/mvorobev/virtual-threads/kotlinx-coroutines-core/jvm/src/VirtualThreads.kt).
+
+# Benchmarks
+
+Benchmarks (and profiles, where applicable) were performed on Apple M3 Max / JVM 21.0.10;
+the macOS profiler used a wall-clock sampling engine.
+
+## rsocket-kotlin
+
+[rsocket-kotlin](https://github.com/rsocket/rsocket-kotlin) is a Kotlin Multiplatform implementation of
+the RSocket messaging protocol, using coroutines and `Flow` for asynchronous requests and streams.
+We used its client/server transport benchmarks over a Ktor TCP loopback connection, with empty payloads:
+
+| Benchmark        | Concurrent requests | Work per request                          |
+|------------------|--------------------:|-------------------------------------------|
+| Request-response |               1,000 | One request and one response              |
+| Request-stream   |                 100 | One request and 5,000 response elements   |
+| Request-channel  |                  10 | Bidirectional streaming of 5,000 elements |
+
+Requests are generated by concurrent coroutines on one JMH thread. 
+Connection and RSocket processing use either four Default workers or 
+a VT scheduler configured with four carriers; the selector has one dedicated platform thread.
+Scores below are **complete benchmark invocations per second**,
+`±` denotes the reported 99.9% confidence interval across 15 samples.
+
+This workload uses suspending socket APIs, so it explores the dispatcher cost discussed in [Question](#question),
+rather than the potential benefit of handling blocking I/O.
+The full experiment log and reproduction commands are available in the
+[benchmark report](https://github.com/InversionSpaces/rsocket-kotlin/blob/loom-dispatcher-benchmark/BENCHMARK.md).
+
+### Transport Patches
+
+First, rsocket-kotlin's Ktor TCP transport overwrote the dispatcher supplied in its parent context.
+We patched the library to allow the selected dispatcher to reach connection and RSocket processing scopes.
+All results below include this change.
+
+Ktor still used `Dispatchers.IO` for its socket reader/writer pumps. 
+In the VT variant this introduced handoffs between two schedulers: 
+four VT carriers and a separate pool of four coroutine workers.
+We [patched Ktor](https://github.com/InversionSpaces/ktor/commit/8c189f0ed) to expose an optional `ioDispatcher` 
+in TCP client/server socket options and pass it through to the reader/writer pumps, including accepted sockets. 
+In the benchmark, both client and server socket read/write coroutines use the selected connection dispatcher.
+With this patch, both benchmark variants have a relevant platform-thread ceiling of six: 
+* Four workers/carriers.
+* One selector thread.
+* One JMH generator thread.
+* JVM service threads are excluded.
+
+### VT-per-task
+
+We first compared [VT-per-task](#vt-per-task) with `Dispatchers.Default`, before and after the Ktor I/O patch:
+
+| Benchmark        |   Default, ops/s |        VT, ops/s | VT diff before | Default after, ops/s |  VT after, ops/s | VT diff after | VT gain |
+|------------------|-----------------:|-----------------:|---------------:|---------------------:|-----------------:|--------------:|--------:|
+| Request-response | 623.470 ± 16.650 | 537.522 ± 23.186 |         -13.8% |     659.821 ± 19.017 | 619.838 ± 15.736 |         -6.1% |  +15.3% |
+| Request-stream   |    5.842 ± 0.215 |    2.818 ± 0.116 |         -51.8% |        5.840 ± 0.261 |    3.923 ± 0.058 |        -32.8% |  +39.2% |
+| Request-channel  |   35.160 ± 1.244 |   19.568 ± 0.068 |         -44.3% |       34.429 ± 1.195 |   28.222 ± 0.383 |        -18.0% |  +44.2% |
+
+VT diffs are relative to Default in the corresponding before/after run; 
+VT deff gain is the throughput increase from before to after the patch.
+
+For the VT-per-task variant, request-stream profiles taken before and after the Ktor patch showed
+less scheduler wait/signal activity and lower system CPU load, supporting the hypothesis that
+scheduler handoffs contributed to the throughput gap with Default.
+
+However, VT-per-task approach shows significant performance decrease compared to `Dispatchers.Default`.
+The hypothesis emerged that the overhead of creating a VT is the cause, so we tried reusing VTs.
+
+### Batching tasks
+
+We compared the [batching approaches](#batching-tasks) on the patched Ktor request-stream workload.
+
+| Dispatcher                                                | Throughput, ops/s | Difference from Default | Avg tasks/batch | Empty workers |
+|-----------------------------------------------------------|------------------:|------------------------:|----------------:|--------------:|
+| Default                                                   |     6.155 ± 0.164 |                      0% |               — |             — |
+| VT-per-task                                               |     3.714 ± 0.350 |                  -39.7% |               — |             — |
+| Custom batching dispatcher, <br/>maximum 1 task in batch  |     3.254 ± 0.036 |                  -47.1% |            1.00 |         0.00% |
+| Custom batching dispatcher, <br/>maximum 4 task in batch  |     4.295 ± 0.046 |                  -30.2% |            4.00 |         0.00% |
+| Custom batching dispatcher, <br/>maximum 16 task in batch |     5.155 ± 0.041 |                  -16.2% |           15.72 |         0.58% |
+| Custom batching dispatcher, <br/>maximum 64 task in batch |     5.384 ± 0.130 |                  -12.5% |           46.69 |         9.05% |
+| VT-per-task + `limitedParallelism(1)`                     |     4.089 ± 0.009 |                  -33.6% |               — |             — |
+| VT-per-task + `limitedParallelism(4)`                     |     4.007 ± 0.072 |                  -34.9% |               — |             — |
+| VT-per-task + `limitedParallelism(16)`                    |     4.065 ± 0.149 |                  -34.0% |               — |             — |
+| VT-per-task + `limitedParallelism(64)`                    |     3.961 ± 0.068 |                  -35.6% |               — |             — |
+
+Worker statistics were recorded only for custom batching dispatcher. 
+Empty workers are those that encountered an empty task queue and thus executed no tasks.
+
+The custom batching dispatcher showed a significant performance gain over plain VT-per-task with right configuration,
+but still remained behind the `Dispatchers.Default` by 12.5%.
+On the other hand, `limitedParallelism` showed no clear improvement over plain VT-per-task 
+within the reported uncertainty, for the tested parallelism limits, which is puzzling.
+
+Custom batching dispatcher results are consistent with the hypothesis 
+that amortizing VT creation overhead across tasks is beneficial.
+However, they do not isolate VT creation cost from scheduling, queue contention, or locality effects.
+
+### VT-per-coroutine and the coroutines patch
+
+To test [VT-per-coroutine](#vt-per-coroutine), we built an [experimental `kotlinx.coroutines`](https://github.com/InversionSpaces/kotlinx.coroutines/compare/ee92d16c4b48345648dcd8bb15f11ab9c3747f67...0ad34502bcdb972490c2a692d7921e449cab96ee#files_bucket)
+version, replacing `Dispatchers.Default` with the Job-associated VT dispatcher shown above. 
+Kotlin suspension still uses the regular continuation protocol.
+The Virtual Thread worker parks between dispatched segments and retires after `Job` completion.
+
+The benchmark's coroutines version override also covers transitive dependencies, 
+ensuring Ktor uses the experimental build. 
+The comparison uses the same patched Ktor request-stream workload:
+
+| Default implementation        | Throughput, ops/s | Difference from standard |
+|-------------------------------|------------------:|-------------------------:|
+| Standard `kotlinx.coroutines` |     6.155 ± 0.181 |                        — |
+| Experimental VT-per-coroutine |     3.874 ± 0.605 |                   -37.1% |
+
+This approach shows performance decrease compared to `Dispatchers.Default`, similarly to VT-per-task.
+Profiles still showed VT unpark/ForkJoinPool signalling activity.
+
+Our hypothesis was that the cause is that parking/unparking a Virtual Thread is expensive.
+The need to freeze and then thaw the thread's stack on unmount and remount might be the cause.
+However, in the current setup the worker thread does not have a deep stack on the moment of parking,
+as it is unwinded when a coroutine suspends.
