@@ -424,9 +424,9 @@ To investigate the overheads suggested by the rsocket-kotlin results,
 we proceeded to write isolated benchmarks for Virtual Threads, without Kotlin coroutines.
 Benchmarks code is available [here](https://github.com/InversionSpaces/loom-playground/tree/main/src/jmh/kotlin/org/example).
 
-### VT-per-task vs VT-per-worker
-
 JVM version: 26.
+
+### VT-per-task vs VT-per-worker
 
 This benchmark compares VT-per-task and VT-per-worker strategies for tasks execution.
 Both benchmark variants have same structure with fixed number of parallelism slots
@@ -504,8 +504,6 @@ is more expensive than on demand creation/destruction.
 
 ### Virtual Thread start/join
 
-JVM version: 26.
-
 [StartEndBenchmark](https://github.com/InversionSpaces/loom-playground/blob/main/src/jmh/kotlin/org/example/StartEndBenchmark.kt)
 starts an empty Virtual Thread and joins it on each invocation:
 
@@ -513,16 +511,14 @@ starts an empty Virtual Thread and joins it on each invocation:
 Thread.ofVirtual().start {}.join()
 ```
 
-| Operation | Time, µs/op |
-|-----------|------------:|
+| Operation                     |   Time, µs/op |
+|-------------------------------|--------------:|
 | Start an empty VT and join it | 6.422 ± 0.184 |
 
 This measures the complete start/completion/join cycle, including scheduling and waiting;
 it does not isolate allocation or VT creation alone.
 
 ### Parking at Different Stack Depths
-
-JVM version: 26.
 
 This benchmark aims at determining cost of parking/unparking a Virtual Thread 
 depending on its stack depth.
@@ -604,8 +600,6 @@ However, results also suggest that at small stack depths parking/unparking
 is cheaper than spawning and waiting for a VT.
 
 ### Timed Parking
-
-JVM version: 26.0.2.1.
 
 We also tried to isolate the cost of parking/unparking a Virtual Thread
 by measuring the time of `LockSupport.parkNanos(parkingTime)`.
