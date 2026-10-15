@@ -299,10 +299,12 @@ The full code is available [here](https://github.com/InversionSpaces/kotlinx.cor
 
 # Benchmarks
 
-Benchmarks (and profiles, where applicable) were performed on Apple M3 Max / JVM 21.0.10;
+Benchmarks (and profiles, where applicable) were performed on Apple M3 Max;
 the macOS profiler used a wall-clock sampling engine.
 
 ## rsocket-kotlin
+
+All benchmarks and profiles in this section used JVM 21.0.10.
 
 [rsocket-kotlin](https://github.com/rsocket/rsocket-kotlin) is a Kotlin Multiplatform implementation of
 the RSocket messaging protocol, using coroutines and `Flow` for asynchronous requests and streams.
@@ -415,3 +417,204 @@ Our hypothesis was that the cause is that parking/unparking a Virtual Thread is 
 The need to freeze and then thaw the thread's stack on unmount and remount might be the cause.
 However, in the current setup the worker thread does not have a deep stack on the moment of parking,
 as it is unwinded when a coroutine suspends.
+
+## Isolated Benchmarks
+
+To investigate the overheads suggested by the rsocket-kotlin results, 
+we proceeded to write isolated benchmarks for Virtual Threads, without Kotlin coroutines.
+Benchmarks code is available [here](https://github.com/InversionSpaces/loom-playground/tree/main/src/jmh/kotlin/org/example).
+
+### VT-per-task vs VT-per-worker
+
+JVM version: 26.
+
+This benchmark compares VT-per-task and VT-per-worker strategies for tasks execution.
+Both benchmark variants have same structure with fixed number of parallelism slots
+and a coordinator thread submitting new task for the slot once the previous one completes.
+
+<details>
+<summary>Benchmark Code</summary>
+
+```kotlin
+@Benchmark
+fun vtPerTask(): Int = Executors.newVirtualThreadPerTaskExecutor().use { threads ->
+    runTasks(List(parallelism) { threads })
+}
+
+@Benchmark
+fun vtPerWorker(): Int {
+    // One pending task at most; the second cell is reserved for the stop marker.
+    val queues = List(parallelism) { ArrayBlockingQueue<Runnable>(2) }
+    val stop = Runnable {}
+    return Executors.newVirtualThreadPerTaskExecutor().use { threads ->
+        try {
+            val workers = queues.map { queue ->
+                threads.submit {
+                    while (true) {
+                        val task = queue.take()
+                        if (task === stop) break
+                        task.run()
+                    }
+                }
+                Executor { task -> queue.add(task) }
+            }
+            runTasks(workers)
+        } finally {
+            queues.forEach { it.add(stop) }
+        }
+    }
+}
+
+private fun runTasks(executors: List<Executor>): Int {
+    require(parallelism > 0 && tasksPerSlot > 0)
+    val total = Math.multiplyExact(parallelism, tasksPerSlot)
+    val completed = LinkedBlockingQueue<Future<Pair<Int, Int>>>()
+    val slots = executors.map { ExecutorCompletionService(it, completed) }
+
+    fun submit(slot: Int) {
+        slots[slot].submit { slot to unitOfWork() }
+    }
+
+    repeat(parallelism) { submit(it) }
+    var remaining = total - parallelism
+    var res = 0
+    repeat(total) {
+        val (slot, value) = completed.take().get()
+        res += value
+        if (remaining > 0) {
+            submit(slot)
+            remaining--
+        }
+    }
+    return res
+}
+```
+
+</details>
+
+The benchmark aims to trade Virtual Thread creation/destruction for parking/unparking.
+Results are:
+
+![VT-per-task versus VT-per-worker cost ratios across batch sizes and parallelism levels](materials/0010-virtual-threads-coroutines/vt-per-task-vs-vt-per-worker.png)
+
+Cost is elapsed batch time divided by the number of tasks, so it reflects throughput rather than task latency.
+
+Results are consistent with the hypothesis that coordination of Virtual Threads involving parking/unparking
+is more expensive than on demand creation/destruction.
+
+### Virtual Thread start/join
+
+JVM version: 26.
+
+[StartEndBenchmark](https://github.com/InversionSpaces/loom-playground/blob/main/src/jmh/kotlin/org/example/StartEndBenchmark.kt)
+starts an empty Virtual Thread and joins it on each invocation:
+
+```kotlin
+Thread.ofVirtual().start {}.join()
+```
+
+| Operation | Time, µs/op |
+|-----------|------------:|
+| Start an empty VT and join it | 6.422 ± 0.184 |
+
+This measures the complete start/completion/join cycle, including scheduling and waiting;
+it does not isolate allocation or VT creation alone.
+
+### Parking at Different Stack Depths
+
+JVM version: 26.
+
+This benchmark aims at determining cost of parking/unparking a Virtual Thread 
+depending on its stack depth.
+
+<details>
+
+<summary>Benchmark Code</summary>
+
+```kotlin
+@Setup(Level.Trial)
+fun setup() {
+    check(Thread.currentThread().isVirtual) { "Requires a virtual JMH worker; check fork settings" }
+    val worker = Thread.currentThread()
+    parkRequested = false
+    running = true
+    unparker = Thread.ofPlatform().daemon(true).name("stack-depth-unparker").start {
+        while (running) {
+            if (parkRequested && LockSupport.getBlocker(worker) === this &&
+                worker.state == Thread.State.WAITING
+            ) {
+                parkRequested = false
+                LockSupport.unpark(worker)
+            } else {
+                Thread.onSpinWait()
+            }
+        }
+    }
+}
+
+@TearDown(Level.Trial)
+fun teardown() {
+    running = false
+    unparker?.join()
+    unparker = null
+}
+
+@Benchmark
+fun park(): Long = parkAtDepth(stackDepth, true)
+
+@Benchmark
+fun baseline(): Long = parkAtDepth(stackDepth, false)
+
+@CompilerControl(CompilerControl.Mode.DONT_INLINE)
+fun parkAtDepth(remaining: Int, shouldPark: Boolean): Long {
+    val a = payload
+    val b = payload
+    val c = payload
+    val d = payload
+    val e = payload
+    val f = payload
+    val g = payload
+    val h = payload
+    val result = if (remaining == 0) {
+        if (shouldPark) {
+            parkRequested = true
+            do {
+                LockSupport.park(this)
+            } while (parkRequested)
+        }
+        1L
+    } else {
+        parkAtDepth(remaining - 1, shouldPark) + remaining
+    }
+    return consumeLocals(result, a, b, c, d, e, f, g, h)
+}
+```
+
+</details>
+
+Results also include the cost of starting and joining a Virtual Thread, 
+i.e. time of `Thread.ofVirtual().start {}.join()`.
+The chart is below:
+
+![Virtual Thread parking time at different stack depths, compared with recursion alone and VT start/join](materials/0010-virtual-threads-coroutines/parking-stack-depth.png)
+
+Results are consistent with the hypothesis that the cost of parking/unparking 
+a Virtual Thread depends linearly on the stack size at the moment of parking.
+However, results also suggest that at small stack depths parking/unparking
+is cheaper than spawning and waiting for a VT.
+
+### Timed Parking
+
+JVM version: 26.0.2.1.
+
+We also tried to isolate the cost of parking/unparking a Virtual Thread
+by measuring the time of `LockSupport.parkNanos(parkingTime)`.
+MacOS timer coalescing was disabled during this benchmark (`kern.timer.coalescing_enabled=0`) 
+to reduce delays from grouping timer wakeups.
+Results include the same benchmark for platform threads:
+
+![Timed parking duration for platform and Virtual Threads across requested timeouts](materials/0010-virtual-threads-coroutines/timed-parking.png)
+
+Results show `elapsed - requested` time several times larger than
+that measured in [Parking at Shallow Stack](#parking-at-different-stack-depths).
+The excess includes timer handling, wakeup delays, and scheduling overhead.
