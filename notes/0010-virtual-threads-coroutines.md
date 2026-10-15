@@ -618,3 +618,37 @@ Results include the same benchmark for platform threads:
 Results show `elapsed - requested` time several times larger than
 that measured in [Parking at Shallow Stack](#parking-at-different-stack-depths).
 The excess includes timer handling, wakeup delays, and scheduling overhead.
+
+# External Research
+
+## Softwaremill
+
+Softwaremill article [Limits of Loom Performance](https://softwaremill.com/limits-of-looms-performance/)
+compares the performance of a custom implementation using Kotlin coroutine continuations
+and Virtual Threads on 10 million rendez-vous operations.
+As a short summary, authors also had to apply different optimizations for VTs 
+to approach or outperform the Kotlin implementation on `Dispatchers.Default`, including: 
+doing `Thread.yield()` or `Thread.onSpinWait()` a number of times before parking, using Java's `Exchanger`.
+
+They apply those findings to their channel library jox, see [Announcing jox](https://softwaremill.com/announcing-jox-fast-and-scalable-channels-in-java/) article.
+
+## Quarkus
+
+Quarkus article [To Cache or Not to Cache Virtual Threads](https://quarkus.io/blog/to-cache-or-not-to-cache-virtual-threads/)
+explores performance gain of pooling Virtual Threads in a typical web-app workload.
+In short, authors find small throughput increase when pooling VTs.
+However, they note that it has a significant memory footprint downside:
+on warm-up, JVM allocates a big `StackChunk` for freezing a Virtual Thread,
+As code gets optimized, subsequent freezes need less space, 
+but pooled workers retain older, oversized chunks containing entry frames until their worker loops exit.
+
+# Conclusion
+
+Benchmarks for [rsocket-kotlin](#rsocket-kotlin) show that all considered approaches for running Kotlin coroutines
+on top of Virtual Threads introduce significant performance downgrade, at least for some patterns of coroutines usage.
+At this point, we are unsure what are the causes and whether further changes could close the remaining performance gap.
+This makes it unappealing to provide any out-of-the box support for Virtual Threads in Kotlin coroutines.
+
+Virtual Threads still can provide overall benefit depending on the codebase,
+but it should remain a mindful developer's choice.
+Thanks to Kotlin coroutines flexibility, it is not hard to run coroutines on top of Virtual Threads implementation-wise.
