@@ -502,22 +502,6 @@ Cost is elapsed batch time divided by the number of tasks, so it reflects throug
 Results are consistent with the hypothesis that coordination of Virtual Threads involving parking/unparking
 is more expensive than on demand creation/destruction.
 
-### Virtual Thread start/join
-
-[StartEndBenchmark](https://github.com/InversionSpaces/loom-playground/blob/main/src/jmh/kotlin/org/example/StartEndBenchmark.kt)
-starts an empty Virtual Thread and joins it on each invocation:
-
-```kotlin
-Thread.ofVirtual().start {}.join()
-```
-
-| Operation                     |   Time, µs/op |
-|-------------------------------|--------------:|
-| Start an empty VT and join it | 6.422 ± 0.184 |
-
-This measures the complete start/completion/join cycle, including scheduling and waiting;
-it does not isolate allocation or VT creation alone.
-
 ### Parking at Different Stack Depths
 
 This benchmark aims at determining cost of parking/unparking a Virtual Thread 
