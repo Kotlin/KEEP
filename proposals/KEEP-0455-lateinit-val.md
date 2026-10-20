@@ -28,7 +28,7 @@
 > ### New in This Proposal
 >
 > - [Inheritance](#inheritance): override matching rules for `lateinit val`.
-> - [Reflection](#reflection): behavior of `lateinit val` in the reflection API.
+> - [Reflection and Property References](#reflection-and-property-references): behavior of `lateinit val` in the reflection API.
 
 # Abstract
 
@@ -61,7 +61,7 @@ Generated getter and setter enforce the assign-once semantics.
   * [Annotations](#annotations)
     * [JVM Annotations](#jvm-annotations)
   * [`isInitialized`](#isinitialized)
-  * [Reflection](#reflection)
+  * [Reflection and Property References](#reflection-and-property-references)
   * [Augmented Assignments](#augmented-assignments)
 * [Frameworks](#frameworks)
   * [Serialization Frameworks](#serialization-frameworks)
@@ -461,10 +461,12 @@ For this reason, we propose to omit `isInitialized` for assign-once properties i
 If it is introduced later, the check would need 
 to be provided through intrinsic, similar to `lateinit var`.
 
-## Reflection
+## Reflection and Property References
 
-We propose to expose `lateinit val` properties as `KProperty` in the reflection API,
-consistent with their `val` nature.
+We propose to expose `lateinit val` properties as `KProperty`
+in the reflection API, consistent with their `val` nature.
+Similarly, references to `lateinit val` properties have the corresponding
+`KProperty` subtype rather than a `KMutableProperty` subtype.
 
 Although `lateinit val` has a generated setter,
 exposing it as `KMutableProperty` would contradict the assign-once semantics.
