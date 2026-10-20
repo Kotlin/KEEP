@@ -495,7 +495,7 @@ private fun runTasks(executors: List<Executor>): Int {
 The benchmark aims to trade Virtual Thread creation/destruction for parking/unparking.
 Results are:
 
-![VT-per-task versus VT-per-worker cost ratios across batch sizes and parallelism levels](materials/0010-virtual-threads-coroutines/vt-per-task-vs-vt-per-worker.png)
+![VT-per-task versus VT-per-worker cost ratios across batch sizes and parallelism levels](../resources/virtual-threads-coroutines/vt-per-task-vs-vt-per-worker.png)
 
 Cost is elapsed batch time divided by the number of tasks, so it reflects throughput rather than task latency.
 
@@ -576,7 +576,7 @@ Results also include the cost of starting and joining a Virtual Thread,
 i.e. time of `Thread.ofVirtual().start {}.join()`.
 The chart is below:
 
-![Virtual Thread parking time at different stack depths, compared with recursion alone and VT start/join](materials/0010-virtual-threads-coroutines/parking-stack-depth.png)
+![Virtual Thread parking time at different stack depths, compared with recursion alone and VT start/join](../resources/virtual-threads-coroutines/parking-stack-depth.png)
 
 Results are consistent with the hypothesis that the cost of parking/unparking 
 a Virtual Thread depends linearly on the stack size at the moment of parking.
@@ -591,7 +591,7 @@ MacOS timer coalescing was disabled during this benchmark (`kern.timer.coalescin
 to reduce delays from grouping timer wakeups.
 Results include the same benchmark for platform threads:
 
-![Timed parking duration for platform and Virtual Threads across requested timeouts](materials/0010-virtual-threads-coroutines/timed-parking.png)
+![Timed parking duration for platform and Virtual Threads across requested timeouts](../resources/virtual-threads-coroutines/timed-parking.png)
 
 Results show `elapsed - requested` time several times larger than
 that measured in [Parking at Shallow Stack](#parking-at-different-stack-depths).
