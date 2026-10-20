@@ -200,8 +200,6 @@ could be compiled to (expressed in Java):
 
 ```java
 public final class Example {
-    private static final Object UNINITIALIZED = new Object();
-
     private Object _property = UNINITIALIZED;
 
     @NotNull public String getProperty() {
@@ -220,12 +218,10 @@ public final class Example {
 }
 ```
 
-The `UNINITIALIZED` sentinel object is a static field,
-it can even be reused for all `lateinit val` properties of the class.
-Another option would be to provide it in the standard library,
-but then it would have to be public.
-If the sentinel is made `protected` instead of `private`,
-inheritors can reuse it rather than generating their own.
+The `UNINITIALIZED` sentinel object should be provided by the standard library.
+It should be marked `internal` so that it is inaccessible from Kotlin code outside the standard library module.
+On the JVM, the field storing its instance might be marked synthetic so it is not visible from Java code.
+The sentinel would remain accessible through reflection, but preventing such access is outside the scope of this proposal.
 
 An alternative would be a public backing field scheme similar to `lateinit var`,
 where `null` or a sentinel object marks the uninitialized state.
@@ -325,8 +321,6 @@ and using `AtomicReferenceFieldUpdater` to update it:
 
 ```java
 public final class Example {
-    private static final Object UNINITIALIZED = new Object();
-
     private volatile Object _property = UNINITIALIZED;
     
     private static final AtomicReferenceFieldUpdater<Example, Object> propUpdater =
@@ -533,10 +527,10 @@ deserialization would throw if there is no data corresponding to the property.
 
 We propose to support `lateinit val` properties inside classes that implement Java `Serializable`.
 For this, the sentinel object also has to implement the `Serializable` interface.
-So the compiler should generate `readResolve` method (expressed in Kotlin):
+The `readResolve` method should be defined as follows:
 
 ```kotlin
-object UNINITIALIZED : Serializable {
+internal object UNINITIALIZED : Serializable {
     private fun readResolve(): Any = UNINITIALIZED // return the same object
 }
 ```
