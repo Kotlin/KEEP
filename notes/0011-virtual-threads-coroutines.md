@@ -1,7 +1,40 @@
 # `kotlinx.coroutines` on top of Project Loom Virtual Threads
 
-This document presents research on viability of integration Project Loom Virtual Threads
-with `kotlinx.coroutines`, mostly from the performance perspective.
+This document investigates the viability of integrating Project Loom Virtual Threads
+with `kotlinx.coroutines`, primarily from a performance perspective.
+
+## Summary
+
+A short summary of the document for quick reference:
+
+* We investigated the following question:
+  What is the performance cost of running Kotlin coroutines on Virtual Threads
+  when an application uses suspending APIs without blocking worker threads?
+
+* We compared `Dispatchers.Default` with dispatchers backed by Virtual Threads (VTs) that:
+
+  * create a VT per dispatched task;
+  * batch multiple tasks on a VT;
+  * reuse a VT per coroutine.
+
+  All approaches retain Kotlin's existing suspension mechanism.
+
+* We measured throughput in rsocket-kotlin's request-response, request-stream, and request-channel benchmarks
+  using suspending TCP APIs.
+
+  * All tested VT integration approaches reduced throughput compared with `Dispatchers.Default`
+    on the evaluated rsocket-kotlin workloads.
+  * Reducing scheduler handoffs and custom batching narrowed the gap.
+  * The best custom batching configuration still trailed `Dispatchers.Default` by 12.5% on the request-stream workload.
+
+* Isolated JVM benchmarks explored VT creation versus reuse, parking at different stack depths, and timed parking.
+
+  * The results suggest that reusing VTs can incur more coordination overhead than creating new ones.
+  * They do not establish the cause of the remaining coroutine throughput gap or whether it can be closed.
+
+* These results do not support out-of-the-box VT integration in `kotlinx.coroutines` at this point.
+
+* VTs may still benefit code that blocks threads, but that potential benefit was not measured here.
 
 # Project Loom
 
