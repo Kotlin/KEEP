@@ -25,7 +25,7 @@ A short summary of the document for quick reference:
   * All tested VT integration approaches reduced throughput compared with `Dispatchers.Default`
     on the evaluated rsocket-kotlin workloads.
   * Reducing scheduler handoffs and custom batching narrowed the gap.
-  * The best custom batching configuration still trailed `Dispatchers.Default` by 12.5% on the request-stream workload.
+  * The best custom batching configuration still trailed `Dispatchers.Default` by 12.5% on JVM 21 and 7.9% on JVM 26 on the request-stream workload.
 
 * Isolated JVM benchmarks explored VT creation versus reuse, parking at different stack depths, and timed parking.
 
@@ -337,7 +337,7 @@ the macOS profiler used a wall-clock sampling engine.
 
 ## rsocket-kotlin
 
-All benchmarks and profiles in this section used JVM 21.0.10.
+All benchmarks and profiles in this section used JVM 21.0.10 (see JVM 26 update below).
 
 [rsocket-kotlin](https://github.com/rsocket/rsocket-kotlin) is a Kotlin Multiplatform implementation of
 the RSocket messaging protocol, using coroutines and `Flow` for asynchronous requests and streams.
@@ -450,6 +450,38 @@ Our hypothesis was that the cause is that parking/unparking a Virtual Thread is 
 The need to freeze and then thaw the thread's stack on unmount and remount might be the cause.
 However, in the current setup the worker thread does not have a deep stack on the moment of parking,
 as it is unwinded when a coroutine suspends.
+
+### Update: JVM 26
+
+We reran the patched Ktor request-stream benchmarks on JVM 26.
+We also had to update Kotlin from `2.1.10` to `2.4.10` and AtomicFU from `0.27.0` to `0.33.0`;
+the Ktor and `kotlinx.coroutines` versions remained unchanged.
+Code is available [here](https://github.com/InversionSpaces/rsocket-kotlin/tree/loom-dispatcher-benchmark-jvm26).
+
+Results for VT-per-task and batching approaches:
+
+| Dispatcher                                                 | Throughput, ops/s | Difference from Default |
+|------------------------------------------------------------|------------------:|------------------------:|
+| Default                                                    |     5.438 ± 0.081 |                      0% |
+| VT-per-task                                                |     3.611 ± 0.106 |                  -33.6% |
+| Custom batching dispatcher, <br/>maximum 1 task in batch   |     3.135 ± 0.054 |                  -42.4% |
+| Custom batching dispatcher, <br/>maximum 4 tasks in batch  |     4.025 ± 0.079 |                  -26.0% |
+| Custom batching dispatcher, <br/>maximum 16 tasks in batch |     4.810 ± 0.080 |                  -11.5% |
+| Custom batching dispatcher, <br/>maximum 64 tasks in batch |     5.009 ± 0.130 |                   -7.9% |
+| VT-per-task + `limitedParallelism(1)`                      |     3.689 ± 0.073 |                  -32.2% |
+| VT-per-task + `limitedParallelism(4)`                      |     3.775 ± 0.049 |                  -30.6% |
+| VT-per-task + `limitedParallelism(16)`                     |     3.656 ± 0.110 |                  -32.8% |
+| VT-per-task + `limitedParallelism(64)`                     |     3.603 ± 0.131 |                  -33.7% |
+
+And for VT-per-coroutine:
+
+| Default implementation        | Throughput, ops/s | Difference from standard |
+|-------------------------------|------------------:|-------------------------:|
+| Standard `kotlinx.coroutines` |     5.438 ± 0.081 |                        — |
+| Experimental VT-per-coroutine |     3.422 ± 0.275 |                   -37.1% |
+
+The lower throughput across all entries compared with the JVM 21 runs could be due to the Kotlin version change or machine conditions.
+The overall picture remains similar: all tested Virtual Thread approaches still have lower throughput than `Dispatchers.Default`.
 
 ## Isolated Benchmarks
 
