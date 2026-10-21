@@ -567,6 +567,21 @@ Cost is elapsed batch time divided by the number of tasks, so it reflects throug
 Results are consistent with the hypothesis that coordination of Virtual Threads involving parking/unparking
 is more expensive than on demand creation/destruction.
 
+We've also run the benchmark with Java concurrent queues replaced by channels from [jox](https://github.com/softwaremill/jox),
+which advertises itself as a library of Virtual Thread friendly concurrency primitives.
+The code is available [here](https://github.com/InversionSpaces/loom-playground/tree/jox).
+Results are (`jox_try` uses `trySend` and `tryReceive` before falling back to `send` and `receive` on a channel):
+
+![VT-per-task versus VT-per-worker throughput with jox](../resources/virtual-threads-coroutines/vt-per-task-vs-vt-per-worker-jox.png)
+
+This allowed both vt-per-task and vt-per-worker approaches to scale better with parallelism,
+probably due to reduced contention on the shared completion queue
+(Jox avoids serializing producers behind a shared lock, whereas Java `LinkedBlockingQueue` uses one).
+However, the overall tendency is similar: vt-per-task outperforms or is on par with vt-per-worker.
+Jox’s rendezvous channels spin before parking (see [Softwaremill articles](#softwaremill) for more details on that),
+but this optimization is disabled for the buffered channels used here.
+Avoiding parking would work against this benchmark’s aim of exercising worker parking/unparking between tasks.
+
 ### Parking at Different Stack Depths
 
 This benchmark aims at determining cost of parking/unparking a Virtual Thread 
