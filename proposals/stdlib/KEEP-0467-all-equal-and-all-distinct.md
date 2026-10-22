@@ -244,9 +244,10 @@ Only grapheme clusters give the answer most people expect, and the standard libr
 There are already many `Char`-level functions on `CharSequence` that mirror the collection API, like `count()`,
 `toSet()`, and `all { }`, and they have the same problem. However, this does not mean that every collection
 function needs a `CharSequence` variant. Instead, we suggest that developers make the choice themselves, with
-`s.asSequence().allEqual()`, which compares `Char`s, or `s.asCodePointSequence().allEqual()` from the code point
-API in Kotlin 2.5, which compares code points. Both sequences box their elements. KT-88749 points out this
-overhead for `Char`s, and it can be partially reduced ([KT-90595](https://youtrack.jetbrains.com/issue/KT-90595)).
+`s.asSequence().allEqual()`, which compares `Char`s, or `s.asCodePointSequence().allEqual()` from the
+[code point API](KEEP-0400-unicode-codepoints.md) in Kotlin 2.5, which compares code points. Both sequences
+box their elements. KT-88749 points out this overhead for `Char`s, and it can be partially reduced
+([KT-90595](https://youtrack.jetbrains.com/issue/KT-90595)).
 
 ## The API
 
