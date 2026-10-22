@@ -121,7 +121,7 @@ Kotlin-consistency call, matching the existing `distinct` / `distinctBy`.
 
 ## Design decisions
 
-Both families ship as `@ExperimentalStdlibApi` because of the two decisions below, which we most want
+Both families ship as `@ExperimentalStdlibApi` because of the first two decisions below, which we most want
 community feedback on before stabilization.
 
 ### Floating-point equality
@@ -218,6 +218,35 @@ against it rests on demand and design.
 A binary predicate would also be inefficient: with no matching `hashCode`, `allDistinctWith` could not hash
 its inputs and would fall back to comparing every pair, $O(n^2)$, losing the $O(n)$ that `allDistinct` gets from a
 `HashSet`.
+
+### No `CharSequence` variants
+
+[KT-88749](https://youtrack.jetbrains.com/issue/KT-88749) asks for the same functions on `CharSequence`, and
+[PR #8416](https://github.com/JetBrains/kotlin/pull/8416) implemented them by comparing `Char`s. We discussed
+them and decided not to add them.
+
+The main reason is that what counts as one element of a string depends on the application logic. Some code
+needs `Char`s, some needs code points, and some needs grapheme clusters, i.e. the symbols a person sees. The
+standard library should not make this choice for developers, and a wrong choice leads to errors that are hard
+to notice. One symbol can be 2 `Char`s or even several code points. We
+[asked in the kotlinlang Slack](https://kotlinlang.slack.com/archives/C0B8Q383C/p1790357369762729) what people
+expect these calls to return, without running the code:
+
+| Expression | Votes for `true` / `false` | Comparing `Char`s | Comparing code points |
+|---|:---:|:---:|:---:|
+| `"😱😲".allDistinct()` | 30 / 2 | `false` | `true` |
+| `"😲😲".allEqual()` | 29 / 1 | `false` | `true` |
+| `"🇺🇦🇦🇺".allDistinct()` | 27 / 3 | `false` | `false` |
+| `"👍🏽👍🏽".allEqual()` | 25 / 6 | `false` | `false` |
+
+Only grapheme clusters give the answer most people expect, and the standard library does not support them.
+
+There are already many `Char`-level functions on `CharSequence` that mirror the collection API, like `count()`,
+`toSet()`, and `all { }`, and they have the same problem. However, this does not mean that every collection
+function needs a `CharSequence` variant. Instead, we suggest that developers make the choice themselves, with
+`s.asSequence().allEqual()`, which compares `Char`s, or `s.asCodePointSequence().allEqual()` from the code point
+API in Kotlin 2.5, which compares code points. Both sequences box their elements. KT-88749 points out this
+overhead for `Char`s, and it can be partially reduced ([KT-90595](https://youtrack.jetbrains.com/issue/KT-90595)).
 
 ## The API
 
