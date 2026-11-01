@@ -197,8 +197,10 @@ If that's the case, we can lift the one-property restriction from value classes 
 value class Complex(val re: Double, val im: Double)
 ```
 
-For the moment, they will be compiled as regular classes, without any optimizations.
-In the future, when *project Valhalla* comes to fruition, Kotlin value class `Complex` could be compiled as JVM value classes, to enable advanced JIT optimizations unlocked by Valhalla.
+By default, they are compiled as regular classes, without any optimizations.
+With JVM target 28 or later, `-Xjvm-enable-preview` and the experimental `-Xvalhalla-value-classes` compiler option,
+the full value class `Complex` is compiled as a JVM value class of *project Valhalla*, to enable advanced JIT optimizations unlocked by Valhalla.
+Inline value classes are compiled the same way under this option.
 To allow for this transition, we would need to additionally restrict what is possible in Kotlin value classes, so that they are aligned with the planned restrictions of project Valhalla.
 
 It is important to note that the [current version](https://cr.openjdk.org/~dlsmith/jep401/jep401-20250926/specs/value-objects-jls.html) of the project Valhalla's design for value classes is very reasonable and does not have any fundamental restrictions which are a blocker for introducing value classes in Kotlin.
