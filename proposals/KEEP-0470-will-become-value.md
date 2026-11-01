@@ -316,7 +316,8 @@ In scope of this feature, we also propose the following IDE quick-fixes and inte
   a quick-fix suggests turning it into a `data object` or generating `toString`.
 * The superclass of a `@WillBecomeValue` class must be a value class, a `@WillBecomeValue` class,
   or a JDK value-based class (`@jdk.internal.ValueBased`).
-  When it extends any other abstract or sealed class, a quick-fix suggests marking that superclass with `@WillBecomeValue`.
+  When it extends any other abstract or sealed class, a quick-fix suggests marking with `@WillBecomeValue`
+  not only that superclass but the whole hierarchy of its superclasses that are not yet allowed as supertypes.
   Subclasses are not affected: a class extending a `@WillBecomeValue` class does not need to be marked.
 * An intention converts a `@WillBecomeValue` class to a `value class`.
   It converts the whole hierarchy of the potential value classes at once:
