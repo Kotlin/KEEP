@@ -286,12 +286,26 @@ to learn about the migration process of `data class`es.
 
 ## Compiler warnings
 
-The compiler should issue a warning when the following
-identity-sensitive operations are applied to a type annotated with `@WillBecomeValue`:
+The compiler reports a warning when one of the following identity-sensitive operations is applied to a value
+whose type is a class annotated with `@WillBecomeValue`, or a type parameter, intersection or flexible type bounded by such a class:
 
-- Reference equality: `a === b`
-- Locking: `synchronized(a) { }`
-- `System.identityHashCode(a)`
+- on all platforms:
+  - reference equality: `a === b` and `a !== b`, except comparisons with `null`;
+  - `compareAndSet` and `compareAndExchange` of `kotlin.concurrent.atomics.AtomicReference`;
+- on the JVM:
+  - locking: `synchronized(a) { }`;
+  - `System.identityHashCode(a)`;
+  - `WeakReference(a)`, `SoftReference(a)`, `PhantomReference(a, queue)`, `Reference.refersTo(a)` and `Cleaner.register(a, action)`;
+  - `IdentityHashMap` and `WeakHashMap` with such a key type;
+  - the compare-and-set operations of `java.util.concurrent.atomic.AtomicReference`, `AtomicReferenceFieldUpdater`,
+    `VarHandle`, `AtomicStampedReference` and `AtomicMarkableReference`;
+- on Kotlin/Native:
+  - `identityHashCode()`;
+  - `WeakReference(a)`.
+
+The warning is reported both outside and inside the annotated class, and also for Java classes annotated with `@kotlin.WillBecomeValue`:
+
+> Identity-sensitive operation on 'Uuid', which is annotated with '@WillBecomeValue'. It will be forbidden once the class becomes a value class.
 
 ## Examples
 
@@ -311,14 +325,14 @@ After that, users get migration warnings on identity-sensitive operations:
 ```kotlin
 fun checkUuid(first: Uuid, second: Uuid) {
     first === second
-    // Warning: identity-sensitive operation on a class annotated with @WillBecomeValue
+    // Warning: identity-sensitive operation on 'Uuid', which is annotated with '@WillBecomeValue'
 
     synchronized(first) {
-        // Warning: synchronization on a class annotated with @WillBecomeValue
+        // Warning: identity-sensitive operation on 'Uuid', which is annotated with '@WillBecomeValue'
     }
 
     System.identityHashCode(first)
-    // Warning: identity hash code on a class annotated with @WillBecomeValue
+    // Warning: identity-sensitive operation on 'Uuid', which is annotated with '@WillBecomeValue'
 }
 ```
 
@@ -333,7 +347,7 @@ data class Pair<out A, out B>(
 
 fun checkPair(pair: Pair<String, String>) {
     pair === pair
-    // Warning: identity-sensitive operation on a class annotated with @WillBecomeValue
+    // Warning: identity-sensitive operation on 'Pair<String, String>', which is annotated with '@WillBecomeValue'
 }
 ```
 
