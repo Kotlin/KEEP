@@ -226,19 +226,37 @@ The only observable difference is that the compiler will issue a warning instead
 Here is a sample:
 ```kotlin
 @WillBecomeValue
-class A( // CE: Identity-based equals and/or hashCode will change (or super<Any>.equals/hashCode call)
+class A( // CE: Identity-based equals, hashCode and toString inherited from Any
     var x: Int, // CE: `var`s are forbidden for value classes
-    val y: A, // CE: Recursive vqlue class type
+    val y: A, // CE: Recursive value class type
     z: Int, // CE: Non-property primary constructor parameters
 ):
-    Base(), // CE: if Base is not abstract/sealed value or ValueBased, report
-    I by (x + 1) // CE: Delegation in value class
+    Base(), // CE: if Base is not an allowed supertype, see below
+    I by (x + 1) // CE: Delegation to anything but a primary constructor property
 
 val a: A
 a === a // Warning
 synchronized(a) // Warning
 System.identityHashCode(a) // Warning
 ```
+
+A final `@WillBecomeValue` class must override `equals`, `hashCode` and `toString`, or inherit structural overrides of them,
+as the identity-based implementations inherited from `Any` would silently change once the class becomes a value class.
+A `@WillBecomeValue` object only has to override `toString`, as it has a single instance.
+Abstract and sealed classes are not checked.
+
+Interface delegation is allowed only to a primary constructor property of a final class,
+so abstract and sealed `@WillBecomeValue` classes cannot use it. Delegated properties are not allowed.
+
+### Supertypes
+
+A `@WillBecomeValue` class may extend:
+- the classes a value class may extend: abstract and sealed value classes declared in Kotlin or Java;
+- `@WillBecomeValue` classes, including those declared in Java;
+- JDK value-based classes (`@jdk.internal.ValueBased`).
+
+The converse is not allowed: a `value class` cannot extend a `@WillBecomeValue` class or a JDK value-based class,
+as they are still identity classes.
 
 ### Data classes
 
