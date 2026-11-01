@@ -34,6 +34,7 @@ The annotation is initially experimental and requires an opt-in to `Experimental
   * [Compiler warnings](#compiler-warnings)
   * [Examples](#examples)
   * [Applicability](#applicability)
+* [IDE support](#ide-support)
 * [References](#references)
 
 # Motivation
@@ -304,6 +305,54 @@ It **cannot** be applied to:
 - Interfaces (interfaces are common for identity and value classes).
 - Enums (enumerations cannot become value types).
 - Open classes (value classes are not going to be supported to be `open`).
+
+# IDE support
+
+The IDE helps library authors to prepare a class for the migration and to complete it.
+
+## Missing structural members
+
+A `@WillBecomeValue` class must not rely on the identity-based `equals`, `hashCode` and `toString` inherited from `Any`.
+When they are missing, the IDE suggests either of the following:
+- add the `data` modifier, which provides structural implementations;
+- generate the missing implementations manually.
+
+```kotlin
+@WillBecomeValue
+class Point(val x: Int, val y: Int) // Error: identity-based equals, hashCode and toString
+// Fix 1: data class Point(val x: Int, val y: Int)
+// Fix 2: generate equals, hashCode and toString
+```
+
+## Supertypes
+
+A `@WillBecomeValue` class may only extend classes that may be extended by a value class.
+When a `@WillBecomeValue` class extends an ancestor that is not marked, the IDE suggests marking the ancestor with `@WillBecomeValue` as well.
+
+```kotlin
+abstract class Shape
+
+@WillBecomeValue
+class Circle(val radius: Double) : Shape() // Error: Shape cannot be extended by a value class
+// Fix: mark Shape with @WillBecomeValue
+```
+
+The fix is only suggested for ancestors: an inheritor of a `@WillBecomeValue` class does not need to become a value class.
+
+## Completing the migration
+
+Once a class is marked with `@WillBecomeValue`, the IDE suggests converting it to a real `value class`:
+
+```kotlin
+@WillBecomeValue
+class Point(val x: Int, val y: Int) {
+    // equals, hashCode, toString
+}
+// Intention: convert to value class
+value class Point(val x: Int, val y: Int) {
+    // equals, hashCode, toString
+}
+```
 
 # References
 
