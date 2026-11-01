@@ -353,16 +353,21 @@ fun checkPair(pair: Pair<String, String>) {
 
 ## Applicability
 
-The annotation can be applied to:
-- Regular (reference) final classes.
+The annotation can be applied to top-level and nested (not inner) declarations:
+- Regular (reference) final classes, including `data class`es.
 - Abstract classes and sealed classes, intended as base types.
-- Object declarations.
+- Object declarations, including `data object`s.
 
 It **cannot** be applied to:
-- Classes already declared as `value class`.
+- Classes already declared as `value class` or `value object`.
 - Interfaces (interfaces are common for identity and value classes).
+- Annotation classes.
 - Enums (enumerations cannot become value types).
 - Open classes (value classes are not going to be supported to be `open`).
+- Companion objects and anonymous objects.
+
+Local and inner classes and local objects are rejected by the [declaration checks](#declaration-checks).
+When the annotation is not applicable, no other `@WillBecomeValue` checks are performed for the declaration.
 
 # IDE support
 
