@@ -285,6 +285,13 @@ The same applies to `toString` of a `data object`.
 [Read more](https://github.com/Kotlin/KEEP/blob/main/proposals/KEEP-0454-better-immutability-value-classes-MFVC.md#migration-between-data-and-value-classes)
 to learn about the migration process of `data class`es.
 
+### Expect and actual declarations
+
+An `expect` class declares no implementations of `equals`, `hashCode` and `toString`, as they come from its `actual` class.
+So the requirement to override them is checked on the platform side:
+for the `actual` class, and for the classes extending an `expect` class, with the members of its `actual` class.
+An `actual typealias` to a Java class annotated with `@kotlin.WillBecomeValue` is checked the same way.
+
 ## Compiler warnings
 
 The compiler reports a warning when one of the following identity-sensitive operations is applied to a value
