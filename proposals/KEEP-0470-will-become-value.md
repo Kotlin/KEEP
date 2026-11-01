@@ -213,8 +213,8 @@ The experimental phase is used to stabilize and finalize the behavior of the rel
 A class annotated with `@WillBecomeValue`:
 
 1. **Must not be relied upon for identity.** Reference equality (`===`), `identityHashCode`,
-   and synchronization on instances are considered undefined behavior and may be flagged by
-   the compiler or runtime.
+   and synchronization on instances are considered undefined behavior and are flagged by
+   the compiler.
 2. **Must be shallow-immutable.** Mutating state through shared references
    undermines the value semantics the annotation promises.
 3. **Is a candidate for future migration to `value class`.**
