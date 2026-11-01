@@ -14,7 +14,7 @@ to [full value classes](https://github.com/Kotlin/KEEP/blob/main/proposals/KEEP-
 In particular, by using this annotation a developer helps their downstream users to not break their code when the class is changed to a value class, as those users will get migration warnings about usages which will stop being valid.
 Without this mechanism, the adoption of full value classes would be a slower and harder process.
 
-The annotation is initially experimental and requires an opt-in to `ExperimentalValueClassApi` (tentative name).
+The annotation is initially experimental and requires an opt-in to `ExperimentalValueClassesApi`.
 
 # Table of contents
 
@@ -178,21 +178,29 @@ package kotlin
 
 @RequiresOptIn(level = RequiresOptIn.Level.ERROR)
 @Retention(AnnotationRetention.BINARY)
+@Target(
+    CLASS, ANNOTATION_CLASS, PROPERTY, FIELD, LOCAL_VARIABLE, VALUE_PARAMETER,
+    CONSTRUCTOR, FUNCTION, PROPERTY_GETTER, PROPERTY_SETTER, TYPEALIAS,
+)
 @MustBeDocumented
-annotation class ExperimentalValueClassApi // Tentative name
+@SinceKotlin("2.5")
+annotation class ExperimentalValueClassesApi
 
 @Target(AnnotationTarget.CLASS)
 @Retention(AnnotationRetention.BINARY)
 @MustBeDocumented
-@ExperimentalValueClassApi
+@SinceKotlin("2.5")
+@ExperimentalValueClassesApi
 annotation class WillBecomeValue
 ```
 
 ## Experimental status and opt-in
 
-`@WillBecomeValue` will be introduced as an experimental API under an opt-in marker tentatively named `kotlin.ExperimentalValueClassApi`.
+`@WillBecomeValue` is introduced in Kotlin 2.5.0 as an experimental API under the opt-in marker `kotlin.ExperimentalValueClassesApi`,
+which marks all the experimental API related to value classes.
+The compiler reports the diagnostics described below since Kotlin 2.5.20; before that, it reports none of them.
 
-Authors applying `@WillBecomeValue` must opt in with `@OptIn(ExperimentalValueClassApi::class)`, at the declaration or file level, or with the module-wide compiler option `-opt-in=kotlin.ExperimentalValueClassApi`.
+Authors applying `@WillBecomeValue` must opt in with `@OptIn(ExperimentalValueClassesApi::class)`, at the declaration or file level, or with the module-wide compiler option `-opt-in=kotlin.ExperimentalValueClassesApi`.
 Using the annotation without an opt-in is a compilation error.
 
 The opt-in requirement applies to using the experimental annotation.
