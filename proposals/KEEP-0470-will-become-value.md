@@ -258,6 +258,24 @@ A `@WillBecomeValue` class may extend:
 The converse is not allowed: a `value class` cannot extend a `@WillBecomeValue` class or a JDK value-based class,
 as they are still identity classes.
 
+### Declaration checks
+
+The full list of the declaration checks reported as errors for a class annotated with `@WillBecomeValue`:
+- it must not be local or inner;
+- a final class must have a primary constructor with at least one parameter,
+  and all its parameters must be `val` properties;
+- the primary constructor of an abstract or sealed class must not have property parameters;
+- it must not have properties with backing fields outside the primary constructor, nor delegated properties;
+- it must not implement an interface by delegation, except to a primary constructor property of a final class;
+- it must not extend classes other than the [allowed supertypes](#supertypes);
+- it must not be recursive, directly or via type parameters;
+- it must not be `Cloneable`;
+- a final class must not inherit the identity-based `equals`, `hashCode` and `toString` from `Any`,
+  an object must not inherit the identity-based `toString`;
+- on the JVM, its members must not be annotated with `@Synchronized`.
+
+These checks do not require full value classes to be enabled.
+
 ### Data classes
 
 `data class`es guarantee absence of primary constructors problems.
