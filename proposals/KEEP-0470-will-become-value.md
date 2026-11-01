@@ -34,6 +34,7 @@ The annotation is initially experimental and requires an opt-in to `Experimental
   * [Compiler warnings](#compiler-warnings)
   * [Examples](#examples)
   * [Applicability](#applicability)
+* [IDE support](#ide-support)
 * [References](#references)
 
 # Motivation
@@ -304,6 +305,23 @@ It **cannot** be applied to:
 - Interfaces (interfaces are common for identity and value classes).
 - Enums (enumerations cannot become value types).
 - Open classes (value classes are not going to be supported to be `open`).
+
+# IDE support
+
+In scope of this feature, we also propose the following IDE quick-fixes and intentions.
+
+* When a `@WillBecomeValue` class inherits the identity-based `equals`, `hashCode` or `toString` from `Any`,
+  a quick-fix suggests adding the `data` modifier or generating the missing members.
+  For a `@WillBecomeValue` object, which only has to override `toString`,
+  a quick-fix suggests turning it into a `data object` or generating `toString`.
+* The superclass of a `@WillBecomeValue` class must be a value class, a `@WillBecomeValue` class,
+  or a JDK value-based class (`@jdk.internal.ValueBased`).
+  When it extends any other abstract or sealed class, a quick-fix suggests marking that superclass with `@WillBecomeValue`.
+  Subclasses are not affected: a class extending a `@WillBecomeValue` class does not need to be marked.
+* An intention converts a `@WillBecomeValue` class to a `value class`.
+  It converts the whole hierarchy of the potential value classes at once:
+  all `@WillBecomeValue` superclasses and subclasses of the class are converted together with it,
+  so that no value class extends a class that is still an identity class.
 
 # References
 
