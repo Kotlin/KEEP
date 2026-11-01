@@ -314,9 +314,9 @@ In scope of this feature, we also propose the following IDE quick-fixes and inte
   a quick-fix suggests adding the `data` modifier or generating the missing members.
   For a `@WillBecomeValue` object, which only has to override `toString`,
   a quick-fix suggests turning it into a `data object` or generating `toString`.
-* A `@WillBecomeValue` class may extend only the classes a value class may extend.
-  When its superclass is an abstract or sealed class that is neither a value class nor marked with `@WillBecomeValue`,
-  a quick-fix suggests marking that superclass with `@WillBecomeValue`.
+* The superclass of a `@WillBecomeValue` class must be a value class, a `@WillBecomeValue` class,
+  or a JDK value-based class (`@jdk.internal.ValueBased`).
+  When it extends any other abstract or sealed class, a quick-fix suggests marking that superclass with `@WillBecomeValue`.
   Subclasses are not affected: a class extending a `@WillBecomeValue` class does not need to be marked.
 * An intention converts a `@WillBecomeValue` class to a `value class`.
   It converts the whole hierarchy of the potential value classes at once:
