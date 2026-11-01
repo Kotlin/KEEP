@@ -310,6 +310,9 @@ The warning is reported both outside and inside the annotated class, and also fo
 
 ## Examples
 
+The examples below are illustrative: no standard library class is annotated with `@WillBecomeValue` yet
+(see [the candidates](#candidate-classes-in-the-standard-library) and [KT-90055](https://youtrack.jetbrains.com/issue/KT-90055)).
+
 For example, the standard library could mark `Uuid` as a value-like class that is expected to become a full `value class`:
 
 ```kotlin
