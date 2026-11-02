@@ -53,6 +53,7 @@ Generated getter and setter enforce the assign-once semantics.
   * [Compilation Strategy](#compilation-strategy)
     * [Early Initialization](#early-initialization)
     * [Kotlin/JS](#kotlinjs)
+  * [Runtime Exceptions](#runtime-exceptions)
   * [Thread-Safety](#thread-safety)
   * [Smartcasts](#smartcasts)
 * [Interaction with Other Features](#interaction-with-other-features)
@@ -204,14 +205,14 @@ public final class Example {
 
     @NotNull public String getProperty() {
         if (_property == UNINITIALIZED) {
-            throw new IllegalStateException("Property is uninitialized");
+            throw new UninitializedPropertyAccessException("Property is uninitialized");
         }
         return (String) _property;
     }
 
     public void setProperty(@NotNull String v) {
         if (_property != UNINITIALIZED) {
-            throw new IllegalStateException("Property already set");
+            throw new InitializedPropertyAssignmentException("Property is already initialized");
         }
         _property = v;
     }
@@ -312,6 +313,19 @@ println(property) // throws "property is not initialized"
 
 So `undefined` is not a valid value for a `lateinit val`.
 
+## Runtime Exceptions
+
+Reading an uninitialized `lateinit val` throws `UninitializedPropertyAccessException`, the same as for `lateinit var`.
+Assigning to an already initialized one throws the new `InitializedPropertyAssignmentException`.
+
+Both exceptions are intended to be internal and thus not directly catchable in Kotlin code.
+`InitializedPropertyAssignmentException` will be internal from the start.
+`UninitializedPropertyAccessException` is already internal on Wasm and Native and
+making it internal on the remaining platforms is ongoing work.
+To guarantee once-initialization or track initialization status,
+use external means instead of relying on the runtime failures.
+See also [`isInitialized`](#isinitialized) for more context.
+
 ## Thread-Safety
 
 We considered making `lateinit val` thread-safe, i.e. preserving assign-once semantics
@@ -329,7 +343,7 @@ public final class Example {
     @NotNull public String getProperty() {
         Object p = _property;
         if (p == UNINITIALIZED) {
-            throw new IllegalStateException("Property is uninitialized");
+            throw new UninitializedPropertyAccessException("Property is uninitialized");
         }
         return (String) p;
     }
@@ -337,7 +351,7 @@ public final class Example {
     public void setProperty(@NotNull String v) {
         boolean updated = propUpdater.compareAndSet(this, UNINITIALIZED, v);
         if (!updated) {
-            throw new IllegalStateException("Property already set");
+            throw new InitializedPropertyAssignmentException("Property is already initialized");
         }
     }
 }
