@@ -252,12 +252,14 @@ value class RgbColor(val rgb: Int)
 
 New declarations should prefer `inline value class` on every platform, including common source.
 Existing declarations carrying `@JvmInline` may keep that spelling.
-Combining the modifier and annotation is redundant and disallowed.
+Combining the modifier and annotation is redundant with a corresponding warning.
 
 ```kotlin
 @JvmInline
-inline value class RgbColor(val rgb: Int) // Error: `@JvmInline` is redundant
+inline value class RgbColor(val rgb: Int) // Warning: `@JvmInline` is redundant
 ```
+
+> Note: this is kept as warning and not as error to allow for more flexible automated migrations, and also for explicit documentation purposes of `@JvmInline` annotation being emitted for this declaration.
 
 #### `@JvmInline` in Common Source
 
