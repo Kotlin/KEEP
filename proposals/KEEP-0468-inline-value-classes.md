@@ -46,11 +46,11 @@ value class UserId(val raw: String)
 value class Complex(val re: Double, val im: Double)
 ```
 
-Migration is staged.
+Migration follows the usual Kotlin deprecation cycle.
 
 * Existing JVM and common code written with `@JvmInline value class` remains valid without a mandatory source migration.
-* Existing non-JVM code that currently implicitly uses the inline kind and **would like to keep it** receives diagnostics and quick fixes to add the `inline` modifier.
-* Existing non-JVM and common code that does not rely on being inline and would like to get the new full value class behavior when they are released can silence the migration diagnostics via [compiler options](#compiler-options).
+* Existing non-JVM and common code that currently implicitly uses the inline kind and **would like to keep it** receives a migration diagnostic and quick fixes to add the `inline` modifier.
+* Existing non-JVM and common code that does not rely on being inline and would like to get the new full value class behavior can enable full value classes when they are available, or suppress the migration warning during the warning phase with [standard controls](#compiler-options-and-diagnostics).
 
 After the migration period is over, plain single-field `value class` declarations switch their meaning and use the full value class kind; code that wants the old inline kind must use `inline value class` or `@JvmInline value class` spelling.
 
@@ -71,7 +71,7 @@ After the migration period is over, plain single-field `value class` declaration
     - [`@JvmExposeBoxed`](#jvmexposeboxed)
   - [Historical `inline class`](#historical-inline-class)
   - [Expect/Actual Matching](#expectactual-matching)
-  - [Compiler Options](#compiler-options)
+  - [Compiler Options and Diagnostics](#compiler-options-and-diagnostics)
 - [Migration](#migration)
   - [Existing JVM Code](#existing-jvm-code)
   - [Existing Non-JVM Code](#existing-non-jvm-code)
@@ -346,43 +346,37 @@ actual inline value class UserId(val raw: String) // Error: full / inline kind m
 
 This prevents the same common API from using the inline value class kind on one target and the full value class kind on another target, which would lead to different externally observed behavior between platforms.
 
-### Compiler Options
+### Compiler Options and Diagnostics
 
-For migration, the Kotlin compiler will provide a `-Xinline-value-class-migration` option with the following modes:
+The semantic switch remains `-Xfull-value-classes`.
 
-```text
--Xinline-value-class-migration=warning
--Xinline-value-class-migration=strict
-```
+While full value classes are disabled, a single-field `value class` without `inline` or `@JvmInline` keeps its legacy inline value class semantics.
+The compiler reports a migration diagnostic for such a declaration, suggesting the `inline value class` spelling.
+Declarations already carrying the `inline` modifier or `@JvmInline` are explicitly inline and require no migration change.
 
-`warning` is the soft migration mode.
-Unmarked single-field value classes keep their legacy inline behavior, and the compiler reports diagnostics with quick fixes to add the `inline` modifier.
-Declarations already carrying the `inline` modifier or `@JvmInline` are explicitly inline and require no change.
+> Note: `<IMPLICIT_INLINE_VALUE_CLASS>` is used below as a placeholder for the final diagnostic name.
 
-`strict` is the hard validation mode.
-Unmarked single-field value classes become errors.
-One needs to mark those value classes which rely on inline behavior with the `inline` modifier.
-This mode is useful to guarantee that the code no longer depends on implicit inlining.
+When full value classes are enabled, an unmarked `value class` denotes a full value class, including when it has one primary property.
+At that point the migration diagnostic is no longer applicable: an unmarked `value class` unambiguously selects the full value class kind.
 
-When full value classes are enabled (either by default or with an explicit compiler flag), this serves as an opt-in to "migration is done, all inline value classes are marked, it is OK to change unmarked single-field value classes to full value classes."
+If a project wants to increase the migration severity to error, it has several options.
+First, projects can turn the warning into an error during the warning phase with `-Xwarning-level=<IMPLICIT_INLINE_VALUE_CLASS>:error`.
+Second, the warning-to-error switch is also available under `-progressive` mode.
+Third, the usual `-Werror` behavior still applies for this diagnostic.
 
-Through the migration period, one would go through some or all of the following combinations of flags.
+In the opposite direction, we will provide a separate flag to downgrade `<IMPLICIT_INLINE_VALUE_CLASS>` error to warning, tentatively named `-Xinline-value-class-migrations-as-warnings`, for those who need some extra time for the migration before switching on the full value classes feature.
 
-* `-Xinline-value-class-migration=warning` + `-Xfull-value-classes=off` to get migration warnings for all implicitly inline value classes, and keep the inline behavior for some or all of them by adding the `inline` modifier.
-  * This will be the default in Kotlin 2.5.20.
-* `-Xinline-value-class-migration=strict` + `-Xfull-value-classes=off` to get errors for all implicitly inline value classes, and keep the inline behavior for some or all of them by adding the `inline` modifier.
-  * This will be the default in Kotlin 2.6.
-* `-Xfull-value-classes=on` to switch the behavior to full value classes and stop reporting migration diagnostics for unmarked single-field value classes.
-  * This will be the default in Kotlin 2.7+.
+> Important: this flag changes only diagnostic severity and does not change the declaration kind.
 
-The `-Xinline-value-class-migration` and `-Xfull-value-classes` flags are dependent; only the following combinations are allowed.
+The planned release sequence is:
 
-| `-Xfull-value-classes` / `-Xinline-value-class-migration` | `warning` | `strict` |
-|-------------------------------------------------------|-----------|----------|
-| `off`                                                 | OK        | OK       |
-| `on`                                                  | not OK    | not OK   |
-
-This means that, if one sets `-Xfull-value-classes=on`, it effectively disables the migration diagnostics (as it must have been completed before).
+| Stage | Full value classes | Unmarked single-field `value class` | Migration diagnostic |
+|---|---|---|---|
+| Kotlin 2.5.20 | disabled | legacy inline | warning |
+| Kotlin 2.5.20 in progressive mode | disabled | legacy inline | error |
+| Kotlin 2.6 | disabled | legacy inline | error |
+| Kotlin 2.6 with `-Xinline-value-class-migrations-as-warnings` | disabled | legacy inline | warning |
+| Full value classes enabled, including the future default | enabled | full value class | not reported |
 
 ## Migration
 
@@ -413,7 +407,8 @@ Existing non-JVM code currently relies on implicit shape-based inlining:
 value class Color(val rgb: Int)
 ```
 
-A single-field value class without an explicit inline marker is interpreted as inline until full value classes are enabled.
+A single-field value class without an explicit inline marker has legacy inline semantics while full value classes are disabled.
+The migration diagnostic asks the author to make the future kind explicit before that default changes.
 For this code, there are two possible migration trajectories.
 
 The first trajectory is to preserve the inline kind by adding the `inline` modifier:
@@ -432,10 +427,19 @@ value class Color(val rgb: Int) // full single-field value class when enabled
 ```
 
 This is a behavior change for an existing declaration.
-To opt in to accepting it, a source set can use one of the following options.
+A source set can prepare for or accept the behavior change in one of the following ways.
 
-* Enable `-Xfull-value-classes=on` to do the behavior switch.
-* Enable `-Xinline-value-class-migration=warning` and do `-Xwarning-level=<IMPLICIT_INLINE_VALUE_CLASS>:disabled` to disable the warning module-wide.
+* While remaining in the warning phase, disable the diagnostic module-wide with:
+
+  ```text
+  -Xwarning-level=<IMPLICIT_INLINE_VALUE_CLASS>:disabled
+  ```
+
+  This does not change the current inline semantics; it only silences the reminder for declarations whose authors intend to leave them unmarked for the future full value class behavior.
+* When in the error phase, downgrade the errors to warnings via `-Xinline-value-class-migrations-as-warnings`, then optionally suppress the warning with `-Xwarning-level=<IMPLICIT_INLINE_VALUE_CLASS>:disabled`.
+* Enable `-Xfull-value-classes=on`.
+  The declaration becomes a full value class immediately, and the migration diagnostic no longer applies.
+  However, before full value classes are stable, enabling them carries the usual consequences of using an experimental language feature.
 * (Not recommended but possible) Use `@Suppress`.
 
 ### Existing Multiplatform Code
@@ -489,7 +493,7 @@ Once full value classes are enabled, one would need to **remove** the `inline` m
 
 IDE support is essential because much of the migration is mechanical but must be applied carefully.
 
-The IDE should provide the following quick fixes when `-Xinline-value-class-migration` is set to `warning` or `strict`.
+The IDE should provide the same quick fixes when the migration diagnostic is reported, whether it has warning or error severity.
 
 **Implicit inline kind.**
 Detect a single-field value class without an explicit inline marker.
