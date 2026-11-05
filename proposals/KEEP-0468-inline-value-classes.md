@@ -3,7 +3,7 @@
 * **Type**: Design proposal
 * **Author**: Marat Akhin
 * **Contributors**: Pavel Kunyavskiy, Alejandro Serrano Mena, Alexander Udalov, Mikhail Zarechenskiy, Evgeniy Zhelenskiy
-* **Status**: Public discussion
+* **Status**: Beta in 2.5.20
 * **Discussion**: [GitHub](https://github.com/Kotlin/KEEP/discussions/501)
 * **Related proposals**:
   * [KEEP-0104: Inline Classes](./KEEP-0104-inline-classes.md)
