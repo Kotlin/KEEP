@@ -3,7 +3,7 @@
 * **Type**: Design proposal
 * **Author**: Evgeniy Zhelenskiy
 * **Status**: Proposed
-* **Discussion and feedback**: TODO
+* **Discussion and feedback**: [GitHub](https://github.com/Kotlin/KEEP/discussions/510)
 * **Related YouTrack issues**: [KT-84904](https://youtrack.jetbrains.com/issue/KT-84904), [KT-87569](https://youtrack.jetbrains.com/issue/KT-87569)
 
 # Abstract
